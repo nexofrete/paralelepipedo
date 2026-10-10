@@ -167,6 +167,7 @@
             this.txtDoc.Name = "txtDoc";
             this.txtDoc.Size = new System.Drawing.Size(158, 23);
             this.txtDoc.TabIndex = 4;
+            this.txtDoc.Leave += new System.EventHandler(this.txtDoc_Leave);
             // 
             // lblContrib
             // 

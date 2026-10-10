@@ -6,6 +6,7 @@ Sistema desktop (WinForms) para transportadora, em C# para Visual Studio 2010 (.
 
 - Login com usuários e perfis: ADMIN, OPERADOR e CONSULTA. As senhas são gravadas com hash PBKDF2.
 - Cadastro de clientes: pessoa jurídica ou física, validação de CNPJ/CPF, indicador de IE e endereço com código IBGE.
+- Consulta automática do CNPJ: ao sair do campo CNPJ (clientes e empresa), o sistema busca razão social, endereço com código IBGE, telefone, e-mail e a **inscrição estadual** (APIs públicas CNPJá e BrasilAPI; precisa de internet).
 - Cadastro da empresa emitente, com série, numeração, ambiente e certificado digital A1/A3.
 - CT-e 4.00, modelo 57, modal rodoviário, transmitido direto à SEFAZ (SVRS, que atende o RJ):
   - montagem do XML, chave de acesso e assinatura digital;

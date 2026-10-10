@@ -13,6 +13,7 @@ namespace TransportadoraCTe.Telas
     {
         private Empresa emp;
         private string thumbprint;
+        private string cnpjConsultado;
 
         public FrmEmpresa()
         {
@@ -34,6 +35,7 @@ namespace TransportadoraCTe.Telas
                 emp.Endereco.UF = "RJ";
             }
             txtCNPJ.Text = Util.FormatarDoc(emp.CNPJ);
+            cnpjConsultado = Util.SoNumeros(emp.CNPJ);
             txtIE.Text = emp.IE;
             txtRazao.Text = emp.RazaoSocial;
             txtFantasia.Text = emp.NomeFantasia;
@@ -58,6 +60,45 @@ namespace TransportadoraCTe.Telas
             txtRtEmail.Text = emp.RespTecEmail;
             txtRtFone.Text = emp.RespTecFone;
             MostrarCertificado();
+        }
+
+        /// <summary>Ao sair do campo CNPJ, consulta o CNPJ e preenche os dados da transportadora.</summary>
+        private void txtCNPJ_Leave(object sender, EventArgs e)
+        {
+            string cnpj = Util.SoNumeros(txtCNPJ.Text);
+            if (cnpj.Length != 14 || cnpj == cnpjConsultado || !Util.CnpjValido(cnpj)) return;
+            cnpjConsultado = cnpj;
+            if (txtRazao.Text.Trim().Length > 0 &&
+                !UI.Confirmar("Consultar o CNPJ e substituir os dados preenchidos pelos da Receita Federal?")) return;
+
+            DadosCnpj d = null;
+            if (!UI.Executar(this, delegate { d = ConsultaCnpj.Consultar(cnpj); })) return;
+
+            txtCNPJ.Text = Util.FormatarDoc(cnpj);
+            txtRazao.Text = Util.Texto(d.RazaoSocial, 60);
+            txtFantasia.Text = Util.Texto(d.NomeFantasia, 60);
+            txtLogradouro.Text = d.Endereco.Logradouro;
+            txtNumero.Text = d.Endereco.Numero;
+            txtCompl.Text = d.Endereco.Complemento;
+            txtBairro.Text = d.Endereco.Bairro;
+            txtCodMun.Text = d.Endereco.CodMunicipio;
+            txtMunicipio.Text = d.Endereco.Municipio;
+            UI.SelecionarPorCodigo(cboUF, d.Endereco.UF);
+            txtCEP.Text = d.Endereco.CEP;
+            if (!string.IsNullOrEmpty(d.Fone)) txtFone.Text = d.Fone;
+            if (!string.IsNullOrEmpty(d.Email)) txtEmail.Text = d.Email;
+            if (d.Mei == true) UI.SelecionarPorCodigo(cboCRT, "4");
+            else if (d.SimplesNacional == true) UI.SelecionarPorCodigo(cboCRT, "1");
+            else if (d.SimplesNacional == false) UI.SelecionarPorCodigo(cboCRT, "3");
+
+            string aviso = "";
+            if (!string.IsNullOrEmpty(d.IE)) txtIE.Text = d.IE;
+            else if (d.ConsultouIE) aviso = "Nenhuma inscrição estadual ativa encontrada em " + d.Endereco.UF + ". Preencha manualmente.";
+            else aviso = "A consulta não trouxe a inscrição estadual (fonte: " + d.Fonte + "). Preencha manualmente.";
+            if (!string.IsNullOrEmpty(d.Situacao) && !d.Situacao.StartsWith("Ativa", StringComparison.OrdinalIgnoreCase))
+                aviso = "Situação na Receita: " + d.Situacao + "\r\n\r\n" + aviso;
+            aviso += (aviso.Length > 0 ? "\r\n\r\n" : "") + "Confira o regime tributário (CRT) e o RNTRC antes de salvar.";
+            UI.Info(aviso);
         }
 
         private void MostrarCertificado()

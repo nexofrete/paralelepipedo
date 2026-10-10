@@ -179,6 +179,7 @@
             this.txtCNPJ.Name = "txtCNPJ";
             this.txtCNPJ.Size = new System.Drawing.Size(158, 23);
             this.txtCNPJ.TabIndex = 2;
+            this.txtCNPJ.Leave += new System.EventHandler(this.txtCNPJ_Leave);
             // 
             // lblIE
             // 

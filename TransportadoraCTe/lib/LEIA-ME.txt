@@ -1,0 +1,14 @@
+Coloque nesta pasta os arquivos do Npgsql 2.2.7 (driver PostgreSQL para .NET 4.0):
+
+  Npgsql.dll
+  Mono.Security.dll
+
+Como obter:
+  1. Acesse https://www.nuget.org/packages/Npgsql/2.2.7 e clique em "Download package".
+  2. Renomeie npgsql.2.2.7.nupkg para npgsql.2.2.7.zip e extraia.
+  3. Copie os dois arquivos da pasta lib\net40\ para esta pasta.
+
+O projeto ja referencia ..\..\lib\Npgsql.dll e ..\..\lib\Mono.Security.dll.
+
+Atencao: o Npgsql 2.2.7 nao suporta autenticacao scram-sha-256 (padrao do PostgreSQL 14+).
+Use md5 - veja o README.md, secao 2.

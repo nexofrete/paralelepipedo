@@ -1,0 +1,14 @@
+# Visual Studio
+bin/
+obj/
+*.suo
+*.user
+*.cache
+.vs/
+
+# DLLs do Npgsql (baixar conforme lib/LEIA-ME.txt)
+lib/*.dll
+
+# Certificados
+*.pfx
+*.p12

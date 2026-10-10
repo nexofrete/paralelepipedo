@@ -164,10 +164,11 @@
             // 
             // lblCNPJ
             // 
-            this.lblCNPJ.AutoSize = true;
+            this.lblCNPJ.AutoEllipsis = true;
             this.lblCNPJ.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCNPJ.Location = new System.Drawing.Point(12, 42);
             this.lblCNPJ.Name = "lblCNPJ";
+            this.lblCNPJ.Size = new System.Drawing.Size(158, 17);
             this.lblCNPJ.TabIndex = 1;
             this.lblCNPJ.Text = "CNPJ";
             // 
@@ -181,10 +182,11 @@
             // 
             // lblIE
             // 
-            this.lblIE.AutoSize = true;
+            this.lblIE.AutoEllipsis = true;
             this.lblIE.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblIE.Location = new System.Drawing.Point(180, 42);
             this.lblIE.Name = "lblIE";
+            this.lblIE.Size = new System.Drawing.Size(128, 17);
             this.lblIE.TabIndex = 3;
             this.lblIE.Text = "Inscrição estadual";
             // 
@@ -198,10 +200,11 @@
             // 
             // lblRNTRC
             // 
-            this.lblRNTRC.AutoSize = true;
+            this.lblRNTRC.AutoEllipsis = true;
             this.lblRNTRC.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRNTRC.Location = new System.Drawing.Point(318, 42);
             this.lblRNTRC.Name = "lblRNTRC";
+            this.lblRNTRC.Size = new System.Drawing.Size(108, 17);
             this.lblRNTRC.TabIndex = 5;
             this.lblRNTRC.Text = "RNTRC (ANTT)";
             // 
@@ -215,10 +218,11 @@
             // 
             // lblCRT
             // 
-            this.lblCRT.AutoSize = true;
+            this.lblCRT.AutoEllipsis = true;
             this.lblCRT.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCRT.Location = new System.Drawing.Point(436, 42);
             this.lblCRT.Name = "lblCRT";
+            this.lblCRT.Size = new System.Drawing.Size(258, 17);
             this.lblCRT.TabIndex = 7;
             this.lblCRT.Text = "Regime tributário (CRT)";
             // 
@@ -238,10 +242,11 @@
             // 
             // lblRazao
             // 
-            this.lblRazao.AutoSize = true;
+            this.lblRazao.AutoEllipsis = true;
             this.lblRazao.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRazao.Location = new System.Drawing.Point(12, 90);
             this.lblRazao.Name = "lblRazao";
+            this.lblRazao.Size = new System.Drawing.Size(398, 17);
             this.lblRazao.TabIndex = 9;
             this.lblRazao.Text = "Razão social";
             // 
@@ -255,10 +260,11 @@
             // 
             // lblFantasia
             // 
-            this.lblFantasia.AutoSize = true;
+            this.lblFantasia.AutoEllipsis = true;
             this.lblFantasia.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblFantasia.Location = new System.Drawing.Point(420, 90);
             this.lblFantasia.Name = "lblFantasia";
+            this.lblFantasia.Size = new System.Drawing.Size(298, 17);
             this.lblFantasia.TabIndex = 11;
             this.lblFantasia.Text = "Nome fantasia";
             // 
@@ -272,10 +278,11 @@
             // 
             // lblLogradouro
             // 
-            this.lblLogradouro.AutoSize = true;
+            this.lblLogradouro.AutoEllipsis = true;
             this.lblLogradouro.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblLogradouro.Location = new System.Drawing.Point(12, 138);
             this.lblLogradouro.Name = "lblLogradouro";
+            this.lblLogradouro.Size = new System.Drawing.Size(398, 17);
             this.lblLogradouro.TabIndex = 13;
             this.lblLogradouro.Text = "Logradouro";
             // 
@@ -289,10 +296,11 @@
             // 
             // lblNumero
             // 
-            this.lblNumero.AutoSize = true;
+            this.lblNumero.AutoEllipsis = true;
             this.lblNumero.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblNumero.Location = new System.Drawing.Point(420, 138);
             this.lblNumero.Name = "lblNumero";
+            this.lblNumero.Size = new System.Drawing.Size(78, 17);
             this.lblNumero.TabIndex = 15;
             this.lblNumero.Text = "Número";
             // 
@@ -306,10 +314,11 @@
             // 
             // lblCompl
             // 
-            this.lblCompl.AutoSize = true;
+            this.lblCompl.AutoEllipsis = true;
             this.lblCompl.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCompl.Location = new System.Drawing.Point(508, 138);
             this.lblCompl.Name = "lblCompl";
+            this.lblCompl.Size = new System.Drawing.Size(208, 17);
             this.lblCompl.TabIndex = 17;
             this.lblCompl.Text = "Complemento";
             // 
@@ -323,10 +332,11 @@
             // 
             // lblBairro
             // 
-            this.lblBairro.AutoSize = true;
+            this.lblBairro.AutoEllipsis = true;
             this.lblBairro.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblBairro.Location = new System.Drawing.Point(12, 186);
             this.lblBairro.Name = "lblBairro";
+            this.lblBairro.Size = new System.Drawing.Size(198, 17);
             this.lblBairro.TabIndex = 19;
             this.lblBairro.Text = "Bairro";
             // 
@@ -340,10 +350,11 @@
             // 
             // lblCodMun
             // 
-            this.lblCodMun.AutoSize = true;
+            this.lblCodMun.AutoEllipsis = true;
             this.lblCodMun.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCodMun.Location = new System.Drawing.Point(220, 186);
             this.lblCodMun.Name = "lblCodMun";
+            this.lblCodMun.Size = new System.Drawing.Size(118, 17);
             this.lblCodMun.TabIndex = 21;
             this.lblCodMun.Text = "Cód. IBGE município";
             // 
@@ -358,10 +369,11 @@
             // 
             // lblMunicipio
             // 
-            this.lblMunicipio.AutoSize = true;
+            this.lblMunicipio.AutoEllipsis = true;
             this.lblMunicipio.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblMunicipio.Location = new System.Drawing.Point(348, 186);
             this.lblMunicipio.Name = "lblMunicipio";
+            this.lblMunicipio.Size = new System.Drawing.Size(208, 17);
             this.lblMunicipio.TabIndex = 23;
             this.lblMunicipio.Text = "Município";
             // 
@@ -375,10 +387,11 @@
             // 
             // lblUF
             // 
-            this.lblUF.AutoSize = true;
+            this.lblUF.AutoEllipsis = true;
             this.lblUF.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblUF.Location = new System.Drawing.Point(566, 186);
             this.lblUF.Name = "lblUF";
+            this.lblUF.Size = new System.Drawing.Size(58, 17);
             this.lblUF.TabIndex = 25;
             this.lblUF.Text = "UF";
             // 
@@ -421,10 +434,11 @@
             // 
             // lblCEP
             // 
-            this.lblCEP.AutoSize = true;
+            this.lblCEP.AutoEllipsis = true;
             this.lblCEP.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCEP.Location = new System.Drawing.Point(634, 186);
             this.lblCEP.Name = "lblCEP";
+            this.lblCEP.Size = new System.Drawing.Size(78, 17);
             this.lblCEP.TabIndex = 27;
             this.lblCEP.Text = "CEP";
             // 
@@ -438,10 +452,11 @@
             // 
             // lblFone
             // 
-            this.lblFone.AutoSize = true;
+            this.lblFone.AutoEllipsis = true;
             this.lblFone.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblFone.Location = new System.Drawing.Point(12, 234);
             this.lblFone.Name = "lblFone";
+            this.lblFone.Size = new System.Drawing.Size(138, 17);
             this.lblFone.TabIndex = 29;
             this.lblFone.Text = "Telefone";
             // 
@@ -455,10 +470,11 @@
             // 
             // lblEmail
             // 
-            this.lblEmail.AutoSize = true;
+            this.lblEmail.AutoEllipsis = true;
             this.lblEmail.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblEmail.Location = new System.Drawing.Point(160, 234);
             this.lblEmail.Name = "lblEmail";
+            this.lblEmail.Size = new System.Drawing.Size(298, 17);
             this.lblEmail.TabIndex = 31;
             this.lblEmail.Text = "E-mail";
             // 
@@ -483,10 +499,11 @@
             // 
             // lblAmbiente
             // 
-            this.lblAmbiente.AutoSize = true;
+            this.lblAmbiente.AutoEllipsis = true;
             this.lblAmbiente.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblAmbiente.Location = new System.Drawing.Point(12, 314);
             this.lblAmbiente.Name = "lblAmbiente";
+            this.lblAmbiente.Size = new System.Drawing.Size(198, 17);
             this.lblAmbiente.TabIndex = 34;
             this.lblAmbiente.Text = "Ambiente SEFAZ";
             // 
@@ -504,10 +521,11 @@
             // 
             // lblSerie
             // 
-            this.lblSerie.AutoSize = true;
+            this.lblSerie.AutoEllipsis = true;
             this.lblSerie.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSerie.Location = new System.Drawing.Point(220, 314);
             this.lblSerie.Name = "lblSerie";
+            this.lblSerie.Size = new System.Drawing.Size(78, 17);
             this.lblSerie.TabIndex = 36;
             this.lblSerie.Text = "Série";
             // 
@@ -525,10 +543,11 @@
             // 
             // lblProximo
             // 
-            this.lblProximo.AutoSize = true;
+            this.lblProximo.AutoEllipsis = true;
             this.lblProximo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblProximo.Location = new System.Drawing.Point(308, 314);
             this.lblProximo.Name = "lblProximo";
+            this.lblProximo.Size = new System.Drawing.Size(118, 17);
             this.lblProximo.TabIndex = 38;
             this.lblProximo.Text = "Próximo número";
             // 
@@ -556,10 +575,11 @@
             // 
             // lblCert
             // 
-            this.lblCert.AutoSize = true;
+            this.lblCert.AutoEllipsis = true;
             this.lblCert.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCert.Location = new System.Drawing.Point(12, 362);
             this.lblCert.Name = "lblCert";
+            this.lblCert.Size = new System.Drawing.Size(518, 17);
             this.lblCert.TabIndex = 40;
             this.lblCert.Text = "Certificado digital (A1 ou A3 instalado no Windows)";
             // 
@@ -600,10 +620,11 @@
             // 
             // lblRtCNPJ
             // 
-            this.lblRtCNPJ.AutoSize = true;
+            this.lblRtCNPJ.AutoEllipsis = true;
             this.lblRtCNPJ.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRtCNPJ.Location = new System.Drawing.Point(12, 448);
             this.lblRtCNPJ.Name = "lblRtCNPJ";
+            this.lblRtCNPJ.Size = new System.Drawing.Size(158, 17);
             this.lblRtCNPJ.TabIndex = 44;
             this.lblRtCNPJ.Text = "CNPJ";
             // 
@@ -617,10 +638,11 @@
             // 
             // lblRtContato
             // 
-            this.lblRtContato.AutoSize = true;
+            this.lblRtContato.AutoEllipsis = true;
             this.lblRtContato.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRtContato.Location = new System.Drawing.Point(180, 448);
             this.lblRtContato.Name = "lblRtContato";
+            this.lblRtContato.Size = new System.Drawing.Size(198, 17);
             this.lblRtContato.TabIndex = 46;
             this.lblRtContato.Text = "Contato";
             // 
@@ -634,10 +656,11 @@
             // 
             // lblRtEmail
             // 
-            this.lblRtEmail.AutoSize = true;
+            this.lblRtEmail.AutoEllipsis = true;
             this.lblRtEmail.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRtEmail.Location = new System.Drawing.Point(388, 448);
             this.lblRtEmail.Name = "lblRtEmail";
+            this.lblRtEmail.Size = new System.Drawing.Size(198, 17);
             this.lblRtEmail.TabIndex = 48;
             this.lblRtEmail.Text = "E-mail";
             // 
@@ -651,10 +674,11 @@
             // 
             // lblRtFone
             // 
-            this.lblRtFone.AutoSize = true;
+            this.lblRtFone.AutoEllipsis = true;
             this.lblRtFone.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRtFone.Location = new System.Drawing.Point(596, 448);
             this.lblRtFone.Name = "lblRtFone";
+            this.lblRtFone.Size = new System.Drawing.Size(108, 17);
             this.lblRtFone.TabIndex = 50;
             this.lblRtFone.Text = "Telefone";
             // 

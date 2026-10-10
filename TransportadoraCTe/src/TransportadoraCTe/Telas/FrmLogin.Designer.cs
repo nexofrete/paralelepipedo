@@ -56,10 +56,11 @@
             // 
             // lblLogin
             // 
-            this.lblLogin.AutoSize = true;
+            this.lblLogin.AutoEllipsis = true;
             this.lblLogin.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblLogin.Location = new System.Drawing.Point(44, 16);
             this.lblLogin.Name = "lblLogin";
+            this.lblLogin.Size = new System.Drawing.Size(258, 17);
             this.lblLogin.TabIndex = 0;
             this.lblLogin.Text = "Usuário";
             // 
@@ -73,10 +74,11 @@
             // 
             // lblSenha
             // 
-            this.lblSenha.AutoSize = true;
+            this.lblSenha.AutoEllipsis = true;
             this.lblSenha.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSenha.Location = new System.Drawing.Point(44, 64);
             this.lblSenha.Name = "lblSenha";
+            this.lblSenha.Size = new System.Drawing.Size(258, 17);
             this.lblSenha.TabIndex = 2;
             this.lblSenha.Text = "Senha";
             // 

@@ -67,10 +67,11 @@
             // 
             // lblServidor
             // 
-            this.lblServidor.AutoSize = true;
+            this.lblServidor.AutoEllipsis = true;
             this.lblServidor.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblServidor.Location = new System.Drawing.Point(12, 10);
             this.lblServidor.Name = "lblServidor";
+            this.lblServidor.Size = new System.Drawing.Size(278, 17);
             this.lblServidor.TabIndex = 0;
             this.lblServidor.Text = "Servidor";
             // 
@@ -84,10 +85,11 @@
             // 
             // lblPorta
             // 
-            this.lblPorta.AutoSize = true;
+            this.lblPorta.AutoEllipsis = true;
             this.lblPorta.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblPorta.Location = new System.Drawing.Point(300, 10);
             this.lblPorta.Name = "lblPorta";
+            this.lblPorta.Size = new System.Drawing.Size(78, 17);
             this.lblPorta.TabIndex = 2;
             this.lblPorta.Text = "Porta";
             // 
@@ -102,10 +104,11 @@
             // 
             // lblBanco
             // 
-            this.lblBanco.AutoSize = true;
+            this.lblBanco.AutoEllipsis = true;
             this.lblBanco.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblBanco.Location = new System.Drawing.Point(12, 58);
             this.lblBanco.Name = "lblBanco";
+            this.lblBanco.Size = new System.Drawing.Size(178, 17);
             this.lblBanco.TabIndex = 4;
             this.lblBanco.Text = "Banco de dados";
             // 
@@ -119,10 +122,11 @@
             // 
             // lblUsuario
             // 
-            this.lblUsuario.AutoSize = true;
+            this.lblUsuario.AutoEllipsis = true;
             this.lblUsuario.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblUsuario.Location = new System.Drawing.Point(200, 58);
             this.lblUsuario.Name = "lblUsuario";
+            this.lblUsuario.Size = new System.Drawing.Size(178, 17);
             this.lblUsuario.TabIndex = 6;
             this.lblUsuario.Text = "Usuário";
             // 
@@ -136,10 +140,11 @@
             // 
             // lblSenha
             // 
-            this.lblSenha.AutoSize = true;
+            this.lblSenha.AutoEllipsis = true;
             this.lblSenha.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSenha.Location = new System.Drawing.Point(12, 106);
             this.lblSenha.Name = "lblSenha";
+            this.lblSenha.Size = new System.Drawing.Size(178, 17);
             this.lblSenha.TabIndex = 8;
             this.lblSenha.Text = "Senha";
             // 

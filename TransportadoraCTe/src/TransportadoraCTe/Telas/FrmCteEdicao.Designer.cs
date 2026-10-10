@@ -171,10 +171,11 @@
             // 
             // lblRem
             // 
-            this.lblRem.AutoSize = true;
+            this.lblRem.AutoEllipsis = true;
             this.lblRem.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblRem.Location = new System.Drawing.Point(12, 71);
             this.lblRem.Name = "lblRem";
+            this.lblRem.Size = new System.Drawing.Size(558, 17);
             this.lblRem.TabIndex = 2;
             this.lblRem.Text = "Remetente";
             // 
@@ -208,10 +209,11 @@
             // 
             // lblDest
             // 
-            this.lblDest.AutoSize = true;
+            this.lblDest.AutoEllipsis = true;
             this.lblDest.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblDest.Location = new System.Drawing.Point(12, 125);
             this.lblDest.Name = "lblDest";
+            this.lblDest.Size = new System.Drawing.Size(558, 17);
             this.lblDest.TabIndex = 5;
             this.lblDest.Text = "Destinatário";
             // 
@@ -245,10 +247,11 @@
             // 
             // lblTomador
             // 
-            this.lblTomador.AutoSize = true;
+            this.lblTomador.AutoEllipsis = true;
             this.lblTomador.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblTomador.Location = new System.Drawing.Point(12, 179);
             this.lblTomador.Name = "lblTomador";
+            this.lblTomador.Size = new System.Drawing.Size(228, 17);
             this.lblTomador.TabIndex = 8;
             this.lblTomador.Text = "Tomador do serviço (quem paga)";
             // 
@@ -267,10 +270,11 @@
             // 
             // lblCFOP
             // 
-            this.lblCFOP.AutoSize = true;
+            this.lblCFOP.AutoEllipsis = true;
             this.lblCFOP.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCFOP.Location = new System.Drawing.Point(250, 179);
             this.lblCFOP.Name = "lblCFOP";
+            this.lblCFOP.Size = new System.Drawing.Size(298, 17);
             this.lblCFOP.TabIndex = 10;
             this.lblCFOP.Text = "CFOP";
             // 
@@ -287,10 +291,11 @@
             // 
             // lblNatOp
             // 
-            this.lblNatOp.AutoSize = true;
+            this.lblNatOp.AutoEllipsis = true;
             this.lblNatOp.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblNatOp.Location = new System.Drawing.Point(558, 179);
             this.lblNatOp.Name = "lblNatOp";
+            this.lblNatOp.Size = new System.Drawing.Size(288, 17);
             this.lblNatOp.TabIndex = 12;
             this.lblNatOp.Text = "Natureza da operação";
             // 
@@ -315,10 +320,11 @@
             // 
             // lblCodMunIni
             // 
-            this.lblCodMunIni.AutoSize = true;
+            this.lblCodMunIni.AutoEllipsis = true;
             this.lblCodMunIni.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCodMunIni.Location = new System.Drawing.Point(12, 259);
             this.lblCodMunIni.Name = "lblCodMunIni";
+            this.lblCodMunIni.Size = new System.Drawing.Size(108, 17);
             this.lblCodMunIni.TabIndex = 15;
             this.lblCodMunIni.Text = "Início: cód. IBGE";
             // 
@@ -333,10 +339,11 @@
             // 
             // lblMunIni
             // 
-            this.lblMunIni.AutoSize = true;
+            this.lblMunIni.AutoEllipsis = true;
             this.lblMunIni.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblMunIni.Location = new System.Drawing.Point(130, 259);
             this.lblMunIni.Name = "lblMunIni";
+            this.lblMunIni.Size = new System.Drawing.Size(228, 17);
             this.lblMunIni.TabIndex = 17;
             this.lblMunIni.Text = "Município de início";
             // 
@@ -350,10 +357,11 @@
             // 
             // lblUFIni
             // 
-            this.lblUFIni.AutoSize = true;
+            this.lblUFIni.AutoEllipsis = true;
             this.lblUFIni.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblUFIni.Location = new System.Drawing.Point(368, 259);
             this.lblUFIni.Name = "lblUFIni";
+            this.lblUFIni.Size = new System.Drawing.Size(58, 17);
             this.lblUFIni.TabIndex = 19;
             this.lblUFIni.Text = "UF";
             // 
@@ -397,10 +405,11 @@
             // 
             // lblCodMunFim
             // 
-            this.lblCodMunFim.AutoSize = true;
+            this.lblCodMunFim.AutoEllipsis = true;
             this.lblCodMunFim.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCodMunFim.Location = new System.Drawing.Point(436, 259);
             this.lblCodMunFim.Name = "lblCodMunFim";
+            this.lblCodMunFim.Size = new System.Drawing.Size(108, 17);
             this.lblCodMunFim.TabIndex = 21;
             this.lblCodMunFim.Text = "Fim: cód. IBGE";
             // 
@@ -415,10 +424,11 @@
             // 
             // lblMunFim
             // 
-            this.lblMunFim.AutoSize = true;
+            this.lblMunFim.AutoEllipsis = true;
             this.lblMunFim.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblMunFim.Location = new System.Drawing.Point(554, 259);
             this.lblMunFim.Name = "lblMunFim";
+            this.lblMunFim.Size = new System.Drawing.Size(228, 17);
             this.lblMunFim.TabIndex = 23;
             this.lblMunFim.Text = "Município de término";
             // 
@@ -432,10 +442,11 @@
             // 
             // lblUFFim
             // 
-            this.lblUFFim.AutoSize = true;
+            this.lblUFFim.AutoEllipsis = true;
             this.lblUFFim.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblUFFim.Location = new System.Drawing.Point(792, 259);
             this.lblUFFim.Name = "lblUFFim";
+            this.lblUFFim.Size = new System.Drawing.Size(58, 17);
             this.lblUFFim.TabIndex = 25;
             this.lblUFFim.Text = "UF";
             // 
@@ -490,10 +501,11 @@
             // 
             // lblVPrest
             // 
-            this.lblVPrest.AutoSize = true;
+            this.lblVPrest.AutoEllipsis = true;
             this.lblVPrest.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblVPrest.Location = new System.Drawing.Point(12, 339);
             this.lblVPrest.Name = "lblVPrest";
+            this.lblVPrest.Size = new System.Drawing.Size(148, 17);
             this.lblVPrest.TabIndex = 28;
             this.lblVPrest.Text = "Valor da prestação (R$)";
             // 
@@ -509,10 +521,11 @@
             // 
             // lblVRec
             // 
-            this.lblVRec.AutoSize = true;
+            this.lblVRec.AutoEllipsis = true;
             this.lblVRec.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblVRec.Location = new System.Drawing.Point(170, 339);
             this.lblVRec.Name = "lblVRec";
+            this.lblVRec.Size = new System.Drawing.Size(148, 17);
             this.lblVRec.TabIndex = 30;
             this.lblVRec.Text = "Valor a receber (R$)";
             // 
@@ -527,10 +540,11 @@
             // 
             // lblCST
             // 
-            this.lblCST.AutoSize = true;
+            this.lblCST.AutoEllipsis = true;
             this.lblCST.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblCST.Location = new System.Drawing.Point(328, 339);
             this.lblCST.Name = "lblCST";
+            this.lblCST.Size = new System.Drawing.Size(198, 17);
             this.lblCST.TabIndex = 32;
             this.lblCST.Text = "CST ICMS";
             // 
@@ -553,10 +567,11 @@
             // 
             // lblBC
             // 
-            this.lblBC.AutoSize = true;
+            this.lblBC.AutoEllipsis = true;
             this.lblBC.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblBC.Location = new System.Drawing.Point(536, 339);
             this.lblBC.Name = "lblBC";
+            this.lblBC.Size = new System.Drawing.Size(108, 17);
             this.lblBC.TabIndex = 34;
             this.lblBC.Text = "Base ICMS";
             // 
@@ -572,10 +587,11 @@
             // 
             // lblAliq
             // 
-            this.lblAliq.AutoSize = true;
+            this.lblAliq.AutoEllipsis = true;
             this.lblAliq.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblAliq.Location = new System.Drawing.Point(654, 339);
             this.lblAliq.Name = "lblAliq";
+            this.lblAliq.Size = new System.Drawing.Size(68, 17);
             this.lblAliq.TabIndex = 36;
             this.lblAliq.Text = "Alíquota %";
             // 
@@ -591,10 +607,11 @@
             // 
             // lblVICMS
             // 
-            this.lblVICMS.AutoSize = true;
+            this.lblVICMS.AutoEllipsis = true;
             this.lblVICMS.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblVICMS.Location = new System.Drawing.Point(732, 339);
             this.lblVICMS.Name = "lblVICMS";
+            this.lblVICMS.Size = new System.Drawing.Size(108, 17);
             this.lblVICMS.TabIndex = 38;
             this.lblVICMS.Text = "Valor ICMS";
             // 
@@ -621,10 +638,11 @@
             // 
             // lblProduto
             // 
-            this.lblProduto.AutoSize = true;
+            this.lblProduto.AutoEllipsis = true;
             this.lblProduto.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblProduto.Location = new System.Drawing.Point(12, 419);
             this.lblProduto.Name = "lblProduto";
+            this.lblProduto.Size = new System.Drawing.Size(358, 17);
             this.lblProduto.TabIndex = 41;
             this.lblProduto.Text = "Produto predominante";
             // 
@@ -638,10 +656,11 @@
             // 
             // lblVCarga
             // 
-            this.lblVCarga.AutoSize = true;
+            this.lblVCarga.AutoEllipsis = true;
             this.lblVCarga.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblVCarga.Location = new System.Drawing.Point(380, 419);
             this.lblVCarga.Name = "lblVCarga";
+            this.lblVCarga.Size = new System.Drawing.Size(148, 17);
             this.lblVCarga.TabIndex = 43;
             this.lblVCarga.Text = "Valor da carga (R$)";
             // 
@@ -656,10 +675,11 @@
             // 
             // lblPeso
             // 
-            this.lblPeso.AutoSize = true;
+            this.lblPeso.AutoEllipsis = true;
             this.lblPeso.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblPeso.Location = new System.Drawing.Point(538, 419);
             this.lblPeso.Name = "lblPeso";
+            this.lblPeso.Size = new System.Drawing.Size(128, 17);
             this.lblPeso.TabIndex = 45;
             this.lblPeso.Text = "Peso bruto (kg)";
             // 
@@ -674,10 +694,11 @@
             // 
             // lblNFes
             // 
-            this.lblNFes.AutoSize = true;
+            this.lblNFes.AutoEllipsis = true;
             this.lblNFes.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblNFes.Location = new System.Drawing.Point(12, 467);
             this.lblNFes.Name = "lblNFes";
+            this.lblNFes.Size = new System.Drawing.Size(838, 17);
             this.lblNFes.TabIndex = 47;
             this.lblNFes.Text = "Chaves das NF-e transportadas (uma por linha; em branco = declaração)";
             // 
@@ -693,10 +714,11 @@
             // 
             // lblObs
             // 
-            this.lblObs.AutoSize = true;
+            this.lblObs.AutoEllipsis = true;
             this.lblObs.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblObs.Location = new System.Drawing.Point(12, 565);
             this.lblObs.Name = "lblObs";
+            this.lblObs.Size = new System.Drawing.Size(838, 17);
             this.lblObs.TabIndex = 49;
             this.lblObs.Text = "Observações";
             // 

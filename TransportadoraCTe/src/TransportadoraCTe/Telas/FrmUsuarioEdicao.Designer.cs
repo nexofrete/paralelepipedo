@@ -68,10 +68,11 @@
             // 
             // lblNome
             // 
-            this.lblNome.AutoSize = true;
+            this.lblNome.AutoEllipsis = true;
             this.lblNome.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblNome.Location = new System.Drawing.Point(12, 10);
             this.lblNome.Name = "lblNome";
+            this.lblNome.Size = new System.Drawing.Size(398, 17);
             this.lblNome.TabIndex = 0;
             this.lblNome.Text = "Nome";
             // 
@@ -85,10 +86,11 @@
             // 
             // lblLogin
             // 
-            this.lblLogin.AutoSize = true;
+            this.lblLogin.AutoEllipsis = true;
             this.lblLogin.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblLogin.Location = new System.Drawing.Point(12, 58);
             this.lblLogin.Name = "lblLogin";
+            this.lblLogin.Size = new System.Drawing.Size(188, 17);
             this.lblLogin.TabIndex = 2;
             this.lblLogin.Text = "Login";
             // 
@@ -102,10 +104,11 @@
             // 
             // lblPerfil
             // 
-            this.lblPerfil.AutoSize = true;
+            this.lblPerfil.AutoEllipsis = true;
             this.lblPerfil.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblPerfil.Location = new System.Drawing.Point(210, 58);
             this.lblPerfil.Name = "lblPerfil";
+            this.lblPerfil.Size = new System.Drawing.Size(198, 17);
             this.lblPerfil.TabIndex = 4;
             this.lblPerfil.Text = "Perfil";
             // 
@@ -124,10 +127,11 @@
             // 
             // lblSenha
             // 
-            this.lblSenha.AutoSize = true;
+            this.lblSenha.AutoEllipsis = true;
             this.lblSenha.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSenha.Location = new System.Drawing.Point(12, 106);
             this.lblSenha.Name = "lblSenha";
+            this.lblSenha.Size = new System.Drawing.Size(188, 17);
             this.lblSenha.TabIndex = 6;
             this.lblSenha.Text = "Senha";
             // 
@@ -142,10 +146,11 @@
             // 
             // lblSenha2
             // 
-            this.lblSenha2.AutoSize = true;
+            this.lblSenha2.AutoEllipsis = true;
             this.lblSenha2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSenha2.Location = new System.Drawing.Point(210, 106);
             this.lblSenha2.Name = "lblSenha2";
+            this.lblSenha2.Size = new System.Drawing.Size(198, 17);
             this.lblSenha2.TabIndex = 8;
             this.lblSenha2.Text = "Confirme a senha";
             // 

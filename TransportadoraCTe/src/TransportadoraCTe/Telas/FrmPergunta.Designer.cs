@@ -50,10 +50,11 @@
             // 
             // lblPergunta
             // 
-            this.lblPergunta.AutoSize = true;
+            this.lblPergunta.AutoEllipsis = true;
             this.lblPergunta.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblPergunta.Location = new System.Drawing.Point(12, 10);
             this.lblPergunta.Name = "lblPergunta";
+            this.lblPergunta.Size = new System.Drawing.Size(418, 17);
             this.lblPergunta.TabIndex = 0;
             this.lblPergunta.Text = "Pergunta:";
             // 

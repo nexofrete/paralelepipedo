@@ -54,10 +54,11 @@
             // 
             // lblSenha
             // 
-            this.lblSenha.AutoSize = true;
+            this.lblSenha.AutoEllipsis = true;
             this.lblSenha.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSenha.Location = new System.Drawing.Point(12, 10);
             this.lblSenha.Name = "lblSenha";
+            this.lblSenha.Size = new System.Drawing.Size(258, 17);
             this.lblSenha.TabIndex = 0;
             this.lblSenha.Text = "Nova senha";
             // 
@@ -72,10 +73,11 @@
             // 
             // lblSenha2
             // 
-            this.lblSenha2.AutoSize = true;
+            this.lblSenha2.AutoEllipsis = true;
             this.lblSenha2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.lblSenha2.Location = new System.Drawing.Point(12, 58);
             this.lblSenha2.Name = "lblSenha2";
+            this.lblSenha2.Size = new System.Drawing.Size(258, 17);
             this.lblSenha2.TabIndex = 2;
             this.lblSenha2.Text = "Confirme a nova senha";
             // 

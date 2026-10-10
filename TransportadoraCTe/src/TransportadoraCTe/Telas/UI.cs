@@ -6,8 +6,8 @@ using System.Windows.Forms;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>
-    /// Ajudantes para montar as telas em codigo (sem arquivos .Designer),
-    /// mantendo o visual padronizado.
+    /// Ajudantes comuns das telas (mensagens, grade, combos).
+    /// O layout de cada tela fica no seu arquivo .Designer.cs.
     /// </summary>
     public static class UI
     {
@@ -16,181 +16,29 @@ namespace TransportadoraCTe.Telas
         public static readonly Color CorPrimaria = Color.FromArgb(24, 78, 119);
         public static readonly Color CorFundo = Color.FromArgb(244, 246, 248);
 
-        public static void PrepararForm(Form f, string titulo, int largura, int altura)
+        /// <summary>Formata as colunas decimais da grade (chamar no DataBindingComplete).</summary>
+        public static void FormatarNumeros(DataGridView g)
         {
-            f.Text = titulo;
-            f.Font = Fonte;
-            f.BackColor = CorFundo;
-            f.StartPosition = FormStartPosition.CenterParent;
-            f.ClientSize = new Size(largura, altura);
-            f.KeyPreview = true;
-        }
-
-        public static void PrepararDialogo(Form f, string titulo, int largura, int altura)
-        {
-            PrepararForm(f, titulo, largura, altura);
-            f.FormBorderStyle = FormBorderStyle.FixedDialog;
-            f.MaximizeBox = false;
-            f.MinimizeBox = false;
-            f.ShowInTaskbar = false;
-        }
-
-        /// <summary>Painel com fluxo horizontal que quebra linha automaticamente.</summary>
-        public static FlowLayoutPanel Fluxo()
-        {
-            FlowLayoutPanel p = new FlowLayoutPanel();
-            p.Dock = DockStyle.Fill;
-            p.AutoScroll = true;
-            p.Padding = new Padding(8);
-            p.WrapContents = true;
-            return p;
-        }
-
-        /// <summary>Rotulo em cima, controle embaixo.</summary>
-        public static Panel Campo(string rotulo, Control c, int largura)
-        {
-            Panel p = new Panel();
-            p.Width = largura;
-            p.Margin = new Padding(4, 2, 4, 4);
-            Label l = new Label();
-            l.Text = rotulo;
-            l.AutoSize = true;
-            l.ForeColor = Color.FromArgb(70, 70, 70);
-            l.Location = new Point(0, 0);
-            c.Location = new Point(0, 18);
-            c.Width = largura - 2;
-            p.Controls.Add(l);
-            p.Controls.Add(c);
-            p.Height = 18 + c.Height + 4;
-            return p;
-        }
-
-        public static Panel Adicionar(FlowLayoutPanel fluxo, string rotulo, Control c, int largura, bool quebraDepois)
-        {
-            Panel p = Campo(rotulo, c, largura);
-            fluxo.Controls.Add(p);
-            if (quebraDepois) fluxo.SetFlowBreak(p, true);
-            return p;
-        }
-
-        public static Label Secao(FlowLayoutPanel fluxo, string texto)
-        {
-            Label l = new Label();
-            l.Text = texto;
-            l.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            l.ForeColor = CorPrimaria;
-            l.AutoSize = false;
-            l.Width = fluxo.ClientSize.Width > 100 ? fluxo.ClientSize.Width - 30 : 800;
-            l.Height = 22;
-            l.TextAlign = ContentAlignment.BottomLeft;
-            l.Margin = new Padding(4, 8, 4, 2);
-            fluxo.Controls.Add(l);
-            fluxo.SetFlowBreak(l, true);
-            return l;
-        }
-
-        public static TextBox Texto(int max)
-        {
-            TextBox t = new TextBox();
-            t.MaxLength = max;
-            return t;
-        }
-
-        public static TextBox Multilinha(int max, int altura)
-        {
-            TextBox t = Texto(max);
-            t.Multiline = true;
-            t.ScrollBars = ScrollBars.Vertical;
-            t.Height = altura;
-            return t;
-        }
-
-        public static TextBox Numero(int max)
-        {
-            TextBox t = Texto(max);
-            t.TextAlign = HorizontalAlignment.Right;
-            return t;
-        }
-
-        public static ComboBox Combo(params object[] itens)
-        {
-            ComboBox c = new ComboBox();
-            c.DropDownStyle = ComboBoxStyle.DropDownList;
-            c.Items.AddRange(itens);
-            if (c.Items.Count > 0) c.SelectedIndex = 0;
-            return c;
-        }
-
-        public static Button Botao(string texto, EventHandler clique)
-        {
-            Button b = new Button();
-            b.Text = texto;
-            b.AutoSize = true;
-            b.MinimumSize = new Size(90, 30);
-            b.Padding = new Padding(6, 0, 6, 0);
-            b.Margin = new Padding(4);
-            b.FlatStyle = FlatStyle.System;
-            if (clique != null) b.Click += clique;
-            return b;
-        }
-
-        /// <summary>Barra de botoes na parte de baixo do formulario.</summary>
-        public static FlowLayoutPanel Rodape(params Button[] botoes)
-        {
-            FlowLayoutPanel p = new FlowLayoutPanel();
-            p.Dock = DockStyle.Bottom;
-            p.FlowDirection = FlowDirection.RightToLeft;
-            p.Height = 46;
-            p.Padding = new Padding(6);
-            p.BackColor = Color.FromArgb(230, 234, 238);
-            for (int i = botoes.Length - 1; i >= 0; i--) p.Controls.Add(botoes[i]);
-            return p;
-        }
-
-        /// <summary>Barra de ferramentas no topo (botoes da esquerda para a direita).</summary>
-        public static FlowLayoutPanel Topo(params Control[] itens)
-        {
-            FlowLayoutPanel p = new FlowLayoutPanel();
-            p.Dock = DockStyle.Top;
-            p.Height = 44;
-            p.Padding = new Padding(4);
-            p.WrapContents = false;
-            p.Controls.AddRange(itens);
-            return p;
-        }
-
-        public static DataGridView Grade()
-        {
-            DataGridView g = new DataGridView();
-            g.Dock = DockStyle.Fill;
-            g.ReadOnly = true;
-            g.AllowUserToAddRows = false;
-            g.AllowUserToDeleteRows = false;
-            g.AllowUserToResizeRows = false;
-            g.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            g.MultiSelect = false;
-            g.RowHeadersVisible = false;
-            g.BackgroundColor = Color.White;
-            g.BorderStyle = BorderStyle.None;
-            g.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
-            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(247, 249, 251);
-            g.EnableHeadersVisualStyles = false;
-            g.ColumnHeadersDefaultCellStyle.BackColor = CorPrimaria;
-            g.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            g.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            g.ColumnHeadersHeight = 28;
-            g.DataBindingComplete += delegate
+            foreach (DataGridViewColumn col in g.Columns)
             {
-                foreach (DataGridViewColumn col in g.Columns)
+                if (col.ValueType == typeof(decimal) || col.ValueType == typeof(double))
                 {
-                    if (col.ValueType == typeof(decimal) || col.ValueType == typeof(double))
-                    {
-                        col.DefaultCellStyle.Format = "N2";
-                        col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                    }
+                    col.DefaultCellStyle.Format = "N2";
+                    col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                 }
-            };
-            return g;
+            }
+        }
+
+        /// <summary>Seleciona o primeiro item das listas (DropDownList) que ainda estao sem selecao.</summary>
+        public static void SelecionarPrimeiro(Control raiz)
+        {
+            foreach (Control c in raiz.Controls)
+            {
+                ComboBox cbo = c as ComboBox;
+                if (cbo != null && cbo.DropDownStyle == ComboBoxStyle.DropDownList && cbo.Items.Count > 0 && cbo.SelectedIndex < 0)
+                    cbo.SelectedIndex = 0;
+                SelecionarPrimeiro(c);
+            }
         }
 
         /// <summary>Id (primeira coluna) da linha selecionada, ou 0.</summary>

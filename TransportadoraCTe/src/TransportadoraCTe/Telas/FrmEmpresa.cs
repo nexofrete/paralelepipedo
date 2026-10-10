@@ -9,83 +9,20 @@ using TransportadoraCTe.Repositorios;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>Dados do emitente (transportadora), parametros do CT-e e certificado digital.</summary>
-    public class FrmEmpresa : Form
+    public partial class FrmEmpresa : Form
     {
         private Empresa emp;
-        private readonly TextBox txtCNPJ = UI.Texto(18);
-        private readonly TextBox txtIE = UI.Texto(14);
-        private readonly TextBox txtRazao = UI.Texto(60);
-        private readonly TextBox txtFantasia = UI.Texto(60);
-        private readonly TextBox txtRNTRC = UI.Texto(8);
-        private readonly ComboBox cboCRT = UI.Combo("1 - Simples Nacional", "2 - Simples Nacional, excesso sublimite", "3 - Regime normal", "4 - MEI");
-        private readonly TextBox txtLogradouro = UI.Texto(255);
-        private readonly TextBox txtNumero = UI.Texto(60);
-        private readonly TextBox txtCompl = UI.Texto(60);
-        private readonly TextBox txtBairro = UI.Texto(60);
-        private readonly TextBox txtCodMun = UI.Numero(7);
-        private readonly TextBox txtMunicipio = UI.Texto(60);
-        private readonly ComboBox cboUF = UI.Combo(Util.UFs);
-        private readonly TextBox txtCEP = UI.Texto(9);
-        private readonly TextBox txtFone = UI.Texto(15);
-        private readonly TextBox txtEmail = UI.Texto(60);
-        private readonly ComboBox cboAmbiente = UI.Combo("2 - Homologação (testes)", "1 - Produção");
-        private readonly NumericUpDown numSerie = new NumericUpDown();
-        private readonly NumericUpDown numProximo = new NumericUpDown();
-        private readonly TextBox txtCert = UI.Texto(200);
-        private readonly TextBox txtRtCNPJ = UI.Texto(18);
-        private readonly TextBox txtRtContato = UI.Texto(60);
-        private readonly TextBox txtRtEmail = UI.Texto(60);
-        private readonly TextBox txtRtFone = UI.Texto(15);
         private string thumbprint;
 
         public FrmEmpresa()
         {
-            UI.PrepararDialogo(this, "Empresa emitente e certificado digital", 760, 600);
-            numSerie.Maximum = 889;
-            numProximo.Maximum = 999999999;
-            numProximo.Minimum = 1;
-            txtCert.ReadOnly = true;
+            InitializeComponent();
+            UI.SelecionarPrimeiro(this);
+        }
 
-            FlowLayoutPanel f = UI.Fluxo();
-            UI.Secao(f, "Dados da transportadora");
-            UI.Adicionar(f, "CNPJ", txtCNPJ, 160, false);
-            UI.Adicionar(f, "Inscrição estadual", txtIE, 130, false);
-            UI.Adicionar(f, "RNTRC (ANTT)", txtRNTRC, 110, false);
-            UI.Adicionar(f, "Regime tributário (CRT)", cboCRT, 260, true);
-            UI.Adicionar(f, "Razão social", txtRazao, 400, false);
-            UI.Adicionar(f, "Nome fantasia", txtFantasia, 300, true);
-            UI.Adicionar(f, "Logradouro", txtLogradouro, 400, false);
-            UI.Adicionar(f, "Número", txtNumero, 80, false);
-            UI.Adicionar(f, "Complemento", txtCompl, 210, true);
-            UI.Adicionar(f, "Bairro", txtBairro, 200, false);
-            UI.Adicionar(f, "Cód. IBGE município", txtCodMun, 120, false);
-            UI.Adicionar(f, "Município", txtMunicipio, 210, false);
-            UI.Adicionar(f, "UF", cboUF, 60, false);
-            UI.Adicionar(f, "CEP", txtCEP, 80, true);
-            UI.Adicionar(f, "Telefone", txtFone, 140, false);
-            UI.Adicionar(f, "E-mail", txtEmail, 300, true);
-
-            UI.Secao(f, "Parâmetros do CT-e");
-            UI.Adicionar(f, "Ambiente SEFAZ", cboAmbiente, 200, false);
-            UI.Adicionar(f, "Série", numSerie, 80, false);
-            UI.Adicionar(f, "Próximo número", numProximo, 120, true);
-            UI.Adicionar(f, "Certificado digital (A1 ou A3 instalado no Windows)", txtCert, 520, false);
-            Button selCert = UI.Botao("Selecionar...", SelecionarCertificado);
-            selCert.Margin = new Padding(4, 20, 4, 4);
-            f.Controls.Add(selCert);
-            f.SetFlowBreak(selCert, true);
-
-            UI.Secao(f, "Responsável técnico pelo sistema (opcional - exigido por algumas UFs)");
-            UI.Adicionar(f, "CNPJ", txtRtCNPJ, 160, false);
-            UI.Adicionar(f, "Contato", txtRtContato, 200, false);
-            UI.Adicionar(f, "E-mail", txtRtEmail, 200, false);
-            UI.Adicionar(f, "Telefone", txtRtFone, 110, true);
-
-            Button salvar = UI.Botao("Salvar", Salvar);
-            Controls.Add(f);
-            Controls.Add(UI.Rodape(salvar, UI.Botao("Testar SEFAZ", TestarSefaz), UI.Botao("Fechar", delegate { Close(); })));
-
-            Load += delegate { Carregar(); };
+        private void FrmEmpresa_Load(object sender, EventArgs e)
+        {
+            Carregar();
         }
 
         private void Carregar()
@@ -130,7 +67,7 @@ namespace TransportadoraCTe.Telas
             catch (Exception ex) { txtCert.Text = ex.Message; }
         }
 
-        private void SelecionarCertificado(object sender, EventArgs e)
+        private void btnSelecionarCert_Click(object sender, EventArgs e)
         {
             X509Certificate2 c = null;
             if (!UI.Executar(this, delegate { c = Certificado.Selecionar(); }) || c == null) return;
@@ -142,7 +79,7 @@ namespace TransportadoraCTe.Telas
                         "O certificado deve ser da própria empresa emitente (mesma raiz de CNPJ).");
         }
 
-        private void Salvar(object sender, EventArgs e)
+        private void btnSalvar_Click(object sender, EventArgs e)
         {
             emp.CNPJ = txtCNPJ.Text;
             emp.IE = txtIE.Text;
@@ -179,12 +116,17 @@ namespace TransportadoraCTe.Telas
                 UI.Info("Dados da empresa salvos.");
         }
 
-        private void TestarSefaz(object sender, EventArgs e)
+        private void btnTestarSefaz_Click(object sender, EventArgs e)
         {
             ResultadoSefaz r = null;
             if (UI.Executar(this, delegate { r = CteServico.StatusServico(); }))
                 MessageBox.Show(r.ToString(), "Status SEFAZ", MessageBoxButtons.OK,
                     r.Sucesso ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+
+        private void btnFechar_Click(object sender, EventArgs e)
+        {
+            Close();
         }
     }
 }

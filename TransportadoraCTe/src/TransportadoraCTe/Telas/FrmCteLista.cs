@@ -10,75 +10,77 @@ using TransportadoraCTe.Repositorios;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>Consulta e gerenciamento dos CT-es: enviar, consultar, cancelar, DACTE e XML.</summary>
-    public class FrmCteLista : Form
+    public partial class FrmCteLista : Form
     {
-        private readonly DataGridView grade = UI.Grade();
-        private readonly DateTimePicker dtDe = new DateTimePicker();
-        private readonly DateTimePicker dtAte = new DateTimePicker();
-        private readonly ComboBox cboStatus = UI.Combo("(todos)", "DIGITACAO", "AUTORIZADO", "REJEITADO", "CANCELADO", "DENEGADO");
-        private readonly TextBox txtTexto = UI.Texto(60);
+        private readonly bool emite;
 
         public FrmCteLista()
         {
-            UI.PrepararForm(this, "Gerenciar CT-es", 1100, 600);
-            dtDe.Format = dtAte.Format = DateTimePickerFormat.Short;
-            dtDe.Width = dtAte.Width = 110;
+            InitializeComponent();
+            UI.SelecionarPrimeiro(this);
             dtDe.Value = DateTime.Today.AddDays(-30);
             dtAte.Value = DateTime.Today;
-            cboStatus.Width = 120;
-            txtTexto.Width = 200;
-
-            FlowLayoutPanel filtros = UI.Topo(
-                Rot("De:"), dtDe, Rot("Até:"), dtAte, Rot("Status:"), cboStatus,
-                Rot("Cliente/nº/chave:"), txtTexto, UI.Botao("Pesquisar", delegate { Pesquisar(); }));
-            foreach (Control c in filtros.Controls) if (!(c is Button)) c.Margin = new Padding(4, 10, 2, 2);
-
-            bool emite = Sessao.Usuario.PodeEmitir;
-            Button novo = UI.Botao("Novo", delegate { Editar(0); });
-            Button editar = UI.Botao("Editar", delegate { int id = UI.IdSelecionado(grade); if (id > 0) Editar(id); });
-            Button enviar = UI.Botao("Enviar à SEFAZ", Enviar);
-            Button consultar = UI.Botao("Consultar SEFAZ", Consultar);
-            Button cancelar = UI.Botao("Cancelar CT-e", Cancelar);
-            Button excluir = UI.Botao("Excluir rascunho", Excluir);
-            novo.Enabled = editar.Enabled = enviar.Enabled = cancelar.Enabled = excluir.Enabled = emite;
-            FlowLayoutPanel acoes = UI.Topo(novo, editar, enviar, consultar, cancelar, excluir,
-                UI.Botao("DACTE", delegate { int id = UI.IdSelecionado(grade); if (id > 0) FrmDacte.Mostrar(this, id); }),
-                UI.Botao("Salvar XML", SalvarXml));
-
-            Controls.Add(grade);
-            Controls.Add(acoes);
-            Controls.Add(filtros);
-
-            txtTexto.KeyDown += delegate(object s, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) { Pesquisar(); e.SuppressKeyPress = true; } };
-            grade.CellDoubleClick += delegate(object s, DataGridViewCellEventArgs e)
-            {
-                if (e.RowIndex < 0) return;
-                string st = Convert.ToString(grade.Rows[e.RowIndex].Cells["Status"].Value);
-                if (st == StatusCte.Autorizado || st == StatusCte.Cancelado) FrmDacte.Mostrar(this, UI.IdSelecionado(grade));
-                else if (emite) Editar(UI.IdSelecionado(grade));
-            };
-            grade.CellFormatting += delegate(object s, DataGridViewCellFormattingEventArgs e)
-            {
-                if (e.ColumnIndex < 0 || grade.Columns[e.ColumnIndex].Name != "Status" || e.Value == null) return;
-                switch (e.Value.ToString())
-                {
-                    case StatusCte.Autorizado: e.CellStyle.ForeColor = Color.DarkGreen; break;
-                    case StatusCte.Rejeitado: e.CellStyle.ForeColor = Color.DarkRed; break;
-                    case StatusCte.Cancelado: e.CellStyle.ForeColor = Color.Gray; break;
-                    case StatusCte.Denegado: e.CellStyle.ForeColor = Color.Purple; break;
-                    default: e.CellStyle.ForeColor = Color.DarkOrange; break;
-                }
-                e.CellStyle.Font = new Font(UI.Fonte, FontStyle.Bold);
-            };
-            Load += delegate { Pesquisar(); };
+            emite = Sessao.Usuario.PodeEmitir;
+            btnNovo.Enabled = btnEditar.Enabled = btnEnviar.Enabled = btnCancelar.Enabled = btnExcluir.Enabled = emite;
         }
 
-        private static Label Rot(string t)
+        private void FrmCteLista_Load(object sender, EventArgs e)
         {
-            Label l = new Label();
-            l.Text = t;
-            l.AutoSize = true;
-            return l;
+            Pesquisar();
+        }
+
+        private void btnPesquisar_Click(object sender, EventArgs e)
+        {
+            Pesquisar();
+        }
+
+        private void txtTexto_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter) { Pesquisar(); e.SuppressKeyPress = true; }
+        }
+
+        private void grade_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            string st = Convert.ToString(grade.Rows[e.RowIndex].Cells["Status"].Value);
+            if (st == StatusCte.Autorizado || st == StatusCte.Cancelado) FrmDacte.Mostrar(this, UI.IdSelecionado(grade));
+            else if (emite) Editar(UI.IdSelecionado(grade));
+        }
+
+        private void grade_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || grade.Columns[e.ColumnIndex].Name != "Status" || e.Value == null) return;
+            switch (e.Value.ToString())
+            {
+                case StatusCte.Autorizado: e.CellStyle.ForeColor = Color.DarkGreen; break;
+                case StatusCte.Rejeitado: e.CellStyle.ForeColor = Color.DarkRed; break;
+                case StatusCte.Cancelado: e.CellStyle.ForeColor = Color.Gray; break;
+                case StatusCte.Denegado: e.CellStyle.ForeColor = Color.Purple; break;
+                default: e.CellStyle.ForeColor = Color.DarkOrange; break;
+            }
+            e.CellStyle.Font = new Font(UI.Fonte, FontStyle.Bold);
+        }
+
+        private void grade_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            UI.FormatarNumeros(grade);
+        }
+
+        private void btnNovo_Click(object sender, EventArgs e)
+        {
+            Editar(0);
+        }
+
+        private void btnEditar_Click(object sender, EventArgs e)
+        {
+            int id = UI.IdSelecionado(grade);
+            if (id > 0) Editar(id);
+        }
+
+        private void btnDacte_Click(object sender, EventArgs e)
+        {
+            int id = UI.IdSelecionado(grade);
+            if (id > 0) FrmDacte.Mostrar(this, id);
         }
 
         public void Pesquisar()
@@ -103,7 +105,7 @@ namespace TransportadoraCTe.Telas
             Pesquisar();
         }
 
-        private void Enviar(object sender, EventArgs e)
+        private void btnEnviar_Click(object sender, EventArgs e)
         {
             int id = UI.IdSelecionado(grade);
             if (id == 0) return;
@@ -116,7 +118,7 @@ namespace TransportadoraCTe.Telas
             Pesquisar();
         }
 
-        private void Consultar(object sender, EventArgs e)
+        private void btnConsultar_Click(object sender, EventArgs e)
         {
             int id = UI.IdSelecionado(grade);
             if (id == 0) return;
@@ -126,7 +128,7 @@ namespace TransportadoraCTe.Telas
             Pesquisar();
         }
 
-        private void Cancelar(object sender, EventArgs e)
+        private void btnCancelar_Click(object sender, EventArgs e)
         {
             int id = UI.IdSelecionado(grade);
             if (id == 0) return;
@@ -140,7 +142,7 @@ namespace TransportadoraCTe.Telas
             Pesquisar();
         }
 
-        private void Excluir(object sender, EventArgs e)
+        private void btnExcluir_Click(object sender, EventArgs e)
         {
             int id = UI.IdSelecionado(grade);
             if (id == 0 || !UI.Confirmar("Excluir o rascunho selecionado?")) return;
@@ -148,7 +150,7 @@ namespace TransportadoraCTe.Telas
             Pesquisar();
         }
 
-        private void SalvarXml(object sender, EventArgs e)
+        private void btnSalvarXml_Click(object sender, EventArgs e)
         {
             int id = UI.IdSelecionado(grade);
             if (id == 0) return;
@@ -174,17 +176,7 @@ namespace TransportadoraCTe.Telas
 
         public static string Perguntar(string titulo, string pergunta)
         {
-            using (Form f = new Form())
-            {
-                UI.PrepararDialogo(f, titulo, 460, 170);
-                TextBox t = UI.Multilinha(255, 60);
-                FlowLayoutPanel fl = UI.Fluxo();
-                UI.Adicionar(fl, pergunta, t, 420, true);
-                Button ok = UI.Botao("OK", delegate { f.DialogResult = DialogResult.OK; });
-                f.Controls.Add(fl);
-                f.Controls.Add(UI.Rodape(ok, UI.Botao("Cancelar", delegate { f.DialogResult = DialogResult.Cancel; })));
-                return f.ShowDialog() == DialogResult.OK ? t.Text.Trim() : null;
-            }
+            return FrmPergunta.Perguntar(titulo, pergunta);
         }
     }
 }

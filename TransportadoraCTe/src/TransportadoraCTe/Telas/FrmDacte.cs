@@ -7,10 +7,8 @@ using TransportadoraCTe.Repositorios;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>Visualizacao e impressao do DACTE.</summary>
-    public class FrmDacte : Form
+    public partial class FrmDacte : Form
     {
-        private readonly WebBrowser navegador = new WebBrowser();
-
         public static void Mostrar(IWin32Window dono, int cteId)
         {
             string arquivo = null;
@@ -34,22 +32,35 @@ namespace TransportadoraCTe.Telas
             using (FrmDacte f = new FrmDacte(arquivo)) f.ShowDialog(dono);
         }
 
-        public FrmDacte(string arquivo)
+        public FrmDacte()
         {
-            UI.PrepararForm(this, "DACTE", 860, 700);
-            WindowState = FormWindowState.Maximized;
-            navegador.Dock = DockStyle.Fill;
-            navegador.ScriptErrorsSuppressed = true;
-            navegador.IsWebBrowserContextMenuEnabled = false;
+            InitializeComponent();
+        }
 
-            Controls.Add(navegador);
-            Controls.Add(UI.Topo(
-                UI.Botao("Imprimir...", delegate { navegador.ShowPrintDialog(); }),
-                UI.Botao("Visualizar impressão", delegate { navegador.ShowPrintPreviewDialog(); }),
-                UI.Botao("Configurar página", delegate { navegador.ShowPageSetupDialog(); }),
-                UI.Botao("Fechar", delegate { Close(); })));
-
+        public FrmDacte(string arquivo)
+            : this()
+        {
             navegador.Navigate(new Uri(arquivo));
+        }
+
+        private void btnImprimir_Click(object sender, EventArgs e)
+        {
+            navegador.ShowPrintDialog();
+        }
+
+        private void btnVisualizar_Click(object sender, EventArgs e)
+        {
+            navegador.ShowPrintPreviewDialog();
+        }
+
+        private void btnConfigurar_Click(object sender, EventArgs e)
+        {
+            navegador.ShowPageSetupDialog();
+        }
+
+        private void btnFechar_Click(object sender, EventArgs e)
+        {
+            Close();
         }
     }
 }

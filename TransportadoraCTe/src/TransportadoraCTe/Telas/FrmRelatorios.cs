@@ -10,56 +10,32 @@ using TransportadoraCTe.Repositorios;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>Relatorios gerenciais com totais, exportacao CSV (Excel) e impressao.</summary>
-    public class FrmRelatorios : Form
+    public partial class FrmRelatorios : Form
     {
-        private readonly DataGridView grade = UI.Grade();
-        private readonly ComboBox cboTipo = UI.Combo(RelatorioRepo.Tipos);
-        private readonly DateTimePicker dtDe = new DateTimePicker();
-        private readonly DateTimePicker dtAte = new DateTimePicker();
-        private readonly ComboBox cboCliente = new ComboBox();
-        private readonly ComboBox cboAmbiente = UI.Combo("1 - Produção", "2 - Homologação");
-        private readonly Label lblTotais = new Label();
         private DataTable atual;
 
         public FrmRelatorios()
         {
-            UI.PrepararForm(this, "Relatórios gerenciais", 1100, 600);
-            cboTipo.Width = 260;
-            dtDe.Format = dtAte.Format = DateTimePickerFormat.Short;
-            dtDe.Width = dtAte.Width = 110;
+            InitializeComponent();
+            cboTipo.Items.AddRange(RelatorioRepo.Tipos);
+            UI.SelecionarPrimeiro(this);
             dtDe.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             dtAte.Value = DateTime.Today;
-            cboCliente.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboCliente.Width = 260;
-            cboAmbiente.Width = 130;
-
-            FlowLayoutPanel topo = UI.Topo(cboTipo, Rot("De:"), dtDe, Rot("Até:"), dtAte, Rot("Tomador:"), cboCliente,
-                cboAmbiente, UI.Botao("Gerar", delegate { Gerar(); }));
-            foreach (Control c in topo.Controls) if (!(c is Button)) c.Margin = new Padding(4, 10, 2, 2);
-            FlowLayoutPanel acoes = UI.Topo(
-                UI.Botao("Exportar CSV (Excel)", Exportar),
-                UI.Botao("Imprimir", Imprimir));
-
-            lblTotais.Dock = DockStyle.Bottom;
-            lblTotais.Height = 28;
-            lblTotais.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            lblTotais.Padding = new Padding(8, 0, 0, 0);
-            lblTotais.Font = new System.Drawing.Font(UI.Fonte, System.Drawing.FontStyle.Bold);
-            lblTotais.BackColor = System.Drawing.Color.FromArgb(230, 234, 238);
-
-            Controls.Add(grade);
-            Controls.Add(lblTotais);
-            Controls.Add(acoes);
-            Controls.Add(topo);
-            Load += delegate { CarregarFiltros(); };
         }
 
-        private static Label Rot(string t)
+        private void FrmRelatorios_Load(object sender, EventArgs e)
         {
-            Label l = new Label();
-            l.Text = t;
-            l.AutoSize = true;
-            return l;
+            CarregarFiltros();
+        }
+
+        private void btnGerar_Click(object sender, EventArgs e)
+        {
+            Gerar();
+        }
+
+        private void grade_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            UI.FormatarNumeros(grade);
         }
 
         private void CarregarFiltros()
@@ -106,7 +82,7 @@ namespace TransportadoraCTe.Telas
             return sb.ToString();
         }
 
-        private void Exportar(object sender, EventArgs e)
+        private void btnExportar_Click(object sender, EventArgs e)
         {
             if (atual == null) { UI.Info("Gere o relatório primeiro."); return; }
             using (SaveFileDialog d = new SaveFileDialog())
@@ -119,7 +95,7 @@ namespace TransportadoraCTe.Telas
             }
         }
 
-        private void Imprimir(object sender, EventArgs e)
+        private void btnImprimir_Click(object sender, EventArgs e)
         {
             if (atual == null) { UI.Info("Gere o relatório primeiro."); return; }
             StringBuilder h = new StringBuilder();

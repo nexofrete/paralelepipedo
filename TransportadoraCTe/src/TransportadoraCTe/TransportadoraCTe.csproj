@@ -71,16 +71,90 @@
     <Compile Include="Repositorios\EmpresaRepo.cs" />
     <Compile Include="Repositorios\RelatorioRepo.cs" />
     <Compile Include="Repositorios\UsuarioRepo.cs" />
-    <Compile Include="Telas\FrmClientes.cs" />
-    <Compile Include="Telas\FrmConexao.cs" />
-    <Compile Include="Telas\FrmCteEdicao.cs" />
-    <Compile Include="Telas\FrmCteLista.cs" />
-    <Compile Include="Telas\FrmDacte.cs" />
-    <Compile Include="Telas\FrmEmpresa.cs" />
-    <Compile Include="Telas\FrmLogin.cs" />
-    <Compile Include="Telas\FrmPrincipal.cs" />
-    <Compile Include="Telas\FrmRelatorios.cs" />
-    <Compile Include="Telas\FrmUsuarios.cs" />
+    <Compile Include="Telas\FrmClienteEdicao.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmClienteEdicao.Designer.cs">
+      <DependentUpon>FrmClienteEdicao.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmClientes.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmClientes.Designer.cs">
+      <DependentUpon>FrmClientes.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmConexao.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmConexao.Designer.cs">
+      <DependentUpon>FrmConexao.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmCteEdicao.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmCteEdicao.Designer.cs">
+      <DependentUpon>FrmCteEdicao.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmCteLista.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmCteLista.Designer.cs">
+      <DependentUpon>FrmCteLista.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmDacte.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmDacte.Designer.cs">
+      <DependentUpon>FrmDacte.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmEmpresa.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmEmpresa.Designer.cs">
+      <DependentUpon>FrmEmpresa.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmLogin.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmLogin.Designer.cs">
+      <DependentUpon>FrmLogin.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmPergunta.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmPergunta.Designer.cs">
+      <DependentUpon>FrmPergunta.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmPrincipal.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmPrincipal.Designer.cs">
+      <DependentUpon>FrmPrincipal.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmRelatorios.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmRelatorios.Designer.cs">
+      <DependentUpon>FrmRelatorios.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmTrocarSenha.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmTrocarSenha.Designer.cs">
+      <DependentUpon>FrmTrocarSenha.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmUsuarioEdicao.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmUsuarioEdicao.Designer.cs">
+      <DependentUpon>FrmUsuarioEdicao.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Telas\FrmUsuarios.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\FrmUsuarios.Designer.cs">
+      <DependentUpon>FrmUsuarios.cs</DependentUpon>
+    </Compile>
     <Compile Include="Telas\UI.cs" />
   </ItemGroup>
   <ItemGroup>

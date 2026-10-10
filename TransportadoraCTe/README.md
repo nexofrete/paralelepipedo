@@ -67,7 +67,7 @@ Usuário inicial: **admin**, senha **admin**. Troque em *Sistema > Trocar minha 
 2. Ajuste a conexão em `src\TransportadoraCTe\App.config`, ou depois pelo botão **Conexão...** na tela de login.
 3. Pressione **F5**.
 
-As telas são montadas em código, sem arquivos `.Designer.cs`. Para editar uma tela, abra o arquivo com **F7 (Exibir código)**.
+As telas podem ser editadas no designer do Visual Studio: dê dois cliques no formulário na Solution Explorer (ou **Shift+F7**). O layout fica no arquivo `.Designer.cs` de cada tela; a lógica fica no `.cs` (**F7**).
 
 ## 5. Primeiro uso
 
@@ -108,7 +108,7 @@ src\TransportadoraCTe\
     SefazWs.cs                 SOAP 1.2, TLS 1.2, GZip/Base64
     CteServico.cs              regras: emitir, consultar, cancelar, validar
     Dacte.cs, CodigosBarras.cs DACTE em HTML, Code128 e QR Code
-  Telas\                       formularios WinForms
+  Telas\                       formularios WinForms (FrmX.cs = logica, FrmX.Designer.cs = layout)
 ```
 
 ## 7. Outras UFs

@@ -7,32 +7,11 @@ using TransportadoraCTe.Infra;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>Configura a conexao com o PostgreSQL e grava no arquivo .config do programa.</summary>
-    public class FrmConexao : Form
+    public partial class FrmConexao : Form
     {
-        private readonly TextBox txtServidor = UI.Texto(100);
-        private readonly TextBox txtPorta = UI.Numero(5);
-        private readonly TextBox txtBanco = UI.Texto(60);
-        private readonly TextBox txtUsuario = UI.Texto(60);
-        private readonly TextBox txtSenha = UI.Texto(100);
-
         public FrmConexao()
         {
-            UI.PrepararDialogo(this, "Conexão com o banco PostgreSQL", 420, 250);
-            txtSenha.UseSystemPasswordChar = true;
-
-            FlowLayoutPanel f = UI.Fluxo();
-            UI.Adicionar(f, "Servidor", txtServidor, 280, false);
-            UI.Adicionar(f, "Porta", txtPorta, 80, true);
-            UI.Adicionar(f, "Banco de dados", txtBanco, 180, false);
-            UI.Adicionar(f, "Usuário", txtUsuario, 180, true);
-            UI.Adicionar(f, "Senha", txtSenha, 180, true);
-
-            Controls.Add(f);
-            Controls.Add(UI.Rodape(
-                UI.Botao("Testar", delegate { Testar(true); }),
-                UI.Botao("Salvar", Salvar),
-                UI.Botao("Cancelar", delegate { Close(); })));
-
+            InitializeComponent();
             Carregar();
         }
 
@@ -75,7 +54,12 @@ namespace TransportadoraCTe.Telas
             return ok;
         }
 
-        private void Salvar(object sender, EventArgs e)
+        private void btnTestar_Click(object sender, EventArgs e)
+        {
+            Testar(true);
+        }
+
+        private void btnSalvar_Click(object sender, EventArgs e)
         {
             if (!Testar(false)) return;
             try
@@ -96,6 +80,11 @@ namespace TransportadoraCTe.Telas
                 UI.Erro(new ApplicationException("Não foi possível gravar o arquivo de configuração (execute como administrador " +
                     "ou instale fora de Arquivos de Programas).\r\n" + ex.Message));
             }
+        }
+
+        private void btnCancelar_Click(object sender, EventArgs e)
+        {
+            Close();
         }
     }
 }

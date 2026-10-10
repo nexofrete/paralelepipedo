@@ -9,36 +9,12 @@ using TransportadoraCTe.Repositorios;
 namespace TransportadoraCTe.Telas
 {
     /// <summary>Digitacao e envio do CT-e (modal rodoviario).</summary>
-    public class FrmCteEdicao : Form
+    public partial class FrmCteEdicao : Form
     {
+        private readonly int id;
         private Cte cte;
         private Empresa emp;
         private bool carregando;
-
-        private readonly ComboBox cboRem = new ComboBox();
-        private readonly ComboBox cboDest = new ComboBox();
-        private readonly ComboBox cboTomador = UI.Combo("0 - Remetente (CIF)", "3 - Destinatário (FOB)");
-        private readonly ComboBox cboCFOP = new ComboBox();
-        private readonly TextBox txtNatOp = UI.Texto(60);
-        private readonly TextBox txtCodMunIni = UI.Numero(7);
-        private readonly TextBox txtMunIni = UI.Texto(60);
-        private readonly ComboBox cboUFIni = UI.Combo(Util.UFs);
-        private readonly TextBox txtCodMunFim = UI.Numero(7);
-        private readonly TextBox txtMunFim = UI.Texto(60);
-        private readonly ComboBox cboUFFim = UI.Combo(Util.UFs);
-        private readonly TextBox txtVPrest = UI.Numero(15);
-        private readonly TextBox txtVRec = UI.Numero(15);
-        private readonly ComboBox cboCST = UI.Combo("00 - Tributação normal", "40 - Isenta", "41 - Não tributada",
-                                                     "51 - Diferida", "90 - Outros", "SN - Simples Nacional");
-        private readonly TextBox txtBC = UI.Numero(15);
-        private readonly TextBox txtAliq = UI.Numero(6);
-        private readonly TextBox txtVICMS = UI.Numero(15);
-        private readonly TextBox txtProduto = UI.Texto(60);
-        private readonly TextBox txtVCarga = UI.Numero(15);
-        private readonly TextBox txtPeso = UI.Numero(15);
-        private readonly TextBox txtNFes = UI.Multilinha(4000, 70);
-        private readonly TextBox txtObs = UI.Multilinha(2000, 50);
-        private readonly Label lblNumero = new Label();
 
         private static readonly string[] CFOPs = {
             "5351 - Transporte p/ mesma natureza", "5352 - Transporte p/ estab. industrial",
@@ -50,96 +26,80 @@ namespace TransportadoraCTe.Telas
 
         public FrmCteEdicao(int id)
         {
-            UI.PrepararDialogo(this, id == 0 ? "Novo CT-e" : "Editar CT-e", 900, 680);
-            FormBorderStyle = FormBorderStyle.Sizable;
-            MaximizeBox = true;
-
-            foreach (ComboBox c in new ComboBox[] { cboRem, cboDest })
-            {
-                c.DropDownStyle = ComboBoxStyle.DropDown;
-                c.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                c.AutoCompleteSource = AutoCompleteSource.ListItems;
-            }
-            cboCFOP.DropDownStyle = ComboBoxStyle.DropDownList;
+            InitializeComponent();
+            this.id = id;
+            Text = id == 0 ? "Novo CT-e" : "Editar CT-e";
+            carregando = true;
+            UI.SelecionarPrimeiro(this);
             cboCFOP.Items.AddRange(CFOPs);
-            txtVICMS.ReadOnly = true;
-            lblNumero.AutoSize = true;
-            lblNumero.Font = UI.FonteTitulo;
-            lblNumero.ForeColor = UI.CorPrimaria;
-            lblNumero.Margin = new Padding(4, 6, 4, 2);
+            carregando = false;
+        }
 
-            FlowLayoutPanel f = UI.Fluxo();
-            f.Controls.Add(lblNumero);
-            f.SetFlowBreak(lblNumero, true);
+        private void FrmCteEdicao_Load(object sender, EventArgs e)
+        {
+            Carregar(id);
+        }
 
-            UI.Secao(f, "Participantes");
-            UI.Adicionar(f, "Remetente", cboRem, 560, false);
-            Button novoRem = UI.Botao("+ Cliente", delegate { NovoCliente(cboRem); });
-            novoRem.Margin = new Padding(4, 20, 4, 4);
-            f.Controls.Add(novoRem);
-            f.SetFlowBreak(novoRem, true);
-            UI.Adicionar(f, "Destinatário", cboDest, 560, false);
-            Button novoDest = UI.Botao("+ Cliente", delegate { NovoCliente(cboDest); });
-            novoDest.Margin = new Padding(4, 20, 4, 4);
-            f.Controls.Add(novoDest);
-            f.SetFlowBreak(novoDest, true);
-            UI.Adicionar(f, "Tomador do serviço (quem paga)", cboTomador, 230, false);
-            UI.Adicionar(f, "CFOP", cboCFOP, 300, false);
-            UI.Adicionar(f, "Natureza da operação", txtNatOp, 290, true);
+        // eventos de preenchimento automatico
+        private void cboRem_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (!carregando) PreencherPercurso(true);
+        }
 
-            UI.Secao(f, "Percurso");
-            UI.Adicionar(f, "Início: cód. IBGE", txtCodMunIni, 110, false);
-            UI.Adicionar(f, "Município de início", txtMunIni, 230, false);
-            UI.Adicionar(f, "UF", cboUFIni, 60, false);
-            UI.Adicionar(f, "Fim: cód. IBGE", txtCodMunFim, 110, false);
-            UI.Adicionar(f, "Município de término", txtMunFim, 230, false);
-            UI.Adicionar(f, "UF", cboUFFim, 60, true);
+        private void cboDest_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (!carregando) PreencherPercurso(false);
+        }
 
-            UI.Secao(f, "Valores e ICMS");
-            UI.Adicionar(f, "Valor da prestação (R$)", txtVPrest, 150, false);
-            UI.Adicionar(f, "Valor a receber (R$)", txtVRec, 150, false);
-            UI.Adicionar(f, "CST ICMS", cboCST, 200, false);
-            UI.Adicionar(f, "Base ICMS", txtBC, 110, false);
-            UI.Adicionar(f, "Alíquota %", txtAliq, 70, false);
-            UI.Adicionar(f, "Valor ICMS", txtVICMS, 110, true);
+        private void AjustarCFOP_Evento(object sender, EventArgs e)
+        {
+            if (!carregando) AjustarCFOP();
+        }
 
-            UI.Secao(f, "Carga");
-            UI.Adicionar(f, "Produto predominante", txtProduto, 360, false);
-            UI.Adicionar(f, "Valor da carga (R$)", txtVCarga, 150, false);
-            UI.Adicionar(f, "Peso bruto (kg)", txtPeso, 130, true);
-            UI.Adicionar(f, "Chaves das NF-e transportadas (uma por linha; em branco = declaração)", txtNFes, 840, true);
-            UI.Adicionar(f, "Observações", txtObs, 840, true);
+        private void txtVPrest_Leave(object sender, EventArgs e)
+        {
+            if (txtVRec.Text.Trim().Length == 0) txtVRec.Text = txtVPrest.Text;
+            if (UI.ItemCodigo(cboCST) == "00" || UI.ItemCodigo(cboCST) == "90") txtBC.Text = txtVPrest.Text;
+            CalcularIcms();
+        }
 
-            Button salvar = UI.Botao("Salvar rascunho", delegate { Salvar(false); });
-            Button enviar = UI.Botao("Salvar e enviar à SEFAZ", delegate { Salvar(true); });
-            enviar.Font = new System.Drawing.Font(UI.Fonte, System.Drawing.FontStyle.Bold);
-            Controls.Add(f);
-            Controls.Add(UI.Rodape(enviar, salvar, UI.Botao("Fechar", delegate { Close(); })));
+        private void CalcularIcms_Evento(object sender, EventArgs e)
+        {
+            CalcularIcms();
+        }
 
-            // eventos de preenchimento automatico
-            cboRem.SelectedIndexChanged += delegate { if (!carregando) PreencherPercurso(true); };
-            cboDest.SelectedIndexChanged += delegate { if (!carregando) PreencherPercurso(false); };
-            cboUFIni.SelectedIndexChanged += delegate { if (!carregando) AjustarCFOP(); };
-            cboUFFim.SelectedIndexChanged += delegate { if (!carregando) AjustarCFOP(); };
-            cboTomador.SelectedIndexChanged += delegate { if (!carregando) AjustarCFOP(); };
-            txtVPrest.Leave += delegate
-            {
-                if (txtVRec.Text.Trim().Length == 0) txtVRec.Text = txtVPrest.Text;
-                if (UI.ItemCodigo(cboCST) == "00" || UI.ItemCodigo(cboCST) == "90") txtBC.Text = txtVPrest.Text;
-                CalcularIcms();
-            };
-            txtBC.Leave += delegate { CalcularIcms(); };
-            txtAliq.Leave += delegate { CalcularIcms(); };
-            cboCST.SelectedIndexChanged += delegate
-            {
-                bool trib = UI.ItemCodigo(cboCST) == "00" || UI.ItemCodigo(cboCST) == "90";
-                txtBC.Enabled = txtAliq.Enabled = trib;
-                if (!trib) { txtBC.Text = "0,00"; txtAliq.Text = "0,00"; }
-                else if (Dec(txtBC) == 0) txtBC.Text = txtVPrest.Text;
-                CalcularIcms();
-            };
+        private void cboCST_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            bool trib = UI.ItemCodigo(cboCST) == "00" || UI.ItemCodigo(cboCST) == "90";
+            txtBC.Enabled = txtAliq.Enabled = trib;
+            if (!trib) { txtBC.Text = "0,00"; txtAliq.Text = "0,00"; }
+            else if (Dec(txtBC) == 0) txtBC.Text = txtVPrest.Text;
+            CalcularIcms();
+        }
 
-            Load += delegate { Carregar(id); };
+        private void btnNovoRem_Click(object sender, EventArgs e)
+        {
+            NovoCliente(cboRem);
+        }
+
+        private void btnNovoDest_Click(object sender, EventArgs e)
+        {
+            NovoCliente(cboDest);
+        }
+
+        private void btnSalvar_Click(object sender, EventArgs e)
+        {
+            Salvar(false);
+        }
+
+        private void btnEnviar_Click(object sender, EventArgs e)
+        {
+            Salvar(true);
+        }
+
+        private void btnFechar_Click(object sender, EventArgs e)
+        {
+            Close();
         }
 
         private void Carregar(int id)

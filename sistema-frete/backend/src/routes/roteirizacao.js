@@ -171,6 +171,46 @@ router.post('/calcular', autenticar, podeVer, async (req, res) => {
   }
 });
 
+// ---------- Imagens do mapa de fundo ----------
+// O navegador pede as imagens ao Nexofrete, que busca no OpenStreetMap (ou no
+// endereço configurado) se identificando, como pede a política de uso deles,
+// e guarda uma cópia por 30 dias em dados/mapa-cache — a mesma região não é
+// baixada de novo. Pedido direto do navegador era recusado (403 "Access blocked").
+const fs = require('fs');
+const path = require('path');
+const PASTA_MAPA = path.join(__dirname, '..', '..', 'dados', 'mapa-cache');
+const MAPA_PADRAO = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const VALIDADE_MAPA_MS = 30 * 86400000;
+const versao = (() => { try { return require('../../package.json').version; } catch { return '1'; } })();
+router.get('/mapa/:z(\\d+)/:x(\\d+)/:y(\\d+).png', autenticar, podeVer, async (req, res) => {
+  const z = Number(req.params.z); const x = Number(req.params.x); const y = Number(req.params.y);
+  if (z > 19 || x >= 2 ** z || y >= 2 ** z) return res.status(400).end();
+  const arquivo = path.join(PASTA_MAPA, String(z), String(x), `${y}.png`);
+  const enviar = (buf) => res.set({ 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' }).send(buf);
+  let guardado = null;
+  try {
+    const info = fs.statSync(arquivo);
+    guardado = fs.readFileSync(arquivo);
+    if (Date.now() - info.mtimeMs < VALIDADE_MAPA_MS) return enviar(guardado);
+  } catch { /* ainda não tem cópia */ }
+  try {
+    const { rows } = await pool.query('SELECT mapa_url FROM configuracao_roteirizacao WHERE id = 1').catch(() => ({ rows: [] }));
+    const modelo = rows[0]?.mapa_url || MAPA_PADRAO;
+    const url = modelo.replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{s}', 'abc'[(x + y) % 3]);
+    const controle = new AbortController();
+    const timer = setTimeout(() => controle.abort(), 10000);
+    const r = await fetch(url, { signal: controle.signal, headers: { 'User-Agent': `Nexofrete/${versao} (sistema de gestao de fretes; uso interno)` } }).finally(() => clearTimeout(timer));
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const buf = Buffer.from(await r.arrayBuffer());
+    fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+    fs.writeFile(arquivo, buf, () => {});
+    return enviar(buf);
+  } catch (err) {
+    if (guardado) return enviar(guardado);   // sem internet: usa a cópia antiga
+    return res.status(502).set('X-Mapa-Erro', String(err.message).slice(0, 100)).end();
+  }
+});
+
 // ---------- Configuração (serviço de mapas) ----------
 router.get('/config', autenticar, podeVer, async (req, res) => {
   try {
@@ -197,6 +237,13 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
     if (hhmm.test(b.recebimento_inicio || '')) set('recebimento_inicio', b.recebimento_inicio);
     if (hhmm.test(b.recebimento_fim || '')) set('recebimento_fim', b.recebimento_fim);
     if (b.recebimento_sabado !== undefined) set('recebimento_sabado', !!b.recebimento_sabado);
+    if (b.mapa_url !== undefined) {
+      const m = String(b.mapa_url || '').trim();
+      if (m && (!/^https:\/\//.test(m) || !m.includes('{z}') || !m.includes('{x}') || !m.includes('{y}'))) {
+        return res.status(400).json({ erro: 'O endereço do mapa precisa começar com https:// e ter {z}, {x} e {y}.' });
+      }
+      set('mapa_url', m || null);
+    }
     for (const k of ['osrm_url', 'ors_url', 'nominatim_url']) {
       if (b[k] !== undefined) {
         const url = String(b[k] || '').trim().replace(/\/+$/, '');

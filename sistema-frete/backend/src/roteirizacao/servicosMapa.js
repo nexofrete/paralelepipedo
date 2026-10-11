@@ -11,6 +11,7 @@ const { municipio, distanciaKm, norm } = require('./municipios');
 const PADRAO = {
   provedor: 'osrm', osrm_url: 'https://router.project-osrm.org', ors_url: 'https://api.openrouteservice.org', ors_chave: null,
   nominatim_url: 'https://nominatim.openstreetmap.org', geocodificar_endereco: true, fator_caminhao: 1.25, velocidade_estimada: 55,
+  mapa_url: null,
 };
 
 async function configuracao() {

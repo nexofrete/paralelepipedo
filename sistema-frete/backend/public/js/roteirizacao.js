@@ -185,7 +185,17 @@
     if (typeof L === 'undefined') { $('rtMapa').innerHTML = '<p style="padding:12px;">Mapa indisponível.</p>'; return; }
     if (!mapa) {
       mapa = L.map('rtMapa', { scrollWheelZoom: false });
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; colaboradores do OpenStreetMap' }).addTo(mapa);
+      // As imagens vêm pelo servidor do Nexofrete (que guarda cópia); sem internet, fundo cinza.
+      const camada = L.tileLayer(`/api/roteirizacao/mapa/{z}/{x}/{y}.png?token=${encodeURIComponent(token)}`, {
+        maxZoom: 18, attribution: '&copy; colaboradores do OpenStreetMap',
+        errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN4+/btfwAJ4gPu4vb0xQAAAABJRU5ErkJggg==',
+      }).addTo(mapa);
+      let avisou = false;
+      camada.on('tileerror', () => {
+        if (avisou) return;
+        avisou = true;
+        $('rtFonte').insertAdjacentHTML('beforebegin', '<p class="mt-aviso" id="rtAvisoMapa">🗺️ O mapa de fundo não carregou (sem internet no servidor ou o serviço de mapas recusou). A rota e as paradas continuam certas; o endereço das imagens pode ser trocado em ⚙ Restrições e mapa.</p>');
+      });
     }
     mapa.eachLayer((camada) => { if (!(camada instanceof L.TileLayer)) mapa.removeLayer(camada); });
     const r = resultado;
@@ -305,6 +315,7 @@
         <div class="campo"><label>até</label><input type="time" id="rtcRecFim" value="${esc(c.recebimento_fim)}" ${ehAdmin ? '' : 'disabled'} /></div>
         <div class="campo"><label>Recebem no sábado</label><select id="rtcRecSab" ${ehAdmin ? '' : 'disabled'}><option value="0">Não</option><option value="1" ${c.recebimento_sabado ? 'selected' : ''}>Sim</option></select></div>
       </div>
+      <div class="campo"><label>Mapa de fundo (endereço das imagens; vazio = OpenStreetMap)</label><input type="text" id="rtcMapa" value="${esc(c.mapa_url || '')}" placeholder="https://tile.openstreetmap.org/{z}/{x}/{y}.png" ${ehAdmin ? '' : 'disabled'} /></div>
       <label style="display:flex; gap:6px; align-items:center; font-size:13px;"><input type="checkbox" id="rtcGeo" ${c.geocodificar_endereco ? 'checked' : ''} ${ehAdmin ? '' : 'disabled'} />
         Procurar a rua e o número no mapa (OpenStreetMap). Desligado: usa o centro da cidade.</label>
       <p style="font-size:12px; color:var(--texto-fraco);">O OSRM calcula como carro (o tempo é multiplicado pelo fator acima). O OpenRouteService usa o perfil de caminhão, que já evita vias com restrição
@@ -315,7 +326,7 @@
       try {
         await api('/config', { method: 'PUT', body: JSON.stringify({ provedor: $('rtcProvedor').value, ors_chave: $('rtcChave').value, fator_caminhao: $('rtcFator').value,
           velocidade_estimada: $('rtcVel').value, tempo_parada_min: $('rtcParada').value, geocodificar_endereco: $('rtcGeo').checked,
-          recebimento_inicio: $('rtcRecIni').value, recebimento_fim: $('rtcRecFim').value, recebimento_sabado: $('rtcRecSab').value === '1' }) });
+          mapa_url: $('rtcMapa').value.trim(), recebimento_inicio: $('rtcRecIni').value, recebimento_fim: $('rtcRecFim').value, recebimento_sabado: $('rtcRecSab').value === '1' }) });
         config = await api('/config'); $('rtServico').value = config.tempo_parada_min;
         $('rtRecIni').value = config.recebimento_inicio; $('rtRecFim').value = config.recebimento_fim; $('rtRecSabado').checked = !!config.recebimento_sabado;
         mostrarAlerta('Configuração salva.', { tipo: 'sucesso' });

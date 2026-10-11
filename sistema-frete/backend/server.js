@@ -62,8 +62,8 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      // Mapa da roteirização: as imagens do mapa vêm do OpenStreetMap.
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://tile.openstreetmap.org'],
+      // As imagens do mapa da roteirização passam pelo próprio servidor (/api/roteirizacao/mapa).
+      imgSrc: ["'self'", 'data:', 'blob:'],
       fontSrc: ["'self'", 'data:'],
       connectSrc: ["'self'", 'https://brasilapi.com.br'],
       objectSrc: ["'none'"],

@@ -1386,6 +1386,8 @@ INSERT INTO configuracao_roteirizacao (id) VALUES (1) ON CONFLICT (id) DO NOTHIN
 ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS recebimento_inicio VARCHAR(5) NOT NULL DEFAULT '08:00';
 ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS recebimento_fim VARCHAR(5) NOT NULL DEFAULT '18:00';
 ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS recebimento_sabado BOOLEAN NOT NULL DEFAULT FALSE;
+-- Imagens do mapa de fundo ({z}/{x}/{y}); vazio = OpenStreetMap. O servidor busca e guarda cópia (dados/mapa-cache).
+ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS mapa_url VARCHAR(300);
 
 -- Endereços já procurados no mapa (não consulta de novo; "achado = false" evita repetir o que não existe).
 CREATE TABLE IF NOT EXISTS geocodificacao_cache (

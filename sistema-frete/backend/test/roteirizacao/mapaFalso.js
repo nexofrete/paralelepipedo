@@ -10,6 +10,13 @@ function iniciar(porta = 0) {
     const url = new URL(req.url, 'http://x');
     pedidos.push(url.pathname);
     const json = (o) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
+    if (url.pathname.startsWith('/tiles/')) {
+      // Como o OpenStreetMap: recusa quem não se identifica.
+      if (!/Nexofrete/.test(req.headers['user-agent'] || '')) { res.writeHead(403); res.end('Access blocked'); return null; }
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+      return null;
+    }
     if (url.pathname === '/search') {
       const m = municipio({ cidade: url.searchParams.get('city'), uf: url.searchParams.get('state') });
       if (!m || /INEXISTENTE/i.test(url.searchParams.get('street') || '')) return json([]);

@@ -2,6 +2,6 @@ node_modules/
 .env
 .env.*
 !.env.example
-backend/dados/
+**/backend/dados/
 *.log
 sistema-frete/backend/package-lock.json

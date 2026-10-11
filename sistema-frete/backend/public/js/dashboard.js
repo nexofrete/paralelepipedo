@@ -740,6 +740,9 @@ function conferirTaxas(l) {
 // Monta a mensagem automática apontando exatamente onde está a divergência,
 // no formato "Divergência em X: Cobrado R$ A | Calculado R$ B" — usada pra
 // sugerir o motivo da glosa/aprovação sem precisar digitar tudo de novo.
+// Quanto a transportadora cobrou além da tabela (CT-e − tabela): positivo = cobrou a mais.
+// No banco, dif_negociado_tabela é o contrário (tabela − CT-e).
+const cobradoAMais = (l) => (l?.dif_negociado_tabela == null ? null : (-Number(l.dif_negociado_tabela) || 0));
 function gerarResumoDivergencias(l) {
   const linhas = [];
   const dif = Number(l.dif_negociado_tabela);
@@ -3486,8 +3489,8 @@ function renderizarAuditoriaFrete() {
   // Carga Direta é negociação avulsa (caminhão dedicado) — não faz sentido comparar
   // com a tabela padrão, então fica de fora da soma de "pago a mais/menos".
   const linhasComparaveis = linhas.filter((l) => !l.carga_direta);
-  const pagoMais = linhasComparaveis.filter((l) => l.dif_negociado_tabela > 0).reduce((s, l) => s + Number(l.dif_negociado_tabela), 0);
-  const pagoMenos = linhasComparaveis.filter((l) => l.dif_negociado_tabela < 0).reduce((s, l) => s + Number(l.dif_negociado_tabela), 0);
+  const pagoMais = linhasComparaveis.filter((l) => cobradoAMais(l) > 0).reduce((s, l) => s + cobradoAMais(l), 0);
+  const pagoMenos = linhasComparaveis.filter((l) => cobradoAMais(l) < 0).reduce((s, l) => s + cobradoAMais(l), 0);
 
   document.getElementById('afTotal').textContent = total;
   document.getElementById('afPagoMais').textContent = formatoMoeda(pagoMais);
@@ -3500,7 +3503,7 @@ function renderizarAuditoriaFrete() {
   // Monta o conteúdo de cada cartão (reaproveitado em qualquer coluna do Kanban).
   const montarCartao = (l) => {
     const semDif = l.dif_negociado_tabela == null; // ainda não conferido
-    const dif = semDif ? 0 : Number(l.dif_negociado_tabela);
+    const dif = semDif ? 0 : cobradoAMais(l);   // positivo = cobrou a mais que a tabela
     const toleranciaFrete = Math.max(
       Number(toleranciaAuditoria.tolerancia_valor) || 0,
       (Number(toleranciaAuditoria.tolerancia_percentual) || 0) / 100 * (Number(valorCalculadoPrincipal(l)) || 0)
@@ -3518,9 +3521,17 @@ function renderizarAuditoriaFrete() {
       ? `<span class="badge badge-cancelado" style="margin-left:4px; font-size:10px;">⚠ ${taxasDivergentes.length} taxa(s)</span>`
       : '';
 
-    const resumoDivergencia = (l.status === 'Frete Retido' && !jaAprovado)
-      ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px; white-space:pre-line; font-family:monospace; font-size:11px;">${gerarResumoDivergencias(l)}</div>`
+    // Só as taxas divergentes (o frete total já está nos valores acima).
+    const resumoDivergencia = (l.status === 'Frete Retido' && !jaAprovado && taxasDivergentes.length)
+      ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px; font-size:11.5px;">${taxasDivergentes.map((t) => `${cfEsc(t.nome)}: cobrado ${formatoMoeda(t.cobrado)} · tabela ${formatoMoeda(t.esperado)}`).join('<br>')}</div>`
       : '';
+    // Diferença enorme (mais que o dobro, ou menos da metade da tabela): quase sempre é
+    // o trecho/tabela errado (ex.: lotação calculada como fracionado), não cobrança indevida.
+    const calc = Number(valorCalculadoPrincipal(l)) || 0;
+    const cobrado = Number(l.valor_total_cte ?? l.valor_frete_negociado) || 0;
+    const suspeita = !semDif && !l.carga_direta && calc > 0 && cobrado > 0 && (cobrado / calc > 2 || cobrado / calc < 0.5);
+    const avisoSuspeita = suspeita
+      ? `<div class="cte-selo" style="color:#e8890c;" title="Confira no Detalhe o trecho e a tabela usados antes de cobrar a transportadora">🔎 Diferença de ${Math.round((cobrado / calc) * 100)}% da tabela — confira o trecho/tabela usado</div>` : '';
 
     const notaAprovacao = jaAprovado && l.justificativa_aprovacao
       ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px;">${l.justificativa_aprovacao}</div>` : '';
@@ -3530,7 +3541,8 @@ function renderizarAuditoriaFrete() {
     const naoLevou = !!l.cte_nao_levou;
     const botaoAprovar = (podeAprovarPagamento && !jaAprovado && !naoLevou)
       ? `<button class="acao-primaria" onclick="aprovarComJustificativaAuditoria(${l.id})">✓ Aprovar</button>` : '';
-    const botaoGlosa = (podeAprovarPagamento && !jaAprovado && divergente && !naoLevou)
+    // Glosa só faz sentido quando a transportadora cobrou a mais.
+    const botaoGlosa = (podeAprovarPagamento && !jaAprovado && divergente && dif > 0 && !naoLevou)
       ? `<button onclick="registrarGlosaAuditoria(${l.id})">💸 Glosa</button>` : '';
     const botaoEmail = (podeAprovarPagamento && divergente)
       ? `<button onclick="enviarEspelhoEmailAuditoria(${l.id})">📧 Email</button>` : '';
@@ -3541,7 +3553,7 @@ function renderizarAuditoriaFrete() {
 
     return `
       <div class="kanban-cartao ${l.alerta_transportadora_diferente ? 'kanban-alerta-transp' : ''} ${naoLevou ? 'kanban-nao-levou' : ''}">
-        ${l.alerta_transportadora_diferente ? `<div class="cte-alerta-faixa" title="Abra o 🔍 Detalhe e marque qual transportadora levou a nota">⚠ CT-e de transportadoras DIFERENTES — defina quem levou</div>` : ''}
+        ${l.alerta_transportadora_diferente ? `<div class="cte-alerta-faixa" style="cursor:pointer;" onclick="abrirDetalheAuditoria(${l.id})" title="Clique para abrir o Detalhe e marcar qual transportadora levou a nota">⚠ CT-e de transportadoras DIFERENTES — clique e defina quem levou</div>` : ''}
         ${l.nf_substitui ? `<div class="cte-selo" title="Troca de nota informada por e-mail">↪ Substitui a NF ${cfEsc(l.nf_substitui)}</div>` : ''}
         ${l.nf_devolvida ? `<div class="cte-selo" title="Nota devolvida">↩ Devolvida${l.nf_substituida_por ? ` — refaturada pela NF ${cfEsc(l.nf_substituida_por)}` : ''}</div>` : ''}
         ${l.nf_retornou ? '<div class="cte-selo" title="Remessa para feira/demonstração que já voltou">↩ Retornou da feira/demonstração</div>' : ''}
@@ -3555,11 +3567,11 @@ function renderizarAuditoriaFrete() {
         <div class="kanban-cartao-transp">CT-e ${l.numero_cte || '—'} · ${l.transportadora || '—'}</div>
         ${seloVinculoCte(l)}
         <div class="kanban-cartao-valores">
-          <div>Negociado<br><strong>${formatoMoeda(l.valor_frete_negociado)}</strong></div>
-          <div>Calculado<br><strong>${formatoMoeda(valorCalculadoPrincipal(l))}</strong></div>
-          <div style="text-align:right;">Diferença<br><strong style="color:${dif > 0 ? 'var(--vermelho)' : (dif < 0 ? 'var(--verde)' : 'inherit')};">${semDif ? '—' : `${dif > 0 ? '+' : ''}${formatoMoeda(dif)}`}</strong></div>
+          <div title="Valor cobrado no CT-e">Cobrado (CT-e)<br><strong>${formatoMoeda(l.valor_frete_negociado)}</strong></div>
+          <div title="Valor pela tabela de preço">Tabela<br><strong>${formatoMoeda(valorCalculadoPrincipal(l))}</strong></div>
+          <div style="text-align:right;" title="Cobrado − tabela: positivo = a transportadora cobrou a mais">${dif > 0 ? 'Cobrou a mais' : dif < 0 ? 'Cobrou a menos' : 'Diferença'}<br><strong style="color:${dif > 0.009 ? 'var(--vermelho)' : (dif < -0.009 ? 'var(--verde)' : 'inherit')};">${semDif ? '—' : `${dif > 0 ? '+' : ''}${formatoMoeda(dif)}`}</strong></div>
         </div>
-        ${resumoDivergencia}${notaAprovacao}${notaGlosa}
+        ${avisoSuspeita}${resumoDivergencia}${notaAprovacao}${notaGlosa}
         <div class="kanban-cartao-acoes">
           <button onclick="abrirDetalheAuditoria(${l.id})">🔍 Detalhe</button>
           ${botaoAprovar}${botaoGlosa}${botaoEmail}
@@ -3578,6 +3590,8 @@ function renderizarAuditoriaFrete() {
 
   document.getElementById('kanbanAuditoria').innerHTML = COLUNAS.map((coluna) => {
     const itens = linhas.filter(coluna.filtro);
+    // Retidos e pendentes: os que mais cobraram além da tabela primeiro (o que mais vale conferir).
+    if (coluna.chave === 'retido' || coluna.chave === 'pendente') itens.sort((a, b) => (cobradoAMais(b) ?? -Infinity) - (cobradoAMais(a) ?? -Infinity));
     const somaValores = itens.reduce((s, l) => s + Number(l.valor_frete_negociado || 0), 0);
     return `
       <div class="kanban-coluna" style="--cor-coluna:${coluna.cor};">
@@ -4147,7 +4161,7 @@ function abrirDetalheAuditoria(id) {
     campoRodape('Valor Negociado (CT-e)', linha.valor_frete_negociado),
     campoRodape('Valor Calculado (Total)', valorCalculadoPrincipal(linha)),
     campoRodape('Valor Frete Base (só o frete)', linha.valor_frete_tabelado),
-    `<div><div style="opacity:0.75; font-size:10.5px;">Diferença</div><strong style="color:${Number(linha.dif_negociado_tabela) > 0 ? '#ffb3b3' : '#b3ffcf'};">${formatoMoeda(linha.dif_negociado_tabela)}</strong></div>`,
+    `<div><div style="opacity:0.75; font-size:10.5px;">Cobrado − tabela</div><strong style="color:${cobradoAMais(linha) > 0 ? '#ffb3b3' : '#b3ffcf'};">${linha.dif_negociado_tabela == null ? '—' : formatoMoeda(cobradoAMais(linha))}</strong></div>`,
     campoRodape('Base ICMS (CT-e)', impostosCte.vBC),
     campoRodapePct('Alíquota ICMS (CT-e)', impostosCte.pICMS),
     campoRodape('ICMS (CT-e)', impostosCte.vICMS),
@@ -7578,7 +7592,7 @@ function cfRenderizarTabela() {
   } else {
     corpo.innerHTML = visiveis.map((c) => {
       const marcado = cfEstado.marcados.has(c.id);
-      const dif = c.dif_negociado_tabela != null ? Number(c.dif_negociado_tabela) : null;
+      const dif = cobradoAMais(c);   // CT-e − tabela
       const corDif = dif == null || Math.abs(dif) < 0.01 ? 'inherit' : (dif > 0 ? 'var(--vermelho)' : 'var(--verde)');
       return `
         <tr data-cf-id="${c.id}" class="${marcado ? 'cf-marcado' : ''}">

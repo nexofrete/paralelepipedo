@@ -84,8 +84,8 @@ async function enviarEspelhoCalculo({ destinatarioEmail, destinatarioNome, frete
           <td style="padding:8px 10px; text-align:right;">${moeda(frete.valor_frete_tabelado)}</td>
         </tr>
         <tr style="background:#f1f5f9;">
-          <td style="padding:8px 10px;"><strong>Diferença</strong></td>
-          <td style="padding:8px 10px; text-align:right; color:#c0392b;"><strong>${moeda(frete.dif_negociado_tabela)}</strong></td>
+          <td style="padding:8px 10px;"><strong>${-Number(frete.dif_negociado_tabela) > 0 ? 'Cobrado a mais que o acordado' : 'Diferença (CT-e − acordado)'}</strong></td>
+          <td style="padding:8px 10px; text-align:right; color:#c0392b;"><strong>${frete.dif_negociado_tabela != null ? moeda(-Number(frete.dif_negociado_tabela)) : '—'}</strong></td>
         </tr>
       </table>
       ${linhasTaxas ? `

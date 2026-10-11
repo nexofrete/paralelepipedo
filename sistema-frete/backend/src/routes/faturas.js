@@ -178,7 +178,8 @@ router.post('/', autenticar, podeConferirFatura, async (req, res) => {
       icms: vIcms(i.impostos_cte),
       valor_tabela: i.valor_total_frete != null ? Number(i.valor_total_frete) : null,
       valor_cte: i.valor_total_cte != null ? Number(i.valor_total_cte) : (i.valor_frete_negociado != null ? Number(i.valor_frete_negociado) : null),
-      diferenca: i.dif_negociado_tabela != null ? Number(i.dif_negociado_tabela) : null,
+      // CT-e − tabela (positivo = cobrou a mais), igual ao total "Fatura − tabela" do documento.
+      diferenca: i.dif_negociado_tabela != null ? -Number(i.dif_negociado_tabela) : null,
       conferencia: situacaoConferencia(i),
       glosa: i.glosa_valor != null ? Number(i.glosa_valor) : null,
       glosa_motivo: i.glosa_motivo || null,

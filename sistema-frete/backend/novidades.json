@@ -1,0 +1,135 @@
+{
+  "proposta": "O Nexofrete acompanha cada frete da empresa, da emissão da nota fiscal até o pagamento da transportadora. Ele lê os XML de NF-e e CT-e, liga cada CT-e à nota que ele transporta, calcula pela tabela de preço negociada quanto aquele frete deveria custar e compara com o que a transportadora cobrou: o que bate é liberado para pagamento sozinho; o que diverge fica retido até alguém decidir. Também acompanha as entregas (inclusive buscando sozinho nas transportadoras), as notas paradas no estoque, as faturas, os sinistros e os custos de frete por cliente e por transportadora.",
+  "versoes": [
+    {
+      "versao": "1.72.0",
+      "titulo": "Auditoria, rastreamento automático e muito mais",
+      "itens": [
+        {
+          "area": "Relatórios",
+          "texto": "Relatórios agora ficam num submenu no menu da esquerda: Gráficos, Entregas previstas, Notas sem mapa, Montar relatório (BI), Comparar cotações, Anomalias, Scorecard, NF-e × CT-e e Conferência de CT-e."
+        },
+        {
+          "area": "Relatórios",
+          "texto": "Novo relatório \"Notas sem mapa de carregamento\": avisa das notas emitidas há mais de X dias (padrão 3) que ainda não entraram em mapa — paradas no estoque, cliente que não retirou ou CT-e emitido sem coleta. Com PDF e Excel."
+        },
+        {
+          "area": "Relatórios",
+          "texto": "Novo relatório \"Melhor transportadora\": para cada nota que ainda não saiu, o frete de todas as transportadoras pelas tabelas, o prazo e o % de entregas no prazo de cada uma, com a sugestão (mais barata, mais rápida ou mais barata dentro do prazo) e a economia. Também mostra quanto teria economizado nas notas já embarcadas."
+        },
+        {
+          "area": "Relatórios",
+          "texto": "Novo \"Consolidar rotas\": os pedidos liberados e ainda sem nota (planilha do ERP), agrupados por destino (ou pela cidade do redespacho). Marque os pedidos e veja na hora o peso, o m³ e o caminhão indicado; \"Concluir\" monta a carga com impressão e Excel."
+        },
+        {
+          "area": "Mapa de carregamento",
+          "texto": "A importação do mapa agora grava também o número do mapa, a descrição, a data de referência e o 1º ajudante."
+        },
+        {
+          "area": "Auditoria",
+          "texto": "Nota com CT-e de transportadoras diferentes: dá para marcar qual transportadora levou a nota; os CT-e das outras ficam como \"não levou\" e não são pagos."
+        },
+        {
+          "area": "Auditoria",
+          "texto": "O CT-e da transportadora de redespacho previsto na nota não é mais tratado como cobrança duplicada; o CT-e pago por outra pessoa (ex.: redespacho por conta do destino) fica como \"Não cobrado\"."
+        },
+        {
+          "area": "Auditoria",
+          "texto": "Botão \"Recalcular pela tabela\" direto no Detalhe do Frete, com o motivo quando não dá para calcular."
+        },
+        {
+          "area": "Tabelas de preço",
+          "texto": "Novos campos de Descarga (por entrega, volume, kg ou tonelada, em todos ou só em alguns clientes) e de ICMS somado ao frete."
+        },
+        {
+          "area": "Tabelas de preço",
+          "texto": "Exportar e importar a tabela completa (dados gerais + trechos) em Excel, para usar a mesma tabela em outra empresa."
+        },
+        {
+          "area": "Entregas",
+          "texto": "\"📋 Lançar entregas do WhatsApp\": copie as mensagens dos comprovantes no WhatsApp Web (com a data de cada uma) e cole no sistema — ele acha as NF, mostra para conferir e lança as datas de entrega de uma vez."
+        },
+        {
+          "area": "Entregas",
+          "texto": "Importar as fotos dos canhotos de uma vez: cada foto vira o comprovante da nota e lança a data de entrega do canhoto. O número da NF impresso é lido sozinho e de graça (leitor de texto no servidor); opcional: a IA (Claude) lê também a data escrita à mão."
+        },
+        {
+          "area": "Entregas",
+          "texto": "Rastreamento automático pela SSW (ex.: FAST-X) e pelo portal da Andrade e Abreu: a data da entrega, a coleta e o histórico entram sozinhos todo dia às 6h30 e pelo botão \"Buscar entregas\"."
+        },
+        {
+          "area": "Entregas",
+          "texto": "Entrega agendada pelo cliente: o prazo passa a ser medido pela data agendada. Comprovante de entrega da SEFAZ (XML) também preenche a entrega."
+        },
+        {
+          "area": "Entregas",
+          "texto": "Busca por NF, CT-e, pedido ou cliente em Entregas previstas."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "Nota cancelada (XML de cancelamento, retorno da SEFAZ ou planilha do ERP) vira Cancelado sozinha, com a aprovação também cancelada. CT-e que chega para nota cancelada fica retido."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "Devolução / troca de nota: cole o e-mail padrão (ou deixe o sistema ler a caixa de e-mail) e as notas original, substituta e de retorno ficam ligadas."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "A NF-e de devolução emitida pela empresa registra a devolução sozinha: o próprio XML traz a nota de origem e o motivo. A nota de origem sai das entregas atrasadas e o CT-e de devolução é ligado a ela."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "Nota refaturada (mesmo pedido da devolvida) é ligada sozinha e recebe a observação de refaturamento; a nota devolvida fica em roxo na lista. Se a devolvida e a refaturada tiverem CT-e de entrega, o mais novo fica retido como possível cobrança em dobro."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "Retorno de feira, exposição ou demonstração (CFOP 1913/1914/1916) é reconhecido sozinho: a remessa fica como \"retornou\" e o CT-e da volta é conferido pelo novo campo \"Retorno de feira / demonstração (%)\" da tabela de preço de cada transportadora (ex.: 100% ou 50%)."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "NF-e complementar ou de ajuste (ex.: complemento de ICMS-ST) é reconhecida: não vira frete, não aparece em \"Notas sem mapa\" nem em \"Aguardando CT-e\", nunca sobrescreve a nota original e fica anotada nela."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "NF-e sem circulação de mercadoria (ex.: baixa de estoque, destinatário é a própria empresa) não vira frete nem fica \"Aguardando CT-e\" para sempre. Transferência para outra filial continua sendo frete normal."
+        },
+        {
+          "area": "Notas fiscais",
+          "texto": "Venda com frete por conta do destinatário (FOB) e sem transportadora informada na nota mostra \"🧾 Frete por conta do cliente\" na lista, um aviso ao abrir o registro e a observação — o cliente contrata a transportadora ou vem buscar."
+        },
+        {
+          "area": "Cadastros",
+          "texto": "Logo da empresa em Cadastros » Empresa: sai no cabeçalho dos relatórios impressos e PDFs (romaneio de carga, notas sem mapa, conferência de fatura, tabela de preço e telas impressas)."
+        },
+        {
+          "area": "Cadastros",
+          "texto": "Cadastro de clientes montado sozinho pelo XML da NF-e: CNPJ/CPF, inscrição estadual, endereço, telefone e e-mail."
+        },
+        {
+          "area": "Cadastros",
+          "texto": "Transportadora de redespacho cadastrada sozinha pelo CNPJ que vem na NF-e (consulta na BrasilAPI: razão social, endereço, cidade/UF, CEP, telefone e e-mail). O cálculo do frete passa a usar a cidade desse cadastro para saber até onde a transportadora contratada leva. CNPJ digitado errado na nota é corrigido pela razão social (só aceitando a mesma filial; nunca troca de filial sozinho)."
+        },
+        {
+          "area": "Manutenção",
+          "texto": "Limpeza das notas \"Aguardando CT-e\" por motivo (FOB, sem frete, só da planilha, antigas), sem apagar nada."
+        },
+        {
+          "area": "Manutenção",
+          "texto": "Leitura automática de várias caixas de e-mail (devoluções e XML anexados)."
+        },
+        {
+          "area": "Todos os registros",
+          "texto": "Selecionar vários registros da página e excluir de uma vez (faturados e CT-e cancelados são protegidos)."
+        },
+        {
+          "area": "Segurança",
+          "texto": "Proteção contra textos maliciosos vindos de XML e e-mail, contra .zip \"bomba\", senhas guardadas criptografadas, aviso de senha de fábrica e HTTPS opcional com certificado da empresa."
+        },
+        {
+          "area": "Correções",
+          "texto": "Kanban da Auditoria que ficava vazio, atualização pela tela que não fazia backup, cancelamento de CT-e principal que dava erro, e o \"Recalcular todos\" que parava inteiro por causa de um registro. Também: cidade do redespacho gravada com texto a mais (\"GUARULHOS FRETE POR CONTA...\"), e bairros com nome de cidade (\"CENTRO\", \"CAMPO GRANDE\") confundidos com o local de entrega no cálculo do frete."
+        }
+      ]
+    }
+  ]
+}

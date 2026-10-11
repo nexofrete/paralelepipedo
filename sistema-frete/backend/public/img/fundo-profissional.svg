@@ -1,0 +1,69 @@
+<svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="fundoBase" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1220"/>
+      <stop offset="45%" stop-color="#0f1a2e"/>
+      <stop offset="100%" stop-color="#152544"/>
+    </linearGradient>
+    <radialGradient id="brilho1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4d7cff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#4d7cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="brilho2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="linhaGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4d7cff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#6f9bff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#4d7cff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#fundoBase)"/>
+
+  <!-- halos suaves de luz, dão profundidade sem parecer ilustração -->
+  <circle cx="1250" cy="200" r="480" fill="url(#brilho1)"/>
+  <circle cx="200" cy="750" r="420" fill="url(#brilho2)"/>
+
+  <!-- grade sutil de fundo, sugere "mapa"/rede logística sem ser literal -->
+  <g stroke="#ffffff" stroke-opacity="0.045" stroke-width="1">
+    <line x1="0" y1="90" x2="1600" y2="90"/>
+    <line x1="0" y1="220" x2="1600" y2="220"/>
+    <line x1="0" y1="350" x2="1600" y2="350"/>
+    <line x1="0" y1="480" x2="1600" y2="480"/>
+    <line x1="0" y1="610" x2="1600" y2="610"/>
+    <line x1="0" y1="740" x2="1600" y2="740"/>
+    <line x1="0" y1="870" x2="1600" y2="870"/>
+    <line x1="130" y1="0" x2="130" y2="900"/>
+    <line x1="360" y1="0" x2="360" y2="900"/>
+    <line x1="590" y1="0" x2="590" y2="900"/>
+    <line x1="820" y1="0" x2="820" y2="900"/>
+    <line x1="1050" y1="0" x2="1050" y2="900"/>
+    <line x1="1280" y1="0" x2="1280" y2="900"/>
+    <line x1="1510" y1="0" x2="1510" y2="900"/>
+  </g>
+
+  <!-- rotas conectando pontos, no estilo "rede de distribuição" -->
+  <g fill="none" stroke-width="1.6">
+    <path d="M120,760 C 320,620 480,700 650,560 S 980,420 1180,300" stroke="url(#linhaGrad)"/>
+    <path d="M60,300 C 260,360 420,260 620,340 S 1020,300 1280,180" stroke="url(#linhaGrad)"/>
+    <path d="M300,860 C 520,760 700,820 900,700 S 1260,560 1520,520" stroke="url(#linhaGrad)"/>
+  </g>
+
+  <!-- pontos de destino ao longo das rotas -->
+  <g fill="#8fb2ff">
+    <circle cx="120" cy="760" r="4" opacity="0.8"/>
+    <circle cx="650" cy="560" r="3.5" opacity="0.7"/>
+    <circle cx="1180" cy="300" r="5" opacity="0.9"/>
+    <circle cx="60" cy="300" r="3.5" opacity="0.6"/>
+    <circle cx="620" cy="340" r="4" opacity="0.75"/>
+    <circle cx="1280" cy="180" r="4.5" opacity="0.85"/>
+    <circle cx="300" cy="860" r="3.5" opacity="0.6"/>
+    <circle cx="900" cy="700" r="4" opacity="0.7"/>
+    <circle cx="1520" cy="520" r="4.5" opacity="0.8"/>
+  </g>
+
+  <!-- véu escuro pra garantir contraste com o card de login, em qualquer ponto da tela -->
+  <rect width="1600" height="900" fill="#070b14" opacity="0.32"/>
+</svg>

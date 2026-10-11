@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entrar — Nexofrete</title>
+  <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
+  <link rel="alternate icon" type="image/png" href="img/icone-app.png" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/tema.js"></script>
+</head>
+<body>
+  <div id="faixaAmbienteTeste" class="oculto">⚠️ AMBIENTE DE TESTE — os dados aqui são separados da produção de verdade ⚠️</div>
+  <div class="tela-login">
+    <button id="btnTelaCheiaLogin" title="Tela cheia" style="position:fixed; top:16px; right:16px; width:38px; height:38px; border-radius:8px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer; font-size:15px; display:none;">⛶</button>
+    <div class="card-login">
+      <div class="logo-area">
+        <h1 class="logo-login-titulo">Nexofrete — gestão e auditoria de fretes</h1>
+        <img class="logo-login logo-login-escuro" src="img/nexofrete-horizontal-fundo-escuro.svg" alt="Nexofrete — gestão e auditoria de fretes" />
+        <img class="logo-login logo-login-claro" src="img/nexofrete-horizontal-fundo-claro.svg" alt="" aria-hidden="true" />
+      </div>
+
+      <div id="avisoLogin" class="aviso-login oculto"></div>
+      <div id="mensagemErro" class="mensagem-erro"></div>
+
+      <div id="etapaSenhaLogin">
+        <div class="campo">
+          <label>Email</label>
+          <input type="email" id="campoEmail" placeholder="seu@email.com" />
+        </div>
+        <div class="campo">
+          <label>Senha</label>
+          <input type="password" id="campoSenha" placeholder="••••••••" />
+        </div>
+        <button class="btn btn-primario" id="btnEntrar">Entrar</button>
+      </div>
+
+      <div id="etapaCodigoLogin" class="oculto">
+        <p style="font-size:13px; color:var(--texto-fraco); margin-top:0;" id="textoEtapaCodigo"></p>
+        <div class="campo">
+          <label>Código de 6 dígitos</label>
+          <input type="text" id="campoCodigo2FA" placeholder="000000" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:20px; text-align:center;" />
+        </div>
+        <button class="btn btn-primario" id="btnConfirmarCodigo">Confirmar código</button>
+        <button class="btn btn-secundario" id="btnVoltarLogin" style="margin-top:10px;">← Voltar</button>
+      </div>
+
+      <!-- Primeiro acesso com senha provisória: o usuário cadastra a própria senha -->
+      <div id="etapaNovaSenha" class="oculto">
+        <div class="nova-senha-cabecalho">
+          <div style="font-size:30px;">🔑</div>
+          <strong id="novaSenhaTitulo">Bem-vindo! Crie a sua senha</strong>
+          <p>Você entrou com uma senha provisória. Cadastre agora a sua senha pessoal para continuar.</p>
+        </div>
+        <div class="campo" id="campoSenhaAtualWrap">
+          <label>Senha provisória</label>
+          <input type="password" id="campoSenhaAtual" placeholder="A senha que você recebeu" autocomplete="current-password" />
+        </div>
+        <div class="campo">
+          <label>Nova senha</label>
+          <div class="campo-senha-olho">
+            <input type="password" id="campoNovaSenha" placeholder="••••••••" autocomplete="new-password" />
+            <button type="button" class="btn-olho" data-alvo="campoNovaSenha" title="Mostrar/ocultar">👁</button>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Confirme a nova senha</label>
+          <div class="campo-senha-olho">
+            <input type="password" id="campoConfirmaSenha" placeholder="••••••••" autocomplete="new-password" />
+            <button type="button" class="btn-olho" data-alvo="campoConfirmaSenha" title="Mostrar/ocultar">👁</button>
+          </div>
+        </div>
+        <ul class="regras-senha" id="regrasSenha">
+          <li data-regra="tamanho">Pelo menos 8 caracteres</li>
+          <li data-regra="letrasNumeros">Letras e números</li>
+          <li data-regra="diferente">Diferente da senha provisória</li>
+          <li data-regra="confere">As duas senhas iguais</li>
+        </ul>
+        <button class="btn btn-primario" id="btnSalvarNovaSenha" disabled>Salvar senha e entrar</button>
+        <button class="btn btn-secundario" id="btnCancelarNovaSenha" style="margin-top:10px;">Sair</button>
+      </div>
+
+      <button id="btnAlternarTema" class="alternador-tema" style="margin-top:16px;" title="Alternar tema claro/escuro">
+        <span id="iconeTema">🌙</span> <span id="textoTema">Tema escuro</span>
+      </button>
+
+      <div id="versaoSistemaLogin" style="text-align:center; font-size:11px; color:var(--texto-fraco); margin-top:16px; opacity:0.7;">—</div>
+    </div>
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

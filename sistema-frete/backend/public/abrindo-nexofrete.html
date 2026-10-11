@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Nexofrete</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  Tela de "abrindo o sistema". O atalho abre esta página (que fica no próprio
+  computador) e ela espera o servidor do Nexofrete responder antes de ir pro
+  login. Assim, logo depois de ligar o computador — quando o servidor ainda
+  está subindo — não aparece mais o erro "Não é possível acessar esse site".
+  Endereço(s) do servidor vêm no ?u=  (ex: abrindo-nexofrete.html?u=http://localhost:3300)
+-->
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; align-items: center; justify-content: center; background: #111318; color: #e6e9ef;
+         font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+  .cartao { text-align: center; max-width: 420px; padding: 32px; }
+  .logo { animation: pulsa 1.6s ease-in-out infinite; }
+  h1 { font-size: 20px; margin: 18px 0 6px; font-weight: 600; }
+  p { color: #9aa1ac; font-size: 13.5px; line-height: 1.5; margin: 0; }
+  .barra { height: 4px; border-radius: 3px; background: #1d222b; overflow: hidden; margin: 22px auto 12px; width: 220px; }
+  .barra div { height: 100%; width: 40%; background: linear-gradient(90deg, #4d7cff, #22c55e); border-radius: 3px; animation: anda 1.2s ease-in-out infinite; }
+  .dica { display: none; margin-top: 18px; background: #1a1d24; border: 1px solid #2a303b; border-radius: 10px; padding: 12px 14px; text-align: left; }
+  .dica b { color: #e6e9ef; }
+  button { margin-top: 14px; background: #4d7cff; color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; }
+  @keyframes pulsa { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  @keyframes anda { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+</style>
+</head>
+<body>
+  <div class="cartao">
+    <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="72" height="72">
+  <rect width="64" height="64" rx="13" fill="#0E1A33"/>
+  <path d="M15 49.5 L15 14.5 L49 48.5" fill="none" stroke="#6F93FF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M49 48.5 L49 14" fill="none" stroke="#1FC27D" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="15" cy="49.5" r="6.2" fill="#0E1A33" stroke="#6F93FF" stroke-width="3.4"/>
+</svg></div>
+    <h1 id="titulo">Abrindo o Nexofrete…</h1>
+    <p id="texto">Aguardando o servidor responder.</p>
+    <div class="barra"><div></div></div>
+    <div class="dica" id="dica">
+      <p>O servidor está demorando para responder. Confira:</p>
+      <p style="margin-top:8px;">• No <b>computador servidor</b>, se a janela preta <b>"Ligando o Sistema de Fretes"</b> está aberta (se não estiver, abra o <b>iniciar.bat</b>).</p>
+      <p style="margin-top:4px;">• Se este computador está conectado à rede da empresa.</p>
+      <p style="margin-top:8px; font-size:12px;" id="endereco"></p>
+      <button id="tentar">Tentar agora</button>
+    </div>
+  </div>
+<script>
+  // Endereços do servidor vêm no ?u= (pode ter mais de um: nome do computador
+  // e IP). Se nenhum responder — por exemplo, porque o IP do servidor mudou —,
+  // procura o servidor sozinho na rede (mesma faixa de IP, mesma porta) e
+  // guarda o endereço achado pra próxima vez.
+  var params = new URLSearchParams(location.search);
+  var chaveMemoria = 'nexofreteEndereco:' + params.getAll('u').join('|');
+  var enderecos = params.getAll('u').map(function (u) { return u.replace(/\/+$/, ''); }).filter(Boolean);
+  if (!enderecos.length) enderecos = ['http://localhost:3333'];
+  try {
+    var lembrado = localStorage.getItem(chaveMemoria);
+    if (lembrado && enderecos.indexOf(lembrado) < 0) enderecos.unshift(lembrado);
+  } catch (e) { /* sem memória: tudo bem */ }
+
+  var inicio = Date.now();
+  var timer = null;
+  var procurando = false;
+  var ultimaBusca = 0;
+  var el = function (id) { return document.getElementById(id); };
+  el('endereco').textContent = 'Endereço: ' + enderecos.join('  ou  ');
+
+  function testar(servidor, limite) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      var feito = false;
+      var fim = function (ok) { if (!feito) { feito = true; img.onload = img.onerror = null; resolve(ok); } };
+      img.onload = function () { fim(true); };
+      img.onerror = function () { fim(false); };
+      setTimeout(function () { fim(false); }, limite || 4000);
+      img.src = servidor + '/ping.gif?t=' + Date.now();
+    });
+  }
+
+  function entrar(servidor) {
+    try { localStorage.setItem(chaveMemoria, servidor); } catch (e) { /* ok */ }
+    location.replace(servidor + '/login.html');
+  }
+
+  // Varre a faixa do IP conhecido (ex: 192.168.0.1 a 254), 32 por vez.
+  function procurarNaRede() {
+    var base = null;
+    enderecos.some(function (u) {
+      var m = u.match(/^http:\/\/(\d+\.\d+\.\d+)\.\d+(:\d+)?$/);
+      if (m) base = { prefixo: m[1], porta: m[2] || '' };
+      return !!m;
+    });
+    if (!base) return Promise.resolve(null);
+    procurando = true;
+    ultimaBusca = Date.now();
+    var candidatos = [];
+    for (var i = 1; i <= 254; i++) candidatos.push('http://' + base.prefixo + '.' + i + base.porta);
+    var achado = null;
+    var feitos = 0;
+    function lote(pos) {
+      if (achado || pos >= candidatos.length) return Promise.resolve(achado);
+      var grupo = candidatos.slice(pos, pos + 32);
+      return Promise.all(grupo.map(function (c) {
+        return testar(c, 1500).then(function (ok) { feitos += 1; if (ok && !achado) achado = c; });
+      })).then(function () {
+        el('texto').textContent = 'O endereço do servidor mudou? Procurando o servidor na rede… (' + feitos + ' de 254)';
+        return lote(pos + 32);
+      });
+    }
+    return lote(0).then(function (r) { procurando = false; return r; });
+  }
+
+  function tentar() {
+    clearTimeout(timer);
+    Promise.all(enderecos.map(function (u) { return testar(u); })).then(function (respostas) {
+      var i = respostas.indexOf(true);
+      if (i >= 0) { entrar(enderecos[i]); return; }
+      var segundos = (Date.now() - inicio) / 1000;
+      // Depois de ~8s sem resposta, procura na rede (e de novo a cada minuto).
+      if (!procurando && segundos > 8 && Date.now() - ultimaBusca > 60000) {
+        el('titulo').textContent = 'Procurando o servidor…';
+        procurarNaRede().then(function (achado) {
+          if (achado) { entrar(achado); return; }
+          el('titulo').textContent = 'Ainda esperando o servidor…';
+          el('dica').style.display = 'block';
+          timer = setTimeout(tentar, 1500);
+        });
+        return;
+      }
+      if (segundos > 20) {
+        el('dica').style.display = 'block';
+        el('titulo').textContent = 'Ainda esperando o servidor…';
+      }
+      el('texto').textContent = segundos > 5
+        ? 'O servidor está ligando. Isso é normal logo depois de ligar o computador.'
+        : 'Aguardando o servidor responder.';
+      timer = setTimeout(tentar, 1500);
+    });
+  }
+  el('tentar').addEventListener('click', function () { ultimaBusca = 0; tentar(); });
+  tentar();
+</script>
+</body>
+</html>

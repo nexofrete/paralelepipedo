@@ -1340,3 +1340,15 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 #tabelaCtes td { white-space: normal; vertical-align: top; }
 #tabelaCtes td:last-child { min-width: 200px; }
 #tabelaCtes .cte-acoes { justify-content: flex-start; }
+
+/* ---------- Relatório "Melhor transportadora" ---------- */
+.mt-tabela tbody td { white-space: normal; vertical-align: top; }
+.mt-tabela .mt-sub { display: block; font-size: 11.5px; color: var(--texto-fraco); margin-top: 2px; }
+.mt-tabela tr.mt-economia td:last-child { color: var(--verde); font-weight: 700; }
+.mt-tabela tr.mt-linha:hover td { background: var(--bg-elevado); }
+.mt-aviso { font-size: 12.5px; border-left: 3px solid var(--amarelo); background: rgba(242,184,75,0.08); border-radius: var(--raio); padding: 8px 12px; margin-bottom: 10px; }
+.mt-cidades { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.mt-cidades span { border: 1px solid var(--borda); border-radius: 999px; padding: 2px 9px; font-size: 11.5px; }
+.cd-resumo div.mt-clicavel { cursor: pointer; }
+.cd-resumo div.mt-clicavel:hover { outline: 1px solid var(--borda); }
+.cd-resumo div.mt-ativo { outline: 2px solid var(--azul); }

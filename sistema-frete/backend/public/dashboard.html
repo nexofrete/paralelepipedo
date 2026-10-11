@@ -1809,12 +1809,19 @@
               <div class="campo" style="margin-bottom:0;"><label>Emitidas a partir de</label><input type="date" id="mtDesde" /></div>
               <div class="campo" style="margin-bottom:0; flex:1; min-width:220px;"><label>Busca</label><input type="search" id="mtBusca" placeholder="🔍 NF, pedido, cliente ou cidade" /></div>
             </div>
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin:0 0 12px;">
+              <div class="campo" style="margin-bottom:0;"><label>Mostrar</label>
+                <select id="mtMostrar"><option value="todas">Todas as notas</option><option value="economia">Só com economia</option>
+                  <option value="outra">Só com outra transportadora sugerida</option><option value="semtabela">Só sem tabela para a cidade</option></select></div>
+              <div class="campo" style="margin-bottom:0;"><label>Ordenar por</label>
+                <select id="mtOrdem"><option value="recentes">Mais recentes</option><option value="economia">Maior economia</option><option value="valor">Maior frete atual</option></select></div>
+            </div>
             <div id="mtResumo" class="cd-resumo" style="margin-bottom:10px;"></div>
+            <div id="mtAvisos"></div>
             <div class="tabela-container" style="overflow-x:auto;">
-              <table class="tabela-registros" style="width:100%;">
-                <thead><tr><th>Nr. nota</th><th>Emissão</th><th>Cliente</th><th title="Cidade usada na comparação: a do redespacho, a do local de entrega da nota ou a do cliente">Entrega até</th><th style="text-align:right;">Vol. / Peso</th>
-                  <th>Transportadora atual</th><th style="text-align:right;">Valor atual</th><th>Sugerida</th><th style="text-align:right;">Valor</th>
-                  <th style="text-align:right;">Prazo</th><th style="text-align:right;">No prazo</th><th style="text-align:right;">Economia</th></tr></thead>
+              <table class="tabela-registros mt-tabela" style="width:100%;">
+                <thead><tr><th>Nota</th><th title="Cidade usada na comparação: a do redespacho, a do local de entrega da nota ou a do cliente">Cliente · entrega até</th><th style="text-align:right;">Carga</th>
+                  <th>Transportadora atual</th><th>Sugerida</th><th style="text-align:right;">Economia</th></tr></thead>
                 <tbody id="mtCorpo"></tbody>
               </table>
             </div>

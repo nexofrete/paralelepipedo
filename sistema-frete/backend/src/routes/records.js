@@ -819,10 +819,14 @@ async function contextoDestinos() {
       }
       return { cidade: n.cidade, uf: n.uf, tipo: 'cliente', detalhe: null };
     };
-  return { calc, todosTrechos, porTransportadora, destinoDa };
+  // UF de onde as cargas saem (ICMS pela rota): a da empresa; sem cadastro, RJ (o que valia antes).
+  const { rows: emp } = await pool.query('SELECT uf FROM empresa WHERE id = 1').catch(() => ({ rows: [] }));
+  const ufOrigem = String(emp[0]?.uf || '').trim().toUpperCase() || 'RJ';
+  return { calc, todosTrechos, porTransportadora, destinoDa, ufOrigem };
 }
 
 // GET /api/fretes/relatorios/melhor-transportadora?criterio=barata|rapida|prazo&prazo_max=&desde=&busca=&embarcadas=1
+const LIMITE_MT = 2000;   // notas por consulta (as mais recentes); o total do período vai junto
 router.get('/relatorios/melhor-transportadora', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
   try {
     const calc = require('../calculoFrete');
@@ -848,7 +852,9 @@ router.get('/relatorios/melhor-transportadora', autenticar, permitirAlguma('pode
               f.qtd_volumes, f.peso_kg, f.cubagem_m3, f.valor_faturado, f.transportadora AS transportadora_nf,
               f.transportadora_cte, f.numero_cte, f.valor_total_cte, f.redespacho, f.cidade_redespacho, f.redespacho_cnpj, f.observacoes
          FROM fretes f WHERE ${filtros}
-        ORDER BY f.data_emissao_nf DESC NULLS LAST, f.numero_nf DESC LIMIT 500`, valores);
+        ORDER BY f.data_emissao_nf DESC NULLS LAST, f.numero_nf DESC LIMIT ${LIMITE_MT}`, valores);
+    // Quantas notas o período tem de verdade (a tela avisa quando passa do limite).
+    const { rows: [{ total: totalPeriodo }] } = await consultaCliente(req, `SELECT COUNT(*)::int AS total FROM fretes f WHERE ${filtros}`, valores);
 
     // % de entregas no prazo (últimos 180 dias), por transportadora e por transportadora + UF.
     const { rows: hist } = await pool.query(
@@ -873,8 +879,9 @@ router.get('/relatorios/melhor-transportadora', autenticar, permitirAlguma('pode
       return base.total ? { pct: Math.round((100 * base.no_prazo) / base.total), entregas: base.total, porUf: base === porUf } : null;
     };
 
-    const { todosTrechos, porTransportadora, destinoDa } = await contextoDestinos();
-    let economiaTotal = 0; let comSugestaoDiferente = 0; let semOpcao = 0;
+    const { porTransportadora, destinoDa, ufOrigem } = await contextoDestinos();
+    let economiaTotal = 0; let comSugestaoDiferente = 0; let semOpcao = 0; let comEconomia = 0;
+    const semTabelaPorCidade = new Map();   // cidades sem nenhuma tabela: onde vale negociar
     const resultado = notas.map((n) => {
       const destino = destinoDa(n);
       const alvo = destino.tipo === 'cliente' ? { cidade: n.cidade, bairro: n.bairro, uf: n.uf } : { cidade: destino.cidade, bairro: null, uf: destino.uf };
@@ -886,7 +893,7 @@ router.get('/relatorios/melhor-transportadora', autenticar, permitirAlguma('pode
         const { freteBase } = calc.calcularFreteBase(trecho, { qtdVolumes: n.qtd_volumes, pesoKg: n.peso_kg, cubagemM3: n.cubagem_m3 });
         const comp = calc.calcularComponentesEValorTotal(trecho, freteBase, {
           valorFaturado: n.valor_faturado, pesoKg: n.peso_kg, qtdVolumes: n.qtd_volumes,
-          cliente: n.cliente, clienteCnpj: n.cliente_documento, ufIni: 'RJ', ufFim: n.uf,
+          cliente: n.cliente, clienteCnpj: n.cliente_documento, ufIni: ufOrigem, ufFim: alvo.uf || n.uf,
         });
         if (!Number.isFinite(comp.total) || comp.total <= 0) continue;
         opcoes.push({ transportadora: nome, tabela: trecho.tabela_nome, valor: Math.round(comp.total * 100) / 100,
@@ -903,15 +910,23 @@ router.get('/relatorios/melhor-transportadora', autenticar, permitirAlguma('pode
           const limite = prazoMax || atualOpcao?.prazo || null;
           sugerida = (limite ? opcoes.filter((o) => o.prazo != null && o.prazo <= limite) : opcoes)[0] || opcoes[0];
         } else sugerida = opcoes[0];
-      } else semOpcao += 1;
+      } else {
+        semOpcao += 1;
+        const k = `${destino.cidade || n.cidade || '—'}/${alvo.uf || n.uf || ''}`;
+        semTabelaPorCidade.set(k, (semTabelaPorCidade.get(k) || 0) + 1);
+      }
       const diferente = sugerida && atualNome && normTransp(sugerida.transportadora) !== normTransp(atualNome);
       const economia = sugerida && valorAtual != null && diferente ? Math.max(0, Math.round((valorAtual - sugerida.valor) * 100) / 100) : 0;
       if (diferente) comSugestaoDiferente += 1;
+      if (economia > 0) comEconomia += 1;
       economiaTotal += economia;
       const { observacoes, ...semObs } = n;
-      return { ...semObs, destino, transportadora_atual: atualNome, valor_atual: valorAtual, atual_na_tabela: !!atualOpcao, sugerida, economia, opcoes };
+      return { ...semObs, destino, transportadora_atual: atualNome, valor_atual: valorAtual, atual_na_tabela: !!atualOpcao, sugerida, economia,
+        mesma_transportadora: !!(sugerida && atualNome && !diferente), opcoes };
     });
-    res.json({ criterio, embarcadas, resumo: { notas: resultado.length, comSugestaoDiferente, semOpcao, economiaTotal: Math.round(economiaTotal * 100) / 100 }, notas: resultado });
+    const cidadesSemTabela = [...semTabelaPorCidade.entries()].map(([cidade, notas]) => ({ cidade, notas })).sort((a, b) => b.notas - a.notas).slice(0, 20);
+    res.json({ criterio, embarcadas, resumo: { notas: resultado.length, totalPeriodo, limite: LIMITE_MT, comSugestaoDiferente, comEconomia, semOpcao, cidadesSemTabela,
+      economiaTotal: Math.round(economiaTotal * 100) / 100 }, notas: resultado });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: `Erro ao montar o relatório. Detalhe técnico: ${err.message}` });
@@ -1218,13 +1233,13 @@ router.get('/relatorios/consolidacao', autenticar, permitirAlguma('pode_ver_rela
     if (embarcadas) notas.forEach((n) => { n.transportadora_nf = n.transportadora_cte || n.transportadora_nf; n.data_ref = n.data_emissao_cte || n.data_emissao_nf; });
     else notas.forEach((n) => { n.data_ref = n.data_emissao_nf; });
 
-    const { calc, porTransportadora, destinoDa } = await contextoDestinos();
+    const { calc, porTransportadora, destinoDa, ufOrigem } = await contextoDestinos();
     const norm = (t) => calc.normalizarCidade(t || '').replace(/[^a-z0-9]+/g, ' ').trim();
     // Frete de UMA remessa (uma nota, ou o grupo somado) por um trecho.
     const freteDe = (trecho, carga, n, destino) => {
       const { freteBase } = calc.calcularFreteBase(trecho, { qtdVolumes: carga.vol, pesoKg: carga.peso, cubagemM3: carga.cub });
       const comp = calc.calcularComponentesEValorTotal(trecho, freteBase, {
-        valorFaturado: carga.valor, pesoKg: carga.peso, qtdVolumes: carga.vol, cliente: n.cliente, clienteCnpj: n.cliente_documento, ufIni: 'RJ', ufFim: destino.uf || n.uf,
+        valorFaturado: carga.valor, pesoKg: carga.peso, qtdVolumes: carga.vol, cliente: n.cliente, clienteCnpj: n.cliente_documento, ufIni: ufOrigem, ufFim: destino.uf || n.uf,
       });
       return Number.isFinite(comp.total) && comp.total > 0 ? Math.round(comp.total * 100) / 100 : null;
     };

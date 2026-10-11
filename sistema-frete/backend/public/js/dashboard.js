@@ -9247,39 +9247,81 @@ async function carregarMelhorTransp() {
   const criterio = document.getElementById('mtCriterio').value;
   document.getElementById('mtPrazoCampo').classList.toggle('oculto', criterio !== 'prazo');
   const params = new URLSearchParams({ criterio, embarcadas, desde: desdeEl.value, busca: document.getElementById('mtBusca').value.trim(), prazo_max: document.getElementById('mtPrazoMax').value });
-  corpo.innerHTML = '<tr><td colspan="12" style="color:var(--texto-fraco); padding:14px;">Calculando o frete de cada transportadora…</td></tr>';
+  corpo.innerHTML = '<tr><td colspan="6" style="color:var(--texto-fraco); padding:14px;">Calculando o frete de cada transportadora…</td></tr>';
   try {
     const resposta = await apiFetch(`/api/fretes/relatorios/melhor-transportadora?${params}`);
     const d = await resposta.json();
-    if (!resposta.ok) { corpo.innerHTML = `<tr><td colspan="12">${cfEsc(d.erro || 'Erro')}</td></tr>`; return; }
+    if (!resposta.ok) { corpo.innerHTML = `<tr><td colspan="6">${cfEsc(d.erro || 'Erro')}</td></tr>`; return; }
     mtDados = d;
-    const r = d.resumo;
-    document.getElementById('mtResumo').innerHTML = `
-      <div>Notas analisadas<strong>${r.notas}</strong>${r.semOpcao ? `${r.semOpcao} sem tabela para a cidade` : ''}</div>
-      <div style="border-left-color:#8b5cf6;">Com outra transportadora sugerida<strong>${r.comSugestaoDiferente}</strong></div>
-      <div style="border-left-color:var(--verde);">${d.embarcadas ? 'Teria economizado' : 'Economia possível'}<strong>${formatoMoeda(r.economiaTotal)}</strong></div>`;
-    corpo.innerHTML = d.notas.length ? d.notas.map((n, i) => {
-      const s = n.sugerida;
-      const igual = s && n.transportadora_atual && !n.economia && s.transportadora.toUpperCase() === String(n.transportadora_atual).toUpperCase();
-      return `<tr class="mt-linha" data-i="${i}" style="cursor:pointer;" title="Clique para ver todas as transportadoras">
-        <td><b>${cfEsc(n.numero_nf || '—')}</b></td>
-        <td style="white-space:nowrap;">${formatoData(n.data_emissao_nf)}</td>
-        <td>${cfEsc(n.cliente || '—')}</td>
-        <td>${mtDestino(n)}</td>
-        <td style="text-align:right; white-space:nowrap;">${n.qtd_volumes ?? '—'} vol<br><small style="color:var(--texto-fraco);">${n.peso_kg != null ? `${Number(n.peso_kg).toLocaleString('pt-BR')} kg` : ''}</small></td>
-        <td>${cfEsc(n.transportadora_atual || '—')}${n.transportadora_atual && !n.atual_na_tabela && !d.embarcadas ? '<br><small style="color:var(--texto-fraco);">sem tabela para a cidade</small>' : ''}</td>
-        <td style="text-align:right;">${n.valor_atual != null ? formatoMoeda(n.valor_atual) : '—'}${d.embarcadas && n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${cfEsc(n.numero_cte)}</small>` : ''}</td>
-        <td>${s ? (igual ? '<span style="color:var(--verde);">✓ já é a melhor</span>' : `<b>${cfEsc(s.transportadora)}</b>`) : '<span style="color:var(--texto-fraco);">nenhuma tabela atende</span>'}</td>
-        <td style="text-align:right;">${s ? formatoMoeda(s.valor) : '—'}</td>
-        <td style="text-align:right;">${s?.prazo != null ? `${s.prazo} d` : '—'}</td>
-        <td style="text-align:right;">${s ? mtPontual(s.pontualidade) : '—'}</td>
-        <td style="text-align:right; font-weight:700; color:${n.economia ? 'var(--verde)' : 'var(--texto-fraco)'};">${n.economia ? formatoMoeda(n.economia) : '—'}</td>
-      </tr>`;
-    }).join('') : `<tr><td colspan="12" style="color:var(--texto-fraco); padding:14px;">Nenhuma nota ${d.embarcadas ? 'embarcada' : 'aguardando saída'} neste período.</td></tr>`;
+    desenharMelhorTransp();
   } catch (err) {
-    corpo.innerHTML = '<tr><td colspan="12">Falha de conexão com o servidor.</td></tr>';
+    corpo.innerHTML = '<tr><td colspan="6">Falha de conexão com o servidor.</td></tr>';
   }
 }
+
+// Notas visíveis com o filtro "Mostrar" e a ordem escolhida (sem buscar de novo no servidor).
+function mtNotasVisiveis() {
+  const mostrar = document.getElementById('mtMostrar').value;
+  const ordem = document.getElementById('mtOrdem').value;
+  const lista = mtDados.notas.map((n, i) => ({ n, i })).filter(({ n }) => (
+    mostrar === 'economia' ? n.economia > 0
+      : mostrar === 'outra' ? n.sugerida && !n.mesma_transportadora && n.transportadora_atual
+        : mostrar === 'semtabela' ? !n.sugerida : true));
+  if (ordem === 'economia') lista.sort((a, b) => (b.n.economia || 0) - (a.n.economia || 0));
+  if (ordem === 'valor') lista.sort((a, b) => (b.n.valor_atual || 0) - (a.n.valor_atual || 0));
+  return lista;
+}
+
+function desenharMelhorTransp() {
+  const d = mtDados;
+  if (!d) return;
+  const r = d.resumo;
+  const corpo = document.getElementById('mtCorpo');
+  document.getElementById('mtResumo').innerHTML = `
+    <div>Notas analisadas<strong>${r.notas}</strong>${r.totalPeriodo > r.notas ? `de ${r.totalPeriodo} no período` : 'todas do período'}</div>
+    <div class="mt-clicavel" data-mt-mostrar="economia" style="border-left-color:var(--verde);" title="Mostrar só essas notas">${d.embarcadas ? 'Teria economizado' : 'Economia possível'}<strong>${formatoMoeda(r.economiaTotal)}</strong>em ${r.comEconomia || 0} nota(s)</div>
+    <div class="mt-clicavel" data-mt-mostrar="outra" style="border-left-color:#8b5cf6;" title="Mostrar só essas notas">Com outra transportadora sugerida<strong>${r.comSugestaoDiferente}</strong></div>
+    <div class="mt-clicavel" data-mt-mostrar="semtabela" style="border-left-color:var(--amarelo);" title="Mostrar só essas notas">Sem tabela para a cidade<strong>${r.semOpcao}</strong>${r.notas ? `${Math.round((100 * r.semOpcao) / r.notas)}% das notas` : ''}</div>`;
+  const avisos = [];
+  if (r.totalPeriodo > r.notas) {
+    avisos.push(`<div class="mt-aviso">O período tem <b>${r.totalPeriodo}</b> notas; foram analisadas as <b>${r.notas}</b> mais recentes. Para ver as outras, mude a data inicial ou use a busca.</div>`);
+  }
+  if (r.cidadesSemTabela?.length) {
+    avisos.push(`<details class="mt-aviso"><summary style="cursor:pointer;">Cidades sem nenhuma tabela de preço (${r.cidadesSemTabela.length}${r.cidadesSemTabela.length === 20 ? '+' : ''}) — onde vale pedir cotação às transportadoras</summary>
+      <div class="mt-cidades">${r.cidadesSemTabela.map((c) => `<span>${cfEsc(c.cidade)} · ${c.notas} nota(s)</span>`).join('')}</div></details>`);
+  }
+  document.getElementById('mtAvisos').innerHTML = avisos.join('');
+  const filtroAtivo = document.getElementById('mtMostrar').value;
+  document.querySelectorAll('#mtResumo [data-mt-mostrar]').forEach((c) => c.classList.toggle('mt-ativo', c.dataset.mtMostrar === filtroAtivo));
+
+  const visiveis = mtNotasVisiveis();
+  corpo.innerHTML = visiveis.length ? visiveis.map(({ n, i }) => {
+    const s = n.sugerida;
+    const sugerida = !s ? '<span style="color:var(--texto-fraco);">nenhuma tabela atende</span>'
+      : n.mesma_transportadora ? `<span style="color:var(--verde);">✓ a atual já é a melhor</span><span class="mt-sub">${formatoMoeda(s.valor)}${s.prazo != null ? ` · ${s.prazo} d` : ''}</span>`
+        : `<b>${cfEsc(s.transportadora)}</b><span class="mt-sub">${formatoMoeda(s.valor)}${s.prazo != null ? ` · ${s.prazo} dia(s)` : ''} · no prazo ${mtPontual(s.pontualidade)}</span>`;
+    const atual = n.transportadora_atual
+      ? `${cfEsc(n.transportadora_atual)}<span class="mt-sub">${n.valor_atual != null ? formatoMoeda(n.valor_atual) : (d.embarcadas ? '' : 'sem tabela para a cidade')}${d.embarcadas && n.numero_cte ? ` · CT-e ${cfEsc(n.numero_cte)}` : ''}</span>`
+      : '<span style="color:var(--texto-fraco);">não definida</span>';
+    return `<tr class="mt-linha${n.economia ? ' mt-economia' : ''}" data-i="${i}" style="cursor:pointer;" title="Clique para ver todas as transportadoras">
+      <td style="white-space:nowrap;"><b>${cfEsc(n.numero_nf || '—')}</b><span class="mt-sub">${formatoData(n.data_emissao_nf)}${n.numero_pedido ? ` · ped. ${cfEsc(n.numero_pedido)}` : ''}</span></td>
+      <td>${cfEsc(n.cliente || '—')}<span class="mt-sub">${mtDestino(n)}</span></td>
+      <td style="text-align:right; white-space:nowrap;">${n.qtd_volumes ?? '—'} vol<span class="mt-sub">${n.peso_kg != null ? `${Number(n.peso_kg).toLocaleString('pt-BR')} kg` : ''}</span></td>
+      <td>${atual}</td>
+      <td>${sugerida}</td>
+      <td style="text-align:right; white-space:nowrap;">${n.economia ? formatoMoeda(n.economia) : '<span style="color:var(--texto-fraco);">—</span>'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" style="color:var(--texto-fraco); padding:14px;">${d.notas.length ? 'Nenhuma nota com esse filtro.' : `Nenhuma nota ${d.embarcadas ? 'embarcada' : 'aguardando saída'} neste período.`}</td></tr>`;
+}
+document.getElementById('mtResumo')?.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-mt-mostrar]');
+  if (!card) return;
+  const sel = document.getElementById('mtMostrar');
+  sel.value = sel.value === card.dataset.mtMostrar ? 'todas' : card.dataset.mtMostrar;
+  if (sel.value === 'economia') document.getElementById('mtOrdem').value = 'economia';
+  desenharMelhorTransp();
+});
+['mtMostrar', 'mtOrdem'].forEach((id) => document.getElementById(id)?.addEventListener('change', desenharMelhorTransp));
 // Clique na nota: abre/fecha o ranking de todas as transportadoras.
 document.getElementById('mtCorpo')?.addEventListener('click', (e) => {
   const linha = e.target.closest('tr.mt-linha');
@@ -9289,7 +9331,7 @@ document.getElementById('mtCorpo')?.addEventListener('click', (e) => {
   const n = mtDados.notas[Number(linha.dataset.i)];
   const det = document.createElement('tr');
   det.className = 'mt-detalhe';
-  det.innerHTML = `<td colspan="12" style="background:var(--bg-elevado); padding:10px 14px;">
+  det.innerHTML = `<td colspan="6" style="background:var(--bg-elevado); padding:10px 14px;">
     ${n.opcoes.length ? `<table style="width:100%; font-size:12.5px;"><thead><tr><th style="text-align:left;">#</th><th style="text-align:left;">Transportadora</th><th style="text-align:left;">Tabela</th>
       <th style="text-align:right;">Frete pela tabela</th><th style="text-align:right;">Prazo</th><th style="text-align:right;">No prazo (6 meses)</th><th style="text-align:right;">Diferença p/ a atual</th></tr></thead><tbody>
       ${n.opcoes.map((o, k) => {

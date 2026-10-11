@@ -1357,3 +1357,23 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 .cd-resumo div.mt-clicavel:hover { outline: 1px solid var(--borda); }
 .cd-resumo div.mt-ativo { outline: 2px solid var(--azul); }
 .cr-tabela tbody td { white-space: normal; vertical-align: top; padding: 8px 10px; }
+
+/* ---------- Roteirizar entregas ---------- */
+.rt-grade { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 1000px) { .rt-grade { grid-template-columns: 1fr; } }
+.rt-bloco { background: var(--bg-elevado); border-radius: var(--raio); padding: 12px 14px; min-width: 0; }
+.rt-lista { max-height: 420px; overflow: auto; border: 1px solid var(--borda); border-radius: var(--raio); }
+.rt-tabela { width: 100%; font-size: 12.5px; }
+.rt-tabela tbody td { white-space: normal; vertical-align: top; padding: 7px 10px; }
+.rt-tabela tbody tr[data-id] { cursor: pointer; }
+.rt-tabela tr.rt-sel td { background: rgba(77,124,255,.14); }
+.rt-sub { display: block; font-size: 11px; color: var(--texto-fraco); margin-top: 2px; }
+#rtMapa { height: 440px; border-radius: var(--raio); border: 1px solid var(--borda); z-index: 0; }
+.rt-marcador span { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font-weight: 800;
+  font-size: 12px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.rt-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--azul); color: #fff; font-weight: 800; font-size: 12px; }
+.rt-num-volta { background: #16a34a; }
+.rt-alertas { min-width: 220px; }
+.rt-alerta-espera { color: var(--vermelho); font-size: 11.5px; margin-bottom: 3px; }
+.rt-alerta-aviso { color: #e8890c; font-size: 11.5px; margin-bottom: 3px; }
+.rt-mover { width: auto !important; padding: 2px 8px !important; font-size: 12px !important; }

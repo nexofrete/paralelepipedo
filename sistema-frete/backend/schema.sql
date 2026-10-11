@@ -1366,3 +1366,68 @@ CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_status ON ctes_emitidos (status, cr
 
 -- Permissão de emitir CT-e (transmitir, cancelar, carta de correção).
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pode_emitir_cte BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- ===================== Roteirização de entregas =====================
+CREATE TABLE IF NOT EXISTS configuracao_roteirizacao (
+    id                      INTEGER PRIMARY KEY DEFAULT 1,
+    provedor                VARCHAR(10) NOT NULL DEFAULT 'osrm',   -- osrm, ors (OpenRouteService), estimado
+    osrm_url                VARCHAR(200),
+    ors_url                 VARCHAR(200),
+    ors_chave               TEXT,
+    nominatim_url           VARCHAR(200),
+    geocodificar_endereco   BOOLEAN NOT NULL DEFAULT TRUE,
+    fator_caminhao          NUMERIC(4,2) NOT NULL DEFAULT 1.25,    -- OSRM calcula para carro: caminhão leva mais tempo
+    velocidade_estimada     INTEGER NOT NULL DEFAULT 55,           -- km/h na estimativa sem serviço de rotas
+    tempo_parada_min        INTEGER NOT NULL DEFAULT 30,
+    CONSTRAINT configuracao_roteirizacao_unica CHECK (id = 1)
+);
+INSERT INTO configuracao_roteirizacao (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+-- Horário em que os clientes recebem (padrão de toda rota; a tela pode mudar por rota).
+ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS recebimento_inicio VARCHAR(5) NOT NULL DEFAULT '08:00';
+ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS recebimento_fim VARCHAR(5) NOT NULL DEFAULT '18:00';
+ALTER TABLE configuracao_roteirizacao ADD COLUMN IF NOT EXISTS recebimento_sabado BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Endereços já procurados no mapa (não consulta de novo; "achado = false" evita repetir o que não existe).
+CREATE TABLE IF NOT EXISTS geocodificacao_cache (
+    chave       TEXT PRIMARY KEY,
+    lat         NUMERIC(10,6),
+    lon         NUMERIC(10,6),
+    achado      BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em   TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Restrições de circulação de caminhões por cidade (horário de Brasília).
+-- categorias: utilitario, vuc, tres_quartos, toco, truck, carreta (vazio = todas).
+-- dias: 0 = domingo ... 6 = sábado. tipo "rodizio": finais = {"1": "1,2", ...} por dia.
+-- efeito: "esperar" (o veículo aguarda a janela acabar) ou "avisar" (só alerta).
+CREATE TABLE IF NOT EXISTS restricoes_circulacao (
+    id          SERIAL PRIMARY KEY,
+    cidade      VARCHAR(120) NOT NULL,
+    uf          CHAR(2) NOT NULL,
+    bairros     TEXT,
+    descricao   VARCHAR(200) NOT NULL,
+    categorias  TEXT,
+    dias        VARCHAR(20) NOT NULL,
+    inicio      VARCHAR(5) NOT NULL,
+    fim         VARCHAR(5) NOT NULL,
+    tipo        VARCHAR(10) NOT NULL DEFAULT 'proibido',
+    finais      JSONB,
+    efeito      VARCHAR(10) NOT NULL DEFAULT 'esperar',
+    observacao  TEXT,
+    ativo       BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em   TIMESTAMP NOT NULL DEFAULT NOW()
+);
+-- Regras iniciais (só na primeira vez). A ZMRC vale no centro expandido de São
+-- Paulo: fica como "avisar" para a cidade toda até alguém listar os bairros.
+INSERT INTO restricoes_circulacao (cidade, uf, descricao, categorias, dias, inicio, fim, tipo, finais, efeito, observacao)
+SELECT * FROM (VALUES
+  ('SAO PAULO', 'SP', 'ZMRC — caminhões (exceto VUC) na Zona de Máxima Restrição', 'tres_quartos,toco,truck,carreta', '1,2,3,4,5', '05:00', '21:00', 'proibido', NULL::jsonb, 'avisar',
+   'Centro expandido. Confira as regras atuais na CET/Prefeitura de São Paulo e liste os bairros para o sistema esperar a janela.'),
+  ('SAO PAULO', 'SP', 'ZMRC — caminhões (exceto VUC) aos sábados', 'tres_quartos,toco,truck,carreta', '6', '10:00', '14:00', 'proibido', NULL::jsonb, 'avisar',
+   'Confira as regras atuais na CET/Prefeitura de São Paulo.'),
+  ('SAO PAULO', 'SP', 'Rodízio municipal (final de placa)', '', '1,2,3,4,5', '07:00', '10:00', 'rodizio', '{"1":"1,2","2":"3,4","3":"5,6","4":"7,8","5":"9,0"}'::jsonb, 'avisar',
+   'Vale no centro expandido. Confira as regras atuais na CET/Prefeitura de São Paulo.'),
+  ('SAO PAULO', 'SP', 'Rodízio municipal (final de placa) — tarde', '', '1,2,3,4,5', '17:00', '20:00', 'rodizio', '{"1":"1,2","2":"3,4","3":"5,6","4":"7,8","5":"9,0"}'::jsonb, 'avisar',
+   'Vale no centro expandido. Confira as regras atuais na CET/Prefeitura de São Paulo.')
+) AS v(cidade, uf, descricao, categorias, dias, inicio, fim, tipo, finais, efeito, observacao)
+WHERE NOT EXISTS (SELECT 1 FROM restricoes_circulacao);

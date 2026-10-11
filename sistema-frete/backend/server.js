@@ -37,6 +37,7 @@ const faturasRoutes = require('./src/routes/faturas');
 const agendaRoutes = require('./src/routes/agenda');
 const pastaXmlRoutes = require('./src/routes/pastaXml');
 const cteEmissaoRoutes = require('./src/routes/cteEmissao');
+const roteirizacaoRoutes = require('./src/routes/roteirizacao');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
@@ -61,7 +62,8 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:'],
+      // Mapa da roteirização: as imagens do mapa vêm do OpenStreetMap.
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://tile.openstreetmap.org'],
       fontSrc: ["'self'", 'data:'],
       connectSrc: ["'self'", 'https://brasilapi.com.br'],
       objectSrc: ["'none'"],
@@ -179,6 +181,7 @@ app.use('/api/faturas', faturasRoutes);
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);
+app.use('/api/roteirizacao', roteirizacaoRoutes);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

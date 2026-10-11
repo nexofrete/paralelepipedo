@@ -6143,7 +6143,7 @@ document.getElementById('listaCamposBI').innerHTML = CAMPOS_BI.map((g) => `
 `).join('');
 
 // Relatórios: mostra uma sub-tela (gráficos, entregas, notas sem mapa, BI...).
-const SUBABAS_RELATORIO = { graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', bi: 'subabaBI',
+const SUBABAS_RELATORIO = { graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
   comparador: 'subabaComparador', anomalias: 'subabaAnomalias', scorecard: 'subabaScorecard', nfeCte: 'subabaNfeCte', auditoriaFrete: 'subabaAuditoriaFrete' };
 function mostrarSubabaRelatorio(nome) {
   if (!SUBABAS_RELATORIO[nome]) nome = 'graficos';
@@ -6158,6 +6158,7 @@ function mostrarSubabaRelatorio(nome) {
   if (nome === 'semMapa') carregarSemMapa();
   if (nome === 'melhorTransp') carregarMelhorTransp();
   if (nome === 'consolidacao') carregarRotas();
+  if (nome === 'roteirizar') window.carregarRoteirizacao?.();
   if (nome === 'anomalias') { carregarAnomalias(); carregarDuplicidades(); }
   if (nome === 'scorecard') carregarScorecard();
   if (nome === 'nfeCte') carregarNfeCte();
@@ -10188,6 +10189,14 @@ document.getElementById('btnCrImprimir')?.addEventListener('click', () => {
   const janela = window.open('', '_blank');
   if (janela) janela.document.write('<p style="font-family:Arial; padding:20px;">Montando o romaneio…</p>');
   abrirCargaMontada('imprimir', janela);
+});
+// Roteirizar os pedidos marcados: abre "Roteirizar entregas" já com eles marcados.
+document.getElementById('btnCrRoteirizar')?.addEventListener('click', () => {
+  const ids = [...crMarcados].filter((id) => /^\d+$/.test(id));
+  if (!ids.length) { mostrarAlerta(crMarcados.size ? 'Os pedidos marcados ainda não estão no sistema (só na planilha do ERP) — eles entram depois da importação.' : 'Marque os pedidos primeiro.', { tipo: 'info' }); return; }
+  if (ids.length < crMarcados.size) mostrarAlerta(`${crMarcados.size - ids.length} pedido(s) marcados só existem na planilha do ERP e ficaram de fora.`, { tipo: 'info' });
+  window.roteirizarIds?.(ids);
+  document.querySelector('.nav-subitem[data-subaba="roteirizar"]')?.click();
 });
 document.getElementById('btnCrExcel')?.addEventListener('click', () => { if (!crMarcados.size) { mostrarAlerta('Marque os pedidos primeiro.', { tipo: 'info' }); return; } abrirCargaMontada('excel'); });
 document.querySelectorAll('input.campo-data').forEach(ativarCampoData);

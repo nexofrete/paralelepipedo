@@ -107,6 +107,26 @@ Ainda não fazem parte: MDF-e, CT-e complementar/substituto/anulação, expedido
 
 Testes automáticos do CT-e: `npm test` dentro de `backend`. A validação nos schemas oficiais precisa do `xmllint`.
 
+## Roteirizar entregas
+
+Em **Relatórios → 🗺️ Roteirizar entregas**, ou pelo botão **🗺️ Roteirizar** da carga montada em "Consolidar rotas":
+
+1. Marque as notas que vão no caminhão. Notas para o mesmo endereço viram uma parada só. Nota com redespacho para na transportadora do redespacho.
+2. Informe a saída: data, hora, veículo (VUC, 3/4, toco, truck...), placa (para o rodízio), tempo de descarga e o horário em que os clientes recebem.
+3. **Roteirizar** devolve:
+   - a **sequência de entrega**;
+   - a **distância e o tempo de cada trecho**;
+   - o **horário de chegada** em cada cliente;
+   - as **restrições de circulação** encontradas;
+   - as **pausas e pernoites do motorista** (Lei 13.103: 30 min a cada 5h30 de direção e 11h de descanso a cada 10h de jornada).
+4. Junto vem o mapa. Com as setas ↑ ↓ você muda a ordem e os horários são recalculados. Também dá para abrir no Google Maps, imprimir o roteiro e exportar para Excel.
+
+**De onde vêm as informações:**
+- **Endereço:** do cadastro do cliente ou do XML da NF-e.
+- **Localização no mapa:** a rua é procurada no OpenStreetMap e fica guardada no banco. Se não for achada, a parada fica no centro da cidade e aparece marcada como aproximada.
+- **Distância e tempo:** pelo OSRM (gratuito, ajustado para caminhão) ou pelo OpenRouteService (perfil caminhão; precisa de uma chave gratuita). Sem internet, o sistema estima pela distância em linha reta.
+- **Restrições de circulação:** em **⚙ Restrições e mapa**. Já vêm a ZMRC e o rodízio de São Paulo como **base para conferir na CET/Prefeitura**. Cadastre as das outras cidades com dias, horários, bairros e veículos afetados.
+
 ## O que já está pronto
 
 - Login com perfis admin (vê tudo) e cliente (vê só os registros do seu nome)

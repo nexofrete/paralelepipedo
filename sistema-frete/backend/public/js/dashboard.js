@@ -5350,7 +5350,7 @@ function desenharBarrasEmpilhadas(canvasId, labels, series, formatarValor) {
 }
 
 // Relatórios: entregas previstas (fretes sem entrega registrada).
-const epEstado = { dados: null, aba: 'atrasadas' };
+const epEstado = { dados: null, aba: 'atrasadas', faixa: '' };
 async function carregarEntregasPrevistas() {
   let d;
   try {
@@ -5409,9 +5409,20 @@ function epLinhasFiltradas() {
   return lista.filter((x) => {
     if (transp && x.transportadora !== transp) return false;
     if (termo) return epBate(x, termo);
-    if (epEstado.aba === 'atrasadas') return x.dias < 0;
+    if (epEstado.aba === 'atrasadas') {
+      if (x.dias >= 0) return false;
+      const atraso = -x.dias;
+      if (epEstado.faixa === '7') return atraso <= 7;
+      if (epEstado.faixa === '30') return atraso > 7 && atraso <= 30;
+      if (epEstado.faixa === 'mais') return atraso > 30;
+      return true;
+    }
     if (epEstado.aba === 'hoje') return x.dias === 0;
     return x.dias > 0;
+  }).sort((a, b) => {
+    // Atrasadas: por padrão as de atraso menor (as que ainda dá para resolver) primeiro.
+    if (epEstado.aba !== 'atrasadas' || termo) return 0;
+    return document.getElementById('epOrdem')?.value === 'antigas' ? a.dias - b.dias : b.dias - a.dias;
   });
 }
 
@@ -5445,25 +5456,41 @@ function epAbrirRastreamento(dados) {
 
 function epRenderizarLista() {
   const linhas = epLinhasFiltradas();
-  const selo = (dias) => dias < 0 ? `<span class="ep-selo atraso">${Math.abs(dias)} dia(s) de atraso</span>`
+  const termo = (document.getElementById('epBusca')?.value || '').trim();
+  // Contagem em cada aba (com o filtro de transportadora).
+  const transp = document.getElementById('epTransportadora').value;
+  const base = (epEstado.dados?.lista || []).filter((x) => !transp || x.transportadora === transp);
+  const cont = { atrasadas: base.filter((x) => x.dias < 0).length, hoje: base.filter((x) => x.dias === 0).length, proximos: base.filter((x) => x.dias > 0).length };
+  const rotulos = { atrasadas: 'Atrasadas', hoje: 'Hoje', proximos: 'Próximos 7 dias' };
+  document.querySelectorAll('#epAbas [data-ep]').forEach((b) => { b.textContent = `${rotulos[b.dataset.ep]} (${cont[b.dataset.ep].toLocaleString('pt-BR')})`; });
+  const atrasadas = base.filter((x) => x.dias < 0);
+  const faixaQtd = { '': atrasadas.length, 7: atrasadas.filter((x) => -x.dias <= 7).length, 30: atrasadas.filter((x) => -x.dias > 7 && -x.dias <= 30).length, mais: atrasadas.filter((x) => -x.dias > 30).length };
+  const nomesFaixa = { '': 'Todos', 7: '1 a 7 dias', 30: '8 a 30 dias', mais: 'Mais de 30 dias' };
+  document.querySelectorAll('#epFaixas [data-faixa]').forEach((b) => {
+    b.textContent = `${nomesFaixa[b.dataset.faixa]} (${faixaQtd[b.dataset.faixa]})`;
+    b.classList.toggle('ativa', b.dataset.faixa === epEstado.faixa);
+  });
+  document.getElementById('epFiltrosAtraso').classList.toggle('oculto', epEstado.aba !== 'atrasadas' || !!termo);
+  document.getElementById('epAvisoAntigas').innerHTML = epEstado.aba === 'atrasadas' && !termo && faixaQtd.mais
+    ? `<div class="mt-aviso">${faixaQtd.mais} nota(s) com <b>mais de 30 dias</b> de atraso — normalmente a entrega aconteceu e não foi baixada.
+       Use <b>Buscar entregas</b>, <b>Lançar entregas do WhatsApp</b> ou o comprovante para dar baixa, e o atraso real fica visível.</div>` : '';
+
+  const selo = (dias) => dias < 0 ? `<span class="ep-selo atraso${dias < -30 ? ' antigo' : ''}">${Math.abs(dias)} dia(s) de atraso</span>`
     : dias === 0 ? '<span class="ep-selo hoje">hoje</span>' : `<span class="ep-selo breve">em ${dias} dia(s)</span>`;
+  const sub = (t) => `<small class="ep-sub">${t}</small>`;
   document.getElementById('epCorpo').innerHTML = linhas.length ? linhas.map((x) => `
     <tr data-ep-id="${x.id}">
-      <td><b>${formatoData(x.data_entrega_prevista)}</b></td>
-      <td>${selo(x.dias)}</td>
-      <td>${cfEsc(x.numero_pedido || '—')}</td>
-      <td>${x.numero_nf ? `<button type="button" class="btn-copiar-nf" data-nf="${String(x.numero_nf).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" title="Clique para copiar a Nota Fiscal" aria-label="Copiar Nota Fiscal ${cfEsc(x.numero_nf)}"><span class="icone-copiar-nf">📋</span> <span class="numero-nf-copiar">${cfEsc(x.numero_nf)}</span> <span class="contador-copias-nf">×${x.nf_copias || 0}</span></button>` : '—'}</td>
-      <td>${cfEsc(x.numero_cte || '—')}</td>
-      <td class="ep-cli" title="${cfEsc(x.cliente || '')}">${cfEsc(x.cliente || '—')}</td>
-      <td>${cfEsc([x.cidade, x.uf].filter(Boolean).join('/') || '—')}</td>
-      <td>${cfEsc(x.transportadora || '—')}</td>
+      <td><b>${formatoData(x.data_entrega_prevista)}</b> ${selo(x.dias)}
+        ${sub(`${x.data_coleta ? `coleta ${formatoData(x.data_coleta)}` : `CT-e ${formatoData(x.data_emissao_cte)}`}${x.prazo_dias_tabela != null ? ` + ${x.prazo_dias_tabela} dia(s)` : ''}`)}</td>
+      <td>${x.numero_nf ? `<button type="button" class="btn-copiar-nf" data-nf="${String(x.numero_nf).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" title="Clique para copiar a Nota Fiscal (já copiada ${x.nf_copias || 0} vez(es))" aria-label="Copiar Nota Fiscal ${cfEsc(x.numero_nf)}"><span class="icone-copiar-nf">📋</span> <span class="numero-nf-copiar">${cfEsc(x.numero_nf)}</span>${x.nf_copias ? ` <span class="contador-copias-nf">×${x.nf_copias}</span>` : ''}</button>` : '—'}
+        ${sub(`${x.numero_pedido ? `ped. ${cfEsc(x.numero_pedido)}` : ''}${x.numero_pedido && x.numero_cte ? ' · ' : ''}${x.numero_cte ? `CT-e ${cfEsc(x.numero_cte)}` : ''}`)}</td>
+      <td class="ep-cli" title="${cfEsc(x.cliente || '')}">${cfEsc(x.cliente || '—')}${sub(cfEsc([x.cidade, x.uf].filter(Boolean).join('/') || '—'))}</td>
+      <td class="ep-transp" title="${cfEsc(x.transportadora || '')}">${cfEsc(x.transportadora || '—')}
+        ${x.url_rastreamento ? `<br><button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : ''}</td>
       <td class="ep-ocorrencia">${epCelulaOcorrencia(x)}</td>
-      <td>${x.url_rastreamento ? `<button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : '<span class="sem-rastreamento">—</span>'}</td>
-      <td>${x.data_coleta ? `${formatoData(x.data_coleta)} <small style="color:var(--texto-fraco);">coleta</small>` : `${formatoData(x.data_emissao_cte)} <small style="color:var(--texto-fraco);">CT-e</small>`}</td>
-      <td>${x.prazo_dias_tabela != null ? `${x.prazo_dias_tabela} dia(s)` : '—'}</td>
       <td>${podeEditar ? `<button class="btn btn-secundario" data-ep-entregue="${x.id}" style="width:auto; padding:4px 10px; font-size:11.5px;">✓ Entregue</button>` : ''}</td>
     </tr>`).join('')
-    : `<tr><td colspan="13" style="color:var(--texto-fraco); padding:14px;">${(document.getElementById('epBusca')?.value || '').trim() ? 'Nenhuma nota em aberto com essa busca. (Notas já entregues não aparecem aqui — procure em Todos os registros.)' : epEstado.aba === 'atrasadas' ? 'Nenhuma entrega atrasada. ✓' : 'Nenhuma entrega prevista nesse período.'}</td></tr>`;
+    : `<tr><td colspan="6" style="color:var(--texto-fraco); padding:14px;">${termo ? 'Nenhuma nota em aberto com essa busca. (Notas já entregues não aparecem aqui — procure em Todos os registros.)' : epEstado.aba === 'atrasadas' ? (epEstado.faixa ? 'Nenhuma nota nessa faixa de atraso.' : 'Nenhuma entrega atrasada. ✓') : 'Nenhuma entrega prevista nesse período.'}</td></tr>`;
 }
 
 // Última ocorrência da SSW na lista (clicável: abre o histórico).
@@ -5629,6 +5656,13 @@ document.getElementById('epAbas').addEventListener('click', (e) => {
   epRenderizarLista();
 });
 document.getElementById('epTransportadora').addEventListener('change', epRenderizarLista);
+document.getElementById('epFaixas')?.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-faixa]');
+  if (!b) return;
+  epEstado.faixa = b.dataset.faixa;
+  epRenderizarLista();
+});
+document.getElementById('epOrdem')?.addEventListener('change', epRenderizarLista);
 document.getElementById('epBusca')?.addEventListener('input', epRenderizarLista);
 document.getElementById('btnEpExportar').addEventListener('click', epExportar);
 document.getElementById('epCorpo').addEventListener('click', async (e) => {

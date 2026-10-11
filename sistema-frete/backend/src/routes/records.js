@@ -490,7 +490,9 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
            COUNT(*) FILTER (WHERE data_entrega_prevista = CURRENT_DATE)::int AS hoje,
            COUNT(*) FILTER (WHERE data_entrega_prevista BETWEEN CURRENT_DATE + 1 AND CURRENT_DATE + 7)::int AS proximos_7,
            COUNT(*) FILTER (WHERE data_entrega_prevista > CURRENT_DATE + 7)::int AS depois,
-           COUNT(*) FILTER (WHERE data_entrega_prevista IS NULL AND chave_cte IS NOT NULL)::int AS sem_previsao
+           COUNT(*) FILTER (WHERE data_entrega_prevista IS NULL AND chave_cte IS NOT NULL)::int AS sem_previsao,
+           -- Atraso grande costuma ser entrega que aconteceu e não foi baixada.
+           COUNT(*) FILTER (WHERE data_entrega_prevista < CURRENT_DATE - 30)::int AS atrasadas_30
          FROM fretes WHERE ${ABERTO}`),
       consultaCliente(req,
         `SELECT COALESCE(transportadora_cte, transportadora, 'Sem transportadora') AS transportadora,
@@ -521,8 +523,7 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
            LEFT JOIN copias_nf cn ON cn.numero_nf = f.numero_nf
           WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND f.nf_retornou IS NOT TRUE AND COALESCE(f.status, 'Pendente') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado')
             AND f.data_entrega_prevista <= CURRENT_DATE + 7
-          ORDER BY f.data_entrega_prevista, f.transportadora_cte NULLS LAST, f.numero_nf
-          LIMIT 500`),
+          ORDER BY f.data_entrega_prevista, f.transportadora_cte NULLS LAST, f.numero_nf`),
       consultaCliente(req,
         `SELECT COUNT(*) FILTER (WHERE sla_status = 'No Prazo')::int AS no_prazo, COUNT(sla_status)::int AS total
            FROM fretes WHERE data_entrega >= DATE_TRUNC('month', CURRENT_DATE)`),

@@ -1738,9 +1738,21 @@
                   <button class="btn btn-secundario" id="btnEpExportar" style="width:auto; padding:6px 12px; font-size:12px;">⬇ Excel</button>
                 </div>
               </div>
-              <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+              <div id="epFiltrosAtraso" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12.5px;">
+                <span style="color:var(--texto-fraco);">Atraso:</span>
+                <div class="ep-abas" id="epFaixas">
+                  <button class="btn btn-secundario ep-aba ativa" data-faixa="">Todos</button>
+                  <button class="btn btn-secundario ep-aba" data-faixa="7">1 a 7 dias</button>
+                  <button class="btn btn-secundario ep-aba" data-faixa="30">8 a 30 dias</button>
+                  <button class="btn btn-secundario ep-aba" data-faixa="mais" title="Atraso tão grande costuma ser entrega que aconteceu e não foi baixada no sistema">Mais de 30 dias</button>
+                </div>
+                <select id="epOrdem" style="padding:6px 8px; border-radius:var(--raio); border:1px solid var(--borda); background:var(--bg-elevado); color:var(--texto); font-size:12px;">
+                  <option value="recentes">Menos dias de atraso primeiro</option><option value="antigas">Mais dias de atraso primeiro</option></select>
+              </div>
+              <div id="epAvisoAntigas"></div>
+              <div style="overflow-x:auto; max-height:520px; overflow-y:auto;">
                 <table class="ep-tabela">
-                  <thead><tr><th>Previsão</th><th>Situação</th><th>Pedido</th><th>NF</th><th>CT-e</th><th>Cliente</th><th>Cidade/UF</th><th>Transportadora</th><th>Última ocorrência</th><th>Rastrear</th><th>Coleta / CT-e</th><th>Prazo</th><th></th></tr></thead>
+                  <thead><tr><th>Previsão</th><th>Nota</th><th>Cliente</th><th>Transportadora</th><th>Última ocorrência</th><th></th></tr></thead>
                   <tbody id="epCorpo"></tbody>
                 </table>
               </div>

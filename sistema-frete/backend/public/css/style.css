@@ -1167,7 +1167,11 @@ body:has(#faixaAmbienteTeste:not(.oculto)) .tela-login {
 .ep-abas { display: flex; gap: 6px; }
 .ep-aba { width: auto !important; padding: 6px 12px !important; font-size: 12px !important; }
 .ep-aba.ativa { background: var(--azul); color: #fff; border-color: var(--azul); }
-.ep-tabela th, .ep-tabela td { white-space: nowrap; font-size: 12.5px; }
+.ep-tabela th, .ep-tabela td { white-space: nowrap; font-size: 12.5px; vertical-align: top; }
+.ep-tabela .ep-sub { display: block; font-size: 11px; color: var(--texto-fraco); margin-top: 3px; white-space: nowrap; }
+.ep-tabela td.ep-transp { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.ep-tabela td.ep-ocorrencia { white-space: normal; min-width: 180px; max-width: 320px; }
+.ep-selo.atraso.antigo { background: rgba(140,150,165,0.18); color: var(--texto-fraco); }
 .ep-tabela td.ep-cli { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .ep-tabela tbody tr { cursor: pointer; }
 .ep-tabela tbody tr:hover td { background: var(--bg-card); }

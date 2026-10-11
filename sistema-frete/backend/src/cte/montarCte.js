@@ -121,6 +121,11 @@ function grupoIcms(icms = {}) {
     return g('ICMS90', t('CST', '90'), t('pRedBC', Number(icms.pRedBC) > 0 ? dec(icms.pRedBC) : null), t('vBC', dec(icms.vBC)),
       t('pICMS', dec(icms.pICMS)), t('vICMS', dec(icms.vICMS)), t('vCred', dec(icms.vCred)));
   }
+  // ICMS devido à UF onde começa a prestação, quando ela é diferente da UF do emitente.
+  if (cst === 'OUTRAUF') {
+    return g('ICMSOutraUF', t('CST', '90'), t('pRedBCOutraUF', Number(icms.pRedBC) > 0 ? dec(icms.pRedBC) : null), t('vBCOutraUF', dec(icms.vBC)),
+      t('pICMSOutraUF', dec(icms.pICMS)), t('vICMSOutraUF', dec(icms.vICMS)));
+  }
   throw new Error(`CST do ICMS não suportado: ${cst}.`);
 }
 // IBS/CBS (Reforma Tributária): opcional. Valores calculados pela base e alíquotas.

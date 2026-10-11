@@ -82,6 +82,31 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Emissão de CT-e (para transportadoras)
+
+Para a transportadora que usa o Nexofrete, o menu **🚛 Emissão de CT-e** monta, transmite e imprime o CT-e (modelo 57, modal rodoviário, versão 4.00).
+
+**Antes de emitir (administrador), em Emissão de CT-e → ⚙️ Configuração fiscal:**
+
+1. Preencha os dados da empresa. O botão **Preencher pelo CNPJ** busca razão social, endereço e código IBGE do município.
+2. Informe o **RNTRC** (ANTT), o regime tributário, a série e o próximo número do CT-e.
+3. Envie o **certificado digital A1** (.pfx) com a senha. Ele fica guardado criptografado.
+4. Clique em **Testar conexão com a SEFAZ**. O retorno esperado é "107 - Serviço em Operação".
+5. Comece em **Homologação** (testes, sem valor fiscal). Quando os testes derem certo, mude para **Produção**.
+
+**No dia a dia** (quem tem a permissão "Emitir CT-e"):
+
+1. Clique em **+ Novo CT-e** e em **📄 Ler XML da NF-e**. Isso preenche remetente, destinatário, peso, volumes, valor da carga e o início e fim da prestação.
+2. Lance os componentes do frete, à mão ou com **🧮 Calcular pela tabela**. Para usar a tabela, cadastre a própria empresa em Cadastros → Transportadoras, com a tabela de preço dela.
+3. Confira o ICMS. O sistema sugere o CFOP e a alíquota interestadual (7% ou 12%) e avisa casos especiais.
+4. **Salvar e transmitir**. Se autorizado, o DACTE abre para imprimir.
+
+Depois de autorizado, também dá para baixar o XML, consultar na SEFAZ, registrar carta de correção e cancelar com justificativa. Se a SEFAZ rejeitar, o motivo aparece na lista: corrija e transmita de novo, que o número continua o mesmo. Se a SEFAZ não responder, **Tentar de novo** consulta primeiro, para não emitir o mesmo CT-e duas vezes.
+
+Ainda não fazem parte: MDF-e, CT-e complementar/substituto/anulação, expedidor e recebedor, inutilização de numeração e emissão em contingência.
+
+Testes automáticos do CT-e: `npm test` dentro de `backend`. A validação nos schemas oficiais precisa do `xmllint`.
+
 ## O que já está pronto
 
 - Login com perfis admin (vê tudo) e cliente (vê só os registros do seu nome)

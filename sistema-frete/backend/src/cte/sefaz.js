@@ -3,7 +3,9 @@
 // consulta pela chave e eventos (cancelamento, carta de correção).
 const https = require('https');
 const zlib = require('zlib');
-const { CODIGO_UF, webservicesDaUf } = require('./ufs');
+const ufs = require('./ufs');
+
+const { CODIGO_UF } = ufs;
 const { NS, VERSAO } = require('./montarCte');
 
 const SERVICOS = {
@@ -48,7 +50,7 @@ function postar(url, corpo, acao, cert, { verificarServidor = false, timeout = 6
 }
 
 async function chamar(servico, { uf, tpAmb, cert, dados, verificarServidor }) {
-  const ws = webservicesDaUf(uf, tpAmb);
+  const ws = ufs.webservicesDaUf(uf, tpAmb);
   const { operacao, metodo } = SERVICOS[servico];
   const nsWsdl = `${NS}/wsdl/${operacao}`;
   const envelope = '<?xml version="1.0" encoding="utf-8"?>'

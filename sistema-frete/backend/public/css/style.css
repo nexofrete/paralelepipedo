@@ -1304,3 +1304,39 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 .cr-ocup-trilho { flex: 1; height: 9px; background: var(--borda); border-radius: 999px; overflow: hidden; }
 .cr-ocup-trilho div { height: 100%; border-radius: 999px; }
 .cr-aviso { margin-top: 8px; color: #e8890c; font-weight: 700; font-size: 14px; }
+
+/* ---------- Emissão de CT-e ---------- */
+.cte-abas { display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--borda); }
+.cte-aba { padding: 10px 4px; margin-right: 24px; color: var(--texto-fraco); font-size: 13.5px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
+.cte-aba:hover { color: var(--texto); }
+.cte-aba.ativo { color: var(--texto); border-bottom-color: var(--azul); }
+.cte-aviso { border: 1px solid var(--borda); border-left: 4px solid var(--amarelo); background: rgba(242,184,75,0.08); border-radius: var(--raio); padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
+.cte-aviso.erro { border-left-color: var(--vermelho); background: rgba(242,85,90,0.08); }
+.cte-aviso.ok { border-left-color: var(--verde); background: rgba(52,199,123,0.08); }
+.cte-secao { border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px 6px; margin-bottom: 14px; }
+.cte-secao > h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--texto-fraco); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cte-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 14px; }
+.cte-grade .largo { grid-column: span 2; }
+.cte-grade .inteiro { grid-column: 1 / -1; }
+.cte-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .cte-duas { grid-template-columns: 1fr; } .cte-grade .largo { grid-column: auto; } }
+.cte-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.cte-chip { border: 1px solid var(--borda); border-radius: 999px; padding: 3px 10px; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; font-family: ui-monospace, monospace; }
+.cte-chip button { border: 0; background: none; color: var(--vermelho); cursor: pointer; font-size: 13px; padding: 0; }
+.cte-linha-comp { display: grid; grid-template-columns: 1fr 140px 32px; gap: 8px; margin-bottom: 6px; }
+.cte-linha-comp button { border: 1px solid var(--borda); background: none; color: var(--vermelho); border-radius: 6px; cursor: pointer; }
+.cte-acoes { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.cte-acoes button, .cte-acoes a { font-size: 12px; padding: 4px 8px; width: auto; }
+.badge-cte-autorizado { background: rgba(52,199,123,0.18); color: #1f9d5c; }
+.badge-cte-rascunho { background: rgba(140,150,165,0.18); color: #8a94a6; }
+.badge-cte-rejeitado, .badge-cte-erro { background: rgba(242,85,90,0.15); color: var(--vermelho); }
+.badge-cte-enviando { background: rgba(77,124,255,0.15); color: var(--azul); }
+.badge-cte-cancelado { background: rgba(60,60,60,0.18); color: var(--texto-fraco); text-decoration: line-through; }
+.cte-entrada, .cte-linha-comp input {
+  width: 100%; padding: 9px 12px; border-radius: var(--raio); border: 1px solid var(--borda);
+  background: var(--bg-elevado); color: var(--texto); font-size: 14px; outline: none; transition: border-color .15s;
+}
+.cte-entrada:focus, .cte-linha-comp input:focus { border-color: var(--azul); }
+#tabelaCtes td { white-space: normal; vertical-align: top; }
+#tabelaCtes td:last-child { min-width: 200px; }
+#tabelaCtes .cte-acoes { justify-content: flex-start; }

@@ -1299,3 +1299,70 @@ UPDATE fretes SET atualizado_em = atualizado_em
  WHERE carga_direta IS TRUE AND NOT cte_cancelado AND fatura_id IS NULL
    AND aprovado_por_nome = 'Sistema (conferência automática)'
    AND status = 'Liberado p/ Pagamento';
+
+-- ===================== Emissão de CT-e (modo transportadora) =====================
+-- Dados fiscais do emitente (a própria transportadora), no cadastro da empresa.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS numero VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS complemento VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS codigo_municipio VARCHAR(7);          -- código IBGE (7 dígitos)
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS rntrc VARCHAR(8);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS crt SMALLINT NOT NULL DEFAULT 3;       -- 1 Simples, 2 Simples excesso, 3 Normal, 4 MEI
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_ambiente SMALLINT NOT NULL DEFAULT 2;  -- 1 produção, 2 homologação
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_serie INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_proximo_numero INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_cst_padrao VARCHAR(3) NOT NULL DEFAULT '00';
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_aliquota_interna NUMERIC(5,2);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_verificar_servidor BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_ibscbs_ativo BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_ibscbs_cst VARCHAR(3);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_ibscbs_class_trib VARCHAR(6);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_ibs_uf_aliquota NUMERIC(7,4);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_ibs_mun_aliquota NUMERIC(7,4);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_cbs_aliquota NUMERIC(7,4);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS resp_tec_cnpj VARCHAR(14);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS resp_tec_contato VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS resp_tec_email VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS resp_tec_fone VARCHAR(14);
+-- Certificado A1: o .pfx e a senha ficam criptografados (AES-256-GCM) e nunca voltam para a tela.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_pfx TEXT;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_senha TEXT;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_titular VARCHAR(200);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_cnpj VARCHAR(14);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_validade TIMESTAMP;
+
+-- CT-e emitidos pela transportadora. "dados" guarda o que foi preenchido na tela;
+-- o número é reservado na primeira transmissão e não muda mais (o código cCT
+-- também, pra chave continuar a mesma se for preciso reenviar).
+CREATE TABLE IF NOT EXISTS ctes_emitidos (
+    id                  SERIAL PRIMARY KEY,
+    ambiente            SMALLINT NOT NULL DEFAULT 2,
+    serie               INTEGER,
+    numero              INTEGER,
+    codigo_numerico     VARCHAR(8),
+    chave               VARCHAR(44),
+    status              VARCHAR(20) NOT NULL DEFAULT 'rascunho',  -- rascunho, enviando, autorizado, rejeitado, erro, cancelado
+    dados               JSONB NOT NULL DEFAULT '{}'::jsonb,
+    xml_assinado        TEXT,          -- último CT-e assinado enviado
+    xml_autorizado      TEXT,          -- cteProc (CT-e + protocolo da SEFAZ)
+    protocolo           VARCHAR(20),
+    autorizado_em       TIMESTAMP,
+    cstat               VARCHAR(5),
+    motivo              TEXT,
+    valor_total         NUMERIC(14,2),
+    tomador_nome        VARCHAR(150),
+    remetente_nome      VARCHAR(150),
+    destinatario_nome   VARCHAR(150),
+    cidade_fim          VARCHAR(120),
+    uf_fim              CHAR(2),
+    cce_sequencia       INTEGER NOT NULL DEFAULT 0,
+    eventos             JSONB NOT NULL DEFAULT '[]'::jsonb,
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMP NOT NULL DEFAULT NOW(),
+    atualizado_em       TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_numero ON ctes_emitidos (ambiente, serie, numero) WHERE numero IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_chave ON ctes_emitidos (chave) WHERE chave IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_status ON ctes_emitidos (status, criado_em DESC);
+
+-- Permissão de emitir CT-e (transmitir, cancelar, carta de correção).
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pode_emitir_cte BOOLEAN NOT NULL DEFAULT FALSE;

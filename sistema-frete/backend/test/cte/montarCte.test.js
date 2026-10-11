@@ -54,6 +54,7 @@ test('CT-e assinado: assinatura confere e o XML passa no schema oficial', { skip
     dadosDeExemplo({ icms: { cst: 'SN' }, emitente: { ...dadosDeExemplo().emitente, crt: 1 } }),
     dadosDeExemplo({ icms: { cst: '40' }, tomador: '3' }),
     dadosDeExemplo({ icms: { cst: '20', pRedBC: 20, vBC: 280.4, pICMS: 12, vICMS: 33.65 } }),
+    dadosDeExemplo({ icms: { cst: 'OUTRAUF', vBC: 350.5, pICMS: 12, vICMS: 42.06 }, inicio: { cMun: '3304557', xMun: 'RIO DE JANEIRO', UF: 'RJ' } }),
     dadosDeExemplo({ ibscbs: { cst: '000', cClassTrib: '000001', vBC: 350.5, pIBSUF: 0.1, pIBSMun: 0, pCBS: 0.9 } }),
     dadosDeExemplo({ tomador: '4', outroTomador: { cpf: '12345678909', xNome: 'PAGADOR PF', endereco: dadosDeExemplo().remetente.endereco } }),
   ];

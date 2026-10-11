@@ -36,6 +36,7 @@ const sinistrosRoutes = require('./src/routes/sinistros');
 const faturasRoutes = require('./src/routes/faturas');
 const agendaRoutes = require('./src/routes/agenda');
 const pastaXmlRoutes = require('./src/routes/pastaXml');
+const cteEmissaoRoutes = require('./src/routes/cteEmissao');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
@@ -146,6 +147,8 @@ const limitadorLogin = rateLimit({
 });
 app.use('/api/auth/login', limitadorLogin);
 
+// XML de NF-e lido na emissão de CT-e pode passar do limite padrão (100 KB).
+app.use('/api/cte-emissao/ler-nfe', express.json({ limit: '5mb' }));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
@@ -175,6 +178,7 @@ app.use('/api/sinistros', sinistrosRoutes);
 app.use('/api/faturas', faturasRoutes);
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
+app.use('/api/cte-emissao', cteEmissaoRoutes);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

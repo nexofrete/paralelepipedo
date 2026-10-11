@@ -7,7 +7,7 @@ const CAMPOS_PERMISSAO = [
   'pode_gerenciar_usuarios', 'pode_gerenciar_transportadoras', 'pode_gerenciar_tabelas_preco',
   'pode_aprovar_pagamento', 'pode_aprovar_valores_altos', 'dois_fatores_ativo',
   'pode_ver_auditoria', 'pode_ver_financeiro', 'pode_ver_relatorios', 'pode_ver_sinistros',
-  'pode_conferir_fatura',
+  'pode_conferir_fatura', 'pode_emitir_cte',
 ];
 
 const ehAdmin = (req) => req.usuario?.perfil === 'admin';

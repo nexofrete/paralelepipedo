@@ -51,6 +51,7 @@
       <div class="nav-item" data-pagina="upload" id="navUpload">Enviar XML</div>
       <div class="nav-item" data-pagina="registros">Todos os registros</div>
       <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
+      <div class="nav-item oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
       <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios">
@@ -98,6 +99,58 @@
     </aside>
 
     <main class="conteudo">
+
+      <!-- ===== Emissão de CT-e (modo transportadora) ===== -->
+      <section id="pagina-emissao-cte" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🚛 Emissão de CT-e <span id="cteSeloAmbiente" class="badge badge-pendente" style="vertical-align:middle; margin-left:6px;">—</span></h2>
+            <p>Conhecimento de Transporte Eletrônico (modelo 57, rodoviário): monte a partir das NF-e, transmita à SEFAZ e imprima o DACTE</p>
+          </div>
+          <button class="btn btn-primario" id="btnNovoCte" style="width:auto;">+ Novo CT-e</button>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-cte-aba="lista">CT-e emitidos</div>
+          <div class="cte-aba" data-cte-aba="config" id="cteAbaConfig">⚙️ Configuração fiscal</div>
+        </div>
+        <div id="cteAvisoConfig" class="cte-aviso oculto"></div>
+        <div id="cte-aba-lista">
+          <div class="painel">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+              <input type="text" id="cteBusca" class="cte-entrada" placeholder="Buscar por número, chave, tomador, remetente, destinatário ou cidade" style="flex:1; min-width:220px;" />
+              <select id="cteFiltroStatus" class="cte-entrada" style="width:auto;">
+                <option value="">Todos</option><option value="rascunho">Rascunho</option><option value="autorizado">Autorizado</option>
+                <option value="rejeitado">Rejeitado</option><option value="erro">Erro de comunicação</option><option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <div style="overflow-x:auto;">
+              <table id="tabelaCtes">
+                <thead><tr><th>Número</th><th>Status</th><th>Tomador</th><th>Remetente → Destinatário</th><th>Destino</th><th style="text-align:right;">Valor</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="cte-aba-config" class="oculto"></div>
+      </section>
+
+      <!-- Modal: formulário do CT-e -->
+      <div class="modal-overlay oculto" id="modalCte">
+        <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;">
+            <h3 id="tituloModalCte" style="margin:0;">Novo CT-e</h3>
+            <button type="button" class="btn btn-secundario" id="btnFecharCte" style="width:auto;">✕ Fechar</button>
+          </div>
+          <div id="cteStatusForm" class="cte-aviso oculto"></div>
+          <div id="cteFormCorpo"></div>
+          <div class="mensagem-erro" id="erroFormCte" style="margin-top:14px;"></div>
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap; position:sticky; bottom:-20px; background:var(--bg-card); padding:10px 0;">
+            <button type="button" class="btn btn-secundario" id="btnCteCancelarForm" style="width:auto;">Cancelar</button>
+            <button type="button" class="btn btn-secundario" id="btnCteSalvar" style="width:auto;">💾 Salvar rascunho</button>
+            <button type="button" class="btn btn-primario" id="btnCteTransmitir" style="width:auto;">📤 Salvar e transmitir</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== Visão geral ===== -->
       <section id="pagina-visao-geral">
@@ -640,6 +693,13 @@
                         <span class="permissao-desc">Juntar os CT-e de uma fatura, fechar como Faturado e gerar o documento conferido (precisa de "Ver todos os registros")</span>
                       </span>
                       <span class="chave"><input type="checkbox" id="pConferirFatura" /><span class="chave-trilho"></span></span>
+                    </label>
+                    <label class="permissao-item">
+                      <span class="permissao-texto">
+                        <span class="permissao-nome">Emitir CT-e</span>
+                        <span class="permissao-desc">Montar, transmitir, cancelar e corrigir CT-e da própria empresa (modo transportadora)</span>
+                      </span>
+                      <span class="chave"><input type="checkbox" id="pEmitirCte" /><span class="chave-trilho"></span></span>
                     </label>
                     <label class="permissao-item">
                       <span class="permissao-texto">
@@ -2909,5 +2969,6 @@
     </div>
   </div>
   <script src="js/dashboard.js"></script>
+  <script src="js/emissaoCte.js"></script>
 </body>
 </html>

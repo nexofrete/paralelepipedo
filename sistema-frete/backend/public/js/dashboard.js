@@ -1469,6 +1469,7 @@ function abrirFormularioUsuario(usuarioParaEditar = null) {
   document.getElementById('pVerRelatorios').checked = !!usuarioParaEditar?.pode_ver_relatorios;
   document.getElementById('pVerSinistros').checked = !!usuarioParaEditar?.pode_ver_sinistros;
   document.getElementById('pConferirFatura').checked = !!usuarioParaEditar?.pode_conferir_fatura;
+  document.getElementById('pEmitirCte').checked = !!usuarioParaEditar?.pode_emitir_cte;
   document.getElementById('pDoisFatores').checked = !!usuarioParaEditar?.dois_fatores_ativo;
 
   atualizarCamposConformePerfil();
@@ -1504,6 +1505,7 @@ document.getElementById('btnSalvarUsuario').addEventListener('click', async () =
     pode_ver_relatorios: document.getElementById('pVerRelatorios').checked,
     pode_ver_sinistros: document.getElementById('pVerSinistros').checked,
     pode_conferir_fatura: document.getElementById('pConferirFatura').checked,
+    pode_emitir_cte: document.getElementById('pEmitirCte').checked,
     dois_fatores_ativo: document.getElementById('pDoisFatores').checked,
   };
 
@@ -1556,6 +1558,7 @@ function resumoPermissoes(u) {
   if (u.pode_ver_relatorios) lista.push('Relatórios');
   if (u.pode_ver_sinistros) lista.push('Sinistros');
   if (u.pode_conferir_fatura) lista.push('Conferir fatura');
+  if (u.pode_emitir_cte) lista.push('Emitir CT-e');
   if (u.dois_fatores_ativo) lista.push('Login em duas etapas');
   return lista.join(', ') || 'Nenhuma';
 }
@@ -7937,7 +7940,7 @@ document.getElementById('cfCorpoLista').addEventListener('click', (e) => {
 const CAMPOS_PERMISSAO_TELA = ['perfil', 'cliente_nome', 'pode_ver_todos', 'pode_enviar_xml', 'pode_editar_registros',
   'pode_excluir_registros', 'pode_gerenciar_usuarios', 'pode_gerenciar_transportadoras', 'pode_gerenciar_tabelas_preco',
   'pode_aprovar_pagamento', 'pode_aprovar_valores_altos', 'pode_ver_auditoria', 'pode_ver_financeiro',
-  'pode_ver_relatorios', 'pode_ver_sinistros', 'pode_conferir_fatura'];
+  'pode_ver_relatorios', 'pode_ver_sinistros', 'pode_conferir_fatura', 'pode_emitir_cte'];
 const assinaturaPermissoes = (u) => JSON.stringify(CAMPOS_PERMISSAO_TELA.map((c) => (c === 'perfil' || c === 'cliente_nome' ? u?.[c] ?? null : !!u?.[c])));
 
 let permissoesAvisoAberto = false;

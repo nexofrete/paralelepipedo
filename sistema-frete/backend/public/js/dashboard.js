@@ -9896,19 +9896,20 @@ const crChaveDestino = (d) => `${d.tipo}|${d.redespacho || ''}|${d.cidade || ''}
 let crSoMarcados = false;
 function veiculoParaCarga(veiculos, kg, m3, m3Completo) {
   const lista = [...(veiculos || [])].sort((a, b) => a.kg - b.kg);
-  if (!lista.length) return null;
+  if (!lista.length || (!(kg > 0) && !(m3 > 0))) return null;   // sem peso e sem m³ não dá para indicar
   // Usa o m³ informado mesmo incompleto (é o mínimo); se faltar medida, avisa que pode ser maior.
   const usaM3 = m3 > 0;
   const cabe = lista.find((v) => kg <= v.kg && (!usaM3 || !v.m3 || m3 <= v.m3));
   const maior = lista[lista.length - 1];
   const v = cabe || maior;
   const qtd = cabe ? 1 : Math.max(Math.ceil(kg / maior.kg), usaM3 && maior.m3 ? Math.ceil(m3 / maior.m3) : 1);
-  return { nome: v.nome, quantidade: qtd, pesoPct: Math.round((100 * kg) / (v.kg * qtd)), m3Pct: usaM3 && v.m3 ? Math.round((100 * m3) / (v.m3 * qtd)) : null,
-    porPeso: !usaM3, m3Incompleto: usaM3 && !m3Completo };
+  return { nome: v.nome, quantidade: qtd, pesoPct: kg > 0 ? Math.round((100 * kg) / (v.kg * qtd)) : null, m3Pct: usaM3 && v.m3 ? Math.round((100 * m3) / (v.m3 * qtd)) : null,
+    porPeso: !usaM3, porM3: !(kg > 0), m3Incompleto: usaM3 && !m3Completo };
 }
 function textoVeiculo(v) {
   if (!v) return '';
-  return `🚚 <b>${v.quantidade > 1 ? `${v.quantidade}× ` : ''}${cfEsc(v.nome)}</b> <small>(${v.pesoPct}% do peso${v.m3Pct != null ? ` · ${v.m3Pct}% do volume` : ''}${v.porPeso ? ' — só pelo peso' : ''}${v.m3Incompleto ? ' — <span style="color:#e8890c;">m³ pode ser maior</span>' : ''})</small>`;
+  const partes = [v.pesoPct != null ? `${v.pesoPct}% do peso` : '', v.m3Pct != null ? `${v.m3Pct}% do volume` : ''].filter(Boolean).join(' · ');
+  return `🚚 <b>${v.quantidade > 1 ? `${v.quantidade}× ` : ''}${cfEsc(v.nome)}</b> <small>(${partes}${v.porPeso ? ' — só pelo peso' : ''}${v.porM3 ? ' — só pelo m³, sem peso na planilha' : ''}${v.m3Incompleto ? ' — <span style="color:#e8890c;">m³ pode ser maior</span>' : ''})</small>`;
 }
 function totaisDe(pedidos) {
   const kg = pedidos.reduce((a, p) => a + (p.peso || 0), 0);
@@ -9950,39 +9951,85 @@ async function carregarRotas() {
       d.grupos = [...porDest.values()].map((g) => ({ ...g, qtd: g.pedidos.length, peso: g.pedidos.reduce((a, p) => a + (p.peso || 0), 0) }))
         .sort((a, b) => b.peso - a.peso);
       d.grupos.forEach((g, gi) => g.pedidos.forEach((p) => { p._grupo = gi; crPorId.set(String(p.id), p); }));
-      d.resumo = { destinos: d.grupos.length, pedidos: crMarcados.size, peso: d.grupos.reduce((a, g) => a + g.peso, 0) };
+      const marcados = d.grupos.flatMap((g) => g.pedidos);
+      d.resumo = { destinos: d.grupos.length, pedidos: crMarcados.size, peso: d.grupos.reduce((a, g) => a + g.peso, 0),
+        cubagem: marcados.reduce((a, p) => a + (p.cubagem || 0), 0), volumes: marcados.reduce((a, p) => a + (p.volumes || 0), 0),
+        semPeso: marcados.filter((p) => !(p.peso > 0)).length, semCubagem: marcados.filter((p) => !(p.cubagem > 0)).length };
     }
+    const rs = d.resumo;
     document.getElementById('crResumo').innerHTML = `
-      <div>Destinos<strong>${d.resumo.destinos}</strong>${d.resumo.pedidos} pedido(s) ${crSoMarcados ? 'marcado(s) — <a href="#" id="crVerTodos" style="color:var(--azul);">ver todos</a>' : 'liberado(s)'}</div>
-      <div style="border-left-color:#f59e0b;">Peso total dos pedidos<strong>${Number(d.resumo.peso).toLocaleString('pt-BR')} kg</strong></div>`;
+      <div>Destinos<strong>${rs.destinos}</strong>${rs.pedidos} pedido(s) ${crSoMarcados ? 'marcado(s) — <a href="#" id="crVerTodos" style="color:var(--azul);">ver todos</a>' : 'liberado(s)'}</div>
+      <div style="border-left-color:#f59e0b;">Peso total<strong>${Number(rs.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</strong>${rs.semPeso ? `<span style="color:#e8890c;">${rs.semPeso} pedido(s) sem peso</span>` : ''}</div>
+      <div style="border-left-color:#8b5cf6;">Cubagem total<strong>${Number(rs.cubagem || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m³</strong>${rs.semCubagem ? `<span style="color:#e8890c;">${rs.semCubagem} pedido(s) sem m³</span>` : ''}</div>
+      ${rs.volumes != null ? `<div style="border-left-color:var(--verde);">Volumes<strong>${numVolumes(rs.volumes)}</strong></div>` : ''}`;
+    // Planilha sem peso: o caminhão fica só pelo m³ — avisa onde está o problema.
+    const avisoPeso = rs.semPeso && rs.pedidos && rs.semPeso / rs.pedidos >= 0.5
+      ? `<div class="cr-aviso" style="margin:0 0 10px;">⚠ ${rs.semPeso === rs.pedidos ? 'Nenhum pedido' : `${rs.semPeso} de ${rs.pedidos} pedidos`} veio com peso da planilha do ERP. Confira se a planilha tem a coluna
+        <b>PESO_KG</b> (também vale PESO, PESO_BRUTO ou PESO_TOTAL) e importe de novo. Sem o peso, o caminhão é indicado só pelo m³.</div>` : '';
     if (!d.grupos.length) { caixa.innerHTML = '<p style="color:var(--texto-fraco);">Nenhum pedido liberado sem nota fiscal neste período. Importe a planilha do ERP em Enviar XML.</p>'; atualizarBarraRotas(); return; }
-    caixa.innerHTML = d.grupos.map((g, gi) => {
-      const t = totaisDe(g.pedidos);
-      return `<div class="cr-grupo" data-g="${gi}" style="border:1px solid var(--borda); border-radius:var(--raio); margin-bottom:10px;">
-        <div style="display:flex; gap:10px; align-items:center; padding:10px 14px 4px; flex-wrap:wrap;">
+    const ordem = document.getElementById('crOrdem')?.value || 'carga';
+    const grupos = d.grupos.map((g, gi) => ({ g, gi, t: totaisDe(g.pedidos) }));
+    if (ordem === 'pedidos') grupos.sort((a, b) => b.g.pedidos.length - a.g.pedidos.length || b.t.kg - a.t.kg);
+    else if (ordem === 'cidade') grupos.sort((a, b) => String(a.g.destino.cidade || '').localeCompare(String(b.g.destino.cidade || ''), 'pt-BR'));
+    else grupos.sort((a, b) => b.t.kg - a.t.kg || b.t.m3 - a.t.m3 || b.g.pedidos.length - a.g.pedidos.length);
+    // Muitos destinos: começam recolhidos (só o cabeçalho com os totais e o caminhão).
+    const recolher = crAbertos === null ? grupos.length > 8 : null;
+    caixa.innerHTML = avisoPeso + `<div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:8px; font-size:12.5px;">
+        <a href="#" id="crExpandirTodos" style="color:var(--azul);">Expandir todos</a><a href="#" id="crRecolherTodos" style="color:var(--azul);">Recolher todos</a></div>`
+      + grupos.map(({ g, gi, t }, k) => {
+        const aberto = recolher === null ? crAbertos.has(gi) || g.pedidos.some((p) => crMarcados.has(String(p.id))) : !recolher;
+        const veic = t.veiculo ? textoVeiculo(t.veiculo) : '<small style="color:var(--texto-fraco);">sem peso e sem m³ para indicar o caminhão</small>';
+        return `<div class="cr-grupo" data-g="${gi}" style="border:1px solid var(--borda); border-radius:var(--raio); margin-bottom:10px;">
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 14px ${aberto ? '4px' : '10px'}; flex-wrap:wrap;">
+          <button type="button" class="cr-alternar" data-g="${gi}" title="${aberto ? 'Recolher' : 'Mostrar os pedidos'}" style="background:none; border:0; color:var(--texto); cursor:pointer; font-size:14px; width:20px;">${aberto ? '▾' : '▸'}</button>
           <label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
             <input type="checkbox" class="cr-grupo-marca" data-g="${gi}" title="Marcar todos os pedidos deste destino" />
-            <span style="font-weight:800; font-size:15px;">${gi + 1}. ${tituloDestino(g.destino)}</span></label>
-          <span style="font-size:12.5px; color:var(--texto-fraco);">— ${g.qtd} pedido(s) · ${t.vol} vol · ${t.kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg ·
+            <span style="font-weight:800; font-size:15px;">${k + 1}. ${tituloDestino(g.destino)}</span></label>
+          <span style="font-size:12.5px; color:var(--texto-fraco);">— ${g.pedidos.length} pedido(s) · ${numVolumes(t.vol)} vol · ${t.kg ? `${t.kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg` : '<span style="color:#e8890c;">sem peso</span>'} ·
             ${t.m3 ? `${t.m3.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m³` : '— m³'}${t.semCub ? ` <span style="color:#e8890c;">(${t.semCub} sem m³)</span>` : ''}
             ${t.semMedida ? ` · <span style="color:#e8890c; font-weight:700;" title="Pedidos com itens sem medida: a cubagem real é maior que a informada">⚠ ${t.semMedida} pedido(s) com itens sem medida</span>` : ''}</span>
+          <span style="font-size:12.5px; margin-left:auto;">${veic}</span>
         </div>
-        <div class="cr-pedidos" data-g="${gi}" style="padding:0 14px 10px; overflow-x:auto;">
-          <table style="width:100%; font-size:12.5px;"><thead><tr><th style="width:28px;"></th><th style="text-align:left;">Cliente</th><th style="text-align:left;">Pedido</th><th style="text-align:left;">Nr. Mercus</th>
-            <th style="text-align:left;">Cidade / bairro</th><th style="text-align:left;">Transportadora</th><th style="text-align:left;">Dt. Liberação</th>
+        <div class="cr-pedidos${aberto ? '' : ' oculto'}" data-g="${gi}" style="padding:0 14px 10px; overflow-x:auto;">
+          <table class="cr-tabela" style="width:100%; font-size:12.5px;"><thead><tr><th style="width:28px;"></th><th style="text-align:left;">Cliente</th><th style="text-align:left;">Pedido</th>
+            <th style="text-align:left;">Cidade / bairro</th><th style="text-align:left;">Transportadora</th><th style="text-align:left;">Liberado</th>
             <th style="text-align:right;">Volumes</th><th style="text-align:right;">Peso</th><th style="text-align:right;">m³</th></tr></thead><tbody>
             ${g.pedidos.map((p) => `<tr class="cr-linha${crMarcados.has(String(p.id)) ? ' cr-sel' : ''}" data-id="${p.id}" style="cursor:pointer;"><td><input type="checkbox" class="cr-marca" data-id="${p.id}" ${crMarcados.has(String(p.id)) ? 'checked' : ''} /></td>
-              <td>${cfEsc(p.cliente || '—')}</td><td>${cfEsc(p.pedido)}</td><td>${cfEsc(p.mercus || '—')}</td>
+              <td>${cfEsc(p.cliente || '—')}</td><td style="white-space:nowrap;">${cfEsc(p.pedido)}${p.mercus ? `<br><small style="color:var(--texto-fraco);">Mercus ${cfEsc(p.mercus)}</small>` : ''}</td>
               <td>${cfEsc(p.cidade || '—')}${p.bairro ? ` — ${cfEsc(p.bairro)}` : ''}${p.redespacho ? `<br><small style="color:#8b5cf6;">🔀 ${cfEsc(p.redespacho)}</small>` : ''}${p.entrega_em ? `<br><small style="color:#8b5cf6;" title="Endereço de entrega informado na observação do pedido">📍 Entrega em ${cfEsc(p.entrega_em)}</small>` : ''}</td>
-              <td>${cfEsc(p.transportadora || '—')}</td><td>${p.data_liberacao ? formatoData(p.data_liberacao) : '—'}</td>
-              <td style="text-align:right;">${p.volumes || '—'}</td><td style="text-align:right;">${p.peso ? p.peso.toLocaleString('pt-BR') : '—'}</td>
-              <td style="text-align:right;">${p.cubagem ? p.cubagem.toLocaleString('pt-BR') : '<span style="color:#e8890c;">—</span>'}${p.itens_sem_medida > 0
-                ? `<br><span style="color:#e8890c; font-weight:700; white-space:nowrap;" title="ITENS_SEM_MEDIDA na planilha: a cubagem deste pedido está incompleta">⚠ ${p.itens_sem_medida} item(ns) sem medida</span>` : ''}</td></tr>`).join('')}
+              <td>${cfEsc(p.transportadora || '—')}</td><td style="white-space:nowrap;">${p.data_liberacao ? formatoData(p.data_liberacao) : '—'}</td>
+              <td style="text-align:right;">${p.volumes ? numVolumes(p.volumes) : '—'}</td><td style="text-align:right; white-space:nowrap;">${p.peso ? `${p.peso.toLocaleString('pt-BR')} kg` : '<span style="color:#e8890c;">—</span>'}</td>
+              <td style="text-align:right; white-space:nowrap;">${p.cubagem ? p.cubagem.toLocaleString('pt-BR') : '<span style="color:#e8890c;">—</span>'}${p.itens_sem_medida > 0
+                ? `<br><span style="color:#e8890c; font-weight:700;" title="ITENS_SEM_MEDIDA na planilha: a cubagem deste pedido está incompleta">⚠ ${p.itens_sem_medida} item(ns) sem medida</span>` : ''}</td></tr>`).join('')}
           </tbody></table></div></div>`;
-    }).join('');
+      }).join('');
+    if (recolher !== null) crAbertos = new Set(grupos.filter(() => !recolher).map(({ gi }) => gi));
     sincronizarMarcasGrupos(); atualizarBarraRotas();
   } catch (err) { caixa.innerHTML = '<p>Falha de conexão com o servidor.</p>'; }
 }
+// Volumes da planilha podem vir fracionados: no máximo 2 casas.
+const numVolumes = (v) => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+let crAbertos = null;   // destinos abertos (null = decidir pela quantidade de destinos)
+document.getElementById('crGrupos')?.addEventListener('click', (e) => {
+  const alternar = e.target.closest('.cr-alternar');
+  if (alternar) {
+    const gi = Number(alternar.dataset.g);
+    const div = document.querySelector(`.cr-pedidos[data-g="${gi}"]`);
+    const abrir = div.classList.contains('oculto');
+    div.classList.toggle('oculto', !abrir);
+    alternar.textContent = abrir ? '▾' : '▸';
+    if (crAbertos) { if (abrir) crAbertos.add(gi); else crAbertos.delete(gi); }
+    return;
+  }
+  if (e.target.id === 'crExpandirTodos' || e.target.id === 'crRecolherTodos') {
+    e.preventDefault();
+    const abrir = e.target.id === 'crExpandirTodos';
+    document.querySelectorAll('.cr-pedidos').forEach((div) => div.classList.toggle('oculto', !abrir));
+    document.querySelectorAll('.cr-alternar').forEach((b) => { b.textContent = abrir ? '▾' : '▸'; });
+    crAbertos = new Set(abrir ? (crDados?.grupos || []).map((_, gi) => gi) : []);
+  }
+});
+document.getElementById('crOrdem')?.addEventListener('change', () => carregarRotas());
 function sincronizarMarcasGrupos() {
   document.querySelectorAll('.cr-grupo-marca').forEach((cb) => {
     const ped = crDados.grupos[Number(cb.dataset.g)].pedidos;
@@ -10005,18 +10052,19 @@ function atualizarBarraRotas() {
   const semPeso = sel.filter((p) => !(p.peso > 0)).length;
   const semVol = sel.filter((p) => !(p.volumes > 0)).length;
   const num = (v, d = 0) => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const numVol = (v) => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
   const tile = (rotulo, valor, extra = '', alerta = false) => `<div class="cr-tile${alerta ? ' cr-tile-alerta' : ''}"><span>${rotulo}</span><b>${valor}</b>${extra ? `<small>${extra}</small>` : ''}</div>`;
   const barraOcup = (rot, pct) => (pct == null ? '' : `<div class="cr-ocup"><span>${rot}</span><div class="cr-ocup-trilho"><div style="width:${Math.min(100, pct)}%; background:${pct > 100 ? 'var(--vermelho)' : pct >= 85 ? '#e8890c' : 'var(--verde)'};"></div></div><b>${pct}%</b></div>`);
   const v = t.veiculo;
   document.getElementById('crBarraTexto').innerHTML = `<div class="cr-titulo">🚚 Carga montada</div>
     <div class="cr-tiles">
       ${tile('Pedidos', num(t.qtd), `${destinos} destino(s)`)}
-      ${tile('Volumes', num(t.vol), semVol ? `${semVol} pedido(s) sem volume na planilha` : '', !!semVol)}
+      ${tile('Volumes', numVol(t.vol), semVol ? `${semVol} pedido(s) sem volume na planilha` : '', !!semVol)}
       ${tile('Peso', `${num(t.kg, 1)} kg`, semPeso ? `${semPeso} pedido(s) sem peso na planilha` : '', !!semPeso)}
       ${tile('Cubagem', t.m3 ? `${num(t.m3, 2)} m³` : '— m³', t.semCub ? `${t.semCub} pedido(s) sem m³` : (t.semMedida ? 'pode ser maior' : ''), !!(t.semCub || t.semMedida))}
       <div class="cr-tile cr-tile-veic"><span>Caminhão indicado</span>
         <b>${v ? `${v.quantidade > 1 ? `${v.quantidade}× ` : ''}${cfEsc(v.nome)}` : '—'}</b>
-        ${v ? `${barraOcup('Peso', v.pesoPct)}${barraOcup('Volume', v.m3Pct)}${v.porPeso ? '<small>escolhido só pelo peso</small>' : ''}${v.m3Incompleto ? '<small style="color:#e8890c;">m³ pode ser maior</small>' : ''}` : ''}
+        ${v ? `${barraOcup('Peso', v.pesoPct)}${barraOcup('Volume', v.m3Pct)}${v.porPeso ? '<small>escolhido só pelo peso</small>' : ''}${v.porM3 ? '<small>escolhido só pelo m³ (sem peso)</small>' : ''}${v.m3Incompleto ? '<small style="color:#e8890c;">m³ pode ser maior</small>' : ''}` : ''}
       </div>
     </div>
     ${semPeso || semVol ? `<div class="cr-aviso">⚠ ${[semPeso ? `${semPeso} pedido(s) sem peso` : '', semVol ? `${semVol} sem volumes` : ''].filter(Boolean).join(' e ')} na planilha do ERP — o caminhão indicado ${semPeso ? 'não considera o peso desses pedidos' : 'pode estar subestimado'}.</div>` : ''}
@@ -10048,8 +10096,8 @@ document.getElementById('crGrupos')?.addEventListener('change', (e) => {
   } else return;
   sincronizarMarcasGrupos(); atualizarBarraRotas();
 });
-['crDesde', 'crAte', 'crFaturados'].forEach((id) => document.getElementById(id)?.addEventListener('change', () => { crSoMarcados = false; carregarRotas(); }));
-document.getElementById('crBusca')?.addEventListener('input', () => { crSoMarcados = false; clearTimeout(crTimer); crTimer = setTimeout(carregarRotas, 400); });
+['crDesde', 'crAte', 'crFaturados'].forEach((id) => document.getElementById(id)?.addEventListener('change', () => { crSoMarcados = false; crAbertos = null; carregarRotas(); }));
+document.getElementById('crBusca')?.addEventListener('input', () => { crSoMarcados = false; crAbertos = null; clearTimeout(crTimer); crTimer = setTimeout(carregarRotas, 400); });
 document.getElementById('crResumo')?.addEventListener('click', (e) => { if (e.target.id === 'crVerTodos') { e.preventDefault(); crSoMarcados = false; carregarRotas(); } });
 document.getElementById('btnCrLimpar')?.addEventListener('click', () => { crMarcados.clear(); crGuardados.clear(); crSoMarcados = false; document.querySelectorAll('.cr-marca').forEach((c) => { c.checked = false; }); sincronizarMarcasGrupos(); atualizarBarraRotas(); });
 // Concluir: a carga montada (por destino), com totais, caminhão, impressão e Excel.
@@ -10065,14 +10113,14 @@ function abrirCargaMontada(acao, janela = null) {
   fundo.className = 'ep-historico-fundo';
   fundo.innerHTML = `<div class="ep-historico" style="width:min(1000px, 100%);">
     <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;"><div><h3 style="margin:0;">🚚 Carga montada</h3>
-      <div style="font-size:13px; margin-top:6px;">${t.qtd} pedido(s) · ${blocos.length} destino(s) · ${t.vol} volume(s) · ⚖ <b>${t.kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</b>
+      <div style="font-size:13px; margin-top:6px;">${t.qtd} pedido(s) · ${blocos.length} destino(s) · ${numVolumes(t.vol)} volume(s) · ⚖ <b>${t.kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</b>
         · 📦 <b>${t.m3 ? `${t.m3.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m³` : '— m³'}</b>${t.semCub ? ` <small style="color:#e8890c;">(${t.semCub} pedido(s) sem m³ — caminhão escolhido só pelo peso)</small>` : ''}</div>
       <div style="font-size:15px; margin-top:6px;">${textoVeiculo(t.veiculo)}</div></div>
       <div style="display:flex; gap:8px;"><button class="btn btn-secundario" data-imprimir style="width:auto;">🖨 Imprimir / PDF</button>
         <button class="btn btn-secundario" data-excel style="width:auto;">⬇ Excel</button><button class="btn btn-secundario" data-fechar style="width:auto;">Fechar</button></div></div>
     <div style="max-height:62vh; overflow:auto; margin-top:10px;">
     ${blocos.map(([gi, ped], k) => { const g = ({ destino: gi }); const tg = totaisDe(ped); return `
-      <div style="margin-bottom:12px;"><div style="font-weight:700; margin-bottom:4px;">${k + 1}. ${tituloDestino(g.destino)} <small style="font-weight:400; color:var(--texto-fraco);">— ${ped.length} pedido(s) · ${tg.vol} vol · ${tg.kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg${tg.m3 ? ` · ${tg.m3.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m³` : ''}</small></div>
+      <div style="margin-bottom:12px;"><div style="font-weight:700; margin-bottom:4px;">${k + 1}. ${tituloDestino(g.destino)} <small style="font-weight:400; color:var(--texto-fraco);">— ${ped.length} pedido(s) · ${numVolumes(tg.vol)} vol · ${tg.kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg${tg.m3 ? ` · ${tg.m3.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m³` : ''}</small></div>
       <table style="width:100%; font-size:12.5px;"><thead><tr><th style="text-align:left;">Cliente</th><th style="text-align:left;">Pedido</th><th style="text-align:left;">Nr. Mercus</th><th style="text-align:left;">Cidade / bairro</th>
         <th style="text-align:left;">Transportadora</th><th style="text-align:right;">Volumes</th><th style="text-align:right;">Peso</th><th style="text-align:right;">m³</th></tr></thead><tbody>
         ${ped.map((p) => `<tr><td>${cfEsc(p.cliente || '—')}</td><td>${cfEsc(p.pedido)}</td><td>${cfEsc(p.mercus || '—')}</td><td>${cfEsc(p.cidade || '')}${p.bairro ? ` — ${cfEsc(p.bairro)}` : ''}</td>

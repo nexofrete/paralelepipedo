@@ -81,8 +81,9 @@ function mapearPlanilha(buffer) {
       cidade_redespacho: cidadeRedespacho,
       valor_faturado: paraNumero(linha.VALOR_FATURADO ?? linha.VlDocumento),
       qtd_volumes: paraNumero(linha.QTD_CAIXAS ?? linha.QTD_VOLUMES),   // volumes = QTD_CAIXAS (QTD_VOLUMES nas planilhas antigas)
-      peso_kg: paraNumero(linha.PESO_KG),
-      cubagem_m3: paraNumero(linha.CUBAGEM_M3),
+      // Peso e cubagem: aceita também os nomes de coluna mais comuns em outros ERPs.
+      peso_kg: paraNumero(linha.PESO_KG ?? linha.PESO_BRUTO_KG ?? linha.PESO_BRUTO ?? linha.PESO_TOTAL ?? linha.PESO),
+      cubagem_m3: paraNumero(linha.CUBAGEM_M3 ?? linha.CUBAGEM ?? linha.VOLUME_M3 ?? linha.M3),
       // Quantos itens do pedido estão sem medida (cubagem incompleta). > 0 = alerta.
       itens_sem_medida: paraNumero(linha.ITENS_SEM_MEDIDA),
       observacoes: paraTexto(linha.OBSERVACAO_PEDIDO),

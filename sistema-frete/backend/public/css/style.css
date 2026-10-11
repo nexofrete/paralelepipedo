@@ -1352,3 +1352,4 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 .cd-resumo div.mt-clicavel { cursor: pointer; }
 .cd-resumo div.mt-clicavel:hover { outline: 1px solid var(--borda); }
 .cd-resumo div.mt-ativo { outline: 2px solid var(--azul); }
+.cr-tabela tbody td { white-space: normal; vertical-align: top; padding: 8px 10px; }

@@ -1179,9 +1179,14 @@ router.get('/relatorios/consolidar-rotas', autenticar, permitirAlguma('pode_ver_
       return { ...g, qtd: g.pedidos.length, volumes: g.pedidos.reduce((a, x) => a + x.volumes, 0),
         peso: Math.round(peso * 1000) / 1000, cubagem: Math.round(g.pedidos.reduce((a, x) => a + (x.cubagem || 0), 0) * 1000) / 1000,
         sem_cubagem: g.pedidos.filter((x) => !(x.cubagem > 0)).length };
-    }).sort((a, b) => b.peso - a.peso);
+    // Maiores cargas primeiro: peso; sem peso na planilha, o m³; depois o nº de pedidos.
+    }).sort((a, b) => b.peso - a.peso || b.cubagem - a.cubagem || b.qtd - a.qtd);
+    const todos = lista.flatMap((g) => g.pedidos);
     res.json({ veiculos: await veiculosConfigurados(), grupos: lista,
-      resumo: { destinos: lista.length, pedidos: rows.length, peso: Math.round(lista.reduce((a, g) => a + g.peso, 0) * 1000) / 1000 } });
+      resumo: { destinos: lista.length, pedidos: rows.length, peso: Math.round(lista.reduce((a, g) => a + g.peso, 0) * 1000) / 1000,
+        cubagem: Math.round(lista.reduce((a, g) => a + g.cubagem, 0) * 1000) / 1000,
+        volumes: Math.round(todos.reduce((a, p) => a + p.volumes, 0) * 100) / 100,
+        semPeso: todos.filter((p) => !(p.peso > 0)).length, semCubagem: todos.filter((p) => !(p.cubagem > 0)).length } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: `Erro ao montar as rotas. Detalhe técnico: ${err.message}` });

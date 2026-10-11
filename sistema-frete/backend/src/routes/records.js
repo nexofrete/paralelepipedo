@@ -118,12 +118,47 @@ const CAMPOS_MANUAIS = [
   'numero_mapa', 'data_coleta', 'data_entrega', 'data_vencimento', 'status', 'observacoes', 'auditoria_calculo', 'carga_direta',
 ];
 
+// Campos que decidem a conferência automática (valor do CT-e x valor esperado):
+// mexer neles pode fazer o frete ser liberado para pagamento sozinho. Por isso
+// só quem pode aprovar pagamento (e dentro da alçada) pode mudá-los à mão.
+const CAMPOS_DE_CONFERENCIA = [
+  'valor_total_cte', 'valor_total_calculado', 'valor_total_frete', 'valor_frete_tabelado', 'valor_frete_negociado',
+  'outras_despesas', 'tabela_preco_id_usada', 'dif_negociado_tabela', 'carga_direta',
+];
+const vazio = (v) => v === null || v === undefined || v === '';
+function valorMudou(atual, novo) {
+  if (vazio(atual) && vazio(novo)) return false;
+  if (vazio(atual) || vazio(novo)) return true;
+  if (typeof atual === 'boolean' || typeof novo === 'boolean') return String(atual) !== String(novo);
+  const a = Number(atual); const b = Number(novo);
+  if (!Number.isNaN(a) && !Number.isNaN(b)) return a !== b;
+  return String(atual) !== String(novo);
+}
+// Devolve a mensagem de erro (ou null) para quem tenta mexer nos campos da conferência.
+async function bloqueioCamposConferencia(req, camposMexidos, valoresDoFrete) {
+  if (!camposMexidos.length) return null;
+  if (!temAlguma(req, 'pode_aprovar_pagamento')) {
+    return `Só quem pode aprovar pagamento pode alterar ${camposMexidos.join(', ')} — esses campos decidem a liberação automática do frete.`;
+  }
+  const { rows: config } = await pool.query('SELECT limite_alcada_aprovacao FROM configuracao_auditoria WHERE id = 1');
+  const limite = config[0]?.limite_alcada_aprovacao;
+  const maior = Math.max(0, ...valoresDoFrete.map(Number).filter((n) => !Number.isNaN(n)));
+  if (limite != null && maior > Number(limite) && !req.usuario.pode_aprovar_valores_altos) {
+    return `Esse frete passa de R$ ${Number(limite).toFixed(2)} — só um gerente (com a permissão "Aprovar valores altos") pode alterar os valores da conferência.`;
+  }
+  return null;
+}
+
 router.post('/', autenticar, permitir('pode_editar_registros'), freteDoCliente(), async (req, res) => {
   try {
     const campos = Object.keys(req.body).filter((c) => CAMPOS_MANUAIS.includes(c) && req.body[c] !== '');
     if (campos.length === 0) {
       return res.status(400).json({ erro: 'Preencha ao menos um campo.' });
     }
+    const mexidos = campos.filter((c) => CAMPOS_DE_CONFERENCIA.includes(c) && !vazio(req.body[c]) && req.body[c] !== false);
+    const bloqueio = await bloqueioCamposConferencia(req, mexidos,
+      ['valor_total_cte', 'valor_total_frete', 'valor_total_calculado', 'valor_frete_negociado'].map((c) => req.body[c]).filter((v) => !vazio(v)));
+    if (bloqueio) return res.status(403).json({ erro: bloqueio });
 
     const valores = campos.map((c) => req.body[c]);
     campos.push('usuario_upload_id');
@@ -2060,9 +2095,12 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
       let diferencaPercentual = null;
 
       if (!r.tabela_preco_id_usada && r.carga_direta !== true && !r.cte_cancelado && !SEM_TABELA_OK.includes(r.vinculo_cte)) problemas.push({ codigo: 'SEM_TABELA', texto: 'CT-e sem tabela de preço' });
-      if (r.valor_total_cte != null && r.valor_total_calculado != null && r.carga_direta !== true && !r.cte_cancelado) {
-        diferenca = Number(r.valor_total_cte) - Number(r.valor_total_calculado);
-        diferencaPercentual = Number(r.valor_total_calculado) ? (diferenca / Number(r.valor_total_calculado)) * 100 : null;
+      // Mesma base da conferência automática (trigger): valor total do frete
+      // (calculado + outras despesas); sem ele, o calculado.
+      const esperado = r.valor_total_frete != null ? r.valor_total_frete : r.valor_total_calculado;
+      if (r.valor_total_cte != null && esperado != null && r.carga_direta !== true && !r.cte_cancelado) {
+        diferenca = Number(r.valor_total_cte) - Number(esperado);
+        diferencaPercentual = Number(esperado) ? (diferenca / Number(esperado)) * 100 : null;
         const limite = Math.max(toleranciaValor, Math.abs(Number(r.valor_total_cte)) * toleranciaPercentual / 100);
         if (Math.abs(diferenca) > limite) problemas.push({ codigo: 'DIVERGENCIA_VALOR', texto: 'CT-e diferente do valor calculado' });
       }
@@ -2542,6 +2580,13 @@ router.put('/:id', autenticar, permitir('pode_editar_registros'), freteDoCliente
     if (campos.length === 0) {
       return res.status(400).json({ erro: 'Nenhum campo válido para atualizar.' });
     }
+    const { rows: atual } = await pool.query(`SELECT ${CAMPOS_DE_CONFERENCIA.join(', ')} FROM fretes WHERE id = $1`, [req.params.id]);
+    if (!atual[0]) return res.status(404).json({ erro: 'Registro não encontrado.' });
+    const mexidos = campos.filter((c) => CAMPOS_DE_CONFERENCIA.includes(c) && valorMudou(atual[0][c], req.body[c]));
+    const bloqueio = await bloqueioCamposConferencia(req, mexidos,
+      ['valor_total_cte', 'valor_total_frete', 'valor_total_calculado', 'valor_frete_negociado']
+        .flatMap((c) => [atual[0][c], campos.includes(c) ? req.body[c] : null]).filter((v) => !vazio(v)));
+    if (bloqueio) return res.status(403).json({ erro: bloqueio });
 
     const sets = campos.map((c, i) => `${c} = $${i + 1}`);
     const valores = campos.map((c) => req.body[c]);

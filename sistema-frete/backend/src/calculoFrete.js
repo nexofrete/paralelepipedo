@@ -56,13 +56,39 @@ function normalizarCidade(texto) {
 // cidade E bairro) na sua lista de cidades cadastradas — algumas
 // transportadoras organizam a Capital por BAIRRO em vez de pelo nome da
 // cidade, então aceitamos qualquer um dos dois batendo.
-function encontrarTrechoPorCidade(trechos, candidatos) {
+function trechosDaCidade(trechos, candidatos) {
   const lista = (Array.isArray(candidatos) ? candidatos : [candidatos]).filter(Boolean).map(normalizarCidade);
-  if (lista.length === 0) return null;
-  return trechos.find((t) => {
+  if (lista.length === 0) return [];
+  return trechos.filter((t) => {
     const cidadesTrecho = (t.cidades || '').split(',').map((c) => normalizarCidade(c));
     return lista.some((alvo) => cidadesTrecho.includes(alvo));
-  }) || null;
+  });
+}
+// A mesma praça pode ter mais de um trecho (ex.: CAIXA e TAPETE, ou faixas de
+// peso). Prefere o do Tipo de Carga do registro e, no cálculo por peso, a faixa
+// em que o peso considerado cabe ("peso até"). Sem isso, fica o 1º da lista.
+function preferirTrecho(achados, { tipoCarga, pesoKg, cubagemM3 } = {}) {
+  let lista = achados;
+  const tipo = semAcentoMaiusc(tipoCarga);
+  if (tipo && lista.length > 1) {
+    const mesmoTipo = lista.filter((t) => {
+      const x = semAcentoMaiusc(t.tipo_carga);
+      return x && (x === tipo || x.startsWith(tipo) || tipo.startsWith(x));
+    });
+    if (mesmoTipo.length) lista = mesmoTipo;
+  }
+  if (lista.length > 1 && (pesoKg != null || cubagemM3 != null)) {
+    const pesoDo = (t) => Math.max(Number(pesoKg) || 0, (Number(cubagemM3) || 0) * (Number(t.cubagem_kg_m3) || 300));
+    const naFaixa = lista.filter((t) => t.modo_calculo !== 'peso' || t.peso_ate == null || pesoDo(t) <= Number(t.peso_ate));
+    if (naFaixa.length) lista = naFaixa;
+    // Faixa com "peso até" (a mais justa primeiro) vem antes da faixa aberta.
+    const teto = (t) => (t.modo_calculo === 'peso' && t.peso_ate != null ? Number(t.peso_ate) : Number.MAX_VALUE);
+    lista = [...lista].sort((a, b) => teto(a) - teto(b));
+  }
+  return lista[0] || null;
+}
+function encontrarTrechoPorCidade(trechos, candidatos, opcoes) {
+  return preferirTrecho(trechosDaCidade(trechos, candidatos), opcoes);
 }
 
 // Bloco A + B da fórmula: descobre o Peso Considerado (o maior entre peso
@@ -306,13 +332,14 @@ function trechoNoEstado(t, uf) {
 // estado desconhecido); o BAIRRO só serve de plano B com prova de que o trecho
 // é desse estado/cidade — senão um bairro "CENTRO" do Rio casava com uma
 // tabela de São Paulo que lista bairros da capital.
-function escolherTrechoDoDestino(trechos, { cidade, bairro, uf }) {
-  const porCidade = cidade ? encontrarTrechoPorCidade(trechos.filter((t) => trechoNoEstado(t, uf) !== false), [cidade]) : null;
+// opcoes (tipoCarga, pesoKg, cubagemM3): desempatam trechos da mesma praça.
+function escolherTrechoDoDestino(trechos, { cidade, bairro, uf, ...opcoes }) {
+  const porCidade = cidade ? encontrarTrechoPorCidade(trechos.filter((t) => trechoNoEstado(t, uf) !== false), [cidade], opcoes) : null;
   if (porCidade || !bairro) return porCidade;
   const cid = normalizarCidade(cidade || '');
   const comProva = trechos.filter((t) => trechoNoEstado(t, uf) === true
     || (cid && normalizarCidade(`${t.destino || ''} ${t.regiao || ''}`).includes(cid)));
-  return encontrarTrechoPorCidade(comProva, [bairro]);
+  return encontrarTrechoPorCidade(comProva, [bairro], opcoes);
 }
 // Cidade de entrega citada nas informações da nota. Só conta quando vem num
 // trecho explícito ("LOCAL DE ENTREGA", "ENTREGAR EM", "ENDEREÇO DE ENTREGA")
@@ -473,9 +500,10 @@ async function calcularParaRegistro({ transportadoraCte, transportadoraCnpj, cid
     };
   }
 
+  const desempate = { tipoCarga: registro?.tipo_carga, pesoKg, cubagemM3 };
   const trecho = origemCidade === 'Cidade/Bairro do cliente'
-    ? escolherTrechoDoDestino(trechos, { cidade, bairro, uf: ufDestino })
-    : escolherTrechoDoDestino(trechos, { cidade: candidatos[0], bairro: null, uf: ufDestino });
+    ? escolherTrechoDoDestino(trechos, { cidade, bairro, uf: ufDestino, ...desempate })
+    : escolherTrechoDoDestino(trechos, { cidade: candidatos[0], bairro: null, uf: ufDestino, ...desempate });
   if (!trecho) {
     const cidadesCadastradas = [...new Set(
       trechos.flatMap((t) => (t.cidades || '').split(',').map((c) => c.trim()).filter(Boolean))
@@ -485,12 +513,22 @@ async function calcularParaRegistro({ transportadoraCte, transportadoraCnpj, cid
     };
   }
 
-  const { freteBase, explicacao, modo, taxaAplicada } = calcularFreteBase(trecho, { qtdVolumes, pesoKg, cubagemM3 });
+  const base = calcularFreteBase(trecho, { qtdVolumes, pesoKg, cubagemM3 });
+  const { freteBase, modo, taxaAplicada } = base;
+  let { explicacao } = base;
   const componentes = calcularComponentesEValorTotal(trecho, freteBase, { valorFaturado, pesoKg, qtdVolumes, ...extrasDoRegistro(registro, xmlNfe) });
+  const cidadeUsada = candidatos.find((c) => encontrarTrechoPorCidade([trecho], [c])) || candidatos[0];
+
+  // Praça com outros tipos de carga e o registro sem Tipo de Carga: avisa qual foi usado.
+  const tiposDaPraca = [...new Set(trechosDaCidade(trechos.filter((t) => t.tabela_preco_id === trecho.tabela_preco_id), [cidadeUsada])
+    .map((t) => String(t.tipo_carga || '').trim().toUpperCase()).filter(Boolean))];
+  if (tiposDaPraca.length > 1 && !semAcentoMaiusc(registro?.tipo_carga)) {
+    explicacao += ` — atenção: essa praça tem ${tiposDaPraca.join(', ')}; usado ${trecho.tipo_carga || 'o 1º trecho'} (preencha o Tipo de Carga do registro para escolher o certo)`;
+  }
 
   return {
     trecho, freteBase, explicacao, modo, componentes, taxaAplicada,
-    cidadeUsada: candidatos.find((c) => encontrarTrechoPorCidade([trecho], [c])) || candidatos[0],
+    cidadeUsada,
     origemCidade,
   };
 }
@@ -570,7 +608,7 @@ async function calcularEGravar(id, origem = 'importacao') {
 
 module.exports = {
   calcularEGravar, prazoDoTrecho,
-  buscarTrechos, buscarTodosTrechosAtivos, encontrarTrechoPorCidade, encontrarCidadeMencionadaEmTexto, normalizarCidade, calcularFreteBase,
+  buscarTrechos, buscarTodosTrechosAtivos, encontrarTrechoPorCidade, trechosDaCidade, preferirTrecho, encontrarCidadeMencionadaEmTexto, normalizarCidade, calcularFreteBase,
   calcularComponentesEValorTotal, calcularParaRegistro, extrasDoRegistro, clienteNaLista,
   ufDoTrecho, trechoNoEstado, escolherTrechoDoDestino, cidadeDeEntregaNaNota, municipiosComUf, municipiosConhecidos, bairrosConhecidos, citacaoValida, municipioNoTexto, cidadeDoRedespachoNoTexto,
 };

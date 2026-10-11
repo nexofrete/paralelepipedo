@@ -445,8 +445,13 @@ BEGIN
   IF NEW.valor_total_frete IS NOT NULL AND NEW.valor_total_cte IS NOT NULL
      AND NOT COALESCE(NEW.cte_cancelado, FALSE) AND NOT COALESCE(NEW.cte_nao_levou, FALSE)
      AND COALESCE(NEW.status, '') <> 'Não cobrado' THEN
+    -- Carga Direta nunca é liberada sozinha: o "negociado" vem do próprio CT-e,
+    -- então a conferência compararia o CT-e com ele mesmo. Precisa de uma pessoa.
+    -- Frete REJEITADO por uma pessoa também não é aprovado de novo pelo sistema.
     IF NOT COALESCE(NEW.alerta_transportadora_diferente, FALSE) AND NOT COALESCE(NEW.alerta_cobranca_dupla, FALSE)
        AND NULLIF(NEW.motivo_conferencia, '') IS NULL
+       AND NEW.carga_direta IS NOT TRUE
+       AND NEW.status_aprovacao IS DISTINCT FROM 'Rejeitado'
        AND ABS(NEW.valor_total_frete - NEW.valor_total_cte) <= COALESCE((
           SELECT GREATEST(
                    COALESCE(tolerancia_valor, 0),
@@ -455,7 +460,7 @@ BEGIN
           FROM configuracao_auditoria WHERE id = 1
         ), 0) THEN
       -- Não mexe em frete cancelado/faturado, nem sobrescreve aprovação manual.
-      IF NEW.status NOT IN ('Cancelado', 'Faturado') THEN
+      IF COALESCE(NEW.status, 'Pendente') NOT IN ('Cancelado', 'Faturado') THEN
         NEW.status := 'Liberado p/ Pagamento';
         IF NEW.status_aprovacao IS DISTINCT FROM 'Aprovado' THEN
           NEW.status_aprovacao := 'Aprovado';
@@ -463,9 +468,9 @@ BEGIN
           NEW.aprovado_em := NOW();
         END IF;
       END IF;
-    ELSIF NEW.carga_direta IS NOT TRUE
-          AND (NEW.status_aprovacao IS DISTINCT FROM 'Aprovado' OR NEW.aprovado_por_nome = 'Sistema (conferência automática)')
-          AND NEW.status NOT IN ('Cancelado', 'Faturado') THEN
+    -- Divergente, Carga Direta ou rejeitado: fica retido até uma pessoa aprovar.
+    ELSIF (NEW.status_aprovacao IS DISTINCT FROM 'Aprovado' OR NEW.aprovado_por_nome = 'Sistema (conferência automática)')
+          AND COALESCE(NEW.status, 'Pendente') NOT IN ('Cancelado', 'Faturado') THEN
       NEW.status := 'Frete Retido';
       IF NEW.aprovado_por_nome = 'Sistema (conferência automática)' THEN
         NEW.status_aprovacao := 'Pendente';
@@ -1286,3 +1291,11 @@ ALTER TABLE fretes ADD COLUMN IF NOT EXISTS itens_sem_medida INTEGER;
 
 -- Logo da empresa (imagem em data URL), usada no cabeçalho dos relatórios impressos.
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS logo TEXT;
+
+-- Correção da conferência automática: Carga Direta que o sistema tinha liberado
+-- sozinho (comparava o CT-e com ele mesmo) volta a ficar retida, esperando uma
+-- pessoa aprovar. Aprovação feita por pessoa e frete faturado não são mexidos.
+UPDATE fretes SET atualizado_em = atualizado_em
+ WHERE carga_direta IS TRUE AND NOT cte_cancelado AND fatura_id IS NULL
+   AND aprovado_por_nome = 'Sistema (conferência automática)'
+   AND status = 'Liberado p/ Pagamento';

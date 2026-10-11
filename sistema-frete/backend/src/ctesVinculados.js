@@ -326,6 +326,9 @@ async function vincularCtesAntigos() {
            SELECT id FROM fretes p
             WHERE p.id <> f.id AND p.frete_principal_id IS NULL AND p.chave_cte IS NOT NULL AND p.cliente IS NOT NULL
               AND LTRIM(p.numero_nf, '0') = LTRIM(f.numero_nf, '0')
+              -- Mesmo número de NF de outro emitente (outra filial/empresa) não é a mesma nota.
+              AND (COALESCE(f.chave_nfe, '') = '' OR COALESCE(p.chave_nfe, '') = ''
+                   OR SUBSTRING(p.chave_nfe FROM 7 FOR 14) = SUBSTRING(f.chave_nfe FROM 7 FOR 14))
             ORDER BY p.data_emissao_cte NULLS LAST, p.id LIMIT 1
          ) p ON TRUE
         WHERE f.frete_principal_id IS NULL AND f.vinculo_cte IS NULL AND f.chave_cte IS NOT NULL

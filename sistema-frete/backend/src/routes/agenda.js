@@ -246,6 +246,46 @@ router.get('/notificacoes', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/agenda/sistema?de=AAAA-MM-DD&ate=AAAA-MM-DD — datas que o próprio
+// sistema conhece, para aparecer no calendário sem ninguém digitar:
+// vencimento das faturas de frete e entregas previstas por dia (as abertas).
+// Cada bloco só vem para quem tem permissão de ver aquela tela.
+router.get('/sistema', autenticar, async (req, res) => {
+  const { temAlguma, consultaCliente } = require('../permissoes');
+  const de = /^\d{4}-\d{2}-\d{2}$/.test(req.query.de || '') ? req.query.de : null;
+  const ate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.ate || '') ? req.query.ate : null;
+  if (!de || !ate) return res.status(400).json({ erro: 'Informe o período (de / ate).' });
+  const vePotudo = req.usuario.perfil === 'admin' || !!req.usuario.pode_ver_todos;
+  const itens = [];
+  try {
+    if (vePotudo && temAlguma(req, 'pode_conferir_fatura', 'pode_aprovar_pagamento', 'pode_ver_financeiro', 'pode_ver_auditoria')) {
+      const { rows } = await pool.query(
+        `SELECT id, numero, transportadora, TO_CHAR(data_vencimento, 'YYYY-MM-DD') AS data,
+                COALESCE(valor_informado, valor_ctes)::float AS valor, parecer,
+                COALESCE(parecer, '') ILIKE '%pago%' AS paga
+           FROM faturas_frete
+          WHERE data_vencimento BETWEEN $1::date AND $2::date
+          ORDER BY data_vencimento, transportadora`, [de, ate]);
+      rows.forEach((f) => itens.push({ tipo: 'fatura', ...f }));
+    }
+    if (temAlguma(req, 'pode_ver_relatorios')) {
+      const { rows } = await consultaCliente(req,
+        `SELECT TO_CHAR(data_entrega_prevista, 'YYYY-MM-DD') AS data, COUNT(*)::int AS qtd,
+                COUNT(DISTINCT COALESCE(transportadora_cte, transportadora))::int AS transportadoras
+           FROM fretes
+          WHERE data_entrega IS NULL AND nf_cancelada IS NOT TRUE AND nf_devolvida IS NOT TRUE AND nf_retornou IS NOT TRUE
+            AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado')
+            AND data_entrega_prevista BETWEEN $1::date AND $2::date
+          GROUP BY 1 ORDER BY 1`, [de, ate]);
+      rows.forEach((e) => itens.push({ tipo: 'entregas', ...e }));
+    }
+    res.json(itens);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao buscar as datas do sistema.' });
+  }
+});
+
 // POST /api/agenda/notificacoes/lidas  { ids?: [...] } — sem ids, marca todas.
 router.post('/notificacoes/lidas', autenticar, async (req, res) => {
   try {

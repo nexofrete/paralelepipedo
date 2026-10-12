@@ -8093,45 +8093,163 @@ function agQuando(ev) {
   return ev.fim ? `${dia} · ${agHora(ini)} às ${agHora(new Date(ev.fim))}` : `${dia} · ${agHora(ini)}`;
 }
 
+// Camadas do calendário (liga/desliga, guardado neste navegador).
+const AG_CAMADAS = {
+  eventos: { rotulo: 'Meus eventos', cor: '#4d7cff' },
+  fatura: { rotulo: '💰 Vencimento de faturas', cor: '#f97316' },
+  entregas: { rotulo: '🚚 Entregas previstas', cor: '#22c55e' },
+};
+function agCamadasLigadas() {
+  try { return { eventos: true, fatura: true, entregas: true, ...JSON.parse(localStorage.getItem('agCamadas') || '{}') }; } catch { return { eventos: true, fatura: true, entregas: true }; }
+}
+function agLigarCamada(chave, ligada) {
+  const c = agCamadasLigadas(); c[chave] = ligada;
+  try { localStorage.setItem('agCamadas', JSON.stringify(c)); } catch { /* só não lembra */ }
+  agRenderizarCalendario(agEstado.inicioGrade, agEstado.semanas);
+}
+const agDiaMais = (chave, n) => { const d = new Date(`${chave}T12:00:00`); d.setDate(d.getDate() + n); return agDataLocal(d); };
+
 async function carregarAgenda() {
+  // Só as semanas do mês (5 ou 6, às vezes 4), sem uma semana inteira do mês seguinte.
   const inicioGrade = new Date(agEstado.mes); inicioGrade.setDate(1 - inicioGrade.getDay());
-  const fimGrade = new Date(inicioGrade); fimGrade.setDate(fimGrade.getDate() + 41);
+  const diasNoMes = new Date(agEstado.mes.getFullYear(), agEstado.mes.getMonth() + 1, 0).getDate();
+  const semanas = Math.ceil((agEstado.mes.getDay() + diasNoMes) / 7);
+  const fimGrade = new Date(inicioGrade); fimGrade.setDate(fimGrade.getDate() + semanas * 7 - 1);
+  const hoje = agDataLocal(new Date());
+  const json = async (r) => (r.ok ? r.json() : []);
   try {
-    const [respEv, respProx] = await Promise.all([
+    const [respEv, respProx, respSis, respSemana] = await Promise.all([
       apiFetch(`/api/agenda/eventos?de=${agDataLocal(inicioGrade)}&ate=${agDataLocal(fimGrade)}`),
       apiFetch('/api/agenda/proximos'),
+      apiFetch(`/api/agenda/sistema?de=${agDataLocal(inicioGrade)}&ate=${agDataLocal(fimGrade)}`).catch(() => ({ ok: false })),
+      apiFetch(`/api/agenda/sistema?de=${hoje}&ate=${agDiaMais(hoje, 6)}`).catch(() => ({ ok: false })),
     ]);
-    agEstado.eventos = respEv.ok ? await respEv.json() : [];
-    const proximos = respProx.ok ? await respProx.json() : [];
-    agRenderizarCalendario(inicioGrade);
-    agRenderizarProximos(proximos);
+    agEstado.eventos = await json(respEv);
+    agEstado.sistema = await json(respSis);
+    agEstado.inicioGrade = inicioGrade; agEstado.semanas = semanas;
+    agRenderizarCalendario(inicioGrade, semanas);
+    agRenderizarProximos(await json(respProx));
+    agRenderizarResumoFrete(await json(respSemana), respSemana.ok);
   } catch (err) { console.error(err); }
   agRenderizarAvisos();
 }
 
-function agRenderizarCalendario(inicioGrade) {
+// Itens de um dia: eventos (inclusive os de vários dias) e as datas do sistema.
+function agItensPorDia() {
+  const camadas = agCamadasLigadas();
+  const porDia = {};
+  const por = (chave, item) => (porDia[chave] = porDia[chave] || []).push(item);
+  if (camadas.eventos) {
+    agEstado.eventos.forEach((ev) => {
+      const ini = agDataLocal(new Date(ev.inicio));
+      const fim = ev.fim ? agDataLocal(new Date(ev.fim)) : ini;
+      for (let d = ini, k = 0; d <= fim && k < 62; d = agDiaMais(d, 1), k += 1) por(d, { tipo: 'evento', ev, continua: d !== ini });
+    });
+  }
+  (agEstado.sistema || []).forEach((it) => { if (camadas[it.tipo]) por(it.data, it); });
+  return porDia;
+}
+
+function agChip(item) {
+  if (item.tipo === 'evento') {
+    const ev = item.ev;
+    return `<div class="ag-chip" style="--cor-ev:${agCorDe(ev)};" data-ag-evento="${ev.id}" title="${cfEsc(ev.titulo)}">
+        ${item.continua ? '↳ ' : (ev.dia_inteiro ? '' : `<b>${agHora(new Date(ev.inicio))}</b>`)}${cfEsc(ev.titulo)}</div>`;
+  }
+  if (item.tipo === 'fatura') {
+    return `<div class="ag-chip ag-chip-sis" style="--cor-ev:${AG_CAMADAS.fatura.cor};" data-ag-sis="fatura"
+        title="Vence a fatura ${cfEsc(item.numero)} de ${cfEsc(item.transportadora)}: ${formatoMoeda(item.valor)}${item.parecer ? ` (${cfEsc(item.parecer)})` : ''}">💰 ${cfEsc(item.numero)} · ${cfEsc(item.transportadora)}</div>`;
+  }
+  return `<div class="ag-chip ag-chip-sis" style="--cor-ev:${AG_CAMADAS.entregas.cor};" data-ag-sis="entregas"
+      title="${item.qtd} nota(s) com entrega prevista para este dia, de ${item.transportadoras} transportadora(s)">🚚 ${item.qtd} entrega${item.qtd > 1 ? 's' : ''}</div>`;
+}
+
+function agRenderizarFiltros() {
+  const area = document.getElementById('agFiltros');
+  const camadas = agCamadasLigadas();
+  // Só mostra as camadas do sistema que este usuário pode ver (o servidor manda o que é permitido).
+  const disponiveis = ['eventos', ...(agEstado.sistemaPermitido || [])];
+  area.innerHTML = disponiveis.length > 1 ? disponiveis.map((k) => `
+    <label class="ag-filtro" style="--cor-ev:${AG_CAMADAS[k].cor};"><input type="checkbox" data-ag-camada="${k}" ${camadas[k] ? 'checked' : ''} />${AG_CAMADAS[k].rotulo}</label>`).join('') : '';
+}
+
+function agRenderizarCalendario(inicioGrade, semanas = 6) {
   const titulo = agEstado.mes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   document.getElementById('agMesTitulo').textContent = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+  agRenderizarFiltros();
   const hoje = agDataLocal(new Date());
-  const porDia = {};
-  agEstado.eventos.forEach((ev) => {
-    const chave = agDataLocal(new Date(ev.inicio));
-    (porDia[chave] = porDia[chave] || []).push(ev);
-  });
+  const porDia = agItensPorDia();
+  agEstado.porDia = porDia;
   let html = '';
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < semanas * 7; i++) {
     const d = new Date(inicioGrade); d.setDate(d.getDate() + i);
     const chave = agDataLocal(d);
-    const eventos = porDia[chave] || [];
+    const itens = porDia[chave] || [];
     const classes = ['ag-dia', d.getMonth() !== agEstado.mes.getMonth() ? 'fora' : '', chave === hoje ? 'hoje' : '', chave < hoje ? 'passado' : ''].join(' ');
-    const chips = eventos.slice(0, 3).map((ev) => `
-      <div class="ag-chip" style="--cor-ev:${agCorDe(ev)};" data-ag-evento="${ev.id}" title="${cfEsc(ev.titulo)}">
-        ${ev.dia_inteiro ? '' : `<b>${agHora(new Date(ev.inicio))}</b>`}${cfEsc(ev.titulo)}
-      </div>`).join('');
-    const mais = eventos.length > 3 ? `<div class="ag-mais">+${eventos.length - 3} mais</div>` : '';
-    html += `<div class="${classes}" data-ag-dia="${chave}"><span class="ag-dia-num">${d.getDate()}</span>${chips}${mais}</div>`;
+    const mais = itens.length > 3 ? `<div class="ag-mais" data-ag-dia-lista="${chave}">+${itens.length - 3} mais</div>` : '';
+    html += `<div class="${classes}" data-ag-dia="${chave}" title="Clique para marcar um evento neste dia"><span class="ag-dia-num">${d.getDate()}</span>${itens.slice(0, 3).map(agChip).join('')}${mais}</div>`;
   }
   document.getElementById('agGrade').innerHTML = html;
+}
+
+// Tudo o que tem num dia (quando não cabe na célula).
+function agAbrirDia(chave) {
+  const itens = agEstado.porDia?.[chave] || [];
+  const dia = new Date(`${chave}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('agDetalheConteudo').innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0;">${cfEsc(dia.charAt(0).toUpperCase() + dia.slice(1))}</h3>
+      <span style="cursor:pointer; font-size:18px;" data-ag-fechar-detalhe>✕</span>
+    </div>
+    <div class="ag-dia-lista">${itens.map(agChip).join('')}</div>
+    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+      <button class="btn btn-primario" data-ag-novo-no-dia="${chave}" style="width:auto;">+ Novo evento neste dia</button>
+    </div>`;
+  document.getElementById('painelAgDetalhe').classList.remove('oculto');
+}
+
+// Clique numa data do sistema: leva para a tela de onde ela vem.
+function agAbrirSistema(tipo) {
+  document.getElementById('painelAgDetalhe').classList.add('oculto');
+  if (tipo === 'fatura') {
+    document.getElementById('painelConferenciaFatura').classList.remove('oculto');
+    cfTrocarAba('lista');
+  } else if (tipo === 'entregas') {
+    irParaPagina('relatorios');
+    setTimeout(() => irParaAlvoNotificacao('entregas-previstas'), 150);
+  }
+}
+
+function agRenderizarResumoFrete(itens, permitido) {
+  const bloco = document.getElementById('agBlocoFrete');
+  // Quais camadas do sistema este usuário enxerga (para os filtros).
+  agEstado.sistemaPermitido = permitido ? [
+    ...(podeVerFaturas ? ['fatura'] : []), ...(podeVerRelatorios ? ['entregas'] : []),
+  ] : [];
+  agRenderizarFiltros();
+  if (!agEstado.sistemaPermitido.length) { bloco.classList.add('oculto'); return; }
+  bloco.classList.remove('oculto');
+  const faturas = itens.filter((i) => i.tipo === 'fatura');
+  const entregas = itens.filter((i) => i.tipo === 'entregas');
+  const qtdEntregas = entregas.reduce((s, e) => s + e.qtd, 0);
+  const valorFaturas = faturas.reduce((s, f) => s + (Number(f.valor) || 0), 0);
+  const linhas = [];
+  if (podeVerFaturas) {
+    linhas.push(`<div class="ag-item" style="--cor-ev:${AG_CAMADAS.fatura.cor};" data-ag-sis="fatura">
+      <div style="font-size:18px;">💰</div>
+      <div class="ag-item-texto">${faturas.length ? `${faturas.length} fatura(s) vencem · ${formatoMoeda(valorFaturas)}` : 'Nenhuma fatura vence'}
+        <small>${faturas.length ? faturas.slice(0, 3).map((f) => `${new Date(`${f.data}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${cfEsc(f.transportadora)}`).join(' · ') : 'com data de vencimento informada na conferência'}</small></div>
+    </div>`);
+  }
+  if (podeVerRelatorios) {
+    const pico = entregas.reduce((m, e) => (!m || e.qtd > m.qtd ? e : m), null);
+    linhas.push(`<div class="ag-item" style="--cor-ev:${AG_CAMADAS.entregas.cor};" data-ag-sis="entregas">
+      <div style="font-size:18px;">🚚</div>
+      <div class="ag-item-texto">${qtdEntregas ? `${qtdEntregas} entrega(s) previstas` : 'Nenhuma entrega prevista'}
+        <small>${pico ? `Dia mais cheio: ${new Date(`${pico.data}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} (${pico.qtd})` : 'notas em aberto com previsão de entrega'}</small></div>
+    </div>`);
+  }
+  document.getElementById('agResumoFrete').innerHTML = linhas.join('');
 }
 
 function agRenderizarProximos(lista) {
@@ -8396,8 +8514,20 @@ document.getElementById('btnAgMarcarLidos').addEventListener('click', () => agMa
 document.getElementById('agGrade').addEventListener('click', (e) => {
   const chip = e.target.closest('[data-ag-evento]');
   if (chip) { agAbrirDetalhe(agBuscarEvento(chip.dataset.agEvento)); return; }
+  const sis = e.target.closest('[data-ag-sis]');
+  if (sis) { agAbrirSistema(sis.dataset.agSis); return; }
+  const lista = e.target.closest('[data-ag-dia-lista]');
+  if (lista) { agAbrirDia(lista.dataset.agDiaLista); return; }
   const dia = e.target.closest('[data-ag-dia]');
   if (dia) agAbrirFormulario(null, dia.dataset.agDia);
+});
+document.getElementById('agFiltros').addEventListener('change', (e) => {
+  const caixa = e.target.closest('[data-ag-camada]');
+  if (caixa) agLigarCamada(caixa.dataset.agCamada, caixa.checked);
+});
+document.getElementById('agResumoFrete').addEventListener('click', (e) => {
+  const item = e.target.closest('[data-ag-sis]');
+  if (item) agAbrirSistema(item.dataset.agSis);
 });
 document.getElementById('agProximos').addEventListener('click', (e) => {
   const item = e.target.closest('[data-ag-evento-lista]');
@@ -8414,6 +8544,12 @@ document.getElementById('painelAgDetalhe').addEventListener('click', (e) => {
   if (e.target.id === 'painelAgDetalhe' || e.target.closest('[data-ag-fechar-detalhe]')) {
     document.getElementById('painelAgDetalhe').classList.add('oculto'); return;
   }
+  const evLista = e.target.closest('[data-ag-evento]');
+  if (evLista) { agAbrirDetalhe(agBuscarEvento(evLista.dataset.agEvento)); return; }
+  const sisLista = e.target.closest('[data-ag-sis]');
+  if (sisLista) { agAbrirSistema(sisLista.dataset.agSis); return; }
+  const novoNoDia = e.target.closest('[data-ag-novo-no-dia]');
+  if (novoNoDia) { document.getElementById('painelAgDetalhe').classList.add('oculto'); agAbrirFormulario(null, novoNoDia.dataset.agNovoNoDia); return; }
   const editar = e.target.closest('[data-ag-editar]');
   if (editar) { agAbrirFormulario(agBuscarEvento(editar.dataset.agEditar)); return; }
   const excluir = e.target.closest('[data-ag-excluir]');

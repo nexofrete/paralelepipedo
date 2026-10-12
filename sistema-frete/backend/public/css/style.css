@@ -1066,7 +1066,14 @@ body:has(#faixaAmbienteTeste:not(.oculto)) .tela-login {
 }
 .ag-chip:hover { background: color-mix(in srgb, var(--cor-ev) 38%, transparent); }
 .ag-chip b { font-weight: 600; margin-right: 3px; }
-.ag-mais { font-size: 10.5px; color: var(--texto-fraco); padding-left: 4px; }
+.ag-mais { font-size: 10.5px; color: var(--azul); padding: 1px 4px; border-radius: 4px; cursor: pointer; align-self: flex-start; }
+.ag-mais:hover { background: var(--bg-card); }
+.ag-chip-sis { border-left-style: dashed; }
+.ag-filtros { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: -4px 0 10px 2px; }
+.ag-filtro { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; color: var(--texto); }
+.ag-filtro input { width: auto; accent-color: var(--cor-ev); }
+.ag-dia-lista { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.ag-dia-lista .ag-chip { font-size: 12.5px; padding: 7px 10px; white-space: normal; }
 .ag-lateral { display: flex; flex-direction: column; gap: 16px; }
 .ag-bloco { padding: 16px 16px; margin-bottom: 0; }
 .ag-bloco h3 { margin: 0 0 10px; font-size: 14px; }

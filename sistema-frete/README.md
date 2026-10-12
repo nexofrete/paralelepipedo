@@ -84,7 +84,7 @@ Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha
 
 ## Ocorrências de entrega (estilo SSW)
 
-Menu **📍 Ocorrências de entrega** (quem emite CT-e): acompanha cada CT-e autorizado até a entrega.
+Em **🚛 Operação de Transporte → 📍 Ocorrências de entrega** (quem emite CT-e): acompanha cada CT-e autorizado até a entrega.
 
 - **Previsão de entrega** automática na autorização: prazo da tabela de preço da própria empresa para a cidade de destino, ou o "Prazo de entrega padrão" da Configuração fiscal (3 dias úteis se vazio), contando só dias úteis.
 - **Painel** com contadores (em aberto, atrasados, previsão hoje, com ocorrência, entregues hoje, % no prazo) e filtros, busca por CT-e, NF, chave, cliente ou cidade.
@@ -107,7 +107,9 @@ Cada parceiro às vezes muda um campo ou outro do padrão: se ele mandar o manua
 
 ## Emissão de CT-e (para transportadoras)
 
-Para a transportadora que usa o Nexofrete, o menu **🚛 Emissão de CT-e** monta, transmite e imprime o CT-e (modelo 57, modal rodoviário, versão 4.00).
+Para a transportadora que usa o Nexofrete, tudo fica no menu **🚛 Operação de Transporte**. Os submenus são CT-e, MDF-e, Ocorrências de entrega, Romaneios, EDI, Veículos e motoristas e Configuração fiscal (esta só para o administrador).
+
+O submenu **📄 CT-e** monta, transmite e imprime o CT-e (modelo 57, modal rodoviário, versão 4.00).
 
 **Modo demonstração (para apresentar e treinar sem certificado):** em Configuração fiscal → Ambiente, escolha **Demonstração (simulada)**, salve e clique em **🧪 Gerar certificado de demonstração**. A SEFAZ passa a ser simulada dentro do próprio servidor: emite, imprime o DACTE (com a tarja "DEMONSTRAÇÃO — NÃO ENVIADO À SEFAZ"), consulta, cancela e faz carta de correção, sem internet. A assinatura digital, a chave de acesso e o ambiente são conferidos de verdade; nada é enviado e nada tem valor fiscal. Para emitir de verdade, envie o certificado A1 (.pfx) da empresa e troque o ambiente para Homologação — o certificado de demonstração é recusado fora desse modo, e os CT-e de demonstração ficam marcados na lista.
 
@@ -161,12 +163,12 @@ Testes automáticos do CT-e: `npm test` dentro de `backend`. A validação nos s
 
 ## MDF-e (manifesto da viagem)
 
-Na **🚛 Emissão de CT-e**, a aba **📋 MDF-e** emite o MDF-e (modelo 58, rodoviário, versão 3.00) na SEFAZ Virtual do RS (SVRS), que autoriza o MDF-e de todos os estados. Ele usa o mesmo certificado e o mesmo ambiente do CT-e, inclusive o modo demonstração. A série e o próximo número ficam em Configuração fiscal.
+Em **🚛 Operação de Transporte → 📋 MDF-e**, o sistema emite o MDF-e (modelo 58, rodoviário, versão 3.00) na SEFAZ Virtual do RS (SVRS), que autoriza o MDF-e de todos os estados. Ele usa o mesmo certificado e o mesmo ambiente do CT-e, inclusive o modo demonstração. A série e o próximo número ficam em Configuração fiscal.
 
 1. Cadastre os caminhões, as carretas e os motoristas em **🚛 Veículos e motoristas**: placa, RENAVAM, tara, capacidade, tipo de rodado e carroceria, CPF e CNH. Para veículo de agregado ou TAC, informe também os dados do proprietário.
 2. Monte o MDF-e de um destes jeitos:
    - Em **+ MDF-e dos CT-e autorizados**, marque os CT-e da viagem.
-   - Num romaneio (Ocorrências → Romaneios), clique em **📋 Emitir MDF-e**. Ele já traz o veículo e o motorista do romaneio.
+   - Num romaneio (Operação de Transporte → Romaneios), clique em **📋 Emitir MDF-e**. Ele já traz o veículo e o motorista do romaneio.
 
    Sai um MDF-e por UF de descarregamento. O sistema sugere as UFs do percurso e soma o valor e o peso da carga.
 3. Confira o veículo, a carreta, os motoristas, o seguro (seguradora, apólice e averbação) e, se houver, o CIOT, o vale-pedágio e o contratante. Depois clique em **Salvar e transmitir**. O DAMDFE abre para imprimir e vai com o motorista.

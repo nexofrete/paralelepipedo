@@ -52,9 +52,21 @@
       <div class="nav-item" data-pagina="upload" id="navUpload">Enviar XML</div>
       <div class="nav-item" data-pagina="registros">Todos os registros</div>
       <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
-      <div class="nav-item oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
-      <div class="nav-item oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
-      <div class="nav-item oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
+      <!-- Operação de Transporte: um item com submenus (js/menuTransporte.js). Os itens de página
+           continuam aqui, escondidos, porque as permissões e os atalhos usam eles. -->
+      <div class="nav-grupo oculto" id="navGrupoTransporte">🚛 Operação de Transporte <span id="navTranspSeta" style="float:right; font-size:11px;">▸</span></div>
+      <div class="nav-sub oculto" id="navSubTransporte">
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="lista">📄 CT-e</div>
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="mdfe">📋 MDF-e</div>
+        <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
+        <div class="nav-tsub" data-ir="ocorrencias" data-aba="romaneios">🚚 Romaneios</div>
+        <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="frota">🚛 Veículos e motoristas</div>
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="config" data-so-admin="1">⚙️ Configuração fiscal</div>
+      </div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios">
@@ -3196,6 +3208,7 @@
   <script src="js/edi.js"></script>
   <script src="js/ocorrencias.js"></script>
   <script src="js/mdfe.js"></script>
+  <script src="js/menuTransporte.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/roteirizacao.js"></script>
 </body>

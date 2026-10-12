@@ -7,7 +7,7 @@ const pool = require('../db');
 const { autenticar, apenasAdmin, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
 const { criptografar, lerPfx, gerarCertificadoDemonstracao } = require('../cte/certificado');
-const { lerNfe } = require('../cte/lerNfe');
+const { lerNfe, lerCteAnterior } = require('../cte/lerNfe');
 const emissao = require('../cte/emissao');
 const { gerarDacte } = require('../cte/dacte');
 const { CODIGO_UF } = require('../cte/ufs');
@@ -27,16 +27,20 @@ const CAMPOS_CONFIG = {
   cte_ibs_uf_aliquota: 'numero', cte_ibs_mun_aliquota: 'numero', cte_cbs_aliquota: 'numero',
   resp_tec_cnpj: 'texto', resp_tec_contato: 'texto', resp_tec_email: 'texto', resp_tec_fone: 'texto',
   aviso_entrega_ativo: 'bool', aviso_entrega_eventos: 'texto', aviso_entrega_email: 'bool', aviso_entrega_whatsapp: 'bool', endereco_publico: 'texto',
+  cte_contingencia: 'bool', cte_contingencia_motivo: 'texto',
 };
 const SEM_CERTIFICADO = 'id, razao_social, nome_fantasia, cnpj, ie, telefone, email, endereco, numero, complemento, bairro, municipio, uf, cep, '
   + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('mdfe_') || c.startsWith('resp_tec') || c.startsWith('aviso_entrega') || c === 'endereco_publico').join(', ')}, `
-  + 'certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
+  + 'cte_contingencia_inicio, certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
+
+// Qual SEFAZ Virtual de Contingência atende a UF da empresa (para a tela).
+const comSvc = (c) => (c ? { ...c, svc_sigla: c.uf ? emissao.contingenciaDaUf(c.uf).sigla : null } : c);
 
 router.get('/config', autenticar, async (req, res) => {
   try {
     await pool.query('INSERT INTO empresa (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
     const { rows } = await pool.query(`SELECT ${SEM_CERTIFICADO} FROM empresa WHERE id = 1`);
-    res.json(rows[0]);
+    res.json(comSvc(rows[0]));
   } catch (err) { responderErro(res, err, 'Erro ao carregar a configuração fiscal.'); }
 });
 
@@ -66,7 +70,21 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
     // Demonstração sempre em homologação (o XML diz "sem valor fiscal").
     if (demo && amb == null) pares.push(['cte_ambiente', 2]);
     await pool.query('INSERT INTO empresa (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
-    const { rows: antes } = await pool.query('SELECT cte_ambiente, cte_demonstracao FROM empresa WHERE id = 1');
+    const { rows: antes } = await pool.query('SELECT cte_ambiente, cte_demonstracao, cte_contingencia FROM empresa WHERE id = 1');
+    // Contingência (SVC): exige o motivo (15+ letras) e marca a hora em que começou.
+    const cont = pares.find(([c]) => c === 'cte_contingencia')?.[1];
+    if (cont) {
+      const motivo = pares.find(([c]) => c === 'cte_contingencia_motivo')?.[1] || '';
+      if (motivo.length < 15) return res.status(400).json({ erro: 'Para ligar a contingência, escreva o motivo (pelo menos 15 letras), ex.: "SEFAZ SP fora do ar desde as 9h".' });
+      if (!antes[0]?.cte_contingencia) {
+        pares.push(['cte_contingencia_inicio', new Date()]);
+        const svc = emissao.contingenciaDaUf(req.body.uf || (await pool.query('SELECT uf FROM empresa WHERE id = 1')).rows[0]?.uf);
+        log(req, 'cte_config', `Ligou a contingência do CT-e (${svc.sigla}): ${motivo}`);
+      }
+    } else if (cont === false && antes[0]?.cte_contingencia) {
+      pares.push(['cte_contingencia_inicio', null]);
+      log(req, 'cte_config', 'Desligou a contingência do CT-e (voltou para a SEFAZ normal)');
+    }
     if (demo === false && antes[0]?.cte_demonstracao) log(req, 'cte_config', 'Desligou o modo demonstração da emissão de CT-e');
     if (demo && !antes[0]?.cte_demonstracao) log(req, 'cte_config', 'Ligou o modo demonstração da emissão de CT-e (SEFAZ simulada)');
     await pool.query(`UPDATE empresa SET ${pares.map(([c], i) => `${c} = $${i + 1}`).join(', ')}, atualizado_em = NOW() WHERE id = 1`,
@@ -77,7 +95,7 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
       log(req, 'cte_config', 'Atualizou a configuração fiscal da emissão de CT-e');
     }
     const { rows } = await pool.query(`SELECT ${SEM_CERTIFICADO} FROM empresa WHERE id = 1`);
-    res.json(rows[0]);
+    res.json(comSvc(rows[0]));
   } catch (err) { responderErro(res, err, 'Erro ao salvar a configuração fiscal.'); }
 });
 
@@ -143,6 +161,10 @@ router.post('/ler-nfe', autenticar, emitir, (req, res) => {
   try { res.json(lerNfe(req.body?.xml)); } catch (err) { responderErro(res, err, 'Não consegui ler a NF-e.'); }
 });
 
+router.post('/ler-cte', autenticar, emitir, (req, res) => {
+  try { res.json(lerCteAnterior(req.body?.xml)); } catch (err) { responderErro(res, err, 'Não consegui ler o CT-e.'); }
+});
+
 // NF-e já importada no Nexofrete (Enviar XML), pela chave ou pelo número.
 router.get('/nfe-importada', autenticar, emitir, async (req, res) => {
   try {
@@ -188,7 +210,10 @@ router.get('/', autenticar, emitir, async (req, res) => {
     }
     const { rows } = await pool.query(
       `SELECT id, ambiente, serie, numero, chave, status, protocolo, autorizado_em, cstat, motivo, valor_total, tomador_nome,
-              remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome, criado_em, atualizado_em
+              remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome, criado_em, atualizado_em, demonstracao,
+              COALESCE(dados->>'tpCTe', '0') AS tp_cte, COALESCE(dados->>'tpServ', '0') AS tp_serv, tp_emis, chave_pendente_origem,
+              COALESCE(dados->'complementados'->>0, dados->'substituido'->>'chave') AS chave_referencia,
+              (SELECT s.serie || '/' || s.numero FROM ctes_emitidos s WHERE s.id = ctes_emitidos.substituido_por) AS substituido_por_numero
          FROM ctes_emitidos ${cond.length ? `WHERE ${cond.join(' AND ')}` : ''}
         ORDER BY criado_em DESC LIMIT 500`, val);
     res.json(rows);
@@ -252,6 +277,8 @@ router.post('/:id(\\d+)/duplicar', autenticar, emitir, async (req, res) => {
     const reg = await emissao.carregar(req.params.id);
     if (!reg) return res.status(404).json({ erro: 'CT-e não encontrado.' });
     const { rows: emp } = await pool.query('SELECT cte_ambiente FROM empresa WHERE id = 1');
+    // A cópia sai como CT-e normal (complementar/substituto se faz pelos botões próprios).
+    reg.dados = { ...reg.dados, tpCTe: '0', complementados: [], substituido: null };
     const r = emissao.resumo(reg.dados);
     const { rows } = await pool.query(
       `INSERT INTO ctes_emitidos (ambiente, dados, valor_total, tomador_nome, remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome)
@@ -259,6 +286,24 @@ router.post('/:id(\\d+)/duplicar', autenticar, emitir, async (req, res) => {
       [emp[0]?.cte_ambiente || 2, reg.dados, r.valor_total, r.tomador_nome, r.remetente_nome, r.destinatario_nome, r.cidade_fim, r.uf_fim, req.usuario.nome]);
     res.status(201).json(await emissao.carregar(rows[0].id));
   } catch (err) { responderErro(res, err, 'Erro ao duplicar.'); }
+});
+
+// Complementar (valor a mais) e substituição, a partir de um CT-e autorizado.
+['complementar', 'substituir'].forEach((tipo) => router.post(`/:id(\\d+)/${tipo}`, autenticar, emitir, async (req, res) => {
+  try {
+    const novo = await emissao.rascunhoDerivado(req.params.id, tipo === 'complementar' ? 'complementar' : 'substituto', req.usuario.nome);
+    log(req, 'cte_rascunho', `Criou o rascunho #${novo.id} de CT-e ${tipo === 'complementar' ? 'complementar' : 'de substituição'} do CT-e #${req.params.id}`);
+    delete novo.xml_assinado; delete novo.xml_autorizado;
+    res.status(201).json(novo);
+  } catch (err) { responderErro(res, err, 'Erro ao criar o rascunho.'); }
+}));
+
+router.post('/:id(\\d+)/cancelar-pendente', autenticar, emitir, async (req, res) => {
+  try {
+    const ev = await emissao.cancelarPendenteOrigem(req.params.id);
+    log(req, 'cte_cancelar', `Cancelou na SEFAZ de origem a chave pendente do CT-e #${req.params.id} (protocolo ${ev.protocolo})`);
+    res.json({ ok: true, protocolo: ev.protocolo });
+  } catch (err) { responderErro(res, err, 'Erro ao cancelar a chave pendente.'); }
 });
 
 router.post('/:id(\\d+)/transmitir', autenticar, emitir, async (req, res) => {

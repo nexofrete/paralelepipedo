@@ -104,3 +104,46 @@ test('CNPJ alfanumérico: chave e XML aceitos', { skip: !temXmllint() && 'sem xm
   const e = validarXsd(assinar(xml, 'infCte', cert), path.join(SCHEMAS, 'cte_v4.00.xsd'));
   assert.strictEqual(e, null, e);
 });
+
+// Chave de CT-e válida (DV certo) para referenciar em complementar/substituto/docs anteriores.
+const chaveCte = (cnpj = '11222333000181', n = 50) => {
+  const base = `352610${cnpj}57001${String(n).padStart(9, '0')}112345678`;
+  return base + digitoVerificador(base);
+};
+const pessoaExemplo = (cnpj, nome, cMun, xMun, UF) => ({ cnpj, ie: '123456789', xNome: nome, endereco: { xLgr: 'AV DO TERMINAL', nro: '10', xBairro: 'DISTRITO', cMun, xMun, CEP: '07000000', UF } });
+
+test('CT-e de redespacho, intermediário, complementar, substituto e em contingência passam no schema', { skip: !temXmllint() && 'sem xmllint' }, () => {
+  const cert = lerPfx(pfxDeTeste(), '1234');
+  const contratante = { cnpj: '22333444000155', ie: '987654321', uf: 'SP', xNome: 'ANDRADE E ABREU TRANSPORTES', chaves: [chaveCte('22333444000155', 77)] };
+  const expedidor = pessoaExemplo('22333444000155', 'ANDRADE E ABREU TRANSPORTES', '3518800', 'GUARULHOS', 'SP');
+  const recebedor = pessoaExemplo('55666777000122', 'TRANSPORTADORA PARCEIRA RJ', '3304557', 'RIO DE JANEIRO', 'RJ');
+  const variantes = [
+    // Redespacho: quem contratou (tomador) é a transportadora que fez o primeiro trecho.
+    [dadosDeExemplo({ tpServ: '2', expedidor, tomador: '1', docAnt: [contratante], inicio: { cMun: '3518800', xMun: 'GUARULHOS', UF: 'SP' } }), /<tpServ>2<\/tpServ>[\s\S]*<exped>[\s\S]*<enderExped>[\s\S]*<docAnt><emiDocAnt><CNPJ>22333444000155<\/CNPJ><IE>987654321<\/IE><UF>SP<\/UF>/],
+    // Redespacho intermediário: só expedidor e recebedor, sem remetente/destinatário nem NF-e.
+    [dadosDeExemplo({ tpServ: '3', remetente: null, destinatario: null, nfes: [], expedidor, recebedor, tomador: '1', docAnt: [contratante] }), /<receb>[\s\S]*<xNome>CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL<\/xNome>/],
+    // Subcontratação.
+    [dadosDeExemplo({ tpServ: '1', tomador: '4', outroTomador: { cnpj: '22333444000155', ie: '987654321', xNome: 'ANDRADE E ABREU TRANSPORTES', endereco: expedidor.endereco }, docAnt: [contratante] }), /<tpServ>1<\/tpServ>/],
+    [dadosDeExemplo({ tpCTe: '1', complementados: [chaveCte()], valores: { vTPrest: 80, componentes: [{ xNome: 'ESTADIA', vComp: 80 }] }, icms: { cst: '00', vBC: 80, pICMS: 12, vICMS: 9.6 } }), /<tpCTe>1<\/tpCTe>[\s\S]*<infCteComp><chCTe>\d{44}<\/chCTe><\/infCteComp>/],
+    [dadosDeExemplo({ tpCTe: '3', substituido: { chave: chaveCte(), indAlteraToma: true }, tomador: '3' }), /<infCteSub><chCte>\d{44}<\/chCte><indAlteraToma>1<\/indAlteraToma><\/infCteSub>/],
+    [dadosDeExemplo({ tpEmis: 8 }), /<tpEmis>8<\/tpEmis>/],
+  ];
+  for (const [d, esperado] of variantes) {
+    const { xml, chave, tpAmb } = montarCte(d);
+    assert.match(xml, esperado);
+    assert.strictEqual(chave[34], String(d.tpEmis || 1));
+    const assinado = incluirQrCode(assinar(xml, 'infCte', cert), 'https://dfe-portal.svrs.rs.gov.br/cte/qrCode', chave, tpAmb);
+    const erro = validarXsd(assinado, path.join(SCHEMAS, 'cte_v4.00.xsd'));
+    assert.strictEqual(erro, null, erro);
+  }
+});
+
+test('CT-e: regras de redespacho, complementar e substituto com mensagem clara', () => {
+  assert.throws(() => montarCte(dadosDeExemplo({ tpServ: '2' })), /CT-e anterior/);
+  assert.throws(() => montarCte(dadosDeExemplo({ tpServ: '3', remetente: null, destinatario: null })), /expedidor/);
+  assert.throws(() => montarCte(dadosDeExemplo({ tomador: '2' })), /recebedor\) não informado/);
+  assert.throws(() => montarCte(dadosDeExemplo({ tpCTe: '1' })), /complementado/);
+  assert.throws(() => montarCte(dadosDeExemplo({ tpCTe: '1', complementados: ['123'] })), /inválida/);
+  assert.throws(() => montarCte(dadosDeExemplo({ tpCTe: '3', substituido: { chave: chaveCte() }, tpEmis: 7 })), /contingência/);
+  assert.throws(() => montarCte(dadosDeExemplo({ tpServ: '2', docAnt: [{ cnpj: '22333444000155', xNome: 'X', chaves: [chaveCte().slice(0, 43) + '0'] }] })), /inválida/);
+});

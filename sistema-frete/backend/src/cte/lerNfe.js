@@ -49,4 +49,36 @@ function lerNfe(xml) {
   };
 }
 
-module.exports = { lerNfe };
+// CT-e de outra transportadora (quem contratou o redespacho/subcontratação):
+// vira o "documento anterior" e já traz remetente, destinatário, NF-e e carga.
+function lerCteAnterior(xml) {
+  let doc;
+  try { doc = parser.parse(String(xml || '')); } catch { throw new Error('Arquivo não é um XML válido.'); }
+  const cte = doc.cteProc?.CTe || doc.CTe;
+  const inf = cte?.infCte;
+  if (!inf) throw new Error('O arquivo não é um CT-e.');
+  const chave = String(inf['@Id'] || '').replace(/^CTe/, '');
+  const norm = inf.infCTeNorm || {};
+  const carga = norm.infCarga || {};
+  const em = inf.emit || {};
+  const ide = inf.ide || {};
+  return {
+    chave,
+    numero: ide.nCT || null,
+    serie: ide.serie || null,
+    emitente: { ...pessoa(em, 'enderEmit'), uf: em.enderEmit?.UF || null },
+    remetente: pessoa(inf.rem, 'enderReme'),
+    destinatario: pessoa(inf.dest, 'enderDest'),
+    expedidor: pessoa(inf.exped, 'enderExped'),
+    recebedor: pessoa(inf.receb, 'enderReceb'),
+    inicio: { cMun: ide.cMunIni, xMun: ide.xMunIni, UF: ide.UFIni },
+    fim: { cMun: ide.cMunFim, xMun: ide.xMunFim, UF: ide.UFFim },
+    nfes: lista(norm.infDoc?.infNFe).map((n) => n.chave).filter(Boolean),
+    carga: {
+      vCarga: num(carga.vCarga), proPred: carga.proPred || null, xOutCat: carga.xOutCat || null,
+      quantidades: lista(carga.infQ).map((q) => ({ cUnid: q.cUnid, tpMed: q.tpMed, qCarga: num(q.qCarga) })),
+    },
+  };
+}
+
+module.exports = { lerNfe, lerCteAnterior };

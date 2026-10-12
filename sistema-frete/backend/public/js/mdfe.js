@@ -213,7 +213,8 @@
 
   // Escolhe CT-e autorizados e monta os rascunhos (um por UF de destino).
   async function escolherCtes() {
-    const ctes = await apiFetch('/api/cte-emissao/?status=autorizado').then(json);
+    // O complementar não leva carga: não entra no MDF-e.
+    const ctes = (await apiFetch('/api/cte-emissao/?status=autorizado').then(json)).filter((c) => c.tp_cte !== '1');
     modal.querySelector('#mdfeModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">Novo MDF-e — escolha os CT-e da viagem</h3><span style="cursor:pointer; font-size:18px;" data-mdfe-fechar>✕</span></div>
       <p style="font-size:13px; color:var(--texto-fraco);">Sai um MDF-e para cada UF de descarregamento. Veículo e motorista você escolhe no rascunho (ou monte pelo romaneio, que já traz os dois).</p>
       <input type="text" id="mdfeBuscaCte" class="cte-entrada" placeholder="Filtrar por número, cidade, destinatário…" style="margin-bottom:8px;" />

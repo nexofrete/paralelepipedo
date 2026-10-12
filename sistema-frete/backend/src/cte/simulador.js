@@ -35,6 +35,10 @@ function validarCte(xml, chave) {
   let ok = false;
   try { ok = conferir(xml, pem); } catch { ok = false; }
   if (!ok) return ['297', 'Rejeicao: Assinatura difere do calculado'];
+  const tpEmis = tag(xml, 'tpEmis');
+  if (tpEmis !== chave[34]) return ['236', 'Rejeicao: Chave de Acesso invalida (tipo de emissao diverge)'];
+  if (tag(xml, 'tpCTe') === '3' && tpEmis !== '1') return ['503', 'Rejeicao: CTe substituto deve ter tipo de emissao = normal'];
+  if (tag(xml, 'tpCTe') === '1' && !/<infCteComp>/.test(xml)) return ['505', 'Rejeicao: Grupo CTe complementado nao informado'];
   const cnpjEmit = (/<emit>\s*<CNPJ>(\d{14})<\/CNPJ>/.exec(xml) || [])[1];
   if (cnpjEmit && chave.slice(6, 20) !== cnpjEmit) return ['234', 'Rejeicao: CNPJ do emitente difere do CNPJ da chave de acesso'];
   return null;

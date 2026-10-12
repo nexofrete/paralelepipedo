@@ -128,7 +128,17 @@ Para a transportadora que usa o Nexofrete, o menu **🚛 Emissão de CT-e** mont
 
 Depois de autorizado, também dá para baixar o XML, consultar na SEFAZ, registrar carta de correção e cancelar com justificativa. Se a SEFAZ rejeitar, o motivo aparece na lista: corrija e transmita de novo, que o número continua o mesmo. Se a SEFAZ não responder, **Tentar de novo** consulta primeiro, para não emitir o mesmo CT-e duas vezes.
 
-Ainda não fazem parte: CT-e complementar/substituto/anulação, expedidor e recebedor, inutilização de numeração e emissão em contingência.
+**Redespacho, subcontratação e expedidor/recebedor:** no formulário, escolha o **tipo de serviço**. No redespacho, clique em **📄 Ler XML do CT-e anterior** e escolha o CT-e da transportadora que contratou. O sistema preenche o documento anterior, o remetente, o destinatário, as NF-e, a carga e o expedidor, e a prestação passa a começar no expedidor. Assim o ICMS sai pela UF certa: por exemplo, um redespacho a partir de Guarulhos/SP. O tomador pode ser o expedidor ou o recebedor. No redespacho intermediário, só são obrigatórios o expedidor e o recebedor.
+
+**CT-e complementar e de substituição** (botões na lista, em CT-e autorizado):
+- **➕ Complementar** cobra um valor a mais, como estadia, reentrega ou diferença de frete. Ele usa os mesmos participantes do original e você lança só os componentes e o ICMS do valor extra. Cada CT-e aceita até 10 complementares. O complementar não entra no acompanhamento de entregas nem no MDF-e.
+- **♻ Substituir** corrige valores, impostos, carga ou o tomador de um CT-e autorizado há até 60 dias. Antes, o tomador precisa registrar na SEFAZ o evento "Prestação do serviço em desacordo". Quando o substituto é autorizado, o original fica como "Substituído" e as ocorrências e o romaneio passam para o substituto.
+
+**Contingência (SEFAZ fora do ar):** em Configuração fiscal → Contingência, marque **Contingência ligada** e escreva o motivo. Os CT-e passam a ser autorizados pela SEFAZ Virtual de Contingência da UF: SVC-RS para SP, MS, MT, PE, AP e RR, e SVC-SP para as demais. O DACTE sai marcado "emitido em contingência". Desligue assim que a SEFAZ voltar. O CT-e de substituição não pode ser emitido em contingência.
+
+Se um CT-e foi enviado à SEFAZ de origem, ficou sem resposta e depois foi reemitido na contingência, a lista mostra **⚠ Chave pendente**. Quando a SEFAZ voltar e a contingência for desligada, clique nesse aviso. Se a origem também tiver autorizado aquela chave, o sistema oferece cancelá-la.
+
+O CT-e 4.00 não tem mais inutilização de numeração nem CT-e de anulação: a SEFAZ eliminou os dois nessa versão. No lugar da anulação, use o evento de desacordo seguido do CT-e de substituição.
 
 Testes automáticos do CT-e: `npm test` dentro de `backend`. A validação nos schemas oficiais precisa do `xmllint`.
 

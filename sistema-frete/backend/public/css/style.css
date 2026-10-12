@@ -1354,6 +1354,9 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 .badge-cte-rascunho { background: rgba(140,150,165,0.18); color: #8a94a6; }
 .badge-cte-rejeitado, .badge-cte-erro { background: rgba(242,85,90,0.15); color: var(--vermelho); }
 .badge-cte-enviando { background: rgba(77,124,255,0.15); color: var(--azul); }
+.badge-cte-substituido { background: rgba(140,150,165,0.18); color: var(--texto-fraco); }
+.cte-tipo { display: inline-block; font-size: 10.5px; border-radius: 4px; padding: 1px 6px; margin-top: 3px; background: rgba(77,124,255,0.12); color: var(--azul); }
+.cte-tipo.alerta { background: rgba(242,184,75,0.15); color: var(--amarelo); }
 .badge-cte-encerrado { background: rgba(77,124,255,0.12); color: #6b7a99; }
 .badge-cte-cancelado { background: rgba(60,60,60,0.18); color: var(--texto-fraco); text-decoration: line-through; }
 .cte-entrada, .cte-linha-comp input {

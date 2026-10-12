@@ -19,7 +19,9 @@
   const fmtNum = (v, casas = 2) => (v == null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }));
   const dataHora = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
   const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
-  const STATUS = { rascunho: 'Rascunho', enviando: 'Enviando', autorizado: 'Autorizado', rejeitado: 'Rejeitado', erro: 'Sem resposta', cancelado: 'Cancelado' };
+  const STATUS = { rascunho: 'Rascunho', enviando: 'Enviando', autorizado: 'Autorizado', rejeitado: 'Rejeitado', erro: 'Sem resposta', cancelado: 'Cancelado', substituido: 'Substituído' };
+  const TIPO_SERV = { 0: 'Normal', 1: 'Subcontratação', 2: 'Redespacho', 3: 'Redespacho intermediário' };
+  const nCte = (c) => (c ? `${Number(String(c).slice(22, 25))}/${Number(String(c).slice(25, 34))}` : '');
   let config = null;
 
   async function json(resposta) {
@@ -49,6 +51,7 @@
       const prod = Number(config.cte_ambiente) === 1;
       selo.textContent = config.cte_demonstracao ? 'DEMONSTRAÇÃO (SEFAZ simulada — nada é enviado)' : prod ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO (sem valor fiscal)';
       selo.className = `badge ${config.cte_demonstracao ? 'badge-faturado' : prod ? 'badge-liberado' : 'badge-pendente'}`;
+      if (config.cte_contingencia) { selo.textContent += ` · CONTINGÊNCIA ${config.svc_sigla || 'SVC'}`; selo.className = 'badge badge-pendente'; }
     }
     const faltando = [];
     if (!config?.cnpj || !config?.razao_social) faltando.push('dados da empresa');
@@ -57,7 +60,10 @@
     if (!config?.tem_certificado) faltando.push('certificado digital A1');
     const venc = config?.certificado_validade ? new Date(config.certificado_validade) : null;
     const aviso = $('cteAvisoConfig');
-    if (faltando.length) {
+    if (config?.cte_contingencia) {
+      aviso.innerHTML = `⚠️ <b>Contingência ligada</b>: os CT-e estão sendo autorizados pela <b>${esc(config.svc_sigla || 'SVC')}</b>${config.cte_contingencia_inicio ? ` desde ${new Date(config.cte_contingencia_inicio).toLocaleString('pt-BR')}` : ''}. Quando a SEFAZ ${esc(config.uf || '')} voltar, desligue em Configuração fiscal${ehAdmin ? '' : ' (peça ao administrador)'}.`;
+      aviso.className = 'cte-aviso erro';
+    } else if (faltando.length) {
       aviso.innerHTML = `Para transmitir, complete a <b>Configuração fiscal</b>: ${esc(faltando.join(', '))}.${ehAdmin ? '' : ' Peça ao administrador.'}`;
       aviso.className = 'cte-aviso';
     } else if (venc && venc - Date.now() < 30 * 86400000) {
@@ -93,6 +99,8 @@
     if (['rascunho', 'rejeitado'].includes(c.status)) acoes.push(b('editar', '✏️ Editar'), b('transmitir', '📤 Transmitir'));
     if (['erro', 'enviando'].includes(c.status)) acoes.push(b('transmitir', '🔁 Tentar de novo'), b('consultar', '🔎 Consultar'));
     if (c.status === 'autorizado') acoes.push(b('consultar', '🔎 Consultar'), b('cce', '✍️ Correção'), b('cancelar', '⛔ Cancelar'));
+    if (c.status === 'autorizado' && c.tp_cte !== '1') acoes.push(b('complementar', '➕ Complementar'), b('substituir', '♻ Substituir'));
+    if (c.chave_pendente_origem) acoes.push(b('pendente', '⚠ Chave pendente'));
     acoes.push(b('dacte', c.status === 'autorizado' || c.status === 'cancelado' ? '🖨 DACTE' : '👁 Prévia'));
     if (c.chave) acoes.push(b('xml', '⬇ XML'));
     acoes.push(b('duplicar', '⧉ Duplicar'));
@@ -101,7 +109,13 @@
       ? `<div style="font-size:11.5px; color:${c.status === 'cancelado' ? 'var(--texto-fraco)' : 'var(--vermelho)'}; max-width:280px;">${esc(c.cstat && c.status !== 'cancelado' ? `${c.cstat} - ` : '')}${esc(c.motivo)}</div>` : '';
     return `<tr>
       <td style="white-space:nowrap;"><b>${c.numero ? `${c.serie}/${c.numero}` : '—'}</b><div style="font-size:11px; color:var(--texto-fraco);">${dataHora(c.autorizado_em || c.criado_em)}</div>${c.demonstracao ? '<div style="font-size:10.5px; color:var(--azul);">demonstração</div>' : Number(c.ambiente) === 2 ? '<div style="font-size:10.5px; color:var(--amarelo);">homologação</div>' : ''}</td>
-      <td><span class="badge badge-cte-${esc(c.status)}">${esc(STATUS[c.status] || c.status)}</span>${motivo}</td>
+      <td><span class="badge badge-cte-${esc(c.status)}">${esc(STATUS[c.status] || c.status)}</span>${motivo}
+        ${c.tp_cte === '1' ? `<div class="cte-tipo">Complementar do ${esc(nCte(c.chave_referencia))}</div>` : ''}
+        ${c.tp_cte === '3' ? `<div class="cte-tipo">Substitui o ${esc(nCte(c.chave_referencia))}</div>` : ''}
+        ${c.substituido_por_numero ? `<div class="cte-tipo">Substituído pelo ${esc(c.substituido_por_numero)}</div>` : ''}
+        ${c.tp_serv && c.tp_serv !== '0' ? `<div class="cte-tipo">${esc(TIPO_SERV[c.tp_serv])}</div>` : ''}
+        ${Number(c.tp_emis) > 1 ? `<div class="cte-tipo alerta">Contingência ${Number(c.tp_emis) === 7 ? 'SVC-RS' : 'SVC-SP'}</div>` : ''}
+        ${c.chave_pendente_origem ? '<div class="cte-tipo alerta">Chave pendente na SEFAZ de origem</div>' : ''}</td>
       <td>${esc(c.tomador_nome || '—')}</td>
       <td style="font-size:12.5px;">${esc(c.remetente_nome || '—')}<br><span style="color:var(--texto-fraco);">→ ${esc(c.destinatario_nome || '—')}</span></td>
       <td>${esc(c.cidade_fim || '—')}${c.uf_fim ? `/${esc(c.uf_fim)}` : ''}</td>
@@ -123,6 +137,23 @@
       if (acao === 'consultar') {
         const r = await api(`/${id}/consultar`, { method: 'POST' });
         mostrarAlerta(`SEFAZ: ${r.consulta.cStat} - ${r.consulta.xMotivo}${r.consulta.nProt ? `\nProtocolo: ${r.consulta.nProt}` : ''}`, { tipo: ['100', '150'].includes(r.consulta.cStat) ? 'sucesso' : 'aviso' });
+      }
+      if (acao === 'complementar' || acao === 'substituir') {
+        if (acao === 'substituir' && !await confirmar('O CT-e de substituição troca este CT-e por outro com os dados corrigidos (valores, impostos, tomador...). Remetente, destinatário, expedidor, recebedor e NF-e continuam os mesmos.\n\nAntes, o tomador (quem paga o frete) precisa registrar na SEFAZ o evento "Prestação do serviço em desacordo" deste CT-e. Prazo: 60 dias da autorização.', { titulo: 'Substituir CT-e', textoOk: 'Montar o substituto' })) return null;
+        const novo = await api(`/${id}/${acao}`, { method: 'POST' });
+        await carregarLista();
+        return abrirFormulario(novo.id);
+      }
+      if (acao === 'pendente') {
+        const r = await api(`/${id}/consultar`, { method: 'POST' });
+        const p = r.pendente;
+        if (!p) { mostrarAlerta('Ainda não deu para conferir a chave pendente na SEFAZ de origem (a contingência continua ligada ou a SEFAZ não respondeu). Tente quando a SEFAZ voltar.', { tipo: 'aviso' }); }
+        else if (p.autorizada) {
+          if (await confirmar(`A SEFAZ de origem TAMBÉM autorizou a chave ${p.chave} (protocolo ${p.nProt}), enviada antes da contingência. Ela precisa ser cancelada, porque este CT-e já foi autorizado na contingência.`, { tipo: 'perigo', titulo: 'CT-e em duplicidade', textoOk: 'Cancelar a chave da origem' })) {
+            const ev = await api(`/${id}/cancelar-pendente`, { method: 'POST' });
+            mostrarAlerta(`Chave da SEFAZ de origem cancelada. Protocolo ${ev.protocolo}.`, { tipo: 'sucesso' });
+          }
+        } else mostrarAlerta(`A SEFAZ de origem respondeu: ${p.cStat} - ${p.xMotivo}. Não há o que cancelar.`, { tipo: 'sucesso' });
       }
       if (acao === 'duplicar') { const novo = await api(`/${id}/duplicar`, { method: 'POST' }); await carregarLista(); return abrirFormulario(novo.id); }
       if (acao === 'excluir') {
@@ -176,6 +207,8 @@
   // ---------------- Formulário do CT-e ----------------
   let editandoId = null;
   let nfes = [];          // chaves de acesso
+  // Tipo do CT-e que está aberto: 0 normal, 1 complementar, 3 substituição (com a chave de referência).
+  let tipoCte = { tpCTe: '0', complementados: [], substituido: null };
   $('btnNovoCte').addEventListener('click', () => abrirFormulario(null));
   $('btnFecharCte').addEventListener('click', fecharFormulario);
   $('btnCteCancelarForm').addEventListener('click', fecharFormulario);
@@ -201,7 +234,28 @@
   function renderFormulario() {
     const ibs = config?.cte_ibscbs_ativo;
     $('cteFormCorpo').innerHTML = `
-      <div class="cte-secao"><h4>Documentos transportados (NF-e)
+      <div id="cteAvisoTipo"></div>
+      <div class="cte-secao" id="cteSecaoServico"><h4>Tipo de serviço</h4><div class="cte-grade">
+        <div class="campo largo"><label for="cteTpServ">Serviço</label><select id="cteTpServ">
+          <option value="0">Normal — a transportadora faz o transporte para o cliente</option>
+          <option value="2">Redespacho — outra transportadora contratou o trecho final</option>
+          <option value="1">Subcontratação — outra transportadora contratou o transporte todo</option>
+          <option value="3">Redespacho intermediário — trecho do meio (sem entregar ao destinatário)</option></select></div>
+        <div class="campo largo" style="display:flex; gap:16px; align-items:flex-end; padding-bottom:10px;">
+          <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" id="cteTemExped" style="width:auto;" /> Há expedidor</label>
+          <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" id="cteTemReceb" style="width:auto;" /> Há recebedor</label></div>
+        <div class="campo inteiro" id="cteAjudaServico" style="font-size:12px; color:var(--texto-fraco);"></div>
+      </div></div>
+      <div class="cte-secao oculto" id="cteSecaoDocAnt"><h4>CT-e anterior (de quem contratou este serviço)
+        <span style="display:flex; gap:6px;"><button type="button" class="btn btn-secundario" id="cteBtnLerCteAnt" style="width:auto;">📄 Ler XML do CT-e anterior</button>
+        <input type="file" id="cteArquivoCteAnt" accept=".xml,text/xml" class="oculto" /></span></h4>
+        <div class="cte-grade">
+          ${campo('ant_doc', 'CNPJ de quem emitiu')}${campo('ant_ie', 'Inscrição estadual')}${selUf('ant_uf', 'UF')}${campo('ant_nome', 'Razão social', { classe: 'largo' })}
+          <div class="campo inteiro"><label for="ant_chaves">Chave(s) do CT-e anterior (uma por linha)</label><textarea id="ant_chaves" rows="2" style="width:100%; font-family:ui-monospace,monospace;"></textarea></div>
+        </div>
+        <div style="font-size:12px; color:var(--texto-fraco); margin-bottom:8px;">Ao ler o XML do CT-e da transportadora que contratou, o sistema preenche essa parte, o remetente, o destinatário, as NF-e e a carga.</div>
+      </div>
+      <div class="cte-secao" id="cteSecaoNfe"><h4>Documentos transportados (NF-e)
         <span style="display:flex; gap:6px; flex-wrap:wrap;">
           <button type="button" class="btn btn-secundario" id="cteBtnLerNfe" style="width:auto;">📄 Ler XML da NF-e</button>
           <button type="button" class="btn btn-secundario" id="cteBtnBuscarNfe" style="width:auto;">🔎 NF-e já importada</button>
@@ -212,8 +266,13 @@
         <div style="font-size:12px; color:var(--texto-fraco); margin-bottom:8px;">Ao ler o XML, remetente, destinatário, peso, volumes e valor da carga são preenchidos sozinhos (os de mais de uma NF-e são somados).</div>
       </div>
       <div class="cte-duas">${blocoPessoa('rem', 'Remetente')}${blocoPessoa('dest', 'Destinatário')}</div>
+      <div class="cte-duas"><div id="cteBlocoExped" class="oculto">${blocoPessoa('exp', 'Expedidor (entregou a carga para a transportadora)')}</div>
+        <div id="cteBlocoReceb" class="oculto">${blocoPessoa('rec', 'Recebedor (vai receber a carga da transportadora)')}</div></div>
       <div class="cte-secao"><h4>Tomador do serviço (quem paga o frete)</h4><div class="cte-grade">
-        <div class="campo"><label for="cteTomador">Tomador</label><select id="cteTomador"><option value="0">Remetente (CIF)</option><option value="3">Destinatário (FOB)</option><option value="4">Outro</option></select></div>
+        <div class="campo"><label for="cteTomador">Tomador</label><select id="cteTomador"><option value="0">Remetente (CIF)</option><option value="3">Destinatário (FOB)</option>
+          <option value="1">Expedidor</option><option value="2">Recebedor</option><option value="4">Outro</option></select></div>
+        <div class="campo largo oculto" id="cteAlteraTomaCampo" style="display:flex; align-items:flex-end; padding-bottom:10px;"><label style="display:flex; gap:6px; align-items:center;">
+          <input type="checkbox" id="cteAlteraToma" style="width:auto;" /> O substituto troca o tomador do serviço</label></div>
       </div></div>
       <div id="cteBlocoOutroTomador" class="oculto">${blocoPessoa('toma', 'Outro tomador')}</div>
       <div class="cte-secao"><h4>Prestação <button type="button" class="btn btn-secundario" id="cteBtnPuxarPrestacao" style="width:auto; font-size:11.5px; padding:3px 8px;">↺ Início/fim pelos participantes</button></h4><div class="cte-grade">
@@ -223,7 +282,7 @@
         ${campo('cteCfop', 'CFOP', { extra: 'readonly' })}
         <div class="campo inteiro" id="cteAvisoPrestacao" style="font-size:12px; color:var(--amarelo);"></div>
       </div></div>
-      <div class="cte-secao"><h4>Carga</h4><div class="cte-grade">
+      <div class="cte-secao" id="cteSecaoCarga"><h4>Carga</h4><div class="cte-grade">
         ${campo('carga_pro', 'Produto predominante', { classe: 'largo' })}${campo('carga_out', 'Outras características')}
         ${campo('carga_valor', 'Valor da carga (R$)')}${campo('carga_peso', 'Peso bruto (kg)')}${campo('carga_vol', 'Volumes')}${campo('carga_m3', 'Cubagem (m³)')}
         ${campo('carga_tipo', 'Tipo de carga (tabela)', { ph: 'ex.: CAIXA' })}
@@ -263,9 +322,12 @@
       const b = e.target.closest('[data-tirar]');
       if (b) { nfes = nfes.filter((c) => c !== b.dataset.tirar); desenharChips(); }
     });
-    $('cteTomador').addEventListener('change', () => { $('cteBlocoOutroTomador').classList.toggle('oculto', $('cteTomador').value !== '4'); sugerirImpostos(); });
+    $('cteTomador').addEventListener('change', () => { $('cteBlocoOutroTomador').classList.toggle('oculto', $('cteTomador').value !== '4'); ajustarServico(); sugerirImpostos(); });
+    ['cteTpServ', 'cteTemExped', 'cteTemReceb'].forEach((id) => $(id).addEventListener('change', () => { ajustarServico(); puxarPrestacao(false); }));
+    $('cteBtnLerCteAnt').addEventListener('click', () => $('cteArquivoCteAnt').click());
+    $('cteArquivoCteAnt').addEventListener('change', lerCteAnterior);
     $('cteBtnPuxarPrestacao').addEventListener('click', () => puxarPrestacao(true));
-    ['ini_uf', 'fim_uf', 'cteCfopTipo', 'ini_cmun', 'fim_cmun', 'dest_ie', 'rem_ie'].forEach((id) => $(id).addEventListener('change', sugerirImpostos));
+    ['ini_uf', 'fim_uf', 'cteCfopTipo', 'ini_cmun', 'fim_cmun', 'dest_ie', 'rem_ie', 'exp_ie', 'rec_ie'].forEach((id) => $(id).addEventListener('change', sugerirImpostos));
     $('cteBtnAddComp').addEventListener('click', () => adicionarComponente());
     $('cteComponentes').addEventListener('input', recalcularTotais);
     $('cteComponentes').addEventListener('click', (e) => { const b = e.target.closest('[data-tirar-comp]'); if (b) { b.parentElement.remove(); recalcularTotais(); } });
@@ -281,6 +343,68 @@
       : '<span style="font-size:12.5px; color:var(--texto-fraco);">Nenhuma NF-e ainda.</span>';
   }
   const adicionarChave = (c) => { if (!nfes.includes(c)) nfes.push(c); desenharChips(); };
+
+  // Mostra/esconde o que depende do tipo de serviço e do tipo do CT-e.
+  const AJUDA_SERVICO = {
+    0: '',
+    1: 'Subcontratação: outra transportadora vendeu o frete e contratou você para fazer o transporte. Ela é o tomador (normalmente "Outro") e o CT-e dela vai como documento anterior.',
+    2: 'Redespacho: você faz o trecho final. A transportadora que trouxe a carga é o expedidor e, em geral, o tomador. A prestação começa no expedidor (ex.: o terminal dela em Guarulhos/SP).',
+    3: 'Redespacho intermediário: você leva a carga de uma transportadora (expedidor) para outra (recebedor), sem entregar ao destinatário final.',
+  };
+  function ajustarServico() {
+    const serv = $('cteTpServ').value;
+    const compl = tipoCte.tpCTe === '1';
+    if (serv === '3') { $('cteTemExped').checked = true; $('cteTemReceb').checked = true; }
+    if (serv === '2' && !$('cteTemExped').dataset.mexeu) $('cteTemExped').checked = true;
+    const toma = $('cteTomador').value;
+    if (toma === '1') $('cteTemExped').checked = true;
+    if (toma === '2') $('cteTemReceb').checked = true;
+    $('cteBlocoExped').classList.toggle('oculto', !$('cteTemExped').checked);
+    $('cteBlocoReceb').classList.toggle('oculto', !$('cteTemReceb').checked);
+    $('cteSecaoDocAnt').classList.toggle('oculto', serv === '0' || compl);
+    $('cteSecaoNfe').classList.toggle('oculto', compl);
+    $('cteSecaoCarga').classList.toggle('oculto', compl);
+    $('cteAjudaServico').textContent = AJUDA_SERVICO[serv] || '';
+    $('cteAlteraTomaCampo').classList.toggle('oculto', tipoCte.tpCTe !== '3');
+    const ref = tipoCte.tpCTe === '1' ? tipoCte.complementados?.[0] : tipoCte.substituido?.chave;
+    $('cteAvisoTipo').innerHTML = tipoCte.tpCTe === '1'
+      ? `<div class="cte-aviso">➕ <b>CT-e complementar</b> do CT-e ${esc(nCte(ref))}: cobra só o valor a mais (estadia, reentrega, diferença de frete...). Lance os componentes e o ICMS desse valor. Remetente, destinatário e tomador são os mesmos do CT-e original.</div>`
+      : tipoCte.tpCTe === '3'
+        ? `<div class="cte-aviso">♻ <b>CT-e de substituição</b> do CT-e ${esc(nCte(ref))}: corrija valores, impostos, carga ou o tomador. Remetente, destinatário, expedidor, recebedor, NF-e e UFs de início e fim têm que continuar iguais. O tomador precisa ter registrado o evento "Prestação do serviço em desacordo" do CT-e original.</div>`
+        : '';
+  }
+
+  // CT-e da transportadora que contratou (redespacho/subcontratação).
+  async function lerCteAnterior(e) {
+    const arq = e.target.files[0];
+    e.target.value = '';
+    if (!arq) return;
+    try {
+      const c = await api('/ler-cte', { method: 'POST', body: JSON.stringify({ xml: await arq.text() }) });
+      const em = c.emitente || {};
+      $('ant_doc').value = em.cnpj || em.cpf || ''; $('ant_ie').value = em.ie || ''; $('ant_uf').value = em.uf || ''; $('ant_nome').value = em.xNome || '';
+      const chaves = $('ant_chaves').value.split(/\s+/).filter(Boolean);
+      if (!chaves.includes(c.chave)) chaves.push(c.chave);
+      $('ant_chaves').value = chaves.join('\n');
+      preencherPessoa('rem', c.remetente, false); preencherPessoa('dest', c.destinatario, false);
+      // Quem trouxe a carga até aqui (o emitente do CT-e anterior) é o expedidor do redespacho.
+      if ($('cteTpServ').value === '2' || $('cteTpServ').value === '3') {
+        $('cteTemExped').checked = true;
+        preencherPessoa('exp', em, false);
+      }
+      (c.nfes || []).forEach(adicionarChave);
+      if (!$('carga_pro').value) {
+        $('carga_pro').value = c.carga?.proPred || ''; $('carga_valor').value = c.carga?.vCarga ? fmtNum(c.carga.vCarga) : '';
+        const q = (u) => (c.carga?.quantidades || []).find((x) => String(x.cUnid).padStart(2, '0') === u)?.qCarga;
+        if (q('01') != null) $('carga_peso').value = fmtNum(q('01'), 3);
+        if (q('03') != null) $('carga_vol').value = q('03');
+      }
+      ajustarServico();
+      if ($('cteTemExped').checked && $('exp_cmun').value) { $('ini_mun').value = $('exp_mun').value; $('ini_cmun').value = $('exp_cmun').value; $('ini_uf').value = $('exp_uf').value; }
+      puxarPrestacao(false);
+      mostrarAlerta(`CT-e ${c.serie}/${c.numero} de ${em.xNome} lido.${$('cteTemExped').checked ? ' Confira o endereço do expedidor (o terminal de onde a carga sai) e o código IBGE.' : ''}`, { tipo: 'sucesso' });
+    } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+  }
 
   function adicionarComponente(nome = '', valor = '') {
     const div = document.createElement('div');
@@ -322,7 +446,9 @@
         $(`${para}_mun`).value = $(`${de}_mun`).value; $(`${para}_cmun`).value = $(`${de}_cmun`).value; $(`${para}_uf`).value = $(`${de}_uf`).value;
       }
     };
-    copia('rem', 'ini'); copia('dest', 'fim');
+    // Com expedidor, a prestação começa nele; com recebedor, termina nele (redespacho).
+    copia($('cteTemExped').checked && $('exp_cmun').value ? 'exp' : 'rem', 'ini');
+    copia($('cteTemReceb').checked && $('rec_cmun').value ? 'rec' : 'dest', 'fim');
     sugerirImpostos();
   }
 
@@ -339,7 +465,7 @@
     }
     $('cteCfop').value = ufIni && ufFim ? `${ufIni === ufFim ? 5 : 6}${cfop}` : '';
     if ($('ini_cmun').value && $('ini_cmun').value === $('fim_cmun').value) avisos.push('Início e fim no mesmo município: esse transporte é serviço municipal (ISS) — normalmente não se emite CT-e.');
-    const tomaIe = { 0: $('rem_ie').value, 3: $('dest_ie').value, 4: $('toma_ie')?.value }[$('cteTomador').value];
+    const tomaIe = { 0: $('rem_ie').value, 1: $('exp_ie').value, 2: $('rec_ie').value, 3: $('dest_ie').value, 4: $('toma_ie')?.value }[$('cteTomador').value];
     if (ufIni && ufFim && ufIni !== ufFim && !String(tomaIe || '').replace(/\D/g, '') && $('cteCfopTipo').value !== '932') {
       avisos.push('Tomador não contribuinte em operação interestadual: pode haver diferencial de alíquota (DIFAL) para a UF de destino — confira com a contabilidade.');
     }
@@ -417,7 +543,7 @@
       if (!achado) { mostrarAlerta(`Não achei "${mun}" em ${uf}. Confira o nome do município.`, { tipo: 'aviso' }); return; }
       $(`${pre}_cmun`).value = achado.codigo_ibge;
       $(`${pre}_mun`).value = achado.nome;
-      if (pre === 'rem' || pre === 'dest') puxarPrestacao(false);
+      if (['rem', 'dest', 'exp', 'rec'].includes(pre)) puxarPrestacao(false);
     } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
   }
 
@@ -455,9 +581,23 @@
     if (num($('carga_peso').value) != null) quantidades.push({ cUnid: '01', tpMed: 'PESO BRUTO', qCarga: num($('carga_peso').value) });
     if (Number($('carga_vol').value) > 0) quantidades.push({ cUnid: '03', tpMed: 'VOLUMES', qCarga: Number($('carga_vol').value) });
     if (num($('carga_m3').value) > 0) quantidades.push({ cUnid: '00', tpMed: 'CUBAGEM', qCarga: num($('carga_m3').value) });
+    const serv = $('cteTpServ').value;
+    const docAnt = serv !== '0' && $('ant_chaves').value.trim() ? [{
+      [$('ant_doc').value.replace(/[^0-9A-Za-z]/g, '').length === 11 ? 'cpf' : 'cnpj']: $('ant_doc').value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+      ie: $('ant_ie').value.trim(), uf: $('ant_uf').value, xNome: $('ant_nome').value.trim(),
+      chaves: $('ant_chaves').value.toUpperCase().split(/[^A-Z0-9]+/).filter((c) => c.length === 44),
+    }] : [];
+    const temPessoa = (pre) => !!$(`${pre}_doc`).value.trim();
     const dados = {
+      tpCTe: tipoCte.tpCTe, tpServ: serv, complementados: tipoCte.complementados || [],
+      substituido: tipoCte.substituido ? { ...tipoCte.substituido, indAlteraToma: $('cteAlteraToma').checked } : null,
+      docAnt,
       nfes: [...nfes],
-      remetente: pessoa('rem'), destinatario: pessoa('dest'), tomador: $('cteTomador').value,
+      // No redespacho intermediário pode não haver remetente/destinatário.
+      remetente: serv === '3' && !temPessoa('rem') ? null : pessoa('rem'),
+      destinatario: serv === '3' && !temPessoa('dest') ? null : pessoa('dest'),
+      expedidor: $('cteTemExped').checked ? pessoa('exp') : null, recebedor: $('cteTemReceb').checked ? pessoa('rec') : null,
+      tomador: $('cteTomador').value,
       outroTomador: $('cteTomador').value === '4' ? pessoa('toma') : null,
       inicio: { xMun: $('ini_mun').value.trim(), cMun: $('ini_cmun').value.replace(/\D/g, ''), UF: $('ini_uf').value },
       fim: { xMun: $('fim_mun').value.trim(), cMun: $('fim_cmun').value.replace(/\D/g, ''), UF: $('fim_uf').value },
@@ -481,6 +621,14 @@
 
   function preencher(d) {
     nfes = [...(d.nfes || [])]; desenharChips();
+    tipoCte = { tpCTe: String(d.tpCTe ?? '0'), complementados: d.complementados || [], substituido: d.substituido || null };
+    $('cteTpServ').value = String(d.tpServ ?? '0');
+    $('cteTemExped').checked = !!d.expedidor; $('cteTemReceb').checked = !!d.recebedor;
+    if (d.expedidor) $('cteTemExped').dataset.mexeu = '1';
+    preencherPessoa('exp', d.expedidor, true); preencherPessoa('rec', d.recebedor, true);
+    $('cteAlteraToma').checked = !!d.substituido?.indAlteraToma;
+    const ant = (d.docAnt || [])[0];
+    if (ant) { $('ant_doc').value = ant.cnpj || ant.cpf || ''; $('ant_ie').value = ant.ie || ''; $('ant_uf').value = ant.uf || ''; $('ant_nome').value = ant.xNome || ''; $('ant_chaves').value = (ant.chaves || []).join('\n'); }
     preencherPessoa('rem', d.remetente, true); preencherPessoa('dest', d.destinatario, true);
     $('cteTomador').value = String(d.tomador ?? '0');
     if (d.outroTomador) preencherPessoa('toma', d.outroTomador, true);
@@ -506,6 +654,7 @@
       $('ibs_mun').value = d.ibscbs.pIBSMun ?? ''; $('ibs_cbs').value = d.ibscbs.pCBS ?? '';
     }
     $('cteObs').value = d.observacoes || '';
+    ajustarServico();
     sugerirImpostos();
   }
 
@@ -513,7 +662,9 @@
     if (!config) await carregarConfig();
     editandoId = id;
     nfes = [];
+    tipoCte = { tpCTe: '0', complementados: [], substituido: null };
     renderFormulario();
+    $('cteTemExped').addEventListener('change', () => { $('cteTemExped').dataset.mexeu = '1'; });
     $('icms_aliq').addEventListener('input', () => { $('icms_aliq').dataset.editado = '1'; });
     $('erroFormCte').classList.remove('visivel');
     const status = $('cteStatusForm');
@@ -521,7 +672,8 @@
     if (id) {
       try {
         const c = await api(`/${id}`);
-        $('tituloModalCte').textContent = c.numero ? `CT-e ${c.serie}/${c.numero}` : `Rascunho de CT-e #${c.id}`;
+        const tipoTitulo = { 1: 'CT-e complementar', 3: 'CT-e de substituição' }[String(c.dados?.tpCTe)] || 'CT-e';
+        $('tituloModalCte').textContent = c.numero ? `${tipoTitulo} ${c.serie}/${c.numero}` : `Rascunho de ${tipoTitulo} #${c.id}`;
         preencher(c.dados || {});
         if (c.status === 'rejeitado') { status.textContent = `Rejeitado pela SEFAZ: ${c.cstat || ''} - ${c.motivo || ''}. Corrija e transmita de novo.`; status.className = 'cte-aviso erro'; }
       } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); return; }
@@ -531,6 +683,7 @@
       $('icms_cst').value = Number(config?.crt) === 1 || Number(config?.crt) === 4 ? 'SN' : (config?.cte_cst_padrao || '00');
       adicionarComponente('FRETE PESO', '');
       calcularIcms();
+      ajustarServico();
     }
     $('modalCte').classList.remove('oculto');
   }
@@ -557,7 +710,8 @@
   }));
   $('btnCteTransmitir').addEventListener('click', (e) => comBotao(e.currentTarget, async () => {
     const d = coletar();
-    if (!d.nfes.length) throw new Error('Informe pelo menos uma NF-e transportada.');
+    if (!d.nfes.length && d.tpCTe !== '1' && d.tpServ !== '3') throw new Error('Informe pelo menos uma NF-e transportada.');
+    if (d.tpServ !== '0' && d.tpCTe !== '1' && !d.docAnt.length) throw new Error('Informe a chave do CT-e anterior (de quem contratou o serviço) — ou leia o XML dele.');
     if (!(d.valores.vTPrest > 0)) throw new Error('Informe os valores da prestação (componentes).');
     const c = await salvar();
     try {
@@ -594,6 +748,14 @@
           ${campo('cfg_prazo', 'Prazo de entrega padrão (dias úteis)', { valor: c.cte_prazo_padrao ?? '', ph: 'sem tabela de preço: 3', tipo: 'number' })}
           <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_verificar" ${c.cte_verificar_servidor ? 'checked' : ''} style="width:auto;" />
             Verificar o certificado do servidor da SEFAZ (precisa das raízes ICP-Brasil instaladas no Windows)</label></div>
+        </div></div>
+        <div class="cte-secao"><h4>Contingência (SEFAZ fora do ar)</h4><div class="cte-grade">
+          <div class="campo inteiro" style="font-size:12.5px;">Quando a SEFAZ ${esc(c.uf || 'da sua UF')} estiver fora do ar, ligue a contingência: os CT-e passam a ser autorizados pela
+            <b>${esc(c.svc_sigla || 'SEFAZ Virtual de Contingência')}</b> e o DACTE sai em papel comum, marcado "emitido em contingência". Desligue assim que a SEFAZ voltar.
+            CT-e de substituição não pode ser emitido em contingência.</div>
+          <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_cont" ${c.cte_contingencia ? 'checked' : ''} style="width:auto;" />
+            <b>Contingência ligada</b>${c.cte_contingencia && c.cte_contingencia_inicio ? `&nbsp;desde ${new Date(c.cte_contingencia_inicio).toLocaleString('pt-BR')}` : ''}</label></div>
+          ${campo('cfg_cont_motivo', 'Motivo (aparece no registro; mínimo 15 letras)', { classe: 'inteiro', valor: c.cte_contingencia_motivo || '', ph: 'ex.: SEFAZ SP fora do ar desde as 9h' })}
         </div></div>
         <div class="cte-secao"><h4>IBS / CBS (Reforma Tributária)</h4><div class="cte-grade">
           <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_ibs" ${c.cte_ibscbs_ativo ? 'checked' : ''} style="width:auto;" /> Informar IBS/CBS no CT-e</label></div>
@@ -663,6 +825,8 @@
     const ambienteNovo = demo ? 2 : Number(v('cfg_ambiente'));
     if (!demo && config?.cte_demonstracao && config?.certificado_demonstracao
       && !await confirmar('Sair do modo demonstração? O certificado cadastrado é o de demonstração e não vale na SEFAZ: envie o certificado A1 da empresa antes de transmitir.', { textoOk: 'Sair da demonstração' })) return;
+    if ($('cfg_cont').checked && !config?.cte_contingencia
+      && !await confirmar(`Ligar a contingência? Os próximos CT-e vão para a ${config?.svc_sigla || 'SVC'} em vez da SEFAZ ${config?.uf || ''}. Use só quando a SEFAZ estiver fora do ar.`, { textoOk: 'Ligar contingência' })) return;
     if (ambienteNovo === 1 && Number(config?.cte_ambiente) !== 1
       && !await confirmar('Passar a emitir em PRODUÇÃO? Os CT-e autorizados terão valor fiscal. Confira antes se os testes em homologação deram certo.', { tipo: 'perigo', textoOk: 'Usar produção' })) return;
     const corpo = {
@@ -675,6 +839,7 @@
       cte_ibs_uf_aliquota: v('cfg_ibs_uf'), cte_ibs_mun_aliquota: v('cfg_ibs_mun'), cte_cbs_aliquota: v('cfg_cbs'),
       aviso_entrega_ativo: $('cfg_aviso').checked, aviso_entrega_email: $('cfg_aviso_email').checked, aviso_entrega_whatsapp: $('cfg_aviso_wpp').checked,
       aviso_entrega_eventos: [...document.querySelectorAll('[data-cfg-evento]:checked')].map((x) => x.dataset.cfgEvento).join(',') || 'nenhum', endereco_publico: v('cfg_end_publico'),
+      cte_contingencia: $('cfg_cont').checked, cte_contingencia_motivo: v('cfg_cont_motivo'),
       resp_tec_cnpj: v('cfg_rt_cnpj').replace(/\D/g, ''), resp_tec_contato: v('cfg_rt_contato'), resp_tec_email: v('cfg_rt_email'), resp_tec_fone: v('cfg_rt_fone').replace(/\D/g, ''),
     };
     config = await api('/config', { method: 'PUT', body: JSON.stringify(corpo) });

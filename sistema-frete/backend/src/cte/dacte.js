@@ -4,6 +4,7 @@
 const QRCode = require('qrcode');
 const { code128Svg } = require('./codigoBarras');
 const { webservicesDaUf } = require('./ufs');
+const { TIPOS_CTE, TIPOS_SERVICO } = require('./montarCte');
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const moeda = (v) => (v == null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -40,16 +41,26 @@ function grupoIcms(i = {}) {
 async function gerarDacte(d, reg) {
   const em = d.emitente;
   const homolog = Number(reg.ambiente) === 2;
-  const autorizado = reg.status === 'autorizado' || reg.status === 'cancelado';
+  const autorizado = ['autorizado', 'cancelado', 'substituido'].includes(reg.status);
   const ws = webservicesDaUf(em.endereco.UF, reg.ambiente);
   const qr = reg.chave ? await QRCode.toString(`${ws.qrCode}?chCTe=${reg.chave}&tpAmb=${reg.ambiente}`, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }) : '';
-  const tarja = reg.status === 'cancelado' ? 'CANCELADO' : !autorizado ? 'SEM VALOR FISCAL — NÃO AUTORIZADO'
+  const tarja = reg.status === 'cancelado' ? 'CANCELADO' : reg.status === 'substituido' ? 'SUBSTITUÍDO' : !autorizado ? 'SEM VALOR FISCAL — NÃO AUTORIZADO'
     : reg.demonstracao ? 'DEMONSTRAÇÃO — NÃO ENVIADO À SEFAZ' : homolog ? 'SEM VALOR FISCAL — HOMOLOGAÇÃO' : '';
   const comps = (d.valores?.componentes || []).filter((c) => Number(c.vComp) > 0);
   const qtds = (d.carga?.quantidades || []);
   // Data/hora de emissão que foi no XML enviado à SEFAZ.
   const dhEmi = /<dhEmi>([^<]+)<\/dhEmi>/.exec(reg.xml_autorizado || reg.xml_assinado || '')?.[1] || null;
-  const destinatario = homolog && autorizado ? { ...d.destinatario, xNome: 'CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' } : d.destinatario;
+  const homologNome = (p) => (p && homolog && autorizado ? { ...p, xNome: 'CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' } : p);
+  const destinatario = homologNome(d.destinatario);
+  const tpCTe = String(d.tpCTe ?? '0'); const tpServ = String(d.tpServ ?? '0');
+  const tpEmis = Number(reg.chave?.[34] || reg.tp_emis || 1);
+  const contingencia = tpEmis === 7 ? 'SVC-RS' : tpEmis === 8 ? 'SVC-SP' : '';
+  const nCte = (c) => `${Number(String(c).slice(22, 25))}/${Number(String(c).slice(25, 34))}`;
+  const referencias = [
+    ...(d.complementados || []).map((c) => ['CT-e complementado', c]),
+    ...(d.substituido?.chave ? [['CT-e substituído', d.substituido.chave]] : []),
+  ];
+  const docsAnteriores = (d.docAnt || []).flatMap((e) => (e.chaves || []).map((c) => [e, c]));
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>DACTE ${esc(reg.numero || 'rascunho')}</title>
 <style>
@@ -101,10 +112,12 @@ async function gerarDacte(d, reg) {
   </div>
   <div class="linha">${campo('Modelo', '57')}${campo('Série', esc(reg.serie ?? ''))}${campo('Número', esc(reg.numero ?? ''))}${campo('Folha', '1/1')}
     ${campo('Data e hora de emissão', esc(dataHora(dhEmi || reg.criado_em)), 'flex:2')}${campo('Protocolo de autorização', esc(reg.protocolo ? `${reg.protocolo} — ${dataHora(reg.autorizado_em)}` : ''), 'flex:3')}</div>
-  <div class="linha">${campo('Tipo do CT-e', 'Normal')}${campo('Tipo do serviço', 'Normal')}${campo('Tomador do serviço', esc(TOMADOR[String(d.tomador ?? '0')]))}${campo('Forma de pagamento', '')}
+  <div class="linha">${campo('Tipo do CT-e', esc(TIPOS_CTE[tpCTe] || tpCTe))}${campo('Tipo do serviço', esc(TIPOS_SERVICO[tpServ] || tpServ))}${campo('Tomador do serviço', esc(TOMADOR[String(d.tomador ?? '0')]))}${campo('Forma de pagamento', '')}
     ${campo('CFOP — Natureza da prestação', esc(`${d.cfop || ''} — ${d.natOp || ''}`), 'flex:3')}</div>
   <div class="linha">${campo('Início da prestação', esc(`${d.inicio?.xMun || ''} / ${d.inicio?.UF || ''}`), 'flex:2')}${campo('Término da prestação', esc(`${d.fim?.xMun || ''} / ${d.fim?.UF || ''}`), 'flex:2')}</div>
+  ${contingencia ? `<div class="bloco" style="text-align:center; font-weight:bold;">EMITIDO EM CONTINGÊNCIA — AUTORIZADO PELA ${contingencia}</div>` : ''}
   <div class="duas">${participante('Remetente', d.remetente)}${participante('Destinatário', destinatario)}</div>
+  ${d.expedidor || d.recebedor ? `<div class="duas">${participante('Expedidor', homologNome(d.expedidor))}${participante('Recebedor', homologNome(d.recebedor))}</div>` : ''}
   ${String(d.tomador) === '4' ? participante('Tomador do serviço', d.outroTomador) : ''}
   <div class="linha">${campo('Produto predominante', esc(d.carga?.proPred), 'flex:3')}${campo('Outras características', esc(d.carga?.xOutCat || ''), 'flex:2')}${campo('Valor total da carga', moeda(d.carga?.vCarga), 'flex:1.5')}</div>
   <div class="linha">${qtds.map((q) => campo(`${q.tpMed || 'Quantidade'} (${UNIDADE[String(q.cUnid).padStart(2, '0')] || q.cUnid})`, moeda(q.qCarga).replace(/,00$/, ''))).join('') || campo('Quantidade', '')}</div>
@@ -116,6 +129,10 @@ async function gerarDacte(d, reg) {
   <div class="bloco"><div class="tit">Documentos originários</div>
     <table><tr><th>Tipo</th><th>Chave de acesso da NF-e</th></tr>
     ${(d.nfes || []).map((c) => `<tr><td>NF-e</td><td>${esc(chaveFmt(c))}</td></tr>`).join('')}</table></div>
+  ${referencias.length ? `<div class="bloco"><div class="tit">${tpCTe === '1' ? 'CT-e complementado (este CT-e cobra só o valor complementar)' : 'CT-e substituído'}</div>
+    <table><tr><th>Documento</th><th>Série/número</th><th>Chave de acesso</th></tr>${referencias.map(([t, c]) => `<tr><td>${t}</td><td>${esc(nCte(c))}</td><td>${esc(chaveFmt(c))}</td></tr>`).join('')}</table></div>` : ''}
+  ${docsAnteriores.length ? `<div class="bloco"><div class="tit">Documentos de transporte anterior</div>
+    <table><tr><th>Emitente</th><th>CNPJ/CPF</th><th>Série/número</th><th>Chave de acesso do CT-e</th></tr>${docsAnteriores.map(([e, c]) => `<tr><td>${esc(e.xNome)}</td><td>${esc(docFmt(e.cnpj || e.cpf))}</td><td>${esc(nCte(c))}</td><td>${esc(chaveFmt(c))}</td></tr>`).join('')}</table></div>` : ''}
   <div class="bloco" style="min-height:48px;"><div class="tit">Observações</div>${esc(d.observacoes || '')}</div>
   <div class="linha">${campo('RNTRC da empresa', esc(em.rntrc || ''))}${campo('CIOT', '')}${campo('Data prevista de entrega', '')}
     ${campo('Este conhecimento de transporte atende à legislação de transporte rodoviário em vigor', '', 'flex:3')}</div>

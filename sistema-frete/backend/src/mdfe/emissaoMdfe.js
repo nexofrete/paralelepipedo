@@ -56,7 +56,7 @@ async function motoristaDoCadastro({ cpf, nome }) {
 
 // Um MDF-e por UF de descarregamento (regra da SEFAZ). Devolve [dados...].
 async function dadosDosCtes(cteIds, { romaneio } = {}) {
-  const { rows } = await pool.query(`SELECT id, numero, chave, dados FROM ctes_emitidos WHERE id = ANY($1::int[]) AND status = 'autorizado' ORDER BY numero`, [cteIds]);
+  const { rows } = await pool.query(`SELECT id, numero, chave, dados FROM ctes_emitidos WHERE id = ANY($1::int[]) AND status = 'autorizado' AND COALESCE(dados->>'tpCTe', '0') <> '1' ORDER BY numero`, [cteIds]);
   if (!rows.length) throw new Error('Escolha CT-e autorizados.');
   const e = await carregarEmitente();
   const porUf = new Map();

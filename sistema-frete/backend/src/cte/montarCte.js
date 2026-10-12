@@ -1,5 +1,6 @@
-// Monta o XML do CT-e 4.00 (modelo 57, modal rodoviário, CT-e normal) a partir
-// dos dados da tela. Não assina: a assinatura é feita depois (assinatura.js).
+// Monta o XML do CT-e 4.00 (modelo 57, modal rodoviário) a partir dos dados da
+// tela: CT-e normal, complementar ou de substituição; serviço normal,
+// subcontratação, redespacho ou redespacho intermediário. Não assina: a assinatura é feita depois (assinatura.js).
 // A ordem e os formatos dos campos seguem o schema PL_CTe_400_RTC.
 const crypto = require('crypto');
 const { CODIGO_UF } = require('./ufs');
@@ -144,39 +145,80 @@ function grupoIbsCbs(r) {
 }
 
 // ---------- CT-e ----------
-// d: dados do CT-e (ver rotas/cteEmissao.js). Devolve { xml, chave, dhEmi, cCT }.
+const TIPOS_CTE = { 0: 'Normal', 1: 'Complementar', 3: 'Substituição' };
+const TIPOS_SERVICO = { 0: 'Normal', 1: 'Subcontratação', 2: 'Redespacho', 3: 'Redespacho intermediário' };
+const chaveValida = (c) => /^\d{6}[A-Z0-9]{14}\d{24}$/.test(c) && String(digitoVerificador(c.slice(0, 43))) === c[43];
+const chavesCte = (lista) => (lista || []).map(cnpjLimpo).filter(Boolean);
+
+// Documentos anteriores (CT-e de quem contratou a subcontratação/redespacho).
+function grupoDocAnt(docAnt) {
+  return g('docAnt', (docAnt || []).map((e) => {
+    const chaves = chavesCte(e.chaves);
+    chaves.forEach((c) => { if (!chaveValida(c) || c.slice(20, 22) !== '57') throw new Error(`Chave do CT-e anterior inválida: ${c}.`); });
+    if (!chaves.length) throw new Error(`Informe a chave do CT-e anterior emitido por ${e.xNome || 'quem contratou'}.`);
+    const uf = String(e.uf || '').toUpperCase();
+    const comIe = ie(e.ie) && CODIGO_UF[uf];
+    return g('emiDocAnt', documento(e), comIe ? ie(e.ie) + t('UF', uf) : '', t('xNome', texto(e.xNome, 60)),
+      g('idDocAnt', chaves.map((c) => g('idDocAntEle', t('chCTe', c))).join('')));
+  }).join(''));
+}
+
+// d: dados do CT-e (ver rotas/cteEmissao.js). Devolve { xml, chave, dhEmi, cCT, tpAmb }.
+// d.tpEmis: 1 normal, 7 SVC-RS, 8 SVC-SP (contingência).
 function montarCte(d) {
   const em = d.emitente;
   const ufEmit = String(em?.endereco?.UF || '').toUpperCase();
   if (!CODIGO_UF[ufEmit]) throw new Error('UF do emitente inválida — confira a Configuração fiscal.');
   if (!soDigitos(em.rntrc)) throw new Error('RNTRC do emitente não informado — confira a Configuração fiscal.');
-  if (!d.remetente || !d.destinatario) throw new Error('Informe o remetente e o destinatário.');
+  const tpCTe = String(d.tpCTe ?? '0');
+  const tpServ = String(d.tpServ ?? '0');
+  const tpEmis = Number(d.tpEmis) || 1;
+  if (!TIPOS_CTE[tpCTe]) throw new Error('Tipo de CT-e inválido.');
+  if (!TIPOS_SERVICO[tpServ]) throw new Error('Tipo de serviço inválido.');
+  if (![1, 7, 8].includes(tpEmis)) throw new Error('Forma de emissão inválida.');
+  const complementar = tpCTe === '1';
+  const intermediario = tpServ === '3';
+  if (!intermediario && (!d.remetente || !d.destinatario)) throw new Error('Informe o remetente e o destinatário.');
+  if (intermediario && (!d.expedidor || !d.recebedor)) throw new Error('No redespacho intermediário, informe o expedidor (de quem recebeu a carga) e o recebedor (a quem vai entregar).');
   const nfes = (d.nfes || []).map(cnpjLimpo).filter((c) => c.length === 44);
-  if (!nfes.length && !(d.outrosDocs || []).length) throw new Error('Informe pelo menos uma NF-e transportada (chave de 44 dígitos).');
+  if (!complementar && !intermediario && !nfes.length && !(d.outrosDocs || []).length) throw new Error('Informe pelo menos uma NF-e transportada (chave de 44 dígitos).');
   const vTPrest = Number(d.valores?.vTPrest);
   if (!(vTPrest > 0)) throw new Error('Informe o valor total da prestação.');
   const quantidades = (d.carga?.quantidades || []).filter((q) => Number(q.qCarga) >= 0 && q.cUnid);
-  if (!quantidades.length) throw new Error('Informe a quantidade da carga (peso ou volumes).');
+  if (!complementar && !quantidades.length) throw new Error('Informe a quantidade da carga (peso ou volumes).');
+  const complementados = chavesCte(d.complementados);
+  if (complementar) {
+    if (!complementados.length) throw new Error('Informe a chave do CT-e que está sendo complementado.');
+    if (complementados.length > 10) throw new Error('Um CT-e complementar pode complementar no máximo 10 CT-e.');
+    complementados.forEach((c) => { if (!chaveValida(c)) throw new Error(`Chave do CT-e complementado inválida: ${c}.`); });
+  }
+  const substituido = cnpjLimpo(d.substituido?.chave);
+  if (tpCTe === '3') {
+    if (!chaveValida(substituido)) throw new Error('Informe a chave do CT-e que está sendo substituído.');
+    if (tpEmis !== 1) throw new Error('CT-e de substituição não pode ser emitido em contingência.');
+  }
+  if (tpServ !== '0' && !complementar && !(d.docAnt || []).length) throw new Error('Na subcontratação e no redespacho, informe o CT-e anterior (de quem contratou o serviço).');
 
   const dhEmi = d.dhEmi || dataHoraBrasilia();
   const tpAmb = Number(d.ambiente) === 1 ? 1 : 2;
   const cCT = d.cCT || codigoNumerico(d.numero);
-  const chave = montarChave({ uf: ufEmit, dhEmi, cnpj: em.cnpj, serie: d.serie, nCT: d.numero, cCT });
+  const chave = montarChave({ uf: ufEmit, dhEmi, cnpj: em.cnpj, serie: d.serie, nCT: d.numero, tpEmis, cCT });
   const envio = d.envio || em.endereco;
   const toma = String(d.tomador ?? '0');
   const pessoaToma = { 0: d.remetente, 1: d.expedidor, 2: d.recebedor, 3: d.destinatario, 4: d.outroTomador }[toma];
-  if (!pessoaToma) throw new Error('Tomador do serviço não informado.');
-  // Homologação: a SEFAZ exige esse texto no nome do destinatário.
-  const destinatario = tpAmb === 2
-    ? { ...d.destinatario, xNome: 'CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' } : d.destinatario;
+  if (!pessoaToma) throw new Error(`Tomador do serviço (${{ 0: 'remetente', 1: 'expedidor', 2: 'recebedor', 3: 'destinatário', 4: 'outro' }[toma] || toma}) não informado.`);
+  // Homologação: a SEFAZ exige esse texto no nome do destinatário, do expedidor e do recebedor.
+  const HOMOLOG = 'CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
+  const homolog = (p) => (p && tpAmb === 2 ? { ...p, xNome: HOMOLOG } : p);
+  const destinatario = homolog(d.destinatario);
 
   const ide = g('ide',
     t('cUF', String(CODIGO_UF[ufEmit])), t('cCT', cCT), t('CFOP', soDigitos(d.cfop)), t('natOp', texto(d.natOp, 60) || 'PRESTACAO DE SERVICO DE TRANSPORTE'),
     t('mod', '57'), t('serie', String(Number(d.serie))), t('nCT', String(Number(d.numero))), t('dhEmi', dhEmi),
-    t('tpImp', '1'), t('tpEmis', '1'), t('cDV', chave.slice(-1)), t('tpAmb', String(tpAmb)), t('tpCTe', '0'), t('procEmi', '0'),
+    t('tpImp', '1'), t('tpEmis', String(tpEmis)), t('cDV', chave.slice(-1)), t('tpAmb', String(tpAmb)), t('tpCTe', tpCTe), t('procEmi', '0'),
     t('verProc', VER_PROC),
     t('cMunEnv', soDigitos(envio.cMun)), t('xMunEnv', texto(envio.xMun, 60)), t('UFEnv', String(envio.UF).toUpperCase()),
-    t('modal', '01'), t('tpServ', '0'),
+    t('modal', '01'), t('tpServ', tpServ),
     t('cMunIni', soDigitos(d.inicio?.cMun)), t('xMunIni', texto(d.inicio?.xMun, 60)), t('UFIni', String(d.inicio?.UF || '').toUpperCase()),
     t('cMunFim', soDigitos(d.fim?.cMun)), t('xMunFim', texto(d.fim?.xMun, 60)), t('UFFim', String(d.fim?.UF || '').toUpperCase()),
     t('retira', d.retira ? '0' : '1'),
@@ -206,8 +248,13 @@ function montarCte(d) {
     t('vCarga', dec(d.carga?.vCarga)), t('proPred', texto(d.carga?.proPred, 60) || 'DIVERSOS'), t('xOutCat', texto(d.carga?.xOutCat, 30)),
     quantidades.map((q) => g('infQ', t('cUnid', String(q.cUnid).padStart(2, '0')), t('tpMed', texto(q.tpMed, 20) || 'PESO BRUTO'), t('qCarga', dec(q.qCarga, 4)))).join(''));
   const infDoc = g('infDoc', nfes.map((c) => g('infNFe', t('chave', c))).join(''));
+  const docAnt = tpServ !== '0' ? grupoDocAnt(d.docAnt) : '';
   const infModal = `<infModal versaoModal="${VERSAO}">${g('rodo', t('RNTRC', soDigitos(em.rntrc).padStart(8, '0').slice(-8)))}</infModal>`;
-  const infCTeNorm = g('infCTeNorm', infCarga, infDoc, infModal);
+  const infCteSub = tpCTe === '3' ? g('infCteSub', t('chCte', substituido), d.substituido?.indAlteraToma ? t('indAlteraToma', '1') : '') : '';
+  // CT-e complementar: no lugar da carga/documentos vai a chave do CT-e complementado.
+  const infCTeNorm = complementar
+    ? complementados.map((c) => g('infCteComp', t('chCTe', c))).join('')
+    : g('infCTeNorm', infCarga, infDoc, docAnt, infModal, infCteSub);
 
   const rt = d.respTec;
   const infRespTec = rt && cnpjLimpo(rt.cnpj).length === 14
@@ -216,6 +263,8 @@ function montarCte(d) {
 
   const infCte = `<infCte versao="${VERSAO}" Id="CTe${chave}">${ide}${compl}${emit}`
     + `${participante('rem', 'enderReme', d.remetente, { comFant: true })}`
+    + `${participante('exped', 'enderExped', homolog(d.expedidor))}`
+    + `${participante('receb', 'enderReceb', homolog(d.recebedor))}`
     + `${participante('dest', 'enderDest', destinatario)}`
     + `${vPrest}${imp}${infCTeNorm}${infRespTec}</infCte>`;
   return { xml: `<CTe xmlns="${NS}">${infCte}</CTe>`, chave, dhEmi, cCT, tpAmb };
@@ -227,4 +276,4 @@ function incluirQrCode(xmlAssinado, urlQrCode, chave, tpAmb) {
   return xmlAssinado.replace('</infCte>', `</infCte>${supl}`);
 }
 
-module.exports = { montarCte, montarChave, digitoVerificador, dataHoraBrasilia, incluirQrCode, texto, soDigitos, cnpjLimpo, esc, NS, VERSAO };
+module.exports = { montarCte, montarChave, digitoVerificador, chaveValida, TIPOS_CTE, TIPOS_SERVICO, dataHoraBrasilia, incluirQrCode, texto, soDigitos, cnpjLimpo, esc, NS, VERSAO };

@@ -53,7 +53,7 @@ router.delete('/feriados/:id(\\d+)', autenticar, emitir, async (req, res) => {
 
 // CT-e autorizados sem previsão (emitidos antes deste recurso): calcula agora.
 async function completarPrevisoes() {
-  const { rows } = await pool.query(`SELECT id FROM ctes_emitidos WHERE status = 'autorizado' AND previsao_entrega IS NULL AND autorizado_em IS NOT NULL LIMIT 300`);
+  const { rows } = await pool.query(`SELECT id FROM ctes_emitidos WHERE status = 'autorizado' AND previsao_entrega IS NULL AND autorizado_em IS NOT NULL AND COALESCE(dados->>'tpCTe', '0') <> '1' LIMIT 300`);
   for (const r of rows) await oc.definirPrevisao(r.id).catch(() => null);
 }
 
@@ -76,7 +76,8 @@ router.get('/painel', autenticar, emitir, async (req, res) => {
     const filtro = FILTROS[req.query.filtro] ? req.query.filtro : 'abertos';
     const val = [hoje];
     // $1 (hoje) entra sempre, mesmo nos filtros que não usam a data.
-    const cond = ["c.status = 'autorizado'", '$1::date IS NOT NULL', FILTROS[filtro].replace(/\$HOJE/g, '$1::date')];
+    // O CT-e complementar só cobra valor: a entrega é acompanhada pelo original.
+    const cond = ["c.status = 'autorizado'", "COALESCE(c.dados->>'tpCTe', '0') <> '1'", '$1::date IS NOT NULL', FILTROS[filtro].replace(/\$HOJE/g, '$1::date')];
     // Período (emissão) só vale para entregues/devolvidos/todos; os abertos aparecem sempre.
     if (['entregues', 'devolvidos', 'todos'].includes(filtro)) {
       const de = dataIso(req.query.de) || `${hoje.slice(0, 8)}01`;   // padrão: desde o dia 1º do mês
@@ -113,7 +114,7 @@ router.get('/painel', autenticar, emitir, async (req, res) => {
               COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date = $1::date)::int AS entregues_hoje,
               COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date >= $1::date - 30)::int AS entregues_30,
               COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date >= $1::date - 30 AND data_entrega::date <= previsao_original)::int AS no_prazo_30
-         FROM ctes_emitidos WHERE status = 'autorizado'`, [hoje]);
+         FROM ctes_emitidos WHERE status = 'autorizado' AND COALESCE(dados->>'tpCTe', '0') <> '1'`, [hoje]);
     res.json({
       hoje, filtro, contagens: cont[0],
       linhas: rows.map((r) => ({ ...r, nfs: (r.nfes || []).map(nfDaChave).filter(Boolean), nfes: undefined })),

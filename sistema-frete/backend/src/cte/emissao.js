@@ -4,7 +4,7 @@ const pool = require('../db');
 const { montarCte, incluirQrCode, NS, VERSAO, soDigitos } = require('./montarCte');
 const { assinar } = require('./assinatura');
 const { certificadoDoEmitente } = require('./certificado');
-const { webservicesDaUf } = require('./ufs');
+const { webservicesDaUf, contingenciaDaUf } = require('./ufs');
 const sefaz = require('./sefaz');
 const eventos = require('./eventos');
 
@@ -36,6 +36,13 @@ function dadosParaXml(registro, e) {
     respTec: e.resp_tec_cnpj ? { cnpj: e.resp_tec_cnpj, xContato: e.resp_tec_contato, email: e.resp_tec_email, fone: e.resp_tec_fone } : null,
   };
 }
+
+// Contingência (SVC): ligada na Configuração fiscal quando a SEFAZ da UF está fora.
+// A autorização vai para a SVC; consulta e eventos de CT-e autorizado na SVC
+// também, enquanto a contingência estiver ligada (depois a SEFAZ de origem
+// recebe esses CT-e da SVC e passa a responder por eles).
+const contingenciaLigada = (e) => !!e.cte_contingencia;
+const naSvc = (e, chave) => contingenciaLigada(e) && !!chave && chave[34] !== '1';
 
 // Colunas de resumo (lista da tela) tiradas dos dados.
 function resumo(d) {
@@ -75,12 +82,30 @@ async function reservarNumero(id) {
 const cteProc = (xmlAssinado, protCTe) => `<?xml version="1.0" encoding="UTF-8"?><cteProc xmlns="${NS}" versao="${VERSAO}">${xmlAssinado.replace(/^<\?xml[^>]*\?>/, '')}${protCTe}</cteProc>`;
 
 async function registrarAutorizado(id, xmlAssinado, r) {
-  await pool.query(
+  const { rows } = await pool.query(
     `UPDATE ctes_emitidos SET status = 'autorizado', xml_autorizado = $2, protocolo = $3, autorizado_em = COALESCE($4::timestamptz, NOW()),
-            cstat = $5, motivo = $6, atualizado_em = NOW() WHERE id = $1`,
+            cstat = $5, motivo = $6, atualizado_em = NOW() WHERE id = $1 RETURNING dados`,
     [id, cteProc(xmlAssinado, r.protCTe), r.nProt, r.dhRecbto || null, r.cStat, r.xMotivo]);
+  const d = rows[0]?.dados || {};
+  if (String(d.tpCTe) === '3') await concluirSubstituicao(id, d.substituido?.chave);
   // Previsão de entrega (prazo da tabela ou o padrão), para o acompanhamento das entregas.
-  await require('./ocorrencias').definirPrevisao(id).catch((e) => console.error('[cte] previsão de entrega:', e.message));
+  // O complementar só cobra um valor a mais: a entrega é acompanhada pelo CT-e original.
+  if (String(d.tpCTe) !== '1') await require('./ocorrencias').definirPrevisao(id).catch((e) => console.error('[cte] previsão de entrega:', e.message));
+}
+
+// CT-e substituto autorizado: o original fica "substituído" e o acompanhamento
+// da entrega (ocorrências, romaneio, situação) passa para o substituto.
+async function concluirSubstituicao(novoId, chaveOriginal) {
+  if (!chaveOriginal) return;
+  const { rows } = await pool.query(`UPDATE ctes_emitidos SET status = 'substituido', substituido_por = $2, atualizado_em = NOW()
+     WHERE chave = $1 AND status = 'autorizado' RETURNING id, situacao_entrega, data_entrega, recebedor_nome, recebedor_documento, previsao_entrega, previsao_original`, [chaveOriginal, novoId]);
+  const o = rows[0];
+  if (!o) return;
+  await pool.query(`UPDATE ctes_emitidos SET situacao_entrega = $2, data_entrega = $3, recebedor_nome = $4, recebedor_documento = $5,
+     previsao_entrega = COALESCE($6, previsao_entrega), previsao_original = COALESCE($7, previsao_original) WHERE id = $1`,
+  [novoId, o.situacao_entrega, o.data_entrega, o.recebedor_nome, o.recebedor_documento, o.previsao_entrega, o.previsao_original]);
+  await pool.query('UPDATE cte_ocorrencias SET cte_id = $2 WHERE cte_id = $1', [o.id, novoId]);
+  await pool.query('UPDATE romaneio_itens SET cte_id = $2 WHERE cte_id = $1 AND NOT EXISTS (SELECT 1 FROM romaneio_itens x WHERE x.romaneio_id = romaneio_itens.romaneio_id AND x.cte_id = $2)', [o.id, novoId]);
 }
 
 // Transmite o CT-e. Se uma tentativa anterior ficou sem resposta, consulta a
@@ -97,14 +122,20 @@ async function transmitir(id) {
   if (demo && !reg.demonstracao) await pool.query('UPDATE ctes_emitidos SET demonstracao = TRUE WHERE id = $1', [id]);
   if (!demo && reg.demonstracao) throw new Error('Esse CT-e foi feito no modo demonstração. Duplique para emitir de verdade.');
   const opcoes = { uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, simulado: demo ? { conhecido: null } : null };
+  const contingencia = contingenciaLigada(e);
+  if (contingencia && String(reg.dados?.tpCTe) === '3') throw new Error('CT-e de substituição não pode ser emitido em contingência. Espere a SEFAZ voltar e desligue a contingência.');
 
+  let pendente = null;
   if (reg.status === 'enviando' || reg.status === 'erro') {
     if (reg.chave && reg.xml_assinado) {
-      const c = await sefaz.consultar({ ...opcoes, tpAmb: reg.ambiente, chave: reg.chave }).catch(() => null);
+      const c = await sefaz.consultar({ ...opcoes, tpAmb: reg.ambiente, chave: reg.chave, contingencia: naSvc(e, reg.chave) }).catch(() => null);
       if (c && (c.cStat === '100' || c.cStat === '150') && c.protCTe) {
         await registrarAutorizado(id, reg.xml_assinado, { ...c, cStat: '100', xMotivo: 'Autorizado o uso do CT-e (confirmado pela consulta)' });
         return carregar(id);
       }
+      // Foi para a SEFAZ de origem sem resposta e agora vai pela SVC: guarda a chave
+      // para conferir depois (se a origem tiver autorizado, precisa cancelar).
+      if (!c && contingencia && reg.chave[34] === '1') pendente = reg.chave;
     }
   }
 
@@ -118,11 +149,13 @@ async function transmitir(id) {
     throw new Error(`O certificado digital é do CNPJ ${cert.cnpj}, diferente do CNPJ da empresa (${e.cnpj}).`);
   }
 
-  const { xml, chave, tpAmb } = montarCte(dadosParaXml(reg, e));
-  const ws = webservicesDaUf(e.uf, tpAmb);
+  const ws = webservicesDaUf(e.uf, reg.ambiente, contingencia);
+  const { xml, chave, tpAmb } = montarCte({ ...dadosParaXml(reg, e), tpEmis: ws.tpEmis });
   const assinado = incluirQrCode(assinar(xml, 'infCte', cert), ws.qrCode, chave, tpAmb);
-  await pool.query(`UPDATE ctes_emitidos SET status = 'enviando', chave = $2, xml_assinado = $3, cstat = NULL, motivo = NULL, atualizado_em = NOW() WHERE id = $1`,
-    [id, chave, assinado]);
+  await pool.query(`UPDATE ctes_emitidos SET status = 'enviando', chave = $2, xml_assinado = $3, tp_emis = $4, cstat = NULL, motivo = NULL,
+      chave_pendente_origem = COALESCE($5, chave_pendente_origem), atualizado_em = NOW() WHERE id = $1`,
+  [id, chave, assinado, ws.tpEmis, pendente]);
+  opcoes.contingencia = contingencia;
 
   let r;
   try {
@@ -167,22 +200,32 @@ async function consultar(id) {
   if (!reg?.chave) throw new Error('Esse CT-e ainda não foi transmitido.');
   const e = await carregarEmitente();
   const cert = await certificadoParaUsar(e, reg.demonstracao);
-  const c = await sefaz.consultar({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, chave: reg.chave, simulado: simulacao(reg) });
+  const c = await sefaz.consultar({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, chave: reg.chave, simulado: simulacao(reg), contingencia: naSvc(e, reg.chave) });
   if (['100', '150'].includes(c.cStat) && c.protCTe && reg.status !== 'autorizado' && reg.status !== 'cancelado' && reg.xml_assinado) {
     await registrarAutorizado(id, reg.xml_assinado, { ...c, cStat: '100' });
   }
   if (['101', '151'].includes(c.cStat) && reg.status !== 'cancelado') {
     await pool.query(`UPDATE ctes_emitidos SET status = 'cancelado', atualizado_em = NOW() WHERE id = $1`, [id]);
   }
-  return { consulta: { cStat: c.cStat, xMotivo: c.xMotivo, nProt: c.nProt }, cte: await carregar(id) };
+  // Chave que ficou pendente na SEFAZ de origem (antes da contingência).
+  let pendente = null;
+  if (reg.chave_pendente_origem && !contingenciaLigada(e)) {
+    const p = await sefaz.consultar({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, chave: reg.chave_pendente_origem, simulado: simulacao(reg) }).catch(() => null);
+    if (p) {
+      pendente = { chave: reg.chave_pendente_origem, cStat: p.cStat, xMotivo: p.xMotivo, nProt: p.nProt, autorizada: ['100', '150'].includes(p.cStat) };
+      if (['217', '101', '151'].includes(p.cStat)) await pool.query('UPDATE ctes_emitidos SET chave_pendente_origem = NULL WHERE id = $1', [id]);
+    }
+  }
+  return { consulta: { cStat: c.cStat, xMotivo: c.xMotivo, nProt: c.nProt }, pendente, cte: await carregar(id) };
 }
 
 async function enviarEvento(reg, montar, tipo) {
   const e = await carregarEmitente();
   const cert = await certificadoParaUsar(e, reg.demonstracao);
-  const xml = montar({ chave: reg.chave, cnpj: e.cnpj, uf: e.uf, tpAmb: reg.ambiente });
+  const chave = reg.chaveEvento || reg.chave;
+  const xml = montar({ chave, cnpj: e.cnpj, uf: e.uf, tpAmb: reg.ambiente });
   const assinado = assinar(xml, 'infEvento', cert);
-  const r = await sefaz.enviarEvento({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, xmlEventoAssinado: assinado, simulado: simulacao(reg) });
+  const r = await sefaz.enviarEvento({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, xmlEventoAssinado: assinado, simulado: simulacao(reg), contingencia: naSvc(e, chave) });
   // 134/135/136: evento registrado.
   const ok = ['134', '135', '136'].includes(r.cStat);
   const evento = { tipo, cStat: r.cStat, xMotivo: r.xMotivo, protocolo: r.nProt, em: r.dhRegEvento || new Date().toISOString(), ok,
@@ -200,6 +243,57 @@ async function cancelar(id, justificativa) {
   return evento;
 }
 
+// Cancela a chave que a SEFAZ de origem autorizou enquanto o CT-e era reemitido na SVC.
+async function cancelarPendenteOrigem(id) {
+  const reg = await carregar(id);
+  if (!reg?.chave_pendente_origem) throw new Error('Esse CT-e não tem chave pendente na SEFAZ de origem.');
+  const e = await carregarEmitente();
+  if (contingenciaLigada(e)) throw new Error('Desligue a contingência antes: o cancelamento vai para a SEFAZ de origem.');
+  const cert = await certificadoParaUsar(e, reg.demonstracao);
+  const p = await sefaz.consultar({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, chave: reg.chave_pendente_origem, simulado: simulacao(reg) });
+  if (!['100', '150'].includes(p.cStat) || !p.nProt) {
+    if (['217', '101', '151'].includes(p.cStat)) await pool.query('UPDATE ctes_emitidos SET chave_pendente_origem = NULL WHERE id = $1', [id]);
+    throw new Error(`Não há o que cancelar: ${p.cStat} - ${p.xMotivo}`);
+  }
+  const just = `Emitido em duplicidade - substituido pelo CT-e autorizado em contingencia ${reg.chave}`.slice(0, 255);
+  const evento = await enviarEvento({ ...reg, chaveEvento: reg.chave_pendente_origem }, (base) => eventos.cancelamento({ ...base, nProt: p.nProt, justificativa: just }), 'cancelamento_pendente_origem');
+  await pool.query('UPDATE ctes_emitidos SET chave_pendente_origem = NULL WHERE id = $1', [id]);
+  return evento;
+}
+
+// Rascunho de CT-e complementar (cobra um valor a mais: estadia, reentrega,
+// diferença de frete) ou de substituição, a partir de um CT-e autorizado.
+const PRAZO_SUBSTITUICAO_DIAS = 60;
+async function rascunhoDerivado(id, tipo, usuarioNome) {
+  const reg = await carregar(id);
+  if (reg?.status !== 'autorizado') throw new Error('Só dá para complementar ou substituir CT-e autorizado.');
+  const d = reg.dados || {};
+  if (String(d.tpCTe ?? '0') === '1') throw new Error('CT-e complementar não pode ser complementado nem substituído.');
+  const ref = `${reg.serie}/${reg.numero}`;
+  let dados;
+  if (tipo === 'complementar') {
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM ctes_emitidos WHERE status = 'autorizado' AND dados->'complementados' ? $1`, [reg.chave]);
+    if (rows[0].n >= 10) throw new Error('Esse CT-e já recebeu 10 complementos (o máximo).');
+    dados = {
+      ...d, tpCTe: '1', complementados: [reg.chave], substituido: null, nfes: d.nfes,
+      valores: { vTPrest: 0, componentes: [{ xNome: 'COMPLEMENTO', vComp: 0 }] },
+      icms: { ...d.icms, vBC: 0, vICMS: 0 }, observacoes: `Complemento do CT-e ${ref}.`,
+    };
+  } else {
+    const dias = (Date.now() - new Date(reg.autorizado_em).getTime()) / 86400000;
+    if (dias > PRAZO_SUBSTITUICAO_DIAS) throw new Error(`A substituição tem que ser autorizada em até ${PRAZO_SUBSTITUICAO_DIAS} dias da autorização do CT-e (este tem ${Math.floor(dias)}).`);
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM ctes_emitidos WHERE status = 'autorizado' AND dados->'complementados' ? $1`, [reg.chave]);
+    if (rows[0].n) throw new Error('CT-e que já foi complementado não pode ser substituído.');
+    dados = { ...d, tpCTe: '3', complementados: [], substituido: { chave: reg.chave, indAlteraToma: false }, observacoes: d.observacoes || '' };
+  }
+  const r = resumo(dados);
+  const { rows } = await pool.query(
+    `INSERT INTO ctes_emitidos (ambiente, dados, valor_total, tomador_nome, remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome, demonstracao)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [reg.ambiente, dados, r.valor_total, r.tomador_nome, r.remetente_nome, r.destinatario_nome, r.cidade_fim, r.uf_fim, usuarioNome, reg.demonstracao]);
+  return carregar(rows[0].id);
+}
+
 async function cartaCorrecao(id, correcoes) {
   const reg = await carregar(id);
   if (reg?.status !== 'autorizado') throw new Error('Carta de correção só vale para CT-e autorizado.');
@@ -212,7 +306,7 @@ async function cartaCorrecao(id, correcoes) {
 async function testarConexao() {
   const e = await carregarEmitente();
   const cert = await certificadoParaUsar(e);
-  return sefaz.statusServico({ uf: e.uf, tpAmb: e.cte_ambiente, cert, verificarServidor: e.cte_verificar_servidor, simulado: e.cte_demonstracao ? {} : null });
+  return sefaz.statusServico({ uf: e.uf, tpAmb: e.cte_ambiente, cert, verificarServidor: e.cte_verificar_servidor, simulado: e.cte_demonstracao ? {} : null, contingencia: contingenciaLigada(e) });
 }
 
-module.exports = { certificadoParaUsar, carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar };
+module.exports = { certificadoParaUsar, carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar, rascunhoDerivado, cancelarPendenteOrigem, contingenciaDaUf };

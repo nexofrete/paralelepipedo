@@ -62,9 +62,20 @@ const WEBSERVICES = {
 };
 WEBSERVICES.SVSP = WEBSERVICES.SP;
 
-function webservicesDaUf(uf, tpAmb) {
-  const aut = autorizadorDaUf(uf);
-  return { autorizador: aut, ...WEBSERVICES[aut][Number(tpAmb) === 1 ? 1 : 2] };
+// Contingência: SEFAZ Virtual de Contingência que atende cada UF (tpEmis 7 = SVC-RS,
+// 8 = SVC-SP). A SVC-RS usa os endereços da SVRS e a SVC-SP os da SEFAZ-SP.
+const SVC_RS = ['AP', 'MS', 'MT', 'PE', 'RR', 'SP'];
+function contingenciaDaUf(uf) {
+  return SVC_RS.includes(String(uf || '').toUpperCase()) ? { sigla: 'SVC-RS', tpEmis: 7, autorizador: 'SVRS' } : { sigla: 'SVC-SP', tpEmis: 8, autorizador: 'SP' };
 }
 
-module.exports = { CODIGO_UF, autorizadorDaUf, webservicesDaUf };
+// contingencia = true: endereços da SVC da UF. O QR Code continua o da UF de origem.
+function webservicesDaUf(uf, tpAmb, contingencia = false) {
+  const amb = Number(tpAmb) === 1 ? 1 : 2;
+  const aut = autorizadorDaUf(uf);
+  if (!contingencia) return { autorizador: aut, tpEmis: 1, ...WEBSERVICES[aut][amb] };
+  const svc = contingenciaDaUf(uf);
+  return { ...WEBSERVICES[svc.autorizador][amb], autorizador: svc.sigla, tpEmis: svc.tpEmis, qrCode: WEBSERVICES[aut][amb].qrCode };
+}
+
+module.exports = { CODIGO_UF, autorizadorDaUf, webservicesDaUf, contingenciaDaUf };

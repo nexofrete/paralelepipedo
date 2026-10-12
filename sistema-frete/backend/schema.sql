@@ -1372,6 +1372,16 @@ ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS situacao_entrega VARCHAR(20) 
 ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS data_entrega TIMESTAMP;
 ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS recebedor_nome VARCHAR(120);
 ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS recebedor_documento VARCHAR(30);
+-- Complementar/substituto (o tipo fica em dados->>'tpCTe'), contingência (SVC) e
+-- o CT-e que substituiu este (status 'substituido').
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS tp_emis SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS substituido_por INTEGER;
+-- Chave enviada à SEFAZ de origem que ficou sem resposta antes de reemitir na SVC:
+-- se a origem tiver autorizado, ela precisa ser cancelada.
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS chave_pendente_origem VARCHAR(44);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_contingencia BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_contingencia_motivo VARCHAR(256);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_contingencia_inicio TIMESTAMPTZ;
 CREATE TABLE IF NOT EXISTS cte_ocorrencias (
     id                  SERIAL PRIMARY KEY,
     cte_id              INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,

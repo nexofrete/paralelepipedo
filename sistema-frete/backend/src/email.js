@@ -205,4 +205,23 @@ async function enviarAvisoAgenda({ destinatarioEmail, destinatarioNome, assunto,
   return true;
 }
 
-module.exports = { buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda };
+// Aviso de entrega para o cliente da transportadora (saiu para entrega, entregue...).
+async function enviarAvisoEntrega({ destinatarioEmail, assunto, titulo, linhas, link, rodape }) {
+  const config = await buscarConfiguracao();
+  if (!config.ativo || !config.smtp_host || !config.smtp_usuario) throw new Error('E-mail (SMTP) não está configurado.');
+  const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const html = `
+    <div style="font-family:Arial,sans-serif; max-width:540px; margin:0 auto;">
+      <h2 style="color:#1F4E78; margin-bottom:10px;">${esc(titulo)}</h2>
+      ${linhas.map((l) => `<p style="margin:6px 0;">${esc(l)}</p>`).join('')}
+      ${link ? `<p style="margin:22px 0;"><a href="${esc(link)}" style="background:#2f5bea; color:#fff; padding:10px 18px; border-radius:6px; text-decoration:none;">Acompanhar a entrega</a></p>` : ''}
+      <p style="color:#888; font-size:12px; margin-top:26px;">${esc(rodape || 'Aviso automático.')}</p>
+    </div>`;
+  await criarTransportador(config).sendMail({
+    from: `"${config.nome_remetente || 'Nexofrete'}" <${config.email_remetente || config.smtp_usuario}>`,
+    to: destinatarioEmail, subject: assunto, html,
+  });
+  return true;
+}
+
+module.exports = { buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega };

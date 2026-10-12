@@ -13,7 +13,7 @@ const oc = require('../cte/ocorrencias');
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
-const PASTA = path.join(__dirname, '..', '..', 'dados', 'comprovantes-cte');
+const { PASTA } = oc;
 const log = (req, acao, detalhes, registroId) => registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao, detalhes, registroId });
 const erro = (res, err, padrao) => { console.error('[ocorrencias]', err.message); res.status(err.status || 400).json({ erro: err.message || padrao }); };
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -22,6 +22,34 @@ const dataIso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
 const nfDaChave = (c) => (String(c).length === 44 ? String(Number(String(c).slice(25, 34))) : null);
 
 router.get('/catalogo', autenticar, emitir, (req, res) => res.json({ catalogo: oc.CATALOGO, situacoes: oc.SITUACOES }));
+
+// ---------- Feriados (previsão de entrega) ----------
+router.get('/feriados', autenticar, emitir, async (req, res) => {
+  try {
+    const ano = Number(req.query.ano) || new Date().getFullYear();
+    const { rows } = await pool.query(`SELECT id, TO_CHAR(data, 'YYYY-MM-DD') AS data, descricao, uf, cidade, anual FROM feriados ORDER BY TO_CHAR(data, 'MM-DD'), uf NULLS FIRST, cidade NULLS FIRST`);
+    res.json({ ano, nacionais: require('../cte/feriados').feriadosNacionais(ano), cadastrados: rows });
+  } catch (err) { erro(res, err, 'Erro ao listar os feriados.'); }
+});
+router.post('/feriados', autenticar, emitir, async (req, res) => {
+  try {
+    const { data, descricao, uf, cidade, anual } = req.body || {};
+    if (!dataIso(data)) throw falha('Informe a data do feriado.');
+    if (!String(descricao || '').trim()) throw falha('Dê um nome ao feriado.');
+    if (cidade && !uf) throw falha('Feriado municipal: informe também a UF.');
+    const { rows } = await pool.query('INSERT INTO feriados (data, descricao, uf, cidade, anual) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [data, String(descricao).trim().slice(0, 120), String(uf || '').trim().toUpperCase().slice(0, 2) || null, String(cidade || '').trim().toUpperCase().slice(0, 120) || null, anual !== false]);
+    log(req, 'feriado', `Cadastrou o feriado "${descricao}" (${data}${uf ? ` · ${uf}` : ''}${cidade ? ` · ${cidade}` : ''})`);
+    res.status(201).json({ id: rows[0].id });
+  } catch (err) { erro(res, err, 'Erro ao cadastrar o feriado.'); }
+});
+router.delete('/feriados/:id(\\d+)', autenticar, emitir, async (req, res) => {
+  try {
+    const { rows } = await pool.query('DELETE FROM feriados WHERE id = $1 RETURNING descricao', [req.params.id]);
+    if (rows[0]) log(req, 'feriado', `Apagou o feriado "${rows[0].descricao}"`);
+    res.json({ ok: true });
+  } catch (err) { erro(res, err, 'Erro ao apagar o feriado.'); }
+});
 
 // CT-e autorizados sem previsão (emitidos antes deste recurso): calcula agora.
 async function completarPrevisoes() {
@@ -108,47 +136,13 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
       ...r, destinatario_nome: r.destinatario_nome || d.destinatario?.xNome || null, dados: undefined, nfs: (d.nfes || []).map(nfDaChave).filter(Boolean),
       origem: d.inicio ? `${d.inicio.xMun}/${d.inicio.UF}` : null, destino: d.fim ? `${d.fim.xMun}/${d.fim.UF}` : null,
       endereco: d.destinatario?.endereco ? [d.destinatario.endereco.xLgr, d.destinatario.endereco.nro, d.destinatario.endereco.xBairro].filter(Boolean).join(', ') : null,
-      ocorrencias: ocs.map((o) => ({ ...o, tem_comprovante: !!o.comprovante_arquivo, comprovante_arquivo: undefined })),
+      ocorrencias: ocs.map((o) => ({ ...o, tem_comprovante: !!o.comprovante_arquivo, tem_assinatura: !!o.assinatura_arquivo, comprovante_arquivo: undefined, assinatura_arquivo: undefined })),
     });
   } catch (err) { erro(res, err, 'Erro ao buscar o CT-e.'); }
 });
 
-// Valida e grava uma ocorrência (dentro da transação "cliente").
-async function lancar(cliente, req, cteId, corpo, arquivo) {
-  const item = oc.PORID.get(corpo.tipo_id);
-  if (!item) throw falha('Escolha a ocorrência.');
-  const { rows } = await cliente.query(`SELECT id, numero, status, autorizado_em, dados FROM ctes_emitidos WHERE id = $1 FOR UPDATE`, [cteId]);
-  const cte = rows[0];
-  if (!cte) throw falha('CT-e não encontrado.', 404);
-  if (cte.status !== 'autorizado') throw falha(`O CT-e ${cte.numero || ''} não está autorizado (${cte.status}).`);
-  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})$/.exec(String(corpo.data_hora || ''));
-  if (!m) throw falha('Informe a data e a hora da ocorrência.');
-  // A hora digitada é a de Brasília; não aceita data no futuro.
-  if (Date.parse(`${m[1]}T${m[2]}:00-03:00`) > Date.now() + 10 * 60000) throw falha('A data da ocorrência está no futuro.');
-  const recebedor = String(corpo.recebedor_nome || '').trim();
-  if (item.pedeRecebedor && item.tipo === 'entrega' && !recebedor) throw falha('Informe quem recebeu a mercadoria.');
-  const obs = String(corpo.observacao || '').trim();
-  if (item.pedeObservacao && !obs) throw falha('Descreva a ocorrência na observação.');
-  const novaPrevisao = item.pedePrevisao ? dataIso(corpo.nova_previsao) : null;
-  if (item.tipo === 'agendada' && !novaPrevisao) throw falha('Informe a data agendada para a entrega.');
-  let nomeArquivo = null;
-  if (arquivo) {
-    if (!/^image\/|^application\/pdf$/.test(arquivo.mimetype)) throw falha('O comprovante deve ser uma foto ou um PDF.');
-    fs.mkdirSync(PASTA, { recursive: true });
-    nomeArquivo = `cte-${cteId}-${Date.now()}${(path.extname(arquivo.originalname) || '.jpg').toLowerCase().replace(/[^.a-z0-9]/g, '')}`;
-    fs.writeFileSync(path.join(PASTA, nomeArquivo), arquivo.buffer);
-  }
-  const fim = cte.dados?.fim || {};
-  const cidade = String(corpo.cidade || '').trim() || (['entrega', 'em_rota', 'problema'].includes(item.tipo) ? fim.xMun : null) || null;
-  const uf = String(corpo.uf || '').trim().toUpperCase().slice(0, 2) || (cidade === fim.xMun ? fim.UF : null) || null;
-  const { rows: novo } = await cliente.query(
-    `INSERT INTO cte_ocorrencias (cte_id, tipo_id, codigo, descricao, tipo, data_hora, cidade, uf, recebedor_nome, recebedor_documento, nova_previsao, observacao, comprovante_arquivo, usuario_nome)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
-    [cteId, item.id, item.codigo, item.rotulo, item.tipo, `${m[1]} ${m[2]}`, cidade, uf, recebedor || null,
-      String(corpo.recebedor_documento || '').trim() || null, novaPrevisao, obs || null, nomeArquivo, req.usuario.nome]);
-  const situacao = await oc.recalcularSituacao(cteId, cliente);
-  return { id: novo[0].id, numero: cte.numero, situacao, descricao: item.rotulo };
-}
+// Grava uma ocorrência (regras em src/cte/ocorrencias.js).
+const lancar = (cliente, req, cteId, corpo, arquivo) => oc.lancarOcorrencia(cliente, { cteId, corpo, arquivo, usuarioNome: req.usuario.nome });
 
 // POST /api/ocorrencias/:id  (multipart: campos + "comprovante" opcional)
 router.post('/:id(\\d+)', autenticar, emitir, upload.single('comprovante'), async (req, res) => {
@@ -157,6 +151,7 @@ router.post('/:id(\\d+)', autenticar, emitir, upload.single('comprovante'), asyn
     await cliente.query('BEGIN');
     const r = await lancar(cliente, req, Number(req.params.id), req.body || {}, req.file);
     await cliente.query('COMMIT');
+    oc.depoisDeLancar([r]);
     log(req, 'cte_ocorrencia', `Lançou "${r.descricao}" no CT-e ${r.numero}`, Number(req.params.id));
     res.status(201).json(r);
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao lançar a ocorrência.'); } finally { cliente.release(); }
@@ -175,6 +170,7 @@ router.post('/lote', autenticar, emitir, async (req, res) => {
       try { feitos.push(await lancar(cliente, req, id, req.body, null)); } catch (e) { throw falha(`CT-e #${id}: ${e.message}`, e.status); }
     }
     await cliente.query('COMMIT');
+    oc.depoisDeLancar(feitos);
     log(req, 'cte_ocorrencia_lote', `Lançou "${feitos[0].descricao}" em ${feitos.length} CT-e: ${feitos.map((f) => f.numero).join(', ')}`);
     res.status(201).json({ lancadas: feitos.length });
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao lançar em lote.'); } finally { cliente.release(); }
@@ -196,10 +192,11 @@ router.delete('/ocorrencia/:id(\\d+)', autenticar, emitir, async (req, res) => {
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao apagar a ocorrência.'); } finally { cliente.release(); }
 });
 
+// Foto do comprovante ou assinatura (?tipo=assinatura) de uma ocorrência.
 router.get('/ocorrencia/:id(\\d+)/comprovante', autenticar, emitir, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT comprovante_arquivo FROM cte_ocorrencias WHERE id = $1', [req.params.id]);
-    const nome = rows[0]?.comprovante_arquivo;
+    const { rows } = await pool.query('SELECT comprovante_arquivo, assinatura_arquivo FROM cte_ocorrencias WHERE id = $1', [req.params.id]);
+    const nome = req.query.tipo === 'assinatura' ? rows[0]?.assinatura_arquivo : rows[0]?.comprovante_arquivo;
     if (!nome || nome.includes('/') || nome.includes('\\')) return res.status(404).send('Sem comprovante.');
     const caminho = path.join(PASTA, nome);
     if (!fs.existsSync(caminho)) return res.status(404).send('Arquivo não encontrado.');

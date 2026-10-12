@@ -1,0 +1,33 @@
+.mt { max-width: 640px; margin: 0 auto; padding: 16px 12px 90px; }
+.mt h1 { margin: 0 0 4px; font-size: 21px; }
+.mt-fraco { color: var(--fraco); font-size: 13.5px; }
+#mtFormCodigo { display: grid; gap: 10px; margin-top: 12px; }
+#mtCodigo { font-size: 22px; letter-spacing: 3px; text-transform: uppercase; text-align: center; }
+.mt-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.mt-sair { width: auto; padding: 6px 12px; background: transparent; color: var(--fraco); border: 1px solid var(--borda); font-size: 13px; }
+.mt-progresso { height: 8px; background: var(--borda); border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
+.mt-progresso div { height: 8px; background: var(--verde); transition: width .3s; }
+.mt-item { background: var(--cartao); border: 1px solid var(--borda); border-left: 5px solid var(--azul); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.mt-item.feito { border-left-color: var(--verde); opacity: .75; }
+.mt-item.problema { border-left-color: var(--laranja); }
+.mt-item h2 { margin: 0 0 4px; font-size: 17px; }
+.mt-num { display: inline-block; min-width: 26px; height: 26px; line-height: 26px; text-align: center; border-radius: 13px; background: var(--azul); color: #fff; font-weight: 700; margin-right: 6px; font-size: 13px; }
+.mt-item.feito .mt-num { background: var(--verde); }
+.mt-end { margin: 6px 0; font-size: 15px; }
+.mt-info { font-size: 13px; color: var(--fraco); }
+.mt-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.mt-botoes a, .mt-botoes button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 13px 8px; border-radius: 9px; font-size: 15px; font-weight: 600; text-decoration: none; border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); width: auto; }
+.mt-botoes .ok { background: var(--verde); border-color: var(--verde); color: #fff; }
+.mt-botoes .ruim { background: transparent; border-color: var(--laranja); color: var(--laranja); }
+.mt-status { font-size: 13.5px; margin-top: 8px; font-weight: 600; }
+.mt-folha { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+.mt-folha-conteudo { background: var(--cartao); width: 100%; max-width: 640px; max-height: 94vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+.mt-folha-topo { display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
+.mt-x { width: auto; background: transparent; color: var(--fraco); font-size: 20px; padding: 4px 10px; }
+.mt-folha label { display: block; font-size: 13px; color: var(--fraco); margin: 12px 0 5px; }
+.mt-folha select, .mt-folha textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--borda); border-radius: 8px; background: var(--fundo); color: var(--texto); font-size: 15px; font-family: inherit; }
+.mt-assinatura { position: relative; }
+.mt-assinatura canvas { width: 100%; height: 170px; background: #fff; border: 1px dashed var(--borda); border-radius: 8px; touch-action: none; display: block; }
+.mt-assinatura button { position: absolute; right: 6px; top: 6px; width: auto; padding: 4px 10px; font-size: 12px; background: #eee; color: #333; }
+#mtPrevia { max-width: 100%; max-height: 180px; margin-top: 8px; border-radius: 8px; }
+#mtEnviar { margin-top: 16px; }

@@ -228,12 +228,12 @@
         </tbody></table></div>
         <div class="edi-acoes"><button class="btn btn-primario" id="ediCriarRascunhos" style="width:auto;">+ Criar ${dests.length} rascunho(s) de CT-e</button>
           <span class="edi-dica" style="margin:0;">Depois é só abrir em Emissão de CT-e, conferir o valor do frete e transmitir.</span></div></div>`;
-      $('ediCriarRascunhos').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      $('ediCriarRascunhos').addEventListener('click', (ev) => { const botao = ev.currentTarget; return comBotao(botao, async () => {
         const r = await api('/transportadora/notfis/rascunhos', { method: 'POST', body: JSON.stringify({ notfis: notfisLido }) });
         const faltando = r.criados.filter((c) => c.semChave.length).length;
         mostrarAlerta(`${r.criados.length} rascunho(s) de CT-e criado(s) em Emissão de CT-e.${faltando ? `\n${faltando} deles ainda precisam da chave da NF-e.` : ''}`, { tipo: 'sucesso' });
-        ev.currentTarget.disabled = true;
-      }));
+        setTimeout(() => { botao.disabled = true; }, 0);   // não deixa criar de novo os mesmos rascunhos
+      }); });
     } catch (err) {
       alvo.innerHTML = `<div class="cte-aviso erro">${esc(err.message)}</div>`;
     } finally { e.target.value = ''; }

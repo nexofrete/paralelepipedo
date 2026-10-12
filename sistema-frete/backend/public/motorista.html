@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2f5bea" />
+  <title>Entregas — motorista</title>
+  <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
+  <link rel="stylesheet" href="css/rastreio.css" />
+  <link rel="stylesheet" href="css/motorista.css" />
+</head>
+<body>
+  <main class="mt">
+    <section id="mtEntrar" class="rt-cartao">
+      <h1>🚚 Minhas entregas</h1>
+      <p class="mt-fraco">Digite o código do romaneio (está na folha impressa ou a expedição manda pelo WhatsApp).</p>
+      <form id="mtFormCodigo"><input id="mtCodigo" autocomplete="off" autocapitalize="characters" placeholder="Código do romaneio" maxlength="12" />
+        <button type="submit">Entrar</button></form>
+      <p id="mtErroCodigo" class="rt-erro"></p>
+    </section>
+    <section id="mtRota" class="oculto">
+      <header class="mt-topo">
+        <div><small id="mtEmpresa"></small><h1 id="mtTitulo"></h1><div class="mt-fraco" id="mtSub"></div></div>
+        <button class="mt-sair" id="mtSair" title="Sair">Sair</button>
+      </header>
+      <div class="mt-progresso"><div id="mtBarra"></div></div>
+      <div id="mtAviso"></div>
+      <div id="mtLista"></div>
+    </section>
+  </main>
+
+  <div id="mtFolha" class="mt-folha oculto">
+    <div class="mt-folha-conteudo">
+      <div class="mt-folha-topo"><b id="mtFolhaTitulo"></b><button id="mtFechar" class="mt-x" title="Fechar">✕</button></div>
+      <div id="mtFolhaCte" class="mt-fraco"></div>
+      <div id="mtCampoTipo" class="oculto"><label>O que aconteceu?</label><select id="mtTipo"></select></div>
+      <div id="mtCamposEntrega">
+        <label for="mtRecebedor">Quem recebeu</label><input id="mtRecebedor" maxlength="120" placeholder="Nome de quem recebeu" />
+        <label for="mtDoc">Documento (RG/CPF) — opcional</label><input id="mtDoc" maxlength="30" inputmode="numeric" />
+        <label>Assinatura</label>
+        <div class="mt-assinatura"><canvas id="mtCanvas"></canvas><button type="button" id="mtLimpar">Limpar</button></div>
+      </div>
+      <label for="mtFoto">Foto (canhoto, fachada ou avaria)</label>
+      <input id="mtFoto" type="file" accept="image/*" capture="environment" />
+      <img id="mtPrevia" class="oculto" alt="" />
+      <label for="mtObs">Observação</label><textarea id="mtObs" rows="2" maxlength="500"></textarea>
+      <button id="mtEnviar">Confirmar</button>
+      <p id="mtErro" class="rt-erro"></p>
+    </div>
+  </div>
+  <script src="js/motorista.js"></script>
+</body>
+</html>

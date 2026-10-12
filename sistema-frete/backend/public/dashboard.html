@@ -111,8 +111,23 @@
             <h2>📍 Ocorrências de entrega</h2>
             <p>Acompanhe os CT-e emitidos: previsão, saída para entrega, ocorrências e baixa com o comprovante</p>
           </div>
-          <button class="btn btn-secundario" id="ocLinkRastreio" style="width:auto;" title="Página pública para o cliente acompanhar a entrega">🔗 Link de rastreio para o cliente</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="ocFeriados" style="width:auto;" title="Feriados que a previsão de entrega pula">📅 Feriados</button>
+            <button class="btn btn-secundario" id="ocLinkRastreio" style="width:auto;" title="Página pública para o cliente acompanhar a entrega">🔗 Link de rastreio para o cliente</button>
+          </div>
         </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-oc-aba="entregas">Entregas</div>
+          <div class="cte-aba" data-oc-aba="romaneios">🚚 Romaneios</div>
+        </div>
+        <div id="ocAbaRomaneios" class="oculto">
+          <div class="painel oc-painel">
+            <div class="oc-barra"><p class="edi-dica" style="margin:0;">Monte o romaneio marcando os CT-e na aba Entregas. O motorista acompanha e dá baixa pelo celular com o código do romaneio.</p>
+              <button class="btn btn-secundario" id="ocLinkMotorista" style="width:auto;">📱 Link do app do motorista</button></div>
+            <div class="edi-rolagem" id="ocRomaneios"></div>
+          </div>
+        </div>
+        <div id="ocAbaEntregas">
         <div class="oc-resumo" id="ocResumo"></div>
         <div class="painel oc-painel">
           <div class="oc-barra">
@@ -129,8 +144,11 @@
             <input type="text" id="ocLoteRecebedor" class="cte-entrada oculto" placeholder="Recebido por" />
             <input type="date" id="ocLotePrevisao" class="cte-entrada oculto" title="Nova previsão de entrega" />
             <button class="btn btn-primario" id="ocLoteAplicar" style="width:auto;">Lançar nos marcados</button>
+            <span style="flex:1;"></span>
+            <button class="btn btn-secundario" id="ocMontarRomaneio" style="width:auto;">🚚 Montar romaneio com os marcados</button>
           </div>
           <div class="edi-rolagem" id="ocTabela"></div>
+        </div>
         </div>
       </section>
       <div class="modal-overlay oculto" id="painelOcorrencia">

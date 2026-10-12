@@ -26,9 +26,10 @@ const CAMPOS_CONFIG = {
   cte_ibscbs_ativo: 'bool', cte_ibscbs_cst: 'texto', cte_ibscbs_class_trib: 'texto',
   cte_ibs_uf_aliquota: 'numero', cte_ibs_mun_aliquota: 'numero', cte_cbs_aliquota: 'numero',
   resp_tec_cnpj: 'texto', resp_tec_contato: 'texto', resp_tec_email: 'texto', resp_tec_fone: 'texto',
+  aviso_entrega_ativo: 'bool', aviso_entrega_eventos: 'texto', aviso_entrega_email: 'bool', aviso_entrega_whatsapp: 'bool', endereco_publico: 'texto',
 };
 const SEM_CERTIFICADO = 'id, razao_social, nome_fantasia, cnpj, ie, telefone, email, endereco, numero, complemento, bairro, municipio, uf, cep, '
-  + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('resp_tec')).join(', ')}, `
+  + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('resp_tec') || c.startsWith('aviso_entrega') || c === 'endereco_publico').join(', ')}, `
   + 'certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
 
 router.get('/config', autenticar, async (req, res) => {
@@ -56,6 +57,8 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
     if (uf && !CODIGO_UF[String(uf).toUpperCase()]) return res.status(400).json({ erro: 'UF inválida.' });
     const ibge = pares.find(([c]) => c === 'codigo_municipio')?.[1];
     if (ibge && !/^\d{7}$/.test(ibge)) return res.status(400).json({ erro: 'O código IBGE do município tem 7 dígitos.' });
+    const pub = pares.find(([c]) => c === 'endereco_publico')?.[1];
+    if (pub && !/^https?:\/\/[^\s/]+/i.test(pub)) return res.status(400).json({ erro: 'O endereço público deve começar com https:// (ex.: https://rastreio.suaempresa.com.br).' });
     const amb = pares.find(([c]) => c === 'cte_ambiente')?.[1];
     if (amb != null && ![1, 2].includes(amb)) return res.status(400).json({ erro: 'Ambiente inválido.' });
     const demo = pares.find(([c]) => c === 'cte_demonstracao')?.[1];

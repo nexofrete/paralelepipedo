@@ -1393,7 +1393,64 @@ CREATE TABLE IF NOT EXISTS cte_ocorrencias (
 );
 CREATE INDEX IF NOT EXISTS idx_cte_ocorrencias_cte ON cte_ocorrencias (cte_id, data_hora);
 CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_situacao ON ctes_emitidos (situacao_entrega, previsao_entrega) WHERE status = 'autorizado';
-ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_prazo_padrao INTEGER;       -- dias úteis, quando a tabela não diz
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_prazo_padrao INTEGER;
+-- Romaneio (manifesto de saída para entrega) e o app do motorista.
+CREATE TABLE IF NOT EXISTS romaneios (
+    id                  SERIAL PRIMARY KEY,
+    data                DATE NOT NULL DEFAULT CURRENT_DATE,
+    motorista_nome      VARCHAR(120) NOT NULL,
+    motorista_documento VARCHAR(30),
+    motorista_telefone  VARCHAR(30),
+    placa               VARCHAR(10),
+    veiculo             VARCHAR(60),
+    observacao          TEXT,
+    status              VARCHAR(12) NOT NULL DEFAULT 'aberto',   -- aberto, em_rota, fechado
+    codigo_acesso       VARCHAR(12) UNIQUE,                       -- o motorista entra no app com ele
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMP NOT NULL DEFAULT NOW(),
+    saiu_em             TIMESTAMP,
+    fechado_em          TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS romaneio_itens (
+    romaneio_id INTEGER NOT NULL REFERENCES romaneios(id) ON DELETE CASCADE,
+    cte_id      INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
+    ordem       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (romaneio_id, cte_id)
+);
+CREATE INDEX IF NOT EXISTS idx_romaneio_itens_cte ON romaneio_itens (cte_id);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS romaneio_id INTEGER;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS assinatura_arquivo VARCHAR(200);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS latitude NUMERIC(9,6);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS longitude NUMERIC(9,6);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS origem VARCHAR(12) NOT NULL DEFAULT 'sistema';   -- sistema, motorista
+-- Avisos automáticos da entrega para o cliente (e-mail / WhatsApp).
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS aviso_entrega_ativo BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS aviso_entrega_eventos TEXT NOT NULL DEFAULT 'em_rota,entrega,problema,devolucao';
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS aviso_entrega_email BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS aviso_entrega_whatsapp BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS endereco_publico VARCHAR(200);   -- https://... para os links de rastreio
+CREATE TABLE IF NOT EXISTS avisos_entrega (
+    id              SERIAL PRIMARY KEY,
+    ocorrencia_id   INTEGER REFERENCES cte_ocorrencias(id) ON DELETE SET NULL,
+    cte_id          INTEGER REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
+    canal           VARCHAR(10) NOT NULL,     -- email, whatsapp
+    destino         VARCHAR(150) NOT NULL,
+    situacao        VARCHAR(10) NOT NULL,     -- enviado, erro
+    detalhe         TEXT,
+    criado_em       TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_avisos_entrega_cte ON avisos_entrega (cte_id);
+
+-- Feriados estaduais/municipais e folgas (os nacionais o sistema já sabe).
+CREATE TABLE IF NOT EXISTS feriados (
+    id          SERIAL PRIMARY KEY,
+    data        DATE NOT NULL,
+    descricao   VARCHAR(120) NOT NULL,
+    uf          CHAR(2),          -- vazio = todo o país
+    cidade      VARCHAR(120),     -- vazio = a UF inteira
+    anual       BOOLEAN NOT NULL DEFAULT TRUE,   -- repete todo ano no mesmo dia
+    criado_em   TIMESTAMP NOT NULL DEFAULT NOW()
+);       -- dias úteis, quando a tabela não diz
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_numero ON ctes_emitidos (ambiente, serie, numero) WHERE numero IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_chave ON ctes_emitidos (chave) WHERE chave IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_status ON ctes_emitidos (status, criado_em DESC);

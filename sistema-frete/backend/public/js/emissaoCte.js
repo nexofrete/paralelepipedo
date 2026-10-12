@@ -599,6 +599,18 @@
           ${campo('cfg_ibs_cst', 'CST IBS/CBS', { valor: c.cte_ibscbs_cst || '000' })}${campo('cfg_ibs_class', 'cClassTrib', { valor: c.cte_ibscbs_class_trib || '000001' })}
           ${campo('cfg_ibs_uf', 'IBS UF (%)', { valor: c.cte_ibs_uf_aliquota ?? '0.1' })}${campo('cfg_ibs_mun', 'IBS Município (%)', { valor: c.cte_ibs_mun_aliquota ?? '0' })}${campo('cfg_cbs', 'CBS (%)', { valor: c.cte_cbs_aliquota ?? '0.9' })}
         </div></div>
+        <div class="cte-secao"><h4>Avisos de entrega ao cliente (e-mail / WhatsApp)</h4><div class="cte-grade">
+          <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_aviso" ${c.aviso_entrega_ativo ? 'checked' : ''} style="width:auto;" />
+            Avisar o destinatário e quem paga o frete a cada ocorrência lançada (usa o e-mail e o celular que vieram na NF-e)</label></div>
+          <div class="campo inteiro" style="display:flex; gap:18px; flex-wrap:wrap;">
+            ${[['em_rota', 'Saiu para entrega'], ['entrega', 'Entregue'], ['problema', 'Não entregue / problema'], ['devolucao', 'Devolvido'], ['agendada', 'Agendado'], ['transito', 'Em trânsito']]
+    .map(([k, t]) => `<label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" data-cfg-evento="${k}" ${String(c.aviso_entrega_eventos ?? 'em_rota,entrega,problema,devolucao').split(',').includes(k) ? 'checked' : ''} style="width:auto;" /> ${t}</label>`).join('')}
+          </div>
+          <div class="campo"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_aviso_email" ${c.aviso_entrega_email !== false ? 'checked' : ''} style="width:auto;" /> Por e-mail</label></div>
+          <div class="campo"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_aviso_wpp" ${c.aviso_entrega_whatsapp ? 'checked' : ''} style="width:auto;" /> Por WhatsApp (Twilio)</label></div>
+          ${campo('cfg_end_publico', 'Endereço público do Nexofrete (para o link de rastreio)', { classe: 'largo', valor: c.endereco_publico || '', ph: 'https://rastreio.suaempresa.com.br' })}
+          <div class="campo inteiro" style="font-size:12px; color:var(--texto-fraco);">O e-mail usa a configuração de SMTP e o WhatsApp a do Twilio (Cadastros → Configurações). Sem o endereço público, a mensagem vai sem o link.</div>
+        </div></div>
         <div class="cte-secao"><h4>Responsável técnico (quem fornece o sistema — exigido por algumas UFs)</h4><div class="cte-grade">
           ${campo('cfg_rt_cnpj', 'CNPJ', { valor: c.resp_tec_cnpj || '' })}${campo('cfg_rt_contato', 'Contato', { valor: c.resp_tec_contato || '' })}
           ${campo('cfg_rt_email', 'E-mail', { valor: c.resp_tec_email || '' })}${campo('cfg_rt_fone', 'Telefone', { valor: c.resp_tec_fone || '' })}
@@ -660,6 +672,8 @@
       cte_cst_padrao: v('cfg_cst'), cte_aliquota_interna: v('cfg_aliq'), cte_prazo_padrao: v('cfg_prazo'), cte_verificar_servidor: $('cfg_verificar').checked,
       cte_ibscbs_ativo: $('cfg_ibs').checked, cte_ibscbs_cst: v('cfg_ibs_cst'), cte_ibscbs_class_trib: v('cfg_ibs_class'),
       cte_ibs_uf_aliquota: v('cfg_ibs_uf'), cte_ibs_mun_aliquota: v('cfg_ibs_mun'), cte_cbs_aliquota: v('cfg_cbs'),
+      aviso_entrega_ativo: $('cfg_aviso').checked, aviso_entrega_email: $('cfg_aviso_email').checked, aviso_entrega_whatsapp: $('cfg_aviso_wpp').checked,
+      aviso_entrega_eventos: [...document.querySelectorAll('[data-cfg-evento]:checked')].map((x) => x.dataset.cfgEvento).join(',') || 'nenhum', endereco_publico: v('cfg_end_publico'),
       resp_tec_cnpj: v('cfg_rt_cnpj').replace(/\D/g, ''), resp_tec_contato: v('cfg_rt_contato'), resp_tec_email: v('cfg_rt_email'), resp_tec_fone: v('cfg_rt_fone').replace(/\D/g, ''),
     };
     config = await api('/config', { method: 'PUT', body: JSON.stringify(corpo) });

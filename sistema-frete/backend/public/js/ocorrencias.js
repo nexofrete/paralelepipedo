@@ -143,10 +143,11 @@
     $('ocLotePrevisao').classList.toggle('oculto', !item?.pedePrevisao);
   });
   $('ocLoteAplicar').addEventListener('click', async (e) => {
+    const b = e.currentTarget;
     const ids = marcados(); const item = catalogo.find((c) => c.id === $('ocLoteTipo').value);
     if (!item) { mostrarAlerta('Escolha a ocorrência.', { tipo: 'erro' }); return; }
     if (!await confirmar(`Lançar "${item.rotulo}" em ${ids.length} CT-e?`, { textoOk: 'Lançar' })) return;
-    const b = e.currentTarget; b.disabled = true;
+    b.disabled = true;
     try {
       const r = await api('/lote', { method: 'POST', body: JSON.stringify({ ids, tipo_id: item.id, data_hora: $('ocLoteData').value,
         recebedor_nome: $('ocLoteRecebedor').value, nova_previsao: $('ocLotePrevisao').value }) });
@@ -215,7 +216,7 @@
         ${o.recebedor_nome ? `<small>Recebido por ${esc(o.recebedor_nome)}${o.recebedor_documento ? ` (${esc(o.recebedor_documento)})` : ''}</small>` : ''}
         ${o.nova_previsao ? `<small>Nova previsão: ${diaSemana(o.nova_previsao)}</small>` : ''}
         ${o.observacao ? `<small style="white-space:pre-wrap;">${esc(o.observacao)}</small>` : ''}
-        <small>${o.tem_comprovante ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📎 Ver comprovante</a> · ` : ''}
+        <small>${o.origem === 'motorista' ? '📱 pelo app do motorista · ' : ''}${o.romaneio_id ? `romaneio ${o.romaneio_id} · ` : ''}${o.tem_comprovante ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📎 Ver comprovante</a> · ` : ''}${o.tem_assinatura ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?tipo=assinatura&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">✍ Assinatura</a> · ` : ''}${o.latitude != null ? `<a href="https://www.google.com/maps?q=${o.latitude},${o.longitude}" target="_blank" rel="noopener">📍 Local</a> · ` : ''}
           <a href="#" data-oc-apagar="${o.id}" style="color:var(--vermelho);">apagar</a>${o.enviada_edi_em ? ' · enviada no OCOREN' : ''}</small></li>`),
     `<li style="--cor-ev:#8a94a6;"><b>CT-e emitido</b><small>${dataHora(c.autorizado_em)} · ${esc(c.origem || '')}</small></li>`].join('');
     $('ocModalConteudo').innerHTML = `${cabecalhoCte(c)}<ul class="oc-tempo">${itens}</ul>
@@ -235,5 +236,160 @@
   async function copiar(texto) {
     try { await navigator.clipboard.writeText(texto); mostrarAlerta(`Link copiado:\n${texto}`, { tipo: 'sucesso' }); } catch { mostrarAlerta(texto); }
   }
+  // ---------------- Romaneios ----------------
+  const apiRom = async (caminho, opcoes = {}) => {
+    const r = await apiFetch(`/api/romaneios${caminho}`, { ...opcoes, headers: { 'Content-Type': 'application/json', ...(opcoes.headers || {}) } });
+    const corpo = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(corpo.erro || 'Erro ao falar com o servidor.');
+    return corpo;
+  };
+  const STATUS_ROM = { aberto: ['Aguardando saída', 'pendente'], em_rota: ['Em rota', 'em_rota'], fechado: ['Fechado', 'entregue'] };
+  const linkMotorista = (codigo) => `${location.origin}/motorista.html${codigo ? `?c=${codigo}` : ''}`;
+  document.querySelectorAll('[data-oc-aba]').forEach((a) => a.addEventListener('click', () => {
+    document.querySelectorAll('[data-oc-aba]').forEach((x) => x.classList.toggle('ativo', x === a));
+    $('ocAbaEntregas').classList.toggle('oculto', a.dataset.ocAba !== 'entregas');
+    $('ocAbaRomaneios').classList.toggle('oculto', a.dataset.ocAba !== 'romaneios');
+    if (a.dataset.ocAba === 'romaneios') carregarRomaneios().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+    else carregar().catch(() => {});
+  }));
+
+  async function carregarRomaneios() {
+    const lista = await apiRom('');
+    $('ocRomaneios').innerHTML = lista.length ? `<table class="edi-tabela"><thead><tr><th>Nº</th><th>Data</th><th>Motorista</th><th>Placa</th><th class="n">CT-e</th><th>Andamento</th><th>Situação</th><th></th></tr></thead><tbody>
+      ${lista.map((r) => `<tr><td><b>${r.id}</b></td><td>${dia(r.data)}</td><td>${esc(r.motorista_nome)}</td><td>${esc(r.placa || '—')}${r.veiculo ? `<br><small style="color:var(--texto-fraco);">${esc(r.veiculo)}</small>` : ''}</td>
+        <td class="n">${r.ctes}</td><td>${r.entregues} entregue(s)${r.com_ocorrencia ? ` · <span style="color:#d97706;">${r.com_ocorrencia} com ocorrência</span>` : ''}
+          <div style="height:5px; background:var(--bg-elevado); border-radius:3px; margin-top:4px; max-width:160px;"><div style="height:5px; border-radius:3px; background:var(--verde); width:${r.ctes ? Math.round((r.entregues / r.ctes) * 100) : 0}%;"></div></div></td>
+        <td><span class="oc-sit ${STATUS_ROM[r.status][1]}">${STATUS_ROM[r.status][0]}</span></td>
+        <td><div class="oc-linha-acoes"><button class="primario" data-rom-abrir="${r.id}">Abrir</button></div></td></tr>`).join('')}</tbody></table>`
+      : '<div class="kanban-vazio">Nenhum romaneio ainda. Marque os CT-e na aba Entregas e clique em "Montar romaneio".</div>';
+  }
+  $('ocRomaneios').addEventListener('click', (e) => { const b = e.target.closest('[data-rom-abrir]'); if (b) abrirRomaneio(Number(b.dataset.romAbrir)); });
+  $('ocLinkMotorista').addEventListener('click', () => copiar(linkMotorista()));
+
+  function formRomaneio(r = {}) {
+    return `<div class="oc-form" style="margin-top:14px;">
+      <div class="campo"><label for="rmMotorista">Motorista</label><input type="text" id="rmMotorista" maxlength="120" value="${esc(r.motorista_nome || '')}" /></div>
+      <div class="campo"><label for="rmDoc">Documento (CPF/CNH)</label><input type="text" id="rmDoc" maxlength="30" value="${esc(r.motorista_documento || '')}" /></div>
+      <div class="campo"><label for="rmFone">Celular do motorista</label><input type="text" id="rmFone" maxlength="30" value="${esc(r.motorista_telefone || '')}" /></div>
+      <div class="campo"><label for="rmData">Data</label><input type="date" id="rmData" value="${esc(String(r.data || '').slice(0, 10) || new Date().toISOString().slice(0, 10))}" /></div>
+      <div class="campo"><label for="rmPlaca">Placa</label><input type="text" id="rmPlaca" maxlength="8" value="${esc(r.placa || '')}" /></div>
+      <div class="campo"><label for="rmVeiculo">Veículo</label><input type="text" id="rmVeiculo" maxlength="60" placeholder="Ex: VUC, 3/4, Truck" value="${esc(r.veiculo || '')}" /></div>
+      <div class="campo inteiro"><label for="rmObs">Observação</label><input type="text" id="rmObs" value="${esc(r.observacao || '')}" /></div></div>`;
+  }
+  const lerFormRomaneio = () => ({ motorista_nome: $('rmMotorista').value, motorista_documento: $('rmDoc').value, motorista_telefone: $('rmFone').value,
+    data: $('rmData').value, placa: $('rmPlaca').value, veiculo: $('rmVeiculo').value, observacao: $('rmObs').value });
+
+  $('ocMontarRomaneio').addEventListener('click', () => {
+    const ids = marcados();
+    const linhas = (estado.dados?.linhas || []).filter((l) => ids.includes(l.id));
+    $('ocModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">🚚 Novo romaneio — ${ids.length} CT-e</h3><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>
+      ${formRomaneio()}
+      <p class="edi-dica">Ordem de entrega (sugerida por cidade; mude com as setas):</p>
+      <ol id="rmOrdem" class="rm-ordem">${linhas.sort((a, b) => `${a.cidade_fim}`.localeCompare(`${b.cidade_fim}`)).map((l) => `<li data-id="${l.id}"><span>CT-e ${esc(l.numero)} · ${esc(l.destinatario_nome || '')} · ${esc(l.cidade_fim || '')}</span>
+        <span><button type="button" data-rm-sobe>▲</button><button type="button" data-rm-desce>▼</button></span></li>`).join('')}</ol>
+      <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-oc-fechar style="width:auto;">Cancelar</button>
+        <button class="btn btn-primario" id="rmCriar" style="width:auto;">Montar romaneio</button></div>`;
+    modal.classList.remove('oculto');
+    $('rmOrdem').addEventListener('click', (e) => {
+      const li = e.target.closest('li'); if (!li) return;
+      if (e.target.matches('[data-rm-sobe]') && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
+      if (e.target.matches('[data-rm-desce]') && li.nextElementSibling) li.parentNode.insertBefore(li.nextElementSibling, li);
+    });
+    $('rmCriar').addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        const ctes = [...document.querySelectorAll('#rmOrdem li')].map((li) => Number(li.dataset.id));
+        const r = await apiRom('', { method: 'POST', body: JSON.stringify({ ...lerFormRomaneio(), ctes }) });
+        await carregar();
+        abrirRomaneio(r.id);
+      } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); b.disabled = false; }
+    });
+  });
+
+  async function abrirRomaneio(id) {
+    const r = await apiRom(`/${id}`);
+    const entregues = r.itens.filter((i) => i.situacao === 'entregue').length;
+    $('ocModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div><h3 style="margin:0;">🚚 Romaneio ${r.id} <span class="oc-sit ${STATUS_ROM[r.status][1]}" style="vertical-align:middle;">${STATUS_ROM[r.status][0]}</span></h3>
+        <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:4px;">${dia(r.data)} · ${esc(r.motorista_nome)}${r.placa ? ` · ${esc(r.placa)}` : ''}${r.veiculo ? ` · ${esc(r.veiculo)}` : ''} · ${entregues}/${r.itens.length} entregue(s)
+        ${r.saiu_em ? ` · saiu ${dataHora(r.saiu_em)}` : ''}</div></div><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>
+      ${r.status !== 'fechado' ? `<div class="cte-aviso" style="margin:12px 0;">📱 App do motorista: <b>${esc(linkMotorista())}</b> · código <b style="font-size:15px; letter-spacing:2px;">${esc(r.codigo_acesso)}</b>
+        <a href="#" id="rmCopiarLink">copiar link direto</a> · <a href="#" id="rmNovoCodigo">trocar código</a></div>` : ''}
+      <table class="edi-tabela" style="margin-top:8px;"><thead><tr><th>#</th><th>CT-e</th><th>Destinatário</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>
+      ${r.itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}<br><small style="color:var(--texto-fraco);">NF ${esc(i.nfs.join(', '))}</small></td>
+        <td>${esc(i.destinatario)}<br><small style="color:var(--texto-fraco);">${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}</small></td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
+        <td><span class="oc-sit ${esc(i.situacao)}">${esc(situacoes[i.situacao] || i.situacao)}</span>${i.situacao === 'entregue' && i.recebedor ? `<br><small>${esc(i.recebedor)}</small>` : i.ultima ? `<br><small style="color:var(--texto-fraco);">${esc(i.ultima.descricao)}</small>` : ''}</td></tr>`).join('')}
+      </tbody></table>
+      ${r.status === 'aberto' ? `<details style="margin-top:12px;"><summary style="cursor:pointer;">Editar motorista / veículo</summary>${formRomaneio(r)}<button class="btn btn-secundario" id="rmSalvar" style="width:auto;">Salvar</button></details>` : ''}
+      <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
+        ${r.status === 'aberto' ? '<button class="btn btn-secundario" id="rmExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : ''}
+        <a class="btn btn-secundario" href="/api/romaneios/${r.id}/imprimir?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Imprimir</a>
+        ${r.status === 'aberto' ? '<button class="btn btn-primario" id="rmSaida" style="width:auto;">▶ Dar saída (saiu para entrega)</button>' : ''}
+        ${r.status === 'em_rota' ? '<button class="btn btn-primario" id="rmFechar" style="width:auto;">✓ Fechar romaneio (retorno)</button>' : ''}</div>`;
+    modal.classList.remove('oculto');
+    const recarregar = async () => { await abrirRomaneio(id); carregarRomaneios().catch(() => {}); carregar().catch(() => {}); };
+    $('rmCopiarLink')?.addEventListener('click', (e) => { e.preventDefault(); copiar(linkMotorista(r.codigo_acesso)); });
+    $('rmNovoCodigo')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!await confirmar('Trocar o código? O código antigo para de funcionar no celular do motorista.', { textoOk: 'Trocar' })) return;
+      try { await apiRom(`/${id}/novo-codigo`, { method: 'POST' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+    $('rmSalvar')?.addEventListener('click', async () => { try { await apiRom(`/${id}`, { method: 'PUT', body: JSON.stringify(lerFormRomaneio()) }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); } });
+    $('rmExcluir')?.addEventListener('click', async () => {
+      if (!await confirmar('Excluir este romaneio? Os CT-e voltam a ficar livres.', { tipo: 'perigo', textoOk: 'Excluir' })) return;
+      try { await apiRom(`/${id}`, { method: 'DELETE' }); fecharModal(); carregarRomaneios(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+    $('rmSaida')?.addEventListener('click', async (e) => {
+      const botao = e.currentTarget;   // depois do await o evento perde o currentTarget
+      if (!await confirmar(`Dar saída? Os ${r.itens.length} CT-e ficam como "Saiu para entrega".`, { textoOk: 'Dar saída' })) return;
+      botao.disabled = true;
+      try { const x = await apiRom(`/${id}/saida`, { method: 'POST' }); mostrarAlerta(`Saída registrada: ${x.ctes} CT-e em "Saiu para entrega".`, { tipo: 'sucesso' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+    $('rmFechar')?.addEventListener('click', async () => {
+      const pendentes = r.itens.filter((i) => i.situacao === 'em_rota').length;
+      if (!await confirmar(pendentes ? `Fechar o romaneio? ${pendentes} CT-e ainda estão "saiu para entrega" e vão ficar como "Voltou para a base sem entregar".` : 'Fechar o romaneio?', { textoOk: 'Fechar' })) return;
+      try { const x = await apiRom(`/${id}/fechar`, { method: 'POST', body: '{}' }); mostrarAlerta(`Romaneio fechado.${x.voltaram ? ` ${x.voltaram} CT-e voltaram para a base.` : ''}`, { tipo: 'sucesso' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+  }
+
+  // ---------------- Feriados ----------------
+  async function abrirFeriados(ano = new Date().getFullYear()) {
+    const f = await api(`/feriados?ano=${ano}`);
+    const UFS = ['', 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+    $('ocModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">📅 Feriados</h3><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>
+      <p class="edi-dica" style="margin-top:6px;">A previsão de entrega pula sábados, domingos, estes feriados nacionais e os que você cadastrar para a UF ou a cidade de destino.</p>
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+        <button class="btn btn-secundario" data-oc-ano="${f.ano - 1}" style="width:auto; padding:4px 10px;">‹</button><b>${f.ano}</b>
+        <button class="btn btn-secundario" data-oc-ano="${f.ano + 1}" style="width:auto; padding:4px 10px;">›</button></div>
+      <table class="edi-tabela"><tbody>${f.nacionais.map((x) => `<tr><td style="white-space:nowrap;">${diaSemana(x.data)}</td><td>${esc(x.descricao)}</td><td><small style="color:var(--texto-fraco);">${esc(x.tipo)}</small></td></tr>`).join('')}</tbody></table>
+      <h4 style="margin:18px 0 6px;">Estaduais, municipais e folgas</h4>
+      ${f.cadastrados.length ? `<table class="edi-tabela"><tbody>${f.cadastrados.map((x) => `<tr><td style="white-space:nowrap;">${x.anual ? `${x.data.slice(8, 10)}/${x.data.slice(5, 7)} <small>(todo ano)</small>` : dia(x.data) + `/${x.data.slice(0, 4)}`}</td>
+          <td>${esc(x.descricao)}</td><td>${esc([x.cidade, x.uf].filter(Boolean).join('/') || 'todo o país')}</td>
+          <td><a href="#" data-oc-feriado-apagar="${x.id}" style="color:var(--vermelho);">apagar</a></td></tr>`).join('')}</tbody></table>`
+    : '<p class="edi-dica">Nenhum cadastrado.</p>'}
+      <div class="oc-form" style="margin-top:12px;">
+        <div class="campo"><label for="ofData">Data</label><input type="date" id="ofData" /></div>
+        <div class="campo"><label for="ofNome">Nome</label><input type="text" id="ofNome" maxlength="120" placeholder="Ex: Aniversário da cidade" /></div>
+        <div class="campo"><label for="ofUf">UF (vazio = todo o país)</label><select id="ofUf">${UFS.map((u) => `<option value="${u}">${u || '—'}</option>`).join('')}</select></div>
+        <div class="campo"><label for="ofCidade">Cidade (vazio = a UF toda)</label><input type="text" id="ofCidade" maxlength="120" /></div>
+        <label class="ag-check inteiro" style="margin-bottom:10px;"><input type="checkbox" id="ofAnual" checked /> Repete todo ano no mesmo dia</label>
+      </div>
+      <div style="display:flex; justify-content:flex-end;"><button class="btn btn-primario" id="ofSalvar" style="width:auto;">+ Cadastrar feriado</button></div>`;
+    modal.classList.remove('oculto');
+    document.querySelectorAll('[data-oc-ano]').forEach((b) => b.addEventListener('click', () => abrirFeriados(Number(b.dataset.ocAno))));
+    document.querySelectorAll('[data-oc-feriado-apagar]').forEach((a) => a.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await api(`/feriados/${a.dataset.ocFeriadoApagar}`, { method: 'DELETE' }); abrirFeriados(f.ano); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    }));
+    $('ofSalvar').addEventListener('click', async () => {
+      try {
+        await api('/feriados', { method: 'POST', body: JSON.stringify({ data: $('ofData').value, descricao: $('ofNome').value, uf: $('ofUf').value, cidade: $('ofCidade').value, anual: $('ofAnual').checked }) });
+        abrirFeriados(f.ano);
+      } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+  }
+  $('ocFeriados').addEventListener('click', () => abrirFeriados().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })));
+
   $('ocLinkRastreio').addEventListener('click', () => copiar(`${location.origin}/rastreio.html`));
 })();

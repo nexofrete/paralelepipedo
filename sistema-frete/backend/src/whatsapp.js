@@ -23,16 +23,17 @@ async function salvarConfiguracao(dados) {
 
 // Manda uma mensagem de WhatsApp usando a API REST do Twilio (sem precisar
 // instalar nenhum pacote novo — só uma chamada HTTPS simples).
-function enviarMensagem(mensagem) {
+// "para": outro número (ex.: o cliente da entrega); sem ele, o número de destino configurado.
+function enviarMensagem(mensagem, para = null) {
   return new Promise(async (resolve, reject) => {
     const config = await buscarConfiguracao();
-    if (!config.ativo || !config.twilio_account_sid || !config.twilio_auth_token || !config.numero_destino) {
+    if (!config.ativo || !config.twilio_account_sid || !config.twilio_auth_token || !(para || config.numero_destino)) {
       return reject(new Error('WhatsApp não está configurado.'));
     }
 
     const corpo = new URLSearchParams({
       From: `whatsapp:${config.twilio_numero_whatsapp}`,
-      To: `whatsapp:${config.numero_destino}`,
+      To: `whatsapp:${para || config.numero_destino}`,
       Body: mensagem,
     }).toString();
 

@@ -41,6 +41,8 @@ const roteirizacaoRoutes = require('./src/routes/roteirizacao');
 const ediRoutes = require('./src/routes/edi');
 const ocorrenciasRoutes = require('./src/routes/ocorrencias');
 const rastreioRoutes = require('./src/routes/rastreio');
+const romaneiosRoutes = require('./src/routes/romaneios').router;
+const motoristaRoutes = require('./src/routes/motorista');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
@@ -152,6 +154,9 @@ const limitadorLogin = rateLimit({
 });
 app.use('/api/auth/login', limitadorLogin);
 // Rastreio público (sem login): no máximo 30 consultas por minuto por computador.
+// App do motorista (entra com o código do romaneio): 120 pedidos por minuto por celular.
+app.use('/api/motorista', rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false,
+  message: { erro: 'Muitos pedidos seguidos. Aguarde um minuto.' } }));
 app.use('/api/rastreio', rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
   message: { erro: 'Muitas consultas seguidas. Aguarde um minuto e tente de novo.' } }));
 
@@ -193,6 +198,8 @@ app.use('/api/roteirizacao', roteirizacaoRoutes);
 app.use('/api/edi', ediRoutes);
 app.use('/api/ocorrencias', ocorrenciasRoutes);
 app.use('/api/rastreio', rastreioRoutes);
+app.use('/api/romaneios', romaneiosRoutes);
+app.use('/api/motorista', motoristaRoutes);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

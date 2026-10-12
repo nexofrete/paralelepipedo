@@ -3436,6 +3436,13 @@ document.getElementById('btnImportarErpAgora').addEventListener('click', async (
 // ---------- Auditoria de Frete ----------
 let ultimasLinhasAuditoria = [];
 let fretesSelecionadosLote = new Set();
+// Quantos cartões cada coluna do kanban mostra (cresce com "Mostrar mais").
+const KANBAN_POR_VEZ = 30;
+let kanbanLimite = {};
+function mostrarMaisKanban(chave) {
+  kanbanLimite[chave] = (kanbanLimite[chave] || KANBAN_POR_VEZ) + KANBAN_POR_VEZ * 3;
+  renderizarAuditoriaFrete();
+}
 
 // Mostra no lugar do kanban por que ele não carregou (antes ficava só vazio).
 function mostrarErroKanbanAuditoria(texto) {
@@ -3509,6 +3516,15 @@ function renderizarAuditoriaFrete() {
       (Number(toleranciaAuditoria.tolerancia_percentual) || 0) / 100 * (Number(valorCalculadoPrincipal(l)) || 0)
     );
     const divergente = Math.abs(dif) > toleranciaFrete;
+    // CT-e a mais da nota (reentrega, devolução, complementar...): o esperado vem do
+    // CT-e principal, não da tabela — o redespacho é um frete inteiro e confere pela tabela.
+    const vinculado = !!l.frete_principal_id && !['redespacho', 'redespacho_nota'].includes(l.vinculo_cte);
+    const esperado = valorCalculadoPrincipal(l);
+    const pctReentrega = Number(toleranciaAuditoria.percentual_reentrega ?? 50);
+    const rotuloEsperado = vinculado ? 'Esperado' : 'Tabela';
+    const dicaEsperado = !vinculado ? 'Valor pela tabela de preço'
+      : ['reentrega', 'devolucao'].includes(l.vinculo_cte) ? `${pctReentrega}% do CT-e original ${l.numero_cte_principal || ''} (Configurações → Auditoria)`
+        : 'Valor esperado a partir do CT-e principal da nota';
 
     const jaAprovado = l.status_aprovacao === 'Aprovado';
     const jaRejeitado = l.status_aprovacao === 'Rejeitado';
@@ -3529,10 +3545,15 @@ function renderizarAuditoriaFrete() {
     // o trecho/tabela errado (ex.: lotação calculada como fracionado), não cobrança indevida.
     const calc = Number(valorCalculadoPrincipal(l)) || 0;
     const cobrado = Number(l.valor_total_cte ?? l.valor_frete_negociado) || 0;
-    const suspeita = !semDif && !l.carga_direta && calc > 0 && cobrado > 0 && (cobrado / calc > 2 || cobrado / calc < 0.5);
+    const suspeita = !semDif && !l.carga_direta && !vinculado && calc > 0 && cobrado > 0 && (cobrado / calc > 2 || cobrado / calc < 0.5);
     const avisoSuspeita = suspeita
       ? `<div class="cte-selo" style="color:#e8890c;" title="Confira no Detalhe o trecho e a tabela usados antes de cobrar a transportadora">🔎 Diferença de ${Math.round((cobrado / calc) * 100)}% da tabela — confira o trecho/tabela usado</div>` : '';
 
+    // Complementar não tem valor esperado: alguém precisa olhar o motivo e aprovar.
+    const notaSemEsperado = (esperado == null && vinculado && !jaAprovado)
+      ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px; font-size:11.5px;">${l.vinculo_cte === 'complementar'
+        ? 'CT-e complementar não tem valor pela tabela: confira o motivo no Detalhe (XML do CT-e) e aprove ou glose manualmente.'
+        : 'Sem valor esperado: o CT-e principal da nota ainda não foi calculado.'}</div>` : '';
     const notaAprovacao = jaAprovado && l.justificativa_aprovacao
       ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px;">${l.justificativa_aprovacao}</div>` : '';
     const notaGlosa = l.glosa_valor
@@ -3551,8 +3572,10 @@ function renderizarAuditoriaFrete() {
       ? `<input type="checkbox" class="checkbox-lote-auditoria" data-id="${l.id}" onclick="event.stopPropagation(); atualizarBarraLoteAuditoria();" style="margin-right:6px;" ${fretesSelecionadosLote.has(l.id) ? 'checked' : ''} />`
       : '';
 
+    const liberadoComAlerta = ['Conferido', 'Liberado p/ Pagamento'].includes(l.status) && alertasDoCartao(l).length > 0;
     return `
-      <div class="kanban-cartao ${l.alerta_transportadora_diferente ? 'kanban-alerta-transp' : ''} ${naoLevou ? 'kanban-nao-levou' : ''}">
+      <div class="kanban-cartao ${l.alerta_transportadora_diferente ? 'kanban-alerta-transp' : ''} ${naoLevou ? 'kanban-nao-levou' : ''} ${liberadoComAlerta ? 'kanban-liberado-alerta' : ''}">
+        ${liberadoComAlerta ? `<div class="cte-selo perigo" title="O sistema liberou pelo valor, mas este CT-e tem alerta (${alertasDoCartao(l).join(', ')}). Confira antes de pagar.">⚠ Liberado com alerta (${alertasDoCartao(l).join(', ')}) — confira antes de pagar</div>` : ''}
         ${l.alerta_transportadora_diferente ? `<div class="cte-alerta-faixa" style="cursor:pointer;" onclick="abrirDetalheAuditoria(${l.id})" title="Clique para abrir o Detalhe e marcar qual transportadora levou a nota">⚠ CT-e de transportadoras DIFERENTES — clique e defina quem levou</div>` : ''}
         ${l.nf_substitui ? `<div class="cte-selo" title="Troca de nota informada por e-mail">↪ Substitui a NF ${cfEsc(l.nf_substitui)}</div>` : ''}
         ${l.nf_devolvida ? `<div class="cte-selo" title="Nota devolvida">↩ Devolvida${l.nf_substituida_por ? ` — refaturada pela NF ${cfEsc(l.nf_substituida_por)}` : ''}</div>` : ''}
@@ -3567,11 +3590,11 @@ function renderizarAuditoriaFrete() {
         <div class="kanban-cartao-transp">CT-e ${l.numero_cte || '—'} · ${l.transportadora || '—'}</div>
         ${seloVinculoCte(l)}
         <div class="kanban-cartao-valores">
-          <div title="Valor cobrado no CT-e">Cobrado (CT-e)<br><strong>${formatoMoeda(l.valor_frete_negociado)}</strong></div>
-          <div title="Valor pela tabela de preço">Tabela<br><strong>${formatoMoeda(valorCalculadoPrincipal(l))}</strong></div>
-          <div style="text-align:right;" title="Cobrado − tabela: positivo = a transportadora cobrou a mais">${dif > 0 ? 'Cobrou a mais' : dif < 0 ? 'Cobrou a menos' : 'Diferença'}<br><strong style="color:${dif > 0.009 ? 'var(--vermelho)' : (dif < -0.009 ? 'var(--verde)' : 'inherit')};">${semDif ? '—' : `${dif > 0 ? '+' : ''}${formatoMoeda(dif)}`}</strong></div>
+          <div title="Valor cobrado no CT-e"><span>Cobrado</span><strong>${formatoMoeda(l.valor_frete_negociado)}</strong></div>
+          <div title="${dicaEsperado}"><span>${rotuloEsperado}</span><strong>${esperado == null ? '—' : formatoMoeda(esperado)}</strong></div>
+          <div class="kanban-cartao-dif" title="Cobrado − ${rotuloEsperado.toLowerCase()}: positivo = a transportadora cobrou a mais"><span>${semDif ? 'Diferença' : dif > 0 ? 'A mais' : dif < 0 ? 'A menos' : 'Diferença'}</span><strong style="color:${dif > 0.009 ? 'var(--vermelho)' : (dif < -0.009 ? 'var(--verde)' : 'inherit')};">${semDif ? '—' : `${dif > 0 ? '+' : ''}${formatoMoeda(dif)}`}</strong></div>
         </div>
-        ${avisoSuspeita}${resumoDivergencia}${notaAprovacao}${notaGlosa}
+        ${avisoSuspeita}${notaSemEsperado}${resumoDivergencia}${notaAprovacao}${notaGlosa}
         <div class="kanban-cartao-acoes">
           <button onclick="abrirDetalheAuditoria(${l.id})">🔍 Detalhe</button>
           ${botaoAprovar}${botaoGlosa}${botaoEmail}
@@ -3581,29 +3604,40 @@ function renderizarAuditoriaFrete() {
   };
 
   // Agrupa pelo status, seguindo as etapas do fluxograma: conferência → retenção → liberação → pago.
+  const recente = (l) => Date.parse(l.data_emissao_cte || l.atualizado_em || 0) || 0;
   const COLUNAS = [
     { chave: 'pendente', titulo: '🔎 Pendente de Conferência', cor: '#8a94a6', filtro: (l) => !['Frete Retido', 'Liberado p/ Pagamento', 'Faturado', 'Cancelado', 'Conferido'].includes(l.status) },
     { chave: 'retido', titulo: '🔶 Frete Retido', cor: '#e8890c', filtro: (l) => l.status === 'Frete Retido' },
     { chave: 'liberado', titulo: '✅ Liberado p/ Pagamento', cor: '#1f9d5c', filtro: (l) => ['Conferido', 'Liberado p/ Pagamento'].includes(l.status) },
-    { chave: 'faturado', titulo: '💰 Faturado', cor: '#4d7cff', filtro: (l) => l.status === 'Faturado' },
+    { chave: 'faturado', titulo: '💰 Faturado', cor: '#4d7cff', filtro: (l) => l.status === 'Faturado',
+      vazio: 'Nenhum frete faturado ainda. Os liberados vêm para cá quando você fecha a fatura da transportadora em 🧾 Conferir Fatura.' },
   ];
 
   document.getElementById('kanbanAuditoria').innerHTML = COLUNAS.map((coluna) => {
     const itens = linhas.filter(coluna.filtro);
     // Retidos e pendentes: os que mais cobraram além da tabela primeiro (o que mais vale conferir).
     if (coluna.chave === 'retido' || coluna.chave === 'pendente') itens.sort((a, b) => (cobradoAMais(b) ?? -Infinity) - (cobradoAMais(a) ?? -Infinity));
+    // Liberados e faturados: os com alerta primeiro, depois os mais recentes.
+    const comAlerta = coluna.chave === 'liberado' ? itens.filter((l) => alertasDoCartao(l).length).length : 0;
+    if (coluna.chave === 'liberado' || coluna.chave === 'faturado') {
+      itens.sort((a, b) => (alertasDoCartao(b).length > 0) - (alertasDoCartao(a).length > 0) || recente(b) - recente(a));
+    }
     const somaValores = itens.reduce((s, l) => s + Number(l.valor_frete_negociado || 0), 0);
+    const limite = kanbanLimite[coluna.chave] || KANBAN_POR_VEZ;
+    const visiveis = itens.slice(0, limite);
+    const faltam = itens.length - visiveis.length;
     return `
       <div class="kanban-coluna" style="--cor-coluna:${coluna.cor};">
         <div class="kanban-coluna-cabecalho">
           <div>
             <div class="kanban-coluna-titulo">${coluna.titulo}</div>
-            <div class="kanban-coluna-total">${formatoMoeda(somaValores)}</div>
+            <div class="kanban-coluna-total">${formatoMoeda(somaValores)}${comAlerta ? ` · <span style="color:#ef4444; font-weight:600;" title="Liberados pelo valor, mas com alerta (ICMS, taxa, NF cancelada...): aparecem no topo da coluna">⚠ ${comAlerta} com alerta</span>` : ''}</div>
           </div>
           <span class="kanban-coluna-contagem">${itens.length}</span>
         </div>
         <div class="kanban-cartoes">
-          ${itens.length ? itens.map(montarCartao).join('') : '<div class="kanban-vazio">Nenhum frete aqui.</div>'}
+          ${itens.length ? visiveis.map(montarCartao).join('') : `<div class="kanban-vazio">${coluna.vazio || 'Nenhum frete aqui.'}</div>`}
+          ${faltam > 0 ? `<button class="kanban-mais" onclick="mostrarMaisKanban('${coluna.chave}')">Mostrar mais ${Math.min(faltam, KANBAN_POR_VEZ * 3)} (faltam ${faltam})</button>` : ''}
         </div>
       </div>
     `;
@@ -3684,9 +3718,9 @@ async function enviarEspelhoEmailAuditoria(id) {
 }
 
 ['afFiltroTransportadora', 'afFiltroStatus'].forEach((id) => {
-  document.getElementById(id).addEventListener('change', renderizarAuditoriaFrete);
+  document.getElementById(id).addEventListener('change', () => { kanbanLimite = {}; renderizarAuditoriaFrete(); });
 });
-document.getElementById('afFiltroBusca').addEventListener('input', renderizarAuditoriaFrete);
+document.getElementById('afFiltroBusca').addEventListener('input', () => { kanbanLimite = {}; renderizarAuditoriaFrete(); });
 
 // ---------- Financeiro ----------
 async function carregarFinanceiro() {
@@ -3877,6 +3911,17 @@ function conferirIcmsCte(l) {
     : (UF_SUL_SUDESTE.includes(ini) && UF_N_NE_CO_ES.includes(fim) ? 7 : 12);
   const cobrada = Number(imp.pICMS);
   return { ini, fim, esperada, cobrada, divergente: Math.abs(cobrada - esperada) > 0.01 };
+}
+
+// Alertas que valem conferir mesmo num frete já liberado pelo valor.
+function alertasDoCartao(l) {
+  const a = [];
+  if (conferirIcmsCte(l)?.divergente) a.push('ICMS');
+  if (conferirTaxas(l).some((t) => t.divergente)) a.push('taxas');
+  if (l.alerta_cobranca_dupla) a.push('cobrança em dobro');
+  if (l.nf_cancelada) a.push('NF cancelada');
+  if (l.alerta_transportadora_diferente) a.push('transportadoras diferentes');
+  return a;
 }
 
 function seloVinculoCte(l) {

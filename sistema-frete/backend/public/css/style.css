@@ -611,8 +611,20 @@ html.tema-claro::-webkit-scrollbar-corner, html.tema-claro *::-webkit-scrollbar-
 .kanban-cartao-topo { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .kanban-cartao-id { font-weight: 700; }
 .kanban-cartao-transp { color: var(--texto-fraco); font-size: 11.5px; margin-bottom: 8px; }
-.kanban-cartao-valores { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 8px; }
-.kanban-cartao-valores strong { display: block; font-size: 13px; }
+.kanban-cartao-valores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; font-size: 11.5px; margin-bottom: 8px; }
+.kanban-cartao-valores > div { min-width: 0; }
+.kanban-cartao-valores span { display: block; color: var(--texto-fraco); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kanban-cartao-valores strong { display: block; font-size: 13px; white-space: nowrap; }
+.kanban-cartao-valores .kanban-cartao-dif { text-align: right; }
+/* Cartão estreito: a diferença desce para a própria linha, sem encavalar os valores. */
+.kanban-cartao { container-type: inline-size; }
+@container (max-width: 290px) {
+  .kanban-cartao-valores { grid-template-columns: 1fr 1fr; }
+  .kanban-cartao-valores .kanban-cartao-dif { grid-column: 1 / -1; text-align: left; display: flex; gap: 6px; align-items: baseline; }
+}
+.kanban-liberado-alerta { border-left: 4px solid #ef4444 !important; }
+.kanban-mais { width: 100%; padding: 8px; border: 1px dashed var(--borda); border-radius: 8px; background: transparent; color: var(--azul); font-size: 12px; cursor: pointer; }
+.kanban-mais:hover { border-color: var(--azul); }
 .kanban-cartao-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
 .kanban-cartao-acoes button {
   flex: 1;

@@ -2357,6 +2357,7 @@ router.get('/auditoria/divergencias', autenticar, permitirAlguma('pode_ver_audit
               (SELECT STRING_AGG(fi.numero_cte || COALESCE(' (' || fi.cte_cancelado_motivo || ')', ''), ', ')
                  FROM fretes fi WHERE fi.frete_principal_id = fretes.id AND fi.cte_cancelado) AS ctes_cancelados,
               cidade, uf, qtd_volumes, peso_kg, valor_frete_tabelado, valor_total_calculado, valor_frete_negociado,
+              fretes.data_emissao_cte, fretes.atualizado_em,
               dif_negociado_tabela, auditoria_calculo, carga_direta, impostos_nfe, impostos_cte, uf_inicio_cte, uf_fim_cte,
               valor_faturado, fretes.tde, fretes.tda, fretes.gris, fretes.pedagio, fretes.trt, fretes.ad_valorem,
               reentrega, devolucao, outras_despesas, valor_total_frete,

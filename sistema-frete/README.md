@@ -176,6 +176,29 @@ Em **🚛 Operação de Transporte → 📋 MDF-e**, o sistema emite o MDF-e (mo
 
 Com o MDF-e autorizado, também dá para **incluir motorista** (troca durante a viagem), consultar e cancelar. O cancelamento só vale antes de o caminhão sair; depois disso, encerre.
 
+## Faturamento e contas a receber
+
+Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a receber**. Acessa quem emite CT-e ou tem a permissão do Financeiro.
+
+1. **⚙️ Cobrança (PIX e banco):** cadastre a chave PIX da empresa, a cidade, os dados bancários para depósito, o prazo padrão de vencimento e as instruções do rodapé (multa e juros, por exemplo).
+2. **➕ A faturar:** mostra os CT-e autorizados que ainda não estão em fatura, separados por cliente (quem paga o frete). Há dois jeitos de faturar:
+   - marcar os CT-e e clicar em **Gerar fatura dos marcados**;
+   - clicar em **Faturar tudo**, que gera uma fatura por cliente com o período inteiro.
+
+   O sistema não deixa um CT-e entrar em duas faturas, nem misturar clientes na mesma fatura.
+3. **🧾 Faturas:** na fatura dá para:
+   - imprimir;
+   - **enviar por e-mail**: a fatura vai no corpo do e-mail e anexada, com o QR Code do PIX;
+   - copiar o PIX copia e cola;
+   - baixar o **DOCCOB** (EDI);
+   - prorrogar o vencimento;
+   - **dar baixa**: o recebimento pode ser parcial, lançado em várias vezes, e um valor acima do saldo entra como juros/multa;
+   - estornar um recebimento;
+   - cancelar a fatura (só sem recebimentos), e os CT-e voltam para "A faturar".
+4. **📈 Contas a receber:** mostra o total a receber, o vencido, o que vence em 7 dias, o recebido no mês e o que falta faturar. Também separa por tempo de atraso e lista os clientes que mais devem.
+
+O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento é conferido no extrato e baixado aqui. O boleto registrado precisa de convênio com o banco e ainda não faz parte.
+
 ## Roteirizar entregas
 
 Em **Relatórios → 🗺️ Roteirizar entregas**, ou pelo botão **🗺️ Roteirizar** da carga montada em "Consolidar rotas":

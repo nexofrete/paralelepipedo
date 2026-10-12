@@ -12,6 +12,9 @@
   const itens = [...sub.querySelectorAll('.nav-tsub')];
   const paginaDo = (el) => document.querySelector(`.nav-item[data-pagina="${el.dataset.ir}"]`);
   const ehAdmin = usuario?.perfil === 'admin';
+  // Atributo das abas de cada tela.
+  const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba' };
+  const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi');
 
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
   itens.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));
@@ -40,9 +43,7 @@
     const naPagina = !document.getElementById(`pagina-${el.dataset.ir}`)?.classList.contains('oculto');
     if (!naPagina) pagina.click();
     if (el.dataset.aba) {
-      const aba = el.dataset.ir === 'ocorrencias'
-        ? document.querySelector(`[data-oc-aba="${el.dataset.aba}"]`)
-        : document.querySelector(`.cte-aba[data-cte-aba="${el.dataset.aba}"]`);
+      const aba = document.querySelector(`[${ATRIBUTO_ABA[el.dataset.ir]}="${el.dataset.aba}"]`);
       aba?.click();
     }
     abrirSub(true);
@@ -50,9 +51,9 @@
   }));
 
   // As abas dentro das telas também acendem o subitem certo.
-  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba]').forEach((aba) => aba.addEventListener('click', () => {
-    const ir = aba.dataset.ocAba ? 'ocorrencias' : 'emissao-cte';
-    const nome = aba.dataset.ocAba || aba.dataset.cteAba;
+  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba], [data-fat-aba]').forEach((aba) => aba.addEventListener('click', () => {
+    const ir = aba.dataset.ocAba ? 'ocorrencias' : aba.dataset.fatAba ? 'faturamento' : 'emissao-cte';
+    const nome = aba.dataset.ocAba || aba.dataset.fatAba || aba.dataset.cteAba;
     const el = itens.find((x) => x.dataset.ir === ir && x.dataset.aba === nome);
     if (el) marcar(el);
   }));
@@ -60,14 +61,14 @@
   // Outra página do menu (ou um atalho): apaga o destaque e fecha o submenu;
   // se o atalho abriu uma tela de transporte, acende o subitem dela.
   const observar = new MutationObserver(() => {
-    const aberta = ['emissao-cte', 'ocorrencias', 'edi'].find((p) => !document.getElementById(`pagina-${p}`)?.classList.contains('oculto'));
+    const aberta = PAGINAS.find((p) => !document.getElementById(`pagina-${p}`)?.classList.contains('oculto'));
     if (!aberta) { marcar(null); abrirSub(false); return; }
     if (!itens.some((x) => x.classList.contains('ativo') && x.dataset.ir === aberta)) {
       marcar(itens.find((x) => x.dataset.ir === aberta && !x.classList.contains('oculto')));
       abrirSub(true);
     }
   });
-  ['emissao-cte', 'ocorrencias', 'edi'].forEach((p) => {
+  PAGINAS.forEach((p) => {
     const sec = document.getElementById(`pagina-${p}`);
     if (sec) observar.observe(sec, { attributes: true, attributeFilter: ['class'] });
   });

@@ -224,4 +224,16 @@ async function enviarAvisoEntrega({ destinatarioEmail, assunto, titulo, linhas, 
   return true;
 }
 
-module.exports = { buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega };
+// Fatura para o cliente: a fatura vai no corpo do e-mail (com o QR Code do PIX
+// como imagem embutida) e também anexada em HTML, para imprimir.
+async function enviarFatura({ destinatarioEmail, copia, assunto, html, anexos = [] }) {
+  const config = await buscarConfiguracao();
+  if (!config.ativo || !config.smtp_host || !config.smtp_usuario) throw new Error('E-mail (SMTP) não está configurado (Cadastros → Configurações).');
+  await criarTransportador(config).sendMail({
+    from: `"${config.nome_remetente || 'Nexofrete'}" <${config.email_remetente || config.smtp_usuario}>`,
+    to: destinatarioEmail, cc: copia || undefined, subject: assunto, html, attachments: anexos,
+  });
+  return true;
+}
+
+module.exports = { buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega, enviarFatura };

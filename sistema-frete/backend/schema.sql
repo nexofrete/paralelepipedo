@@ -1608,3 +1608,49 @@ SELECT * FROM (VALUES
    'Vale no centro expandido. Confira as regras atuais na CET/Prefeitura de São Paulo.')
 ) AS v(cidade, uf, descricao, categorias, dias, inicio, fim, tipo, finais, efeito, observacao)
 WHERE NOT EXISTS (SELECT 1 FROM restricoes_circulacao);
+
+-- Faturamento da transportadora (contas a receber): fatura com os CT-e de um
+-- tomador, recebimentos (baixas) e cobrança por PIX.
+CREATE TABLE IF NOT EXISTS faturas_transporte (
+    id                  SERIAL PRIMARY KEY,
+    numero              INTEGER NOT NULL UNIQUE,
+    tomador_doc         VARCHAR(14) NOT NULL,
+    tomador_nome        VARCHAR(120),
+    tomador_email       VARCHAR(160),
+    emissao             DATE NOT NULL DEFAULT CURRENT_DATE,
+    vencimento          DATE NOT NULL,
+    valor_bruto         NUMERIC(14,2) NOT NULL,
+    desconto            NUMERIC(14,2) NOT NULL DEFAULT 0,
+    valor_pago          NUMERIC(14,2) NOT NULL DEFAULT 0,
+    status              VARCHAR(12) NOT NULL DEFAULT 'aberta',   -- aberta, parcial, paga, cancelada
+    observacoes         TEXT,
+    demonstracao        BOOLEAN NOT NULL DEFAULT FALSE,
+    enviada_em          TIMESTAMPTZ,
+    cancelada_em        TIMESTAMPTZ,
+    motivo_cancelamento VARCHAR(255),
+    criado_por_nome     VARCHAR(120),
+    criado_em           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_faturas_transporte_status ON faturas_transporte (status, vencimento);
+CREATE INDEX IF NOT EXISTS idx_faturas_transporte_tomador ON faturas_transporte (tomador_doc);
+CREATE TABLE IF NOT EXISTS faturas_transporte_pagamentos (
+    id          SERIAL PRIMARY KEY,
+    fatura_id   INTEGER NOT NULL REFERENCES faturas_transporte(id) ON DELETE CASCADE,
+    data        DATE NOT NULL,
+    valor       NUMERIC(14,2) NOT NULL,
+    forma       VARCHAR(20) NOT NULL DEFAULT 'pix',   -- pix, boleto, deposito, dinheiro, outro
+    observacao  VARCHAR(255),
+    usuario_nome VARCHAR(120),
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS fatura_id INTEGER REFERENCES faturas_transporte(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_fatura ON ctes_emitidos (fatura_id);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS fatura_proximo_numero INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS fatura_prazo_dias INTEGER NOT NULL DEFAULT 15;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS fatura_instrucoes TEXT;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS pix_chave VARCHAR(80);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS pix_cidade VARCHAR(40);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_nome VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_codigo VARCHAR(3);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_agencia VARCHAR(10);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_conta VARCHAR(20);

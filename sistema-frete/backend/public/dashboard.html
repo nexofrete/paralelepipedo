@@ -60,6 +60,8 @@
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="mdfe">📋 MDF-e</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="romaneios">🚚 Romaneios</div>
+        <div class="nav-tsub" data-ir="faturamento" data-aba="faturas">🧾 Faturamento</div>
+        <div class="nav-tsub" data-ir="faturamento" data-aba="resumo">📈 Contas a receber</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="frota">🚛 Veículos e motoristas</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="config" data-so-admin="1">⚙️ Configuração fiscal</div>
@@ -67,6 +69,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="faturamento" id="navFaturamento">💰 Faturamento</div>
       <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios">
@@ -261,6 +264,28 @@
         <div id="cte-aba-frota" class="oculto"></div>
         <div id="cte-aba-config" class="oculto"></div>
       </section>
+      <!-- ===== Faturamento e contas a receber (transportadora) ===== -->
+      <section id="pagina-faturamento" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>💰 Faturamento e contas a receber</h2>
+            <p>Junte os CT-e de cada cliente em faturas, cobre por PIX e e-mail e acompanhe o que está a receber e o que venceu</p>
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-fat-aba="resumo">📈 Contas a receber</div>
+          <div class="cte-aba" data-fat-aba="faturas">🧾 Faturas</div>
+          <div class="cte-aba" data-fat-aba="afaturar">➕ A faturar</div>
+          <div class="cte-aba" data-fat-aba="config">⚙️ Cobrança (PIX e banco)</div>
+        </div>
+        <div id="fat-aba-resumo"></div>
+        <div id="fat-aba-faturas" class="oculto"></div>
+        <div id="fat-aba-afaturar" class="oculto"></div>
+        <div id="fat-aba-config" class="oculto"></div>
+      </section>
+      <div class="modal-overlay oculto" id="modalFatura">
+        <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="fatModalConteudo"></div>
+      </div>
       <div class="modal-overlay oculto" id="modalMdfe">
         <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="mdfeModalConteudo"></div>
       </div>
@@ -3208,6 +3233,7 @@
   <script src="js/edi.js"></script>
   <script src="js/ocorrencias.js"></script>
   <script src="js/mdfe.js"></script>
+  <script src="js/faturamento.js"></script>
   <script src="js/menuTransporte.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/roteirizacao.js"></script>

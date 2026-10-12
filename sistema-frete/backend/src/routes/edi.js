@@ -426,3 +426,5 @@ router.post('/transportadora/notfis/rascunhos', autenticar, transportadora, asyn
 });
 
 module.exports = router;
+// Usados pelo faturamento (DOCCOB de uma fatura).
+module.exports.ajudantes = { conhecimentoEdi, cabecalhoTransportadora, nomeArquivo };

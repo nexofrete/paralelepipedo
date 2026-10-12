@@ -140,6 +140,23 @@ Se um CT-e foi enviado à SEFAZ de origem, ficou sem resposta e depois foi reemi
 
 O CT-e 4.00 não tem mais inutilização de numeração nem CT-e de anulação: a SEFAZ eliminou os dois nessa versão. No lugar da anulação, use o evento de desacordo seguido do CT-e de substituição.
 
+**Averbação do seguro de carga:** configure em Configuração fiscal → Seguro da carga e averbação:
+- a averbadora: AT&M (usuário, senha e código AT&M) ou Porto Seguro/AverbePorto (usuário e senha);
+- a seguradora, o CNPJ dela e a apólice.
+
+Com a averbação automática ligada:
+- cada CT-e autorizado é averbado na hora, e o protocolo e o número aparecem na lista (🛡);
+- o MDF-e é declarado à averbadora;
+- cancelamentos e encerramentos também são enviados à averbadora;
+- o MDF-e montado dos CT-e já sai com a seguradora, a apólice e os números de averbação.
+
+Se a averbadora estiver fora do ar ou recusar, a lista mostra o motivo. Use **🛡 Averbar**, no CT-e, ou **🛡 Averbar pendentes**, que tenta de novo os CT-e dos últimos 30 dias. A senha fica criptografada no banco.
+
+Algumas observações:
+- CT-e de homologação volta da AT&M com protocolo "TESTE".
+- No modo demonstração, a averbação é simulada.
+- Desligue a averbação automática se o seguro da carga for do embarcador.
+
 Testes automáticos do CT-e: `npm test` dentro de `backend`. A validação nos schemas oficiais precisa do `xmllint`.
 
 ## MDF-e (manifesto da viagem)

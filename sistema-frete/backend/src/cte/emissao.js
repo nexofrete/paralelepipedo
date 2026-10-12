@@ -7,6 +7,7 @@ const { certificadoDoEmitente } = require('./certificado');
 const { webservicesDaUf, contingenciaDaUf } = require('./ufs');
 const sefaz = require('./sefaz');
 const eventos = require('./eventos');
+const averbacao = require('../averbacao/averbacao');
 
 // Rejeições em que a SEFAZ diz que esse CT-e (chave) já existe autorizado.
 const DUPLICIDADE = ['204', '539'];
@@ -91,6 +92,8 @@ async function registrarAutorizado(id, xmlAssinado, r) {
   // Previsão de entrega (prazo da tabela ou o padrão), para o acompanhamento das entregas.
   // O complementar só cobra um valor a mais: a entrega é acompanhada pelo CT-e original.
   if (String(d.tpCTe) !== '1') await require('./ocorrencias').definirPrevisao(id).catch((e) => console.error('[cte] previsão de entrega:', e.message));
+  // Seguro da carga: averba na hora (se a averbação automática estiver ligada).
+  await averbacao.semFalhar(averbacao.averbar('cte', id));
 }
 
 // CT-e substituto autorizado: o original fica "substituído" e o acompanhamento
@@ -240,6 +243,7 @@ async function cancelar(id, justificativa) {
   if (reg?.status !== 'autorizado') throw new Error('Só dá para cancelar CT-e autorizado.');
   const evento = await enviarEvento(reg, (base) => eventos.cancelamento({ ...base, nProt: reg.protocolo, justificativa }), 'cancelamento');
   await pool.query(`UPDATE ctes_emitidos SET status = 'cancelado', motivo = $2, atualizado_em = NOW() WHERE id = $1`, [id, `Cancelado: ${justificativa}`]);
+  await averbacao.semFalhar(averbacao.avisarEvento('cte', id, 'cancelamento'));
   return evento;
 }
 

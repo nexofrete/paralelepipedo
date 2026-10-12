@@ -11,6 +11,7 @@ const { lerNfe, lerCteAnterior } = require('../cte/lerNfe');
 const emissao = require('../cte/emissao');
 const { gerarDacte } = require('../cte/dacte');
 const { CODIGO_UF } = require('../cte/ufs');
+const averbacao = require('../averbacao/averbacao');
 
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
@@ -28,10 +29,12 @@ const CAMPOS_CONFIG = {
   resp_tec_cnpj: 'texto', resp_tec_contato: 'texto', resp_tec_email: 'texto', resp_tec_fone: 'texto',
   aviso_entrega_ativo: 'bool', aviso_entrega_eventos: 'texto', aviso_entrega_email: 'bool', aviso_entrega_whatsapp: 'bool', endereco_publico: 'texto',
   cte_contingencia: 'bool', cte_contingencia_motivo: 'texto',
+  averbacao_provedor: 'texto', averbacao_usuario: 'texto', averbacao_codigo: 'texto', averbacao_automatica: 'bool',
+  seguro_seguradora: 'texto', seguro_cnpj: 'texto', seguro_apolice: 'texto',
 };
 const SEM_CERTIFICADO = 'id, razao_social, nome_fantasia, cnpj, ie, telefone, email, endereco, numero, complemento, bairro, municipio, uf, cep, '
-  + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('mdfe_') || c.startsWith('resp_tec') || c.startsWith('aviso_entrega') || c === 'endereco_publico').join(', ')}, `
-  + 'cte_contingencia_inicio, certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
+  + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('mdfe_') || c.startsWith('resp_tec') || c.startsWith('aviso_entrega') || c.startsWith('averbacao_') || c.startsWith('seguro_') || c === 'endereco_publico').join(', ')}, `
+  + 'cte_contingencia_inicio, (averbacao_senha IS NOT NULL) AS tem_senha_averbacao, certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
 
 // Qual SEFAZ Virtual de Contingência atende a UF da empresa (para a tela).
 const comSvc = (c) => (c ? { ...c, svc_sigla: c.uf ? emissao.contingenciaDaUf(c.uf).sigla : null } : c);
@@ -47,7 +50,15 @@ router.get('/config', autenticar, async (req, res) => {
 router.put('/config', autenticar, apenasAdmin, async (req, res) => {
   try {
     const campos = Object.keys(CAMPOS_CONFIG).filter((c) => req.body[c] !== undefined);
+    // Senha da averbadora: só grava quando vem uma nova (criptografada, nunca volta para a tela).
+    if (req.body.averbacao_senha_nova) {
+      await pool.query('INSERT INTO empresa (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+      await pool.query('UPDATE empresa SET averbacao_senha = $1 WHERE id = 1', [criptografar(Buffer.from(String(req.body.averbacao_senha_nova), 'utf8'))]);
+      log(req, 'cte_config', 'Trocou a senha da averbadora do seguro');
+    }
     if (!campos.length) return res.status(400).json({ erro: 'Nada para salvar.' });
+    const prov = req.body.averbacao_provedor;
+    if (prov && !['atm', 'porto'].includes(prov)) return res.status(400).json({ erro: 'Averbadora inválida.' });
     const conv = (c, v) => {
       const tipo = CAMPOS_CONFIG[c];
       if (tipo === 'bool') return !!v;
@@ -213,7 +224,9 @@ router.get('/', autenticar, emitir, async (req, res) => {
               remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome, criado_em, atualizado_em, demonstracao,
               COALESCE(dados->>'tpCTe', '0') AS tp_cte, COALESCE(dados->>'tpServ', '0') AS tp_serv, tp_emis, chave_pendente_origem,
               COALESCE(dados->'complementados'->>0, dados->'substituido'->>'chave') AS chave_referencia,
-              (SELECT s.serie || '/' || s.numero FROM ctes_emitidos s WHERE s.id = ctes_emitidos.substituido_por) AS substituido_por_numero
+              (SELECT s.serie || '/' || s.numero FROM ctes_emitidos s WHERE s.id = ctes_emitidos.substituido_por) AS substituido_por_numero,
+              averbacao_status, averbacao->>'numero' AS averbacao_numero, averbacao->>'protocolo' AS averbacao_protocolo,
+              averbacao->>'mensagem' AS averbacao_mensagem, (averbacao->>'teste')::boolean AS averbacao_teste
          FROM ctes_emitidos ${cond.length ? `WHERE ${cond.join(' AND ')}` : ''}
         ORDER BY criado_em DESC LIMIT 500`, val);
     res.json(rows);
@@ -297,6 +310,28 @@ router.post('/:id(\\d+)/duplicar', autenticar, emitir, async (req, res) => {
     res.status(201).json(novo);
   } catch (err) { responderErro(res, err, 'Erro ao criar o rascunho.'); }
 }));
+
+// Averbação do seguro: refazer um CT-e, ou todos os autorizados que ficaram sem averbar.
+router.post('/:id(\\d+)/averbar', autenticar, emitir, async (req, res) => {
+  try {
+    const r = await averbacao.averbar('cte', Number(req.params.id), { forcar: true });
+    log(req, 'cte_averbacao', `Averbação do CT-e #${req.params.id}: ${r?.status} ${r?.protocolo || r?.mensagem || ''}`);
+    res.json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao averbar.'); }
+});
+router.post('/averbar-pendentes', autenticar, emitir, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT id FROM ctes_emitidos WHERE status = 'autorizado' AND COALESCE(averbacao_status, '') <> 'averbado'
+       AND autorizado_em >= NOW() - INTERVAL '30 days' ORDER BY autorizado_em LIMIT 200`);
+    let ok = 0; const falhas = [];
+    for (const { id } of rows) {
+      const r = await averbacao.averbar('cte', id, { forcar: true }).catch((err) => ({ status: 'erro', mensagem: err.message }));
+      if (r?.status === 'averbado') ok += 1; else falhas.push({ id, mensagem: r?.mensagem });
+    }
+    log(req, 'cte_averbacao', `Averbou ${ok} de ${rows.length} CT-e pendentes`);
+    res.json({ total: rows.length, averbados: ok, falhas: falhas.slice(0, 20) });
+  } catch (err) { responderErro(res, err, 'Erro ao averbar os pendentes.'); }
+});
 
 router.post('/:id(\\d+)/cancelar-pendente', autenticar, emitir, async (req, res) => {
   try {

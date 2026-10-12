@@ -92,6 +92,7 @@
     if (['rascunho', 'rejeitado', 'erro'].includes(m.status)) acoes.push(b('editar', '✏️ Editar'));
     if (['rascunho', 'rejeitado'].includes(m.status)) acoes.push(b('transmitir', '📤 Transmitir'));
     if (['erro', 'enviando'].includes(m.status)) acoes.push(b('transmitir', '🔁 Tentar de novo'), b('consultar', '🔎 Consultar'));
+    if (['autorizado', 'encerrado'].includes(m.status) && m.averbacao_status !== 'averbado') acoes.push(b('averbar', '🛡 Declarar ao seguro'));
     if (m.status === 'autorizado') acoes.push(b('encerrar', '🏁 Encerrar'), b('condutor', '👤 + Motorista'), b('consultar', '🔎 Consultar'), b('cancelar', '⛔ Cancelar'));
     acoes.push(b('damdfe', ['autorizado', 'encerrado', 'cancelado'].includes(m.status) ? '🖨 DAMDFE' : '👁 Prévia'));
     if (m.chave) acoes.push(b('xml', '⬇ XML'));
@@ -102,7 +103,8 @@
       <td style="white-space:nowrap;"><b>${m.numero ? `${m.serie}/${m.numero}` : '—'}</b><div style="font-size:11px; color:var(--texto-fraco);">${dataHora(m.autorizado_em || m.criado_em)}</div>
         ${m.demonstracao ? '<div style="font-size:10.5px; color:var(--azul);">demonstração</div>' : Number(m.ambiente) === 2 ? '<div style="font-size:10.5px; color:var(--amarelo);">homologação</div>' : ''}
         ${m.romaneio_id ? `<div style="font-size:10.5px; color:var(--texto-fraco);">romaneio ${m.romaneio_id}</div>` : ''}</td>
-      <td><span class="badge badge-cte-${esc(m.status)}">${esc(STATUS[m.status] || m.status)}</span>${motivo}${m.encerrado_em ? `<div style="font-size:11px; color:var(--texto-fraco);">encerrado ${dataHora(m.encerrado_em)}</div>` : ''}</td>
+      <td><span class="badge badge-cte-${esc(m.status)}">${esc(STATUS[m.status] || m.status)}</span>${motivo}${m.encerrado_em ? `<div style="font-size:11px; color:var(--texto-fraco);">encerrado ${dataHora(m.encerrado_em)}</div>` : ''}
+        ${m.averbacao_status === 'averbado' ? `<div class="cte-tipo" title="${esc(m.averbacao_mensagem || '')}">🛡 Declarado · ${esc(m.averbacao_protocolo || '')}</div>` : m.averbacao_status === 'erro' ? `<div class="cte-tipo alerta">⚠ Declaração ao seguro falhou: ${esc(String(m.averbacao_mensagem || '').slice(0, 60))}</div>` : ''}</td>
       <td><b>${esc(m.placa || 'sem placa')}</b><br><span style="font-size:12px; color:var(--texto-fraco);">${esc(m.motorista || 'sem motorista')}</span></td>
       <td>${esc(m.uf_ini || '?')} → ${esc(m.uf_fim || '?')}</td>
       <td style="text-align:right;">${m.qtd_documentos || 0}</td>
@@ -148,6 +150,12 @@
         return carregarLista();
       }
       if (acao === 'condutor') return incluirCondutor(id);
+      if (acao === 'averbar') {
+        btn.disabled = true;
+        const r = await post(`/${id}/averbar`);
+        mostrarAlerta(r.status === 'averbado' ? `MDF-e declarado à averbadora. Protocolo ${r.protocolo}.` : `A averbadora recusou: ${r.mensagem}`, { tipo: r.status === 'averbado' ? 'sucesso' : 'erro' });
+        return carregarLista();
+      }
     } catch (e) { erro(e); carregarLista(); }
     return null;
   }

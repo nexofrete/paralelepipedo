@@ -9,6 +9,7 @@ const { carregarEmitente, emitenteDoCadastro, certificadoParaUsar } = require('.
 const { soDigitos } = require('../cte/montarCte');
 const m = require('./montarMdfe');
 const sefaz = require('./sefazMdfe');
+const averbacao = require('../averbacao/averbacao');
 
 const DUPLICIDADE = ['204', '539'];
 
@@ -56,7 +57,7 @@ async function motoristaDoCadastro({ cpf, nome }) {
 
 // Um MDF-e por UF de descarregamento (regra da SEFAZ). Devolve [dados...].
 async function dadosDosCtes(cteIds, { romaneio } = {}) {
-  const { rows } = await pool.query(`SELECT id, numero, chave, dados FROM ctes_emitidos WHERE id = ANY($1::int[]) AND status = 'autorizado' AND COALESCE(dados->>'tpCTe', '0') <> '1' ORDER BY numero`, [cteIds]);
+  const { rows } = await pool.query(`SELECT id, numero, chave, dados, averbacao FROM ctes_emitidos WHERE id = ANY($1::int[]) AND status = 'autorizado' AND COALESCE(dados->>'tpCTe', '0') <> '1' ORDER BY numero`, [cteIds]);
   if (!rows.length) throw new Error('Escolha CT-e autorizados.');
   const e = await carregarEmitente();
   const porUf = new Map();
@@ -80,7 +81,9 @@ async function dadosDosCtes(cteIds, { romaneio } = {}) {
       descargas: [...descargas.values()],
       veiculo: { tpRod: '01', tpCar: '02', uf: e.uf, ...veiculo }, reboques: [], condutores: condutor ? [condutor] : [],
       ciot: [], valePedagio: [], contratantes: [],
-      seguros: [{ respSeg: '1', xSeg: '', cnpjSeg: '', nApol: '', nAver: [] }],
+      // Seguro: a apólice da Configuração fiscal e as averbações dos CT-e desta UF.
+      seguros: [{ respSeg: '1', xSeg: e.seguro_seguradora || '', cnpjSeg: e.seguro_cnpj || '', nApol: e.seguro_apolice || '',
+        nAver: [...new Set(ctes.map((c) => (c.averbacao?.status === 'averbado' ? c.averbacao.numero : null)).filter(Boolean))] }],
       prodPred: { tpCarga: '05', xProd: Object.entries(produtos).sort((a, b) => b[1] - a[1])[0][0] },
       tot: { vCarga: Math.round(ctes.reduce((s, c) => s + (Number(c.dados?.carga?.vCarga) || 0), 0) * 100) / 100, cUnid: '01',
         qCarga: Math.round(ctes.reduce((s, c) => s + pesoKg(c.dados || {}), 0) * 10000) / 10000 },
@@ -127,6 +130,8 @@ const mdfeProc = (xml, prot) => `<mdfeProc xmlns="${m.NS}" versao="${m.VERSAO}">
 async function registrarAutorizado(id, xml, r) {
   await pool.query(`UPDATE mdfes SET status = 'autorizado', xml_autorizado = $2, protocolo = $3, autorizado_em = COALESCE($4::timestamptz, NOW()), cstat = $5, motivo = $6, atualizado_em = NOW() WHERE id = $1`,
     [id, mdfeProc(xml, r.protMDFe), r.nProt, r.dhRecbto || null, r.cStat, r.xMotivo]);
+  // Declara o MDF-e à averbadora do seguro (AT&M: declaraMDFe).
+  await averbacao.semFalhar(averbacao.averbar('mdfe', id));
 }
 const simulacao = (reg) => (reg.demonstracao ? { conhecido: reg.chave && reg.protocolo
   ? { chave: reg.chave, nProt: reg.protocolo, encerrado: reg.status === 'encerrado', cancelado: reg.status === 'cancelado', placa: reg.placa } : null } : null);
@@ -200,6 +205,7 @@ async function cancelar(id, justificativa) {
   if (reg?.status !== 'autorizado') throw new Error('Só dá para cancelar MDF-e autorizado e ainda não encerrado.');
   const ev = await enviarEvento(reg, (b) => m.cancelamento({ ...b, justificativa }), 'cancelamento');
   await pool.query(`UPDATE mdfes SET status = 'cancelado', motivo = $2, atualizado_em = NOW() WHERE id = $1`, [id, `Cancelado: ${justificativa}`]);
+  await averbacao.semFalhar(averbacao.avisarEvento('mdfe', id, 'cancelamento'));
   return ev;
 }
 
@@ -214,6 +220,7 @@ async function encerrar(id, { dtEnc, cMun, uf } = {}) {
   if (!CODIGO_UF[ufEnc] || mun.length !== 7 || String(CODIGO_UF[ufEnc]) !== mun.slice(0, 2)) throw new Error('O município de encerramento não é da UF informada.');
   const ev = await enviarEvento(reg, (b) => m.encerramento({ ...b, dtEnc: dt, ufEnc, cMun: mun }), 'encerramento');
   await pool.query(`UPDATE mdfes SET status = 'encerrado', encerrado_em = NOW(), atualizado_em = NOW() WHERE id = $1`, [id]);
+  await averbacao.semFalhar(averbacao.avisarEvento('mdfe', id, 'encerramento'));
   return ev;
 }
 

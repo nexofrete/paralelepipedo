@@ -1382,6 +1382,17 @@ ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS chave_pendente_origem VARCHAR
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_contingencia BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_contingencia_motivo VARCHAR(256);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_contingencia_inicio TIMESTAMPTZ;
+-- Averbação do seguro de carga (AT&M ou AverbePorto) e a apólice que vai no MDF-e.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS averbacao_provedor VARCHAR(10);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS averbacao_usuario VARCHAR(120);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS averbacao_senha TEXT;          -- criptografada
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS averbacao_codigo VARCHAR(40);  -- código AT&M
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS averbacao_automatica BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS seguro_seguradora VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS seguro_cnpj VARCHAR(14);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS seguro_apolice VARCHAR(20);
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS averbacao JSONB;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS averbacao_status VARCHAR(12);
 CREATE TABLE IF NOT EXISTS cte_ocorrencias (
     id                  SERIAL PRIMARY KEY,
     cte_id              INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
@@ -1438,6 +1449,8 @@ CREATE TABLE IF NOT EXISTS mdfes (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mdfes_numero ON mdfes (ambiente, serie, numero) WHERE numero IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mdfes_chave ON mdfes (chave) WHERE chave IS NOT NULL;
+ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS averbacao JSONB;
+ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS averbacao_status VARCHAR(12);
 CREATE INDEX IF NOT EXISTS idx_mdfes_status ON mdfes (status, criado_em DESC);
 -- Cadastro de veículos e motoristas (MDF-e e romaneio).
 CREATE TABLE IF NOT EXISTS veiculos (

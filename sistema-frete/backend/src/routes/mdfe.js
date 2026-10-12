@@ -10,6 +10,7 @@ const emissao = require('../mdfe/emissaoMdfe');
 const { gerarDamdfe } = require('../mdfe/damdfe');
 const { TIPOS_CARGA, TIPOS_RODADO, TIPOS_CARROCERIA } = require('../mdfe/montarMdfe');
 const { carregarEmitente } = require('../cte/emissao');
+const averbacao = require('../averbacao/averbacao');
 
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
@@ -25,7 +26,7 @@ router.get('/', autenticar, emitir, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, ambiente, serie, numero, chave, status, protocolo, autorizado_em, encerrado_em, cstat, motivo, placa, uf_ini, uf_fim, qtd_documentos,
-              valor_carga, demonstracao, romaneio_id, criado_por_nome, criado_em,
+              valor_carga, demonstracao, romaneio_id, criado_por_nome, criado_em, averbacao_status, averbacao->>'protocolo' AS averbacao_protocolo, averbacao->>'mensagem' AS averbacao_mensagem,
               dados->'condutores'->0->>'xNome' AS motorista
          FROM mdfes ORDER BY (status = 'autorizado') DESC, criado_em DESC LIMIT 300`);
     res.json(rows);
@@ -123,6 +124,7 @@ acao('transmitir', (id) => emissao.transmitir(id), 'Transmitiu');
 acao('consultar', (id) => emissao.consultar(id), 'Consultou');
 acao('cancelar', (id, b) => emissao.cancelar(id, b.justificativa), 'Cancelou');
 acao('encerrar', (id, b) => emissao.encerrar(id, b), 'Encerrou');
+acao('averbar', (id) => averbacao.averbar('mdfe', id, { forcar: true }), 'Declarou à averbadora');
 acao('incluir-condutor', (id, b) => emissao.incluirCondutor(id, b), 'Incluiu motorista no');
 
 router.get('/nao-encerrados', autenticar, emitir, async (req, res) => {

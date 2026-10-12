@@ -101,6 +101,7 @@
     if (c.status === 'autorizado') acoes.push(b('consultar', '🔎 Consultar'), b('cce', '✍️ Correção'), b('cancelar', '⛔ Cancelar'));
     if (c.status === 'autorizado' && c.tp_cte !== '1') acoes.push(b('complementar', '➕ Complementar'), b('substituir', '♻ Substituir'));
     if (c.chave_pendente_origem) acoes.push(b('pendente', '⚠ Chave pendente'));
+    if (c.status === 'autorizado' && c.averbacao_status !== 'averbado') acoes.push(b('averbar', '🛡 Averbar'));
     acoes.push(b('dacte', c.status === 'autorizado' || c.status === 'cancelado' ? '🖨 DACTE' : '👁 Prévia'));
     if (c.chave) acoes.push(b('xml', '⬇ XML'));
     acoes.push(b('duplicar', '⧉ Duplicar'));
@@ -115,13 +116,31 @@
         ${c.substituido_por_numero ? `<div class="cte-tipo">Substituído pelo ${esc(c.substituido_por_numero)}</div>` : ''}
         ${c.tp_serv && c.tp_serv !== '0' ? `<div class="cte-tipo">${esc(TIPO_SERV[c.tp_serv])}</div>` : ''}
         ${Number(c.tp_emis) > 1 ? `<div class="cte-tipo alerta">Contingência ${Number(c.tp_emis) === 7 ? 'SVC-RS' : 'SVC-SP'}</div>` : ''}
-        ${c.chave_pendente_origem ? '<div class="cte-tipo alerta">Chave pendente na SEFAZ de origem</div>' : ''}</td>
+        ${c.chave_pendente_origem ? '<div class="cte-tipo alerta">Chave pendente na SEFAZ de origem</div>' : ''}
+        ${seloAverbacao(c)}</td>
       <td>${esc(c.tomador_nome || '—')}</td>
       <td style="font-size:12.5px;">${esc(c.remetente_nome || '—')}<br><span style="color:var(--texto-fraco);">→ ${esc(c.destinatario_nome || '—')}</span></td>
       <td>${esc(c.cidade_fim || '—')}${c.uf_fim ? `/${esc(c.uf_fim)}` : ''}</td>
       <td style="text-align:right; white-space:nowrap;">${moeda(c.valor_total)}</td>
       <td><div class="cte-acoes">${acoes.join('')}</div></td></tr>`;
   }
+
+  // Situação da averbação do seguro (só para CT-e que já passou pela SEFAZ).
+  function seloAverbacao(c) {
+    if (!['autorizado', 'cancelado', 'substituido'].includes(c.status) || !c.averbacao_status) return '';
+    if (c.averbacao_status === 'averbado') return `<div class="cte-tipo" title="${esc(c.averbacao_mensagem || '')}">🛡 Averbado${c.averbacao_teste ? ' (teste)' : ''} · ${esc(c.averbacao_numero || c.averbacao_protocolo || '')}</div>`;
+    if (c.averbacao_status === 'cancelado') return '<div class="cte-tipo">🛡 Averbação cancelada</div>';
+    return `<div class="cte-tipo alerta" title="${esc(c.averbacao_mensagem || '')}">⚠ Averbação falhou: ${esc(String(c.averbacao_mensagem || '').slice(0, 70))}</div>`;
+  }
+  $('cteAverbarPendentes').addEventListener('click', async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      const r = await api('/averbar-pendentes', { method: 'POST' });
+      mostrarAlerta(r.total ? `${r.averbados} de ${r.total} CT-e averbados.${r.falhas.length ? `\n\nFalharam:\n${r.falhas.map((f) => `#${f.id}: ${f.mensagem}`).join('\n')}` : ''}` : 'Nenhum CT-e pendente de averbação nos últimos 30 dias.', { tipo: r.falhas.length ? 'aviso' : 'sucesso' });
+      carregarLista();
+    } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    b.disabled = false;
+  });
 
   document.querySelector('#tabelaCtes tbody').addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-cte-acao]');
@@ -143,6 +162,10 @@
         const novo = await api(`/${id}/${acao}`, { method: 'POST' });
         await carregarLista();
         return abrirFormulario(novo.id);
+      }
+      if (acao === 'averbar') {
+        const r = await api(`/${id}/averbar`, { method: 'POST' });
+        mostrarAlerta(r.status === 'averbado' ? `Averbado. Protocolo ${r.protocolo}${r.numero && r.numero !== r.protocolo ? `\nNº de averbação ${r.numero}` : ''}${r.teste ? '\n(averbação de TESTE: CT-e de homologação/demonstração)' : ''}` : `A averbadora não averbou: ${r.mensagem}`, { tipo: r.status === 'averbado' ? 'sucesso' : 'erro' });
       }
       if (acao === 'pendente') {
         const r = await api(`/${id}/consultar`, { method: 'POST' });
@@ -757,6 +780,16 @@
             <b>Contingência ligada</b>${c.cte_contingencia && c.cte_contingencia_inicio ? `&nbsp;desde ${new Date(c.cte_contingencia_inicio).toLocaleString('pt-BR')}` : ''}</label></div>
           ${campo('cfg_cont_motivo', 'Motivo (aparece no registro; mínimo 15 letras)', { classe: 'inteiro', valor: c.cte_contingencia_motivo || '', ph: 'ex.: SEFAZ SP fora do ar desde as 9h' })}
         </div></div>
+        <div class="cte-secao"><h4>Seguro da carga e averbação</h4><div class="cte-grade">
+          <div class="campo inteiro" style="font-size:12.5px;">Cada CT-e autorizado é mandado na hora para a averbadora da seguradora (AT&amp;M ou AverbePorto). O protocolo e o número da averbação ficam no CT-e, e o número vai sozinho para o MDF-e. Cancelamentos e encerramentos também são avisados. No modo demonstração a averbação é simulada.</div>
+          ${sel('cfg_av_prov', 'Averbadora', [['', '— nenhuma —'], ['atm', 'AT&M'], ['porto', 'Porto (AverbePorto)']], c.averbacao_provedor || '')}
+          ${campo('cfg_av_usuario', 'Usuário', { valor: c.averbacao_usuario || '' })}
+          ${campo('cfg_av_senha', `Senha${c.tem_senha_averbacao ? ' (já cadastrada — preencha só para trocar)' : ''}`, { tipo: 'password', extra: 'autocomplete="new-password"' })}
+          ${campo('cfg_av_codigo', 'Código AT&amp;M (codatm)', { valor: c.averbacao_codigo || '' })}
+          <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_av_auto" ${c.averbacao_automatica !== false ? 'checked' : ''} style="width:auto;" />
+            Averbar automaticamente ao autorizar (desligue se o seguro da carga é do embarcador e não da transportadora)</label></div>
+          ${campo('cfg_seg_nome', 'Seguradora (vai no MDF-e)', { classe: 'largo', valor: c.seguro_seguradora || '' })}${campo('cfg_seg_cnpj', 'CNPJ da seguradora', { valor: c.seguro_cnpj || '' })}${campo('cfg_seg_apolice', 'Nº da apólice (RCTR-C)', { valor: c.seguro_apolice || '' })}
+        </div></div>
         <div class="cte-secao"><h4>IBS / CBS (Reforma Tributária)</h4><div class="cte-grade">
           <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_ibs" ${c.cte_ibscbs_ativo ? 'checked' : ''} style="width:auto;" /> Informar IBS/CBS no CT-e</label></div>
           ${campo('cfg_ibs_cst', 'CST IBS/CBS', { valor: c.cte_ibscbs_cst || '000' })}${campo('cfg_ibs_class', 'cClassTrib', { valor: c.cte_ibscbs_class_trib || '000001' })}
@@ -840,6 +873,9 @@
       aviso_entrega_ativo: $('cfg_aviso').checked, aviso_entrega_email: $('cfg_aviso_email').checked, aviso_entrega_whatsapp: $('cfg_aviso_wpp').checked,
       aviso_entrega_eventos: [...document.querySelectorAll('[data-cfg-evento]:checked')].map((x) => x.dataset.cfgEvento).join(',') || 'nenhum', endereco_publico: v('cfg_end_publico'),
       cte_contingencia: $('cfg_cont').checked, cte_contingencia_motivo: v('cfg_cont_motivo'),
+      averbacao_provedor: v('cfg_av_prov'), averbacao_usuario: v('cfg_av_usuario'), averbacao_codigo: v('cfg_av_codigo'), averbacao_automatica: $('cfg_av_auto').checked,
+      ...($('cfg_av_senha').value ? { averbacao_senha_nova: $('cfg_av_senha').value } : {}),
+      seguro_seguradora: v('cfg_seg_nome'), seguro_cnpj: v('cfg_seg_cnpj').replace(/\D/g, ''), seguro_apolice: v('cfg_seg_apolice'),
       resp_tec_cnpj: v('cfg_rt_cnpj').replace(/\D/g, ''), resp_tec_contato: v('cfg_rt_contato'), resp_tec_email: v('cfg_rt_email'), resp_tec_fone: v('cfg_rt_fone').replace(/\D/g, ''),
     };
     config = await api('/config', { method: 'PUT', body: JSON.stringify(corpo) });

@@ -1364,6 +1364,36 @@ CREATE TABLE IF NOT EXISTS ctes_emitidos (
     atualizado_em       TIMESTAMP NOT NULL DEFAULT NOW()
 );
 ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS demonstracao BOOLEAN NOT NULL DEFAULT FALSE;
+-- Acompanhamento da entrega (estilo SSW): previsão, situação e ocorrências.
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS prazo_dias INTEGER;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS previsao_original DATE;      -- a do dia da emissão (mede o atraso)
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS previsao_entrega DATE;       -- a atual (muda com agendamento/reentrega)
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS situacao_entrega VARCHAR(20) NOT NULL DEFAULT 'pendente';
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS data_entrega TIMESTAMP;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS recebedor_nome VARCHAR(120);
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS recebedor_documento VARCHAR(30);
+CREATE TABLE IF NOT EXISTS cte_ocorrencias (
+    id                  SERIAL PRIMARY KEY,
+    cte_id              INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
+    tipo_id             VARCHAR(30) NOT NULL,     -- item do catálogo (src/cte/ocorrencias.js)
+    codigo              SMALLINT NOT NULL,        -- código PROCEDA (vai no OCOREN)
+    descricao           VARCHAR(120) NOT NULL,
+    tipo                VARCHAR(20) NOT NULL,     -- transito, em_rota, agendada, entrega, problema, devolucao, informativo
+    data_hora           TIMESTAMP NOT NULL,
+    cidade              VARCHAR(120),
+    uf                  CHAR(2),
+    recebedor_nome      VARCHAR(120),
+    recebedor_documento VARCHAR(30),
+    nova_previsao       DATE,
+    observacao          TEXT,
+    comprovante_arquivo VARCHAR(200),
+    usuario_nome        VARCHAR(150),
+    criado_em           TIMESTAMP NOT NULL DEFAULT NOW(),
+    enviada_edi_em      TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_cte_ocorrencias_cte ON cte_ocorrencias (cte_id, data_hora);
+CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_situacao ON ctes_emitidos (situacao_entrega, previsao_entrega) WHERE status = 'autorizado';
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_prazo_padrao INTEGER;       -- dias úteis, quando a tabela não diz
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_numero ON ctes_emitidos (ambiente, serie, numero) WHERE numero IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_chave ON ctes_emitidos (chave) WHERE chave IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_status ON ctes_emitidos (status, criado_em DESC);

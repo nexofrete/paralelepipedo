@@ -39,6 +39,8 @@ const pastaXmlRoutes = require('./src/routes/pastaXml');
 const cteEmissaoRoutes = require('./src/routes/cteEmissao');
 const roteirizacaoRoutes = require('./src/routes/roteirizacao');
 const ediRoutes = require('./src/routes/edi');
+const ocorrenciasRoutes = require('./src/routes/ocorrencias');
+const rastreioRoutes = require('./src/routes/rastreio');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
@@ -149,6 +151,9 @@ const limitadorLogin = rateLimit({
   message: { erro: 'Muitas tentativas de login. Aguarde alguns minutos e tente de novo.' },
 });
 app.use('/api/auth/login', limitadorLogin);
+// Rastreio público (sem login): no máximo 30 consultas por minuto por computador.
+app.use('/api/rastreio', rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
+  message: { erro: 'Muitas consultas seguidas. Aguarde um minuto e tente de novo.' } }));
 
 // XML de NF-e lido na emissão de CT-e pode passar do limite padrão (100 KB).
 app.use('/api/cte-emissao/ler-nfe', express.json({ limit: '5mb' }));
@@ -186,6 +191,8 @@ app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);
 app.use('/api/roteirizacao', roteirizacaoRoutes);
 app.use('/api/edi', ediRoutes);
+app.use('/api/ocorrencias', ocorrenciasRoutes);
+app.use('/api/rastreio', rastreioRoutes);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

@@ -79,6 +79,8 @@ async function registrarAutorizado(id, xmlAssinado, r) {
     `UPDATE ctes_emitidos SET status = 'autorizado', xml_autorizado = $2, protocolo = $3, autorizado_em = COALESCE($4::timestamptz, NOW()),
             cstat = $5, motivo = $6, atualizado_em = NOW() WHERE id = $1`,
     [id, cteProc(xmlAssinado, r.protCTe), r.nProt, r.dhRecbto || null, r.cStat, r.xMotivo]);
+  // Previsão de entrega (prazo da tabela ou o padrão), para o acompanhamento das entregas.
+  await require('./ocorrencias').definirPrevisao(id).catch((e) => console.error('[cte] previsão de entrega:', e.message));
 }
 
 // Transmite o CT-e. Se uma tentativa anterior ficou sem resposta, consulta a

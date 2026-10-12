@@ -22,7 +22,7 @@ const CAMPOS_CONFIG = {
   razao_social: 'texto', nome_fantasia: 'texto', cnpj: 'texto', ie: 'texto', telefone: 'texto', email: 'texto',
   endereco: 'texto', numero: 'texto', complemento: 'texto', bairro: 'texto', municipio: 'texto', uf: 'texto', cep: 'texto',
   codigo_municipio: 'texto', rntrc: 'texto', crt: 'inteiro', cte_ambiente: 'inteiro', cte_serie: 'inteiro', cte_proximo_numero: 'inteiro',
-  cte_cst_padrao: 'texto', cte_aliquota_interna: 'numero', cte_verificar_servidor: 'bool', cte_demonstracao: 'bool',
+  cte_cst_padrao: 'texto', cte_aliquota_interna: 'numero', cte_verificar_servidor: 'bool', cte_demonstracao: 'bool', cte_prazo_padrao: 'inteiro',
   cte_ibscbs_ativo: 'bool', cte_ibscbs_cst: 'texto', cte_ibscbs_class_trib: 'texto',
   cte_ibs_uf_aliquota: 'numero', cte_ibs_mun_aliquota: 'numero', cte_cbs_aliquota: 'numero',
   resp_tec_cnpj: 'texto', resp_tec_contato: 'texto', resp_tec_email: 'texto', resp_tec_fone: 'texto',

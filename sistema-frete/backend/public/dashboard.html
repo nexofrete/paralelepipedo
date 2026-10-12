@@ -53,6 +53,7 @@
       <div class="nav-item" data-pagina="registros">Todos os registros</div>
       <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
       <div class="nav-item oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
+      <div class="nav-item oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
       <div class="nav-item oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
@@ -104,6 +105,38 @@
     <main class="conteudo">
 
       <!-- ===== Emissão de CT-e (modo transportadora) ===== -->
+      <section id="pagina-ocorrencias" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>📍 Ocorrências de entrega</h2>
+            <p>Acompanhe os CT-e emitidos: previsão, saída para entrega, ocorrências e baixa com o comprovante</p>
+          </div>
+          <button class="btn btn-secundario" id="ocLinkRastreio" style="width:auto;" title="Página pública para o cliente acompanhar a entrega">🔗 Link de rastreio para o cliente</button>
+        </div>
+        <div class="oc-resumo" id="ocResumo"></div>
+        <div class="painel oc-painel">
+          <div class="oc-barra">
+            <div class="oc-filtros" id="ocFiltros"></div>
+            <div class="oc-busca">
+              <input type="text" id="ocBusca" class="cte-entrada" placeholder="CT-e, NF, chave, cliente ou cidade" />
+              <span id="ocPeriodo" class="oculto"><input type="date" id="ocDe" class="cte-entrada" /> a <input type="date" id="ocAte" class="cte-entrada" /></span>
+            </div>
+          </div>
+          <div class="oc-lote oculto" id="ocLote">
+            <b id="ocLoteQtd"></b>
+            <select id="ocLoteTipo" class="cte-entrada"></select>
+            <input type="datetime-local" id="ocLoteData" class="cte-entrada" />
+            <input type="text" id="ocLoteRecebedor" class="cte-entrada oculto" placeholder="Recebido por" />
+            <input type="date" id="ocLotePrevisao" class="cte-entrada oculto" title="Nova previsão de entrega" />
+            <button class="btn btn-primario" id="ocLoteAplicar" style="width:auto;">Lançar nos marcados</button>
+          </div>
+          <div class="edi-rolagem" id="ocTabela"></div>
+        </div>
+      </section>
+      <div class="modal-overlay oculto" id="painelOcorrencia">
+        <div class="painel modal-card" style="max-width:640px; width:100%; max-height:92vh; overflow-y:auto; padding:22px 24px;" id="ocModalConteudo"></div>
+      </div>
+
       <section id="pagina-edi" class="oculto">
         <div class="cabecalho-pagina">
           <div>
@@ -3135,6 +3168,7 @@
   <script src="js/dashboard.js"></script>
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>
+  <script src="js/ocorrencias.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/roteirizacao.js"></script>
 </body>

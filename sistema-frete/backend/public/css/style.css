@@ -1421,3 +1421,46 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 .edi-acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
 .edi-acoes .campo { margin-bottom: 0; }
 @media (max-width: 600px) { .edi-linha { grid-template-columns: 1fr; } }
+
+/* Ocorrências de entrega (estilo SSW) */
+.oc-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.oc-resumo div { background: var(--bg-card); border: 1px solid var(--borda); border-radius: var(--raio); padding: 12px 14px; font-size: 12px; color: var(--texto-fraco); }
+.oc-resumo b { display: block; font-size: 22px; color: var(--texto); }
+.oc-painel { padding: 16px 18px; }
+.oc-barra { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.oc-filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+.oc-filtro { border: 1px solid var(--borda); background: var(--bg-elevado); color: var(--texto); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+.oc-filtro.ativo { background: var(--azul); border-color: var(--azul); color: #fff; }
+.oc-filtro .n { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 9px; background: rgba(0,0,0,0.18); font-size: 11px; font-weight: 700; }
+.oc-filtro.perigo:not(.ativo) .n { background: rgba(239,68,68,0.2); color: #ef4444; }
+.oc-busca { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.oc-busca .cte-entrada { width: auto; }
+.oc-busca input[type=text] { min-width: 260px; }
+.oc-busca input[type=date] { width: 150px; }
+#ocPeriodo { display: inline-flex; gap: 6px; align-items: center; }
+#ocPeriodo.oculto { display: none; }
+.oc-lote { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: rgba(77,124,255,0.08); border: 1px solid var(--azul); border-radius: var(--raio); padding: 10px 12px; margin-bottom: 12px; font-size: 12.5px; }
+.oc-lote select { max-width: 300px; }
+.oc-lote .cte-entrada { width: auto; }
+.oc-sit { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.oc-sit.pendente { background: var(--bg-elevado); color: var(--texto-fraco); }
+.oc-sit.em_transito { background: rgba(77,124,255,0.15); color: var(--azul); }
+.oc-sit.em_rota { background: rgba(6,182,212,0.16); color: #06b6d4; }
+.oc-sit.agendada { background: rgba(168,85,247,0.16); color: #a855f7; }
+.oc-sit.ocorrencia { background: rgba(245,158,11,0.18); color: #d97706; }
+.oc-sit.entregue { background: rgba(52,199,123,0.16); color: var(--verde); }
+.oc-sit.devolvido, .oc-sit.cancelado { background: rgba(239,68,68,0.16); color: #ef4444; }
+.oc-prev { white-space: nowrap; }
+.oc-prev small { display: block; font-size: 11px; }
+.oc-prev.atraso small { color: #ef4444; font-weight: 600; }
+.oc-prev.hoje small { color: #d97706; font-weight: 600; }
+.oc-linha-acoes { display: flex; gap: 6px; }
+.oc-linha-acoes button { border: 1px solid var(--borda); background: var(--bg-elevado); color: var(--texto); border-radius: 6px; padding: 4px 9px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.oc-linha-acoes button.primario { background: var(--azul); border-color: var(--azul); color: #fff; }
+.oc-tempo { list-style: none; margin: 14px 0 0; padding: 0 0 0 18px; border-left: 2px solid var(--borda); }
+.oc-tempo li { position: relative; padding: 0 0 14px 12px; font-size: 13px; }
+.oc-tempo li::before { content: ''; position: absolute; left: -25px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--cor-ev, var(--azul)); border: 2px solid var(--bg-card); }
+.oc-tempo small { display: block; color: var(--texto-fraco); font-size: 11.5px; margin-top: 2px; }
+.oc-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.oc-form .inteiro { grid-column: 1 / -1; }
+@media (max-width: 600px) { .oc-form { grid-template-columns: 1fr; } .oc-busca input[type=text] { min-width: 0; width: 100%; } }

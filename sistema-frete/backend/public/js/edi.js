@@ -268,6 +268,7 @@
       <div class="edi-acoes">
         <button class="btn btn-primario" id="ediGerarConemb" style="width:auto;">⬇ CONEMB (CT-e marcados)</button>
         <button class="btn btn-secundario" id="ediGerarOcoren" style="width:auto;">⬇ OCOREN (linhas com ocorrência)</button>
+        <button class="btn btn-secundario" id="ediOcorenLancadas" style="width:auto;" title="O que foi lançado em Ocorrências de entrega e ainda não foi enviado">⬇ OCOREN das ocorrências lançadas</button>
       </div>
       <div class="edi-acoes" style="border-top:1px solid var(--borda); padding-top:14px;">
         <div class="campo"><label for="ediFatNumero">Nº da fatura</label><input type="text" id="ediFatNumero" maxlength="10" style="width:120px;" /></div>
@@ -290,6 +291,11 @@
       const r = await api('/transportadora/doccob', { method: 'POST', body: JSON.stringify({ ...periodo(), ids,
         fatura: { numero: $('ediFatNumero').value.trim(), vencimento: $('ediFatVenc').value, banco: $('ediFatBanco').value, agencia, agenciaDv, conta, contaDv } }) });
       baixar(r.nome, r.texto); mostrarAlerta(`DOCCOB gerado: ${r.ctes} CT-e, ${moeda(r.valor)}.`, { tipo: 'sucesso' });
+    }));
+    $('ediOcorenLancadas').addEventListener('click', (e) => comBotao(e.currentTarget, async () => {
+      const r = await api('/transportadora/ocoren-lancadas', { method: 'POST', body: JSON.stringify(periodo()) });
+      baixar(r.nome, r.texto);
+      mostrarAlerta(`OCOREN gerado com ${r.lancadas} ocorrência(s) lançada(s) (${r.ocorrencias} nota(s)). Elas ficam marcadas como enviadas.`, { tipo: 'sucesso' });
     }));
     $('ediGerarOcoren').addEventListener('click', (e) => comBotao(e.currentTarget, async () => {
       const ocorrencias = [];

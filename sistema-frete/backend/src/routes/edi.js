@@ -318,6 +318,39 @@ router.post('/transportadora/ocoren', autenticar, transportadora, async (req, re
   } catch (err) { responderErro(res, err, 'Erro ao gerar o OCOREN.'); }
 });
 
+// OCOREN das ocorrências lançadas em "Ocorrências de entrega" (as ainda não
+// enviadas, ou todas do período), e marca como enviadas.
+router.post('/transportadora/ocoren-lancadas', autenticar, transportadora, async (req, res) => {
+  try {
+    const { tomador, nome, de, ate, reenviar } = req.body || {};
+    if (!data(de) || !data(ate)) return res.status(400).json({ erro: 'Informe o período.' });
+    const { PORID } = require('../cte/ocorrencias');
+    const { rows } = await pool.query(
+      `SELECT o.id, o.tipo_id, o.codigo, o.descricao, o.data_hora, o.recebedor_nome, o.observacao, c.dados
+         FROM cte_ocorrencias o JOIN ctes_emitidos c ON c.id = o.cte_id
+        WHERE c.status = 'autorizado' AND o.data_hora::date BETWEEN $1::date AND $2::date ${reenviar ? '' : 'AND o.enviada_edi_em IS NULL'}
+        ORDER BY o.data_hora`, [de, ate]);
+    const doCliente = rows.filter((r) => !tomador || tomadorDe(r.dados || {}).cnpj === docLimpo(tomador));
+    if (!doCliente.length) return res.status(404).json({ erro: reenviar ? 'Nenhuma ocorrência lançada para esse cliente no período.' : 'Nenhuma ocorrência nova (ainda não enviada) para esse cliente no período.' });
+    const ocorrencias = [];
+    doCliente.forEach((r) => {
+      const d = r.dados || {};
+      const item = PORID.get(r.tipo_id) || {};
+      const texto = [item.texto || r.descricao, r.recebedor_nome ? `RECEBIDO POR ${r.recebedor_nome}` : '', item.pedeObservacao ? r.observacao : ''].filter(Boolean).join(' - ');
+      const dh = new Date(r.data_hora);
+      const iso = `${dh.getFullYear()}-${String(dh.getMonth() + 1).padStart(2, '0')}-${String(dh.getDate()).padStart(2, '0')}`;
+      const hora = `${String(dh.getHours()).padStart(2, '0')}:${String(dh.getMinutes()).padStart(2, '0')}`;
+      (d.nfes || []).filter((c) => String(c).length === 44).forEach((c) => {
+        ocorrencias.push({ cnpjEmissorNf: docLimpo(d.remetente?.cnpj || d.remetente?.cpf), ...serieNumeroDaChave(c), codigo: r.codigo, data: iso, hora, texto: texto.slice(0, 70) });
+      });
+    });
+    const texto = edi.montarOcoren({ ...await cabecalhoTransportadora(nome), ocorrencias });
+    await pool.query('UPDATE cte_ocorrencias SET enviada_edi_em = NOW() WHERE id = ANY($1::int[]) AND enviada_edi_em IS NULL', [doCliente.map((r) => r.id)]);
+    log(req, 'edi_ocoren', `Gerou OCOREN de ${doCliente.length} ocorrência(s) lançada(s) para ${nome || tomador || 'clientes'}`);
+    res.json({ nome: nomeArquivo('OCOREN', nome || tomador), texto, ocorrencias: ocorrencias.length, lancadas: doCliente.length });
+  } catch (err) { responderErro(res, err, 'Erro ao gerar o OCOREN.'); }
+});
+
 // NOTFIS do cliente: mostra as notas e cria rascunhos de CT-e (um por destinatário).
 router.post('/transportadora/notfis/ler', autenticar, transportadora, async (req, res) => {
   try {

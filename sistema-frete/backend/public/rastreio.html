@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rastreio da entrega</title>
+  <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
+  <link rel="stylesheet" href="css/rastreio.css" />
+</head>
+<body>
+  <main class="rt">
+    <header class="rt-topo">
+      <img id="rtLogo" class="oculto" alt="" />
+      <div><h1 id="rtNome">Rastreio da entrega</h1><p>Acompanhe a sua entrega pela chave do CT-e ou pelo CNPJ/CPF e o número da nota fiscal.</p></div>
+    </header>
+    <form id="rtForm" class="rt-cartao" autocomplete="off">
+      <div class="rt-abas">
+        <label><input type="radio" name="modo" value="nf" checked /> CNPJ/CPF + nota fiscal</label>
+        <label><input type="radio" name="modo" value="chave" /> Chave do CT-e</label>
+      </div>
+      <div id="rtModoNf" class="rt-linha">
+        <input id="rtDoc" inputmode="numeric" placeholder="CNPJ ou CPF (remetente ou destinatário)" />
+        <input id="rtNf" inputmode="numeric" placeholder="Nº da nota fiscal" />
+      </div>
+      <div id="rtModoChave" class="rt-linha oculto"><input id="rtChave" inputmode="numeric" placeholder="Chave do CT-e (44 números)" /></div>
+      <button type="submit">Consultar</button>
+    </form>
+    <div id="rtResultado"></div>
+    <footer class="rt-rodape" id="rtContato"></footer>
+  </main>
+  <script src="js/rastreio.js"></script>
+</body>
+</html>

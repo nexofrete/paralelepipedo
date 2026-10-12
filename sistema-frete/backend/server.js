@@ -38,6 +38,7 @@ const agendaRoutes = require('./src/routes/agenda');
 const pastaXmlRoutes = require('./src/routes/pastaXml');
 const cteEmissaoRoutes = require('./src/routes/cteEmissao');
 const roteirizacaoRoutes = require('./src/routes/roteirizacao');
+const ediRoutes = require('./src/routes/edi');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
@@ -151,6 +152,8 @@ app.use('/api/auth/login', limitadorLogin);
 
 // XML de NF-e lido na emissão de CT-e pode passar do limite padrão (100 KB).
 app.use('/api/cte-emissao/ler-nfe', express.json({ limit: '5mb' }));
+// Arquivos EDI (NOTFIS/CONEMB/...) vêm como texto no corpo e podem passar de 1 MB.
+app.use('/api/edi', express.json({ limit: '10mb' }));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
@@ -182,6 +185,7 @@ app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);
 app.use('/api/roteirizacao', roteirizacaoRoutes);
+app.use('/api/edi', ediRoutes);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

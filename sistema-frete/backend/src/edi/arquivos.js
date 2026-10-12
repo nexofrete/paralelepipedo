@@ -66,35 +66,38 @@ const TIPOS_ICMS = { D: 'Diferido', R: 'Reduzido', P: 'Presumido', T: 'Substitui
 
 function montarNotfis(dados) {
   const linhas = cabecalho(NOTFIS, dados, 'NOT', 'NOTFI', '310');
-  const e = dados.embarcador || {};
-  linhas.push(linha(NOTFIS, '311', { ...e, cnpj: docLimpo(e.cnpj), cep: soDigitos(e.cep), dataEmbarque: e.dataEmbarque || dados.data || new Date() }));
   const tot = { valorNotas: 0, peso: 0, pesoCubado: 0, volumes: 0, valorCobrado: 0, valorSeguro: 0 };
-  (dados.destinatarios || []).forEach((d) => {
-    const doc = docLimpo(d.cnpj);
-    linhas.push(linha(NOTFIS, '312', { ...d, cnpj: doc, cep: soDigitos(d.cep), tipoIdentificacao: doc.length === 11 ? 2 : 1 }));
-    (d.notas || []).forEach((n) => {
-      linhas.push(linha(NOTFIS, '313', {
-        meioTransporte: 1, tipoTransporte: 2, tipoCarga: 2, condicaoFrete: n.condicaoFrete || 'C', tipoIcms: 'S', seguro: 'S',
-        acao: 'I', bonificacao: 'N', ...n, natureza: n.natureza || 'DIVERSOS', especie: n.especie || 'VOLUMES',
-      }));
-      // 333: obrigatório na 3.1 quando se sabe o CFOP (vem do XML da NF-e).
-      if (n.cfop || n.redespacho) linhas.push(linha(NOTFIS, '333', { cfop: n.cfop, tipoPeriodoEntrega: 0, calculoDiferenciado: 'N' }));
-      if (n.mercadorias?.length) {
-        const m = {};
-        n.mercadorias.slice(0, 4).forEach((x, i) => { m[`volumes${i}`] = x.volumes; m[`especie${i}`] = x.especie; m[`mercadoria${i}`] = x.mercadoria; });
-        linhas.push(linha(NOTFIS, '314', m));
-      }
-      if (n.redespacho) linhas.push(linha(NOTFIS, '316', { ...n.redespacho, cnpj: docLimpo(n.redespacho.cnpj), cep: soDigitos(n.redespacho.cep) }));
-      tot.valorNotas += Number(n.valor) || 0; tot.peso += Number(n.peso) || 0; tot.pesoCubado += Number(n.cubagem) || 0;
-      tot.volumes += Number(n.volumes) || 0; tot.valorCobrado += Number(n.valorCobrado) || 0; tot.valorSeguro += Number(n.valorSeguro) || 0;
+  // Um embarcador (embarcador + destinatarios) ou vários (embarcadores: [{ ..., destinatarios }]).
+  const embarcadores = dados.embarcadores || [{ ...(dados.embarcador || {}), destinatarios: dados.destinatarios }];
+  embarcadores.forEach((e) => {
+    linhas.push(linha(NOTFIS, '311', { ...e, cnpj: docLimpo(e.cnpj), cep: soDigitos(e.cep), dataEmbarque: e.dataEmbarque || dados.data || new Date() }));
+    (e.destinatarios || []).forEach((d) => {
+      const doc = docLimpo(d.cnpj);
+      linhas.push(linha(NOTFIS, '312', { ...d, cnpj: doc, cep: soDigitos(d.cep), tipoIdentificacao: doc.length === 11 ? 2 : 1 }));
+      (d.notas || []).forEach((n) => {
+        linhas.push(linha(NOTFIS, '313', {
+          meioTransporte: 1, tipoTransporte: 2, tipoCarga: 2, condicaoFrete: n.condicaoFrete || 'C', tipoIcms: 'S', seguro: 'S',
+          acao: 'I', bonificacao: 'N', ...n, natureza: n.natureza || 'DIVERSOS', especie: n.especie || 'VOLUMES',
+        }));
+        // 333 (condicional na 3.1): CFOP da nota, tirado do XML da NF-e.
+        if (n.cfop || n.redespacho) linhas.push(linha(NOTFIS, '333', { cfop: n.cfop, tipoPeriodoEntrega: 0, calculoDiferenciado: 'N' }));
+        if (n.mercadorias?.length) {
+          const m = {};
+          n.mercadorias.slice(0, 4).forEach((x, i) => { m[`volumes${i}`] = x.volumes; m[`especie${i}`] = x.especie; m[`mercadoria${i}`] = x.mercadoria; });
+          linhas.push(linha(NOTFIS, '314', m));
+        }
+        if (n.redespacho) linhas.push(linha(NOTFIS, '316', { ...n.redespacho, cnpj: docLimpo(n.redespacho.cnpj), cep: soDigitos(n.redespacho.cep) }));
+        tot.valorNotas += Number(n.valor) || 0; tot.peso += Number(n.peso) || 0; tot.pesoCubado += Number(n.cubagem) || 0;
+        tot.volumes += Number(n.volumes) || 0; tot.valorCobrado += Number(n.valorCobrado) || 0; tot.valorSeguro += Number(n.valorSeguro) || 0;
+      });
     });
   });
   linhas.push(linha(NOTFIS, '318', tot));
   return juntar(linhas);
 }
 
-// A versão 3.0a não tem campo para a chave da NF-e; alguns parceiros mandam a
-// chave numa linha extra. Acha qualquer chave de 44 dígitos depois da nota.
+// O NOTFIS 3.1 não tem campo para a chave da NF-e; alguns parceiros mandam a
+// chave numa linha extra ou no fim do 333. Procura uma chave depois da nota.
 // Chave de NF-e de verdade: UF válida, modelo 55 e dígito verificador (módulo 11).
 function chaveValida(c) {
   if (!/^\d{44}$/.test(c) || c.slice(20, 22) !== '55' || !/^(1[1-7]|2[1-9]|3[1235]|4[1-3]|5[0-3])/.test(c)) return false;

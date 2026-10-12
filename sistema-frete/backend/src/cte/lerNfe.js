@@ -42,6 +42,8 @@ function lerNfe(xml) {
     pesoLiquido: vols.reduce((s, v) => s + num(v.pesoL), 0),
     volumes: vols.reduce((s, v) => s + num(v.qVol), 0),
     produtoPredominante: maior?.xProd || null,
+    cfop: produtos.find((x) => x.CFOP)?.CFOP || null,
+    especie: vols.find((v) => v.esp)?.esp || null,
     modFrete: inf.transp?.modFrete ?? null,
     transportadoraCnpj: inf.transp?.transporta?.CNPJ || null,
   };

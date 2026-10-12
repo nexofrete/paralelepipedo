@@ -53,6 +53,7 @@
       <div class="nav-item" data-pagina="registros">Todos os registros</div>
       <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
       <div class="nav-item oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
+      <div class="nav-item oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios">
@@ -103,6 +104,63 @@
     <main class="conteudo">
 
       <!-- ===== Emissão de CT-e (modo transportadora) ===== -->
+      <section id="pagina-edi" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🔁 EDI <span class="badge badge-faturado" style="vertical-align:middle; margin-left:6px;">PROCEDA 3.1</span></h2>
+            <p>Arquivos de troca com transportadoras e clientes: NOTFIS (notas), CONEMB (CT-e), OCOREN (ocorrências) e DOCCOB (fatura)</p>
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-edi-aba="embarcador" id="ediAbaEmbarcador">Com a transportadora <small style="font-weight:400;">(sou embarcador)</small></div>
+          <div class="cte-aba" data-edi-aba="transportadora" id="ediAbaTransportadora">Com o cliente <small style="font-weight:400;">(sou transportadora)</small></div>
+        </div>
+
+        <div id="edi-aba-embarcador">
+          <div class="edi-grade">
+            <div class="painel edi-cartao">
+              <h3>📤 Enviar as notas — NOTFIS</h3>
+              <p class="edi-dica">A transportadora importa as notas no sistema dela e já monta os CT-e. Sai das NF-e (XML) importadas no Nexofrete.</p>
+              <div class="campo"><label for="ediNfTransp">Transportadora</label><select id="ediNfTransp"><option value="">Carregando...</option></select></div>
+              <div class="edi-linha">
+                <div class="campo"><label for="ediNfDe">Emissão da NF — de</label><input type="date" id="ediNfDe" /></div>
+                <div class="campo"><label for="ediNfAte">até</label><input type="date" id="ediNfAte" /></div>
+              </div>
+              <label class="ag-check" style="display:flex; margin-bottom:14px;"><input type="checkbox" id="ediNfSemCte" checked /> Só as notas que ainda não têm CT-e</label>
+              <button class="btn btn-primario" id="ediGerarNotfis" style="width:auto;">⬇ Gerar NOTFIS</button>
+              <div id="ediNotfisResultado" class="edi-resultado"></div>
+            </div>
+            <div class="painel edi-cartao">
+              <h3>📥 Receber da transportadora</h3>
+              <p class="edi-dica"><b>CONEMB</b>: confere os CT-e com a tabela · <b>OCOREN</b>: grava as entregas · <b>DOCCOB</b>: abre a conferência da fatura. O tipo é reconhecido sozinho.</p>
+              <label class="edi-arquivo"><input type="file" id="ediArquivoEmb" accept=".txt,.edi,.rem,.ret,text/plain" /><span>Escolher arquivo (.txt)</span></label>
+            </div>
+          </div>
+          <div id="ediResultadoEmb"></div>
+        </div>
+
+        <div id="edi-aba-transportadora" class="oculto">
+          <div class="edi-grade">
+            <div class="painel edi-cartao">
+              <h3>📥 Notas do cliente — NOTFIS</h3>
+              <p class="edi-dica">Vira rascunho de CT-e (um por destinatário). A chave da NF-e vem do arquivo ou de um XML já importado.</p>
+              <label class="edi-arquivo"><input type="file" id="ediArquivoNotfis" accept=".txt,.edi,.rem,text/plain" /><span>Escolher NOTFIS (.txt)</span></label>
+            </div>
+            <div class="painel edi-cartao">
+              <h3>📤 Arquivos para o cliente — CONEMB, OCOREN, DOCCOB</h3>
+              <p class="edi-dica">A partir dos CT-e autorizados no Nexofrete.</p>
+              <div class="campo"><label for="ediCliente">Cliente (tomador do frete)</label><select id="ediCliente"><option value="">Carregando...</option></select></div>
+              <div class="edi-linha">
+                <div class="campo"><label for="ediCtDe">CT-e autorizados — de</label><input type="date" id="ediCtDe" /></div>
+                <div class="campo"><label for="ediCtAte">até</label><input type="date" id="ediCtAte" /></div>
+              </div>
+              <button class="btn btn-secundario" id="ediCarregarCtes" style="width:auto;">Mostrar os CT-e</button>
+            </div>
+          </div>
+          <div id="ediResultadoTransp"></div>
+        </div>
+      </section>
+
       <section id="pagina-emissao-cte" class="oculto">
         <div class="cabecalho-pagina">
           <div>
@@ -3076,6 +3134,7 @@
   </div>
   <script src="js/dashboard.js"></script>
   <script src="js/emissaoCte.js"></script>
+  <script src="js/edi.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/roteirizacao.js"></script>
 </body>

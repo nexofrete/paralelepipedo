@@ -22,14 +22,14 @@ const CAMPOS_CONFIG = {
   razao_social: 'texto', nome_fantasia: 'texto', cnpj: 'texto', ie: 'texto', telefone: 'texto', email: 'texto',
   endereco: 'texto', numero: 'texto', complemento: 'texto', bairro: 'texto', municipio: 'texto', uf: 'texto', cep: 'texto',
   codigo_municipio: 'texto', rntrc: 'texto', crt: 'inteiro', cte_ambiente: 'inteiro', cte_serie: 'inteiro', cte_proximo_numero: 'inteiro',
-  cte_cst_padrao: 'texto', cte_aliquota_interna: 'numero', cte_verificar_servidor: 'bool', cte_demonstracao: 'bool', cte_prazo_padrao: 'inteiro',
+  cte_cst_padrao: 'texto', cte_aliquota_interna: 'numero', cte_verificar_servidor: 'bool', cte_demonstracao: 'bool', cte_prazo_padrao: 'inteiro', mdfe_serie: 'inteiro', mdfe_proximo_numero: 'inteiro',
   cte_ibscbs_ativo: 'bool', cte_ibscbs_cst: 'texto', cte_ibscbs_class_trib: 'texto',
   cte_ibs_uf_aliquota: 'numero', cte_ibs_mun_aliquota: 'numero', cte_cbs_aliquota: 'numero',
   resp_tec_cnpj: 'texto', resp_tec_contato: 'texto', resp_tec_email: 'texto', resp_tec_fone: 'texto',
   aviso_entrega_ativo: 'bool', aviso_entrega_eventos: 'texto', aviso_entrega_email: 'bool', aviso_entrega_whatsapp: 'bool', endereco_publico: 'texto',
 };
 const SEM_CERTIFICADO = 'id, razao_social, nome_fantasia, cnpj, ie, telefone, email, endereco, numero, complemento, bairro, municipio, uf, cep, '
-  + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('resp_tec') || c.startsWith('aviso_entrega') || c === 'endereco_publico').join(', ')}, `
+  + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('mdfe_') || c.startsWith('resp_tec') || c.startsWith('aviso_entrega') || c === 'endereco_publico').join(', ')}, `
   + 'certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
 
 router.get('/config', autenticar, async (req, res) => {
@@ -47,7 +47,7 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
     const conv = (c, v) => {
       const tipo = CAMPOS_CONFIG[c];
       if (tipo === 'bool') return !!v;
-      if (v === '' || v == null) return tipo === 'inteiro' && ['crt', 'cte_ambiente', 'cte_serie', 'cte_proximo_numero'].includes(c) ? undefined : null;
+      if (v === '' || v == null) return tipo === 'inteiro' && ['crt', 'cte_ambiente', 'cte_serie', 'cte_proximo_numero', 'mdfe_serie', 'mdfe_proximo_numero'].includes(c) ? undefined : null;
       if (tipo === 'inteiro') return parseInt(v, 10);
       if (tipo === 'numero') return Number(String(v).replace(',', '.'));
       return String(v).trim();

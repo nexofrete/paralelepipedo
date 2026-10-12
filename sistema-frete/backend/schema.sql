@@ -1394,6 +1394,67 @@ CREATE TABLE IF NOT EXISTS cte_ocorrencias (
 CREATE INDEX IF NOT EXISTS idx_cte_ocorrencias_cte ON cte_ocorrencias (cte_id, data_hora);
 CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_situacao ON ctes_emitidos (situacao_entrega, previsao_entrega) WHERE status = 'autorizado';
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_prazo_padrao INTEGER;
+-- MDF-e (Manifesto Eletrônico de Documentos Fiscais, modelo 58, rodoviário).
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS mdfe_serie INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS mdfe_proximo_numero INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS mdfes (
+    id                  SERIAL PRIMARY KEY,
+    ambiente            SMALLINT NOT NULL DEFAULT 2,
+    serie               INTEGER,
+    numero              INTEGER,
+    codigo_numerico     VARCHAR(8),
+    chave               VARCHAR(44),
+    status              VARCHAR(20) NOT NULL DEFAULT 'rascunho',   -- rascunho, enviando, autorizado, rejeitado, erro, encerrado, cancelado
+    dados               JSONB NOT NULL DEFAULT '{}'::jsonb,
+    xml_assinado        TEXT,
+    xml_autorizado      TEXT,      -- mdfeProc
+    protocolo           VARCHAR(20),
+    autorizado_em       TIMESTAMP,
+    encerrado_em        TIMESTAMP,
+    cstat               VARCHAR(5),
+    motivo              TEXT,
+    eventos             JSONB NOT NULL DEFAULT '[]'::jsonb,
+    seq_condutor        INTEGER NOT NULL DEFAULT 1,
+    demonstracao        BOOLEAN NOT NULL DEFAULT FALSE,
+    romaneio_id         INTEGER,
+    placa               VARCHAR(10),
+    uf_ini              CHAR(2),
+    uf_fim              CHAR(2),
+    qtd_documentos      INTEGER,
+    valor_carga         NUMERIC(14,2),
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMP NOT NULL DEFAULT NOW(),
+    atualizado_em       TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mdfes_numero ON mdfes (ambiente, serie, numero) WHERE numero IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mdfes_chave ON mdfes (chave) WHERE chave IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mdfes_status ON mdfes (status, criado_em DESC);
+-- Cadastro de veículos e motoristas (MDF-e e romaneio).
+CREATE TABLE IF NOT EXISTS veiculos (
+    id          SERIAL PRIMARY KEY,
+    placa       VARCHAR(10) NOT NULL UNIQUE,
+    tipo        VARCHAR(10) NOT NULL DEFAULT 'tracao',   -- tracao, reboque
+    renavam     VARCHAR(11),
+    tara        INTEGER,
+    cap_kg      INTEGER,
+    cap_m3      INTEGER,
+    tp_rod      CHAR(2),
+    tp_car      CHAR(2),
+    uf          CHAR(2),
+    descricao   VARCHAR(60),
+    proprietario JSONB,           -- veículo de terceiro: { doc, xNome, rntrc, ie, uf, tpProp }
+    ativo       BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE TABLE IF NOT EXISTS motoristas (
+    id          SERIAL PRIMARY KEY,
+    nome        VARCHAR(120) NOT NULL,
+    cpf         VARCHAR(11) NOT NULL UNIQUE,
+    telefone    VARCHAR(30),
+    cnh         VARCHAR(20),
+    cnh_validade DATE,
+    ativo       BOOLEAN NOT NULL DEFAULT TRUE
+);
+
 -- Romaneio (manifesto de saída para entrega) e o app do motorista.
 CREATE TABLE IF NOT EXISTS romaneios (
     id                  SERIAL PRIMARY KEY,

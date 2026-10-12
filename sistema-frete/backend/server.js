@@ -43,6 +43,7 @@ const ocorrenciasRoutes = require('./src/routes/ocorrencias');
 const rastreioRoutes = require('./src/routes/rastreio');
 const romaneiosRoutes = require('./src/routes/romaneios').router;
 const motoristaRoutes = require('./src/routes/motorista');
+const mdfeRoutes = require('./src/routes/mdfe');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
@@ -200,6 +201,7 @@ app.use('/api/ocorrencias', ocorrenciasRoutes);
 app.use('/api/rastreio', rastreioRoutes);
 app.use('/api/romaneios', romaneiosRoutes);
 app.use('/api/motorista', motoristaRoutes);
+app.use('/api/mdfe', mdfeRoutes);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

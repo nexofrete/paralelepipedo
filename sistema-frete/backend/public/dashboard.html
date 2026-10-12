@@ -222,6 +222,8 @@
         </div>
         <div class="cte-abas">
           <div class="cte-aba ativo" data-cte-aba="lista">CT-e emitidos</div>
+          <div class="cte-aba" data-cte-aba="mdfe">📋 MDF-e</div>
+          <div class="cte-aba" data-cte-aba="frota">🚛 Veículos e motoristas</div>
           <div class="cte-aba" data-cte-aba="config" id="cteAbaConfig">⚙️ Configuração fiscal</div>
         </div>
         <div id="cteAvisoConfig" class="cte-aviso oculto"></div>
@@ -242,8 +244,13 @@
             </div>
           </div>
         </div>
+        <div id="cte-aba-mdfe" class="oculto"></div>
+        <div id="cte-aba-frota" class="oculto"></div>
         <div id="cte-aba-config" class="oculto"></div>
       </section>
+      <div class="modal-overlay oculto" id="modalMdfe">
+        <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="mdfeModalConteudo"></div>
+      </div>
 
       <!-- Modal: formulário do CT-e -->
       <div class="modal-overlay oculto" id="modalCte">
@@ -3187,6 +3194,7 @@
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>
   <script src="js/ocorrencias.js"></script>
+  <script src="js/mdfe.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/roteirizacao.js"></script>
 </body>

@@ -107,4 +107,4 @@ async function enviarEvento({ uf, tpAmb, cert, xmlEventoAssinado, verificarServi
   return { cStat: tag(ret, 'cStat'), xMotivo: tag(ret, 'xMotivo'), nProt: tag(ret, 'nProt'), dhRegEvento: tag(ret, 'dhRegEvento'), retorno: ret };
 }
 
-module.exports = { statusServico, autorizar, consultar, enviarEvento, tag, elemento, xmlStatus, xmlConsulta };
+module.exports = { statusServico, autorizar, consultar, enviarEvento, tag, elemento, xmlStatus, xmlConsulta, postar };

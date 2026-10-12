@@ -128,9 +128,24 @@ Para a transportadora que usa o Nexofrete, o menu **🚛 Emissão de CT-e** mont
 
 Depois de autorizado, também dá para baixar o XML, consultar na SEFAZ, registrar carta de correção e cancelar com justificativa. Se a SEFAZ rejeitar, o motivo aparece na lista: corrija e transmita de novo, que o número continua o mesmo. Se a SEFAZ não responder, **Tentar de novo** consulta primeiro, para não emitir o mesmo CT-e duas vezes.
 
-Ainda não fazem parte: MDF-e, CT-e complementar/substituto/anulação, expedidor e recebedor, inutilização de numeração e emissão em contingência.
+Ainda não fazem parte: CT-e complementar/substituto/anulação, expedidor e recebedor, inutilização de numeração e emissão em contingência.
 
 Testes automáticos do CT-e: `npm test` dentro de `backend`. A validação nos schemas oficiais precisa do `xmllint`.
+
+## MDF-e (manifesto da viagem)
+
+Na **🚛 Emissão de CT-e**, a aba **📋 MDF-e** emite o MDF-e (modelo 58, rodoviário, versão 3.00) na SEFAZ Virtual do RS (SVRS), que autoriza o MDF-e de todos os estados. Ele usa o mesmo certificado e o mesmo ambiente do CT-e, inclusive o modo demonstração. A série e o próximo número ficam em Configuração fiscal.
+
+1. Cadastre os caminhões, as carretas e os motoristas em **🚛 Veículos e motoristas**: placa, RENAVAM, tara, capacidade, tipo de rodado e carroceria, CPF e CNH. Para veículo de agregado ou TAC, informe também os dados do proprietário.
+2. Monte o MDF-e de um destes jeitos:
+   - Em **+ MDF-e dos CT-e autorizados**, marque os CT-e da viagem.
+   - Num romaneio (Ocorrências → Romaneios), clique em **📋 Emitir MDF-e**. Ele já traz o veículo e o motorista do romaneio.
+
+   Sai um MDF-e por UF de descarregamento. O sistema sugere as UFs do percurso e soma o valor e o peso da carga.
+3. Confira o veículo, a carreta, os motoristas, o seguro (seguradora, apólice e averbação) e, se houver, o CIOT, o vale-pedágio e o contratante. Depois clique em **Salvar e transmitir**. O DAMDFE abre para imprimir e vai com o motorista.
+4. No fim da viagem, clique em **🏁 Encerrar**. Enquanto houver MDF-e aberto para a placa, a SEFAZ recusa outro (rejeição 686). O botão **Não encerrados na SEFAZ** mostra o que ficou aberto.
+
+Com o MDF-e autorizado, também dá para **incluir motorista** (troca durante a viagem), consultar e cancelar. O cancelamento só vale antes de o caminhão sair; depois disso, encerre.
 
 ## Roteirizar entregas
 

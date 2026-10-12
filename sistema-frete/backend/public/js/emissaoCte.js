@@ -35,8 +35,8 @@
   nav.addEventListener('click', () => { carregarConfig().then(carregarLista); });
   document.querySelectorAll('.cte-aba').forEach((aba) => aba.addEventListener('click', () => {
     document.querySelectorAll('.cte-aba').forEach((a) => a.classList.toggle('ativo', a === aba));
-    $('cte-aba-lista').classList.toggle('oculto', aba.dataset.cteAba !== 'lista');
-    $('cte-aba-config').classList.toggle('oculto', aba.dataset.cteAba !== 'config');
+    // Cada aba tem o seu painel "cte-aba-<nome>" (lista, mdfe, frota, config).
+    document.querySelectorAll('[id^="cte-aba-"]').forEach((p) => p.classList.toggle('oculto', p.id !== `cte-aba-${aba.dataset.cteAba}`));
     if (aba.dataset.cteAba === 'config') renderConfig();
   }));
 
@@ -587,7 +587,8 @@
           ${campo('cfg_rntrc', 'RNTRC (ANTT)', { valor: c.rntrc || '', ph: '8 dígitos' })}
           ${sel('cfg_crt', 'Regime tributário', [[3, 'Regime normal'], [1, 'Simples Nacional'], [2, 'Simples — excesso de sublimite'], [4, 'MEI']], c.crt || 3)}
           ${sel('cfg_ambiente', 'Ambiente', [['demo', 'Demonstração (simulada)'], [2, 'Homologação (testes, sem valor fiscal)'], [1, 'PRODUÇÃO (valor fiscal)']], c.cte_demonstracao ? 'demo' : (c.cte_ambiente || 2))}
-          ${campo('cfg_serie', 'Série', { valor: c.cte_serie ?? 1, tipo: 'number' })}${campo('cfg_numero', 'Próximo número', { valor: c.cte_proximo_numero ?? 1, tipo: 'number' })}
+          ${campo('cfg_serie', 'Série do CT-e', { valor: c.cte_serie ?? 1, tipo: 'number' })}${campo('cfg_numero', 'Próximo número do CT-e', { valor: c.cte_proximo_numero ?? 1, tipo: 'number' })}
+          ${campo('cfg_mdfe_serie', 'Série do MDF-e', { valor: c.mdfe_serie ?? 1, tipo: 'number' })}${campo('cfg_mdfe_numero', 'Próximo número do MDF-e', { valor: c.mdfe_proximo_numero ?? 1, tipo: 'number' })}
           ${sel('cfg_cst', 'CST do ICMS padrão', [['00', '00 - Tributação normal'], ['20', '20 - Redução de base'], ['40', '40 - Isenta'], ['41', '41 - Não tributada'], ['51', '51 - Diferida'], ['90', '90 - Outros']], c.cte_cst_padrao || '00')}
           ${campo('cfg_aliq', 'Alíquota interna do ICMS (%)', { valor: c.cte_aliquota_interna ?? '', ph: 'operação dentro do estado' })}
           ${campo('cfg_prazo', 'Prazo de entrega padrão (dias úteis)', { valor: c.cte_prazo_padrao ?? '', ph: 'sem tabela de preço: 3', tipo: 'number' })}
@@ -668,7 +669,7 @@
       cnpj: v('cfg_cnpj').toUpperCase().replace(/[^A-Z0-9]/g, ''), ie: v('cfg_ie'), razao_social: v('cfg_razao'), nome_fantasia: v('cfg_fantasia'),
       endereco: v('cfg_lgr'), numero: v('cfg_nro'), complemento: v('cfg_cpl'), bairro: v('cfg_bairro'), municipio: v('cfg_mun'),
       codigo_municipio: v('cfg_cmun').replace(/\D/g, ''), uf: v('cfg_uf'), cep: v('cfg_cep').replace(/\D/g, ''), telefone: v('cfg_fone'), email: v('cfg_email'),
-      rntrc: v('cfg_rntrc').replace(/\D/g, ''), crt: v('cfg_crt'), cte_ambiente: ambienteNovo, cte_demonstracao: demo, cte_serie: v('cfg_serie'), cte_proximo_numero: v('cfg_numero'),
+      rntrc: v('cfg_rntrc').replace(/\D/g, ''), crt: v('cfg_crt'), cte_ambiente: ambienteNovo, cte_demonstracao: demo, cte_serie: v('cfg_serie'), cte_proximo_numero: v('cfg_numero'), mdfe_serie: v('cfg_mdfe_serie'), mdfe_proximo_numero: v('cfg_mdfe_numero'),
       cte_cst_padrao: v('cfg_cst'), cte_aliquota_interna: v('cfg_aliq'), cte_prazo_padrao: v('cfg_prazo'), cte_verificar_servidor: $('cfg_verificar').checked,
       cte_ibscbs_ativo: $('cfg_ibs').checked, cte_ibscbs_cst: v('cfg_ibs_cst'), cte_ibscbs_class_trib: v('cfg_ibs_class'),
       cte_ibs_uf_aliquota: v('cfg_ibs_uf'), cte_ibs_mun_aliquota: v('cfg_ibs_mun'), cte_cbs_aliquota: v('cfg_cbs'),

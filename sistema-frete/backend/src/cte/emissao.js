@@ -215,4 +215,4 @@ async function testarConexao() {
   return sefaz.statusServico({ uf: e.uf, tpAmb: e.cte_ambiente, cert, verificarServidor: e.cte_verificar_servidor, simulado: e.cte_demonstracao ? {} : null });
 }
 
-module.exports = { carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar };
+module.exports = { certificadoParaUsar, carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar };

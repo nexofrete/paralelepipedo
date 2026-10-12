@@ -324,6 +324,7 @@
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
         ${r.status === 'aberto' ? '<button class="btn btn-secundario" id="rmExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : ''}
         <a class="btn btn-secundario" href="/api/romaneios/${r.id}/imprimir?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Imprimir</a>
+        ${window.nexoMdfe && r.status !== 'fechado' ? '<button class="btn btn-secundario" id="rmMdfe" style="width:auto;">📋 Emitir MDF-e</button>' : ''}
         ${r.status === 'aberto' ? '<button class="btn btn-primario" id="rmSaida" style="width:auto;">▶ Dar saída (saiu para entrega)</button>' : ''}
         ${r.status === 'em_rota' ? '<button class="btn btn-primario" id="rmFechar" style="width:auto;">✓ Fechar romaneio (retorno)</button>' : ''}</div>`;
     modal.classList.remove('oculto');
@@ -344,6 +345,10 @@
       if (!await confirmar(`Dar saída? Os ${r.itens.length} CT-e ficam como "Saiu para entrega".`, { textoOk: 'Dar saída' })) return;
       botao.disabled = true;
       try { const x = await apiRom(`/${id}/saida`, { method: 'POST' }); mostrarAlerta(`Saída registrada: ${x.ctes} CT-e em "Saiu para entrega".`, { tipo: 'sucesso' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+    $('rmMdfe')?.addEventListener('click', async (e) => {
+      const botao = e.currentTarget; botao.disabled = true;
+      try { fecharModal(); await window.nexoMdfe.montarDosCtes({ romaneioId: r.id }); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); botao.disabled = false; }
     });
     $('rmFechar')?.addEventListener('click', async () => {
       const pendentes = r.itens.filter((i) => i.situacao === 'em_rota').length;

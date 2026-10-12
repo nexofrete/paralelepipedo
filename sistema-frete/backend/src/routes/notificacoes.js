@@ -194,29 +194,19 @@ router.get('/', autenticar, async (req, res) => {
     } catch { /* segue sem essa checagem */ }
 
     if (verAuditoria) try {
-      // A conferência do ICMS usa exclusivamente UFIni/UFFim do CT-e.
+      // Mesma conferência da auditoria (UFIni→UFFim, ou o trecho até o redespacho).
+      const { conferirIcms, camposSql } = require('../icmsCte');
       const { rows: ctesIcms } = await consultaCliente(req,
-        `SELECT impostos_cte FROM fretes
+        `SELECT fretes.id, fretes.frete_principal_id, fretes.transportadora, ${camposSql('fretes')} FROM fretes
           WHERE chave_cte IS NOT NULL AND NOT cte_cancelado
-            AND COALESCE(status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado')
+            AND COALESCE(status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado', 'Faturado')
             AND impostos_cte IS NOT NULL AND impostos_cte <> ''
+            AND uf_inicio_cte IS NOT NULL AND uf_inicio_cte <> uf_fim_cte
           LIMIT 5000`);
-      const foraDaRota = ctesIcms.reduce((total, f) => {
-        try {
-          const j = JSON.parse(f.impostos_cte);
-          const ini = String(j.uf_inicio || j.ufInicio || '').trim().toUpperCase();
-          const fim = String(j.uf_fim || j.ufFim || '').trim().toUpperCase();
-          const cobrada = Number(j.aliquota || j.pICMS || j.pICMSInter || j.aliquota_icms);
-          if (!ini || !fim || ini === fim || !Number.isFinite(cobrada)) return total;
-          const sulSudeste = ['PR','RS','SC','SP','MG','RJ','ES'];
-          const norteNordesteCO = ['AC','AL','AP','AM','BA','CE','DF','GO','MA','MT','MS','PA','PB','PE','PI','RO','RR','RN','TO'];
-          const esperada = sulSudeste.includes(ini) && norteNordesteCO.includes(fim) ? 7 : 12;
-          return Math.abs(cobrada - esperada) > 0.01 ? total + 1 : total;
-        } catch { return total; }
-      }, 0);
+      const foraDaRota = ctesIcms.filter((f) => conferirIcms(f)?.divergente).length;
       if (foraDaRota > 0) {
         notificacoes.push({ tipo: 'urgente', icone: '🧾', pagina: 'auditoria-frete', alvo: 'retidos',
-          texto: `${foraDaRota} CT-e com alíquota de ICMS diferente da rota UFIni → UFFim — confira a conferência` });
+          texto: `${foraDaRota} CT-e com alíquota de ICMS diferente da rota — confira na Auditoria de Frete` });
       }
     } catch { /* segue sem essa checagem */ }
 

@@ -6,10 +6,19 @@ const base = require('./municipios.json');
 const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 const porIbge = new Map();
 const porNome = new Map();
+const ufsPorNome = new Map();   // nome → UFs que têm um município com esse nome
 for (const [ibge, nome, uf, lat, lon] of base.municipios) {
   const m = { ibge: String(ibge), nome, uf, lat, lon };
   porIbge.set(m.ibge, m);
   porNome.set(`${norm(nome)}|${uf}`, m);
+  ufsPorNome.set(norm(nome), [...(ufsPorNome.get(norm(nome)) || []), uf]);
+}
+// UFs que têm um município com esse nome (aceita "GUARULHOS", "Guarulhos - SP", "Guarulhos/SP").
+function ufsDaCidade(texto) {
+  const t = norm(texto);
+  const m = t.match(/^(.*?)\s+([A-Z]{2})$/);
+  if (m && ufsPorNome.get(m[1])?.includes(m[2])) return [m[2]];
+  return ufsPorNome.get(t) || [];
 }
 
 function municipio({ ibge, cidade, uf } = {}) {
@@ -27,4 +36,4 @@ function distanciaKm(a, b) {
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
-module.exports = { municipio, distanciaKm, norm };
+module.exports = { municipio, ufsDaCidade, distanciaKm, norm };

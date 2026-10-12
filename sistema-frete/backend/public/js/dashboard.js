@@ -3870,8 +3870,10 @@ async function carregarComposicaoCte(id) {
       const icms = conferirIcmsCte(ultimasLinhasAuditoria.find((x) => x.id === Number(id)));
       if (!icms) return '';
       return icms.divergente
-        ? `<div class="cte-alerta-grande">⚠ Alíquota de ICMS <b>${icms.cobrada.toLocaleString('pt-BR')}%</b>, mas para transporte <b>${icms.ini} → ${icms.fim}</b> a alíquota interestadual é <b>${icms.esperada}%</b>. Confira com a transportadora.</div>`
-        : `<p style="margin:6px 0 0; font-size:12px; color:var(--verde);">✓ Alíquota de ICMS ${icms.cobrada.toLocaleString('pt-BR')}% correta para ${icms.ini} → ${icms.fim}.</p>`;
+        ? `<div class="cte-alerta-grande">⚠ Alíquota de ICMS <b>${icms.cobrada.toLocaleString('pt-BR')}%</b>, mas para transporte <b>${icms.ini} → ${icms.fim}</b> a alíquota interestadual é <b>${icms.esperada}%</b>${icms.motivo ? ` (${cfEsc(icms.motivo)})` : ''}. Confira com a transportadora.</div>`
+        : icms.esperada == null
+          ? `<p style="margin:6px 0 0; font-size:12px; color:var(--texto-fraco);">ICMS ${icms.cobrada.toLocaleString('pt-BR')}%: ${cfEsc(icms.motivo || '')} — trecho dentro do estado, alíquota interna (não conferida).</p>`
+          : `<p style="margin:6px 0 0; font-size:12px; color:var(--verde);">✓ Alíquota de ICMS ${icms.cobrada.toLocaleString('pt-BR')}% correta para ${icms.ini} → ${icms.fim}${icms.motivo ? ` (${cfEsc(icms.motivo)})` : ''}.</p>`;
     })()}
     ${c.vCarga != null ? `<p style="margin:0 0 4px; color:var(--texto-fraco); font-size:12px;">Valor da carga declarado: ${formatoMoeda(c.vCarga)}</p>` : ''}
   `;
@@ -3896,6 +3898,9 @@ const ROTULOS_VINCULO = {
 const UF_SUL_SUDESTE = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
 const UF_N_NE_CO_ES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'PA', 'PB', 'PE', 'PI', 'RN', 'RO', 'RR', 'SE', 'TO'];
 function conferirIcmsCte(l) {
+  // A auditoria já manda a conferência pronta do servidor, que sabe o trecho
+  // do redespacho (a 1ª transportadora tributa só até a cidade do redespacho).
+  if (l && 'icms_conferencia' in l) return l.icms_conferencia;
   // IMPORTANTE: a rota usada para determinar a alíquota vem somente dos
   // campos UFIni/UFFim do CT-e, persistidos como uf_inicio_cte/uf_fim_cte.
   // Não usar "uf" (NF-e), UF da transportadora ou outro campo auxiliar.
@@ -3927,7 +3932,7 @@ function alertasDoCartao(l) {
 function seloVinculoCte(l) {
   const icms = conferirIcmsCte(l);
   const seloIcms = icms?.divergente
-    ? `<div class="cte-selo perigo" title="Transporte ${icms.ini} → ${icms.fim}: alíquota interestadual esperada ${icms.esperada}%">⚠ ICMS ${icms.cobrada.toLocaleString('pt-BR')}% (esperado ${icms.esperada}% · ${icms.ini}→${icms.fim})</div>` : '';
+    ? `<div class="cte-selo perigo" title="Transporte ${icms.ini} → ${icms.fim}: alíquota interestadual esperada ${icms.esperada}%${icms.motivo ? ` (${cfEsc(icms.motivo)})` : ''}">⚠ ICMS ${icms.cobrada.toLocaleString('pt-BR')}% (esperado ${icms.esperada}% · ${icms.ini}→${icms.fim})</div>` : '';
   if (l.vinculo_cte && ROTULOS_VINCULO[l.vinculo_cte]) {
     const r = ROTULOS_VINCULO[l.vinculo_cte];
     return `<div class="cte-selo ${r.cls}">${r.txt} do CT-e ${cfEsc(l.numero_cte_principal || '—')} · NF ${cfEsc(l.numero_nf || '—')}</div>${seloIcms}`;

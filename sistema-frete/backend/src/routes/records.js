@@ -2,6 +2,12 @@ const express = require('express');
 const pool = require('../db');
 const { autenticar, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
+const icmsCte = require('../icmsCte');
+// Junta a conferência do ICMS (com o trecho do redespacho) e tira os campos auxiliares.
+function comIcmsConferido(r) {
+  const { icms_nota: _n, icms_uf_recebedor: _u, ...resto } = r;
+  return { ...resto, icms_conferencia: icmsCte.conferirIcms(r) };
+}
 const { permitirAlguma, consultaCliente, podeVerCliente, freteDoCliente, temAlguma, vePotudo, bloquearCteCancelado } = require('../permissoes');
 const { calcularParaRegistro } = require('../calculoFrete');
 const { normalizarCidade, corrigirPelaLista } = require('../nomesCidades');
@@ -2077,8 +2083,7 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
              f.tabela_preco_id_usada, f.prazo_dias_tabela,
              f.status, f.status_aprovacao, f.cte_cancelado, f.cte_cancelado_motivo,
              f.frete_principal_id, f.vinculo_cte, f.carga_direta,
-             f.uf_inicio_cte, f.uf_fim_cte, f.impostos_cte,
-             f.transportadora_cnpj_cte,
+             ${icmsCte.camposSql('f')},
              -- Duplicidade: o mesmo CT-e (número + transportadora) em mais de um registro
              -- ativo; a mesma NF em mais de um registro PRINCIPAL (CT-e a mais da nota
              -- — reentrega, redespacho, cancelado — é esperado e não conta).
@@ -2101,8 +2106,6 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
     const toleranciaValor = Number(cfg[0]?.tolerancia_valor || 0);
     const toleranciaPercentual = Number(cfg[0]?.tolerancia_percentual || 0);
 
-    const sulSudeste = new Set(['SP','RJ','MG','PR','SC','RS']);
-    const norteNordesteCentroOesteEs = new Set(['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','PA','PB','PE','PI','RN','RO','RR','SE','TO']);
     // Nomes da transportadora sem "LTDA", pontuação e espaços: "FAST-X TRANSPORTES
     // LTDA" e "FAST X TRANSPORTES" são a mesma.
     const nomeLimpo = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
@@ -2130,16 +2133,9 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
       if (!r.cte_cancelado && Number(r.qtd_numero_cte || 0) > 1) problemas.push({ codigo: 'DUP_CTE', texto: `CT-e aparece ${r.qtd_numero_cte}x` });
       if (Number(r.qtd_numero_nf || 0) > 1) problemas.push({ codigo: 'DUP_NFE', texto: `NF-e aparece ${r.qtd_numero_nf}x` });
 
-      let icms = null;
-      try { icms = JSON.parse(r.impostos_cte || '{}') || {}; } catch (_) { icms = null; }
-      const ini = String(r.uf_inicio_cte || '').trim().toUpperCase();
-      const fim = String(r.uf_fim_cte || '').trim().toUpperCase();
-      const cst = String(icms?.cst ?? '').padStart(2, '0');
-      if (ini && fim && ini !== fim && ['00','20'].includes(cst) && icms?.pICMS != null) {
-        const esperada = icms?.aliquotaEsperadaPelaRota != null ? Number(icms.aliquotaEsperadaPelaRota) : (sulSudeste.has(ini) && norteNordesteCentroOesteEs.has(fim) ? 7 : 12);
-        const cobrada = Number(icms.pICMS);
-        if (Math.abs(cobrada - esperada) > 0.01) problemas.push({ codigo: 'ICMS', texto: `ICMS ${cobrada}% — esperado ${esperada}% (${ini}→${fim})` });
-      }
+      const icms = icmsCte.conferirIcms(r);
+      if (icms?.divergente) problemas.push({ codigo: 'ICMS', texto: `ICMS ${icms.cobrada}% — esperado ${icms.esperada}% (${icms.ini}→${icms.fim}${icms.motivo ? ', trecho até o redespacho' : ''})` });
+      delete r.icms_nota; delete r.icms_uf_recebedor;
 
       return { ...r, diferenca, diferenca_percentual: diferencaPercentual, problemas, qtd_problemas: problemas.length,
         situacao: problemas.length ? 'Divergência' : 'Conferido' };
@@ -2357,7 +2353,7 @@ router.get('/auditoria/divergencias', autenticar, permitirAlguma('pode_ver_audit
               (SELECT STRING_AGG(fi.numero_cte || COALESCE(' (' || fi.cte_cancelado_motivo || ')', ''), ', ')
                  FROM fretes fi WHERE fi.frete_principal_id = fretes.id AND fi.cte_cancelado) AS ctes_cancelados,
               cidade, uf, qtd_volumes, peso_kg, valor_frete_tabelado, valor_total_calculado, valor_frete_negociado,
-              fretes.data_emissao_cte, fretes.atualizado_em,
+              fretes.data_emissao_cte, fretes.atualizado_em, ${icmsCte.camposSql('fretes')},
               dif_negociado_tabela, auditoria_calculo, carga_direta, impostos_nfe, impostos_cte, uf_inicio_cte, uf_fim_cte,
               valor_faturado, fretes.tde, fretes.tda, fretes.gris, fretes.pedagio, fretes.trt, fretes.ad_valorem,
               reentrega, devolucao, outras_despesas, valor_total_frete,
@@ -2376,7 +2372,7 @@ router.get('/auditoria/divergencias', autenticar, permitirAlguma('pode_ver_audit
        LIMIT 500`,
       valores
     );
-    res.json(rows);
+    res.json(rows.map(comIcmsConferido));
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: `Erro ao buscar auditoria de frete. Detalhe técnico: ${err.message}` });

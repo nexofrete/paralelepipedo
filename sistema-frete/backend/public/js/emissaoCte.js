@@ -47,8 +47,8 @@
     const selo = $('cteSeloAmbiente');
     if (config) {
       const prod = Number(config.cte_ambiente) === 1;
-      selo.textContent = prod ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO (sem valor fiscal)';
-      selo.className = `badge ${prod ? 'badge-liberado' : 'badge-pendente'}`;
+      selo.textContent = config.cte_demonstracao ? 'DEMONSTRAÇÃO (SEFAZ simulada — nada é enviado)' : prod ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO (sem valor fiscal)';
+      selo.className = `badge ${config.cte_demonstracao ? 'badge-faturado' : prod ? 'badge-liberado' : 'badge-pendente'}`;
     }
     const faltando = [];
     if (!config?.cnpj || !config?.razao_social) faltando.push('dados da empresa');
@@ -100,7 +100,7 @@
     const motivo = c.motivo && ['rejeitado', 'erro', 'cancelado'].includes(c.status)
       ? `<div style="font-size:11.5px; color:${c.status === 'cancelado' ? 'var(--texto-fraco)' : 'var(--vermelho)'}; max-width:280px;">${esc(c.cstat && c.status !== 'cancelado' ? `${c.cstat} - ` : '')}${esc(c.motivo)}</div>` : '';
     return `<tr>
-      <td style="white-space:nowrap;"><b>${c.numero ? `${c.serie}/${c.numero}` : '—'}</b><div style="font-size:11px; color:var(--texto-fraco);">${dataHora(c.autorizado_em || c.criado_em)}</div>${Number(c.ambiente) === 2 ? '<div style="font-size:10.5px; color:var(--amarelo);">homologação</div>' : ''}</td>
+      <td style="white-space:nowrap;"><b>${c.numero ? `${c.serie}/${c.numero}` : '—'}</b><div style="font-size:11px; color:var(--texto-fraco);">${dataHora(c.autorizado_em || c.criado_em)}</div>${c.demonstracao ? '<div style="font-size:10.5px; color:var(--azul);">demonstração</div>' : Number(c.ambiente) === 2 ? '<div style="font-size:10.5px; color:var(--amarelo);">homologação</div>' : ''}</td>
       <td><span class="badge badge-cte-${esc(c.status)}">${esc(STATUS[c.status] || c.status)}</span>${motivo}</td>
       <td>${esc(c.tomador_nome || '—')}</td>
       <td style="font-size:12.5px;">${esc(c.remetente_nome || '—')}<br><span style="color:var(--texto-fraco);">→ ${esc(c.destinatario_nome || '—')}</span></td>
@@ -151,7 +151,9 @@
     if (prod && !await confirmar('Transmitir este CT-e em PRODUÇÃO? Depois de autorizado ele tem valor fiscal.', { textoOk: 'Transmitir' })) return null;
     const c = await api(`/${id}/transmitir`, { method: 'POST' });
     if (c.status === 'autorizado') {
-      mostrarAlerta(`CT-e ${c.serie}/${c.numero} autorizado!\nProtocolo: ${c.protocolo}`, { tipo: 'sucesso' });
+      mostrarAlerta(c.demonstracao
+        ? `CT-e ${c.serie}/${c.numero} autorizado na DEMONSTRAÇÃO (simulado, nada foi enviado à SEFAZ).\nProtocolo de demonstração: ${c.protocolo}`
+        : `CT-e ${c.serie}/${c.numero} autorizado!\nProtocolo: ${c.protocolo}`, { tipo: 'sucesso' });
       window.open(`/api/cte-emissao/${id}/dacte?token=${encodeURIComponent(token)}`, '_blank');
     } else {
       mostrarAlerta(`A SEFAZ não autorizou o CT-e ${c.serie}/${c.numero}:\n${c.cstat || ''} - ${c.motivo || ''}\n\nCorrija e transmita de novo (o número continua reservado).`, { tipo: 'erro' });
@@ -584,7 +586,7 @@
         <div class="cte-secao"><h4>Dados fiscais do CT-e</h4><div class="cte-grade">
           ${campo('cfg_rntrc', 'RNTRC (ANTT)', { valor: c.rntrc || '', ph: '8 dígitos' })}
           ${sel('cfg_crt', 'Regime tributário', [[3, 'Regime normal'], [1, 'Simples Nacional'], [2, 'Simples — excesso de sublimite'], [4, 'MEI']], c.crt || 3)}
-          ${sel('cfg_ambiente', 'Ambiente', [[2, 'Homologação (testes, sem valor fiscal)'], [1, 'PRODUÇÃO (valor fiscal)']], c.cte_ambiente || 2)}
+          ${sel('cfg_ambiente', 'Ambiente', [['demo', 'Demonstração (simulada)'], [2, 'Homologação (testes, sem valor fiscal)'], [1, 'PRODUÇÃO (valor fiscal)']], c.cte_demonstracao ? 'demo' : (c.cte_ambiente || 2))}
           ${campo('cfg_serie', 'Série', { valor: c.cte_serie ?? 1, tipo: 'number' })}${campo('cfg_numero', 'Próximo número', { valor: c.cte_proximo_numero ?? 1, tipo: 'number' })}
           ${sel('cfg_cst', 'CST do ICMS padrão', [['00', '00 - Tributação normal'], ['20', '20 - Redução de base'], ['40', '40 - Isenta'], ['41', '41 - Não tributada'], ['51', '51 - Diferida'], ['90', '90 - Outros']], c.cte_cst_padrao || '00')}
           ${campo('cfg_aliq', 'Alíquota interna do ICMS (%)', { valor: c.cte_aliquota_interna ?? '', ph: 'operação dentro do estado' })}
@@ -603,8 +605,10 @@
         <div style="display:flex; justify-content:flex-end; margin-bottom:18px;"><button type="button" class="btn btn-primario" id="cfgSalvar" style="width:auto;">💾 Salvar configuração</button></div>
         <div class="cte-secao"><h4>Certificado digital A1</h4>
           <div style="margin-bottom:10px; font-size:13px;">${c.tem_certificado
-    ? `✅ <b>${esc(c.certificado_titular)}</b>${c.certificado_cnpj ? ` — CNPJ ${esc(c.certificado_cnpj)}` : ''} — válido até <b>${venc ? venc.toLocaleDateString('pt-BR') : '?'}</b>`
+    ? `${c.certificado_demonstracao ? '🧪 <b>Certificado de DEMONSTRAÇÃO</b> (só funciona no modo demonstração) — ' : '✅ '}<b>${esc(c.certificado_titular)}</b>${c.certificado_cnpj ? ` — CNPJ ${esc(c.certificado_cnpj)}` : ''} — válido até <b>${venc ? venc.toLocaleDateString('pt-BR') : '?'}</b>`
     : '⚠️ Nenhum certificado enviado.'}</div>
+          ${c.cte_demonstracao ? `<div class="cte-aviso" style="margin-bottom:10px;">🧪 <b>Modo demonstração ligado.</b> A SEFAZ é simulada aqui no servidor: dá para emitir, imprimir o DACTE, cancelar e fazer carta de correção sem internet e sem certificado verdadeiro. A assinatura digital e a chave de acesso são conferidas de verdade. <b>Nada é enviado e nada tem valor fiscal</b> — o DACTE sai com a tarja "DEMONSTRAÇÃO".
+            ${!c.tem_certificado || c.certificado_demonstracao ? '' : '<br>Já tem um certificado verdadeiro: ele é usado para assinar (e continua sem enviar nada).'}</div>` : ''}
           <div class="cte-grade">
             <div class="campo largo"><label for="cfg_pfx">Arquivo do certificado (.pfx ou .p12)</label><input type="file" id="cfg_pfx" accept=".pfx,.p12" /></div>
             ${campo('cfg_pfx_senha', 'Senha do certificado', { tipo: 'password', extra: 'autocomplete="new-password"' })}
@@ -612,6 +616,7 @@
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
             <button type="button" class="btn btn-primario" id="cfgEnviarPfx" style="width:auto;">⬆ Enviar certificado</button>
             ${c.tem_certificado ? '<button type="button" class="btn btn-secundario" id="cfgRemoverPfx" style="width:auto;">Remover</button>' : ''}
+            ${c.cte_demonstracao && (!c.tem_certificado || c.certificado_demonstracao) ? `<button type="button" class="btn btn-secundario" id="cfgGerarDemo" style="width:auto;">🧪 ${c.certificado_demonstracao ? 'Gerar de novo o' : 'Gerar'} certificado de demonstração</button>` : ''}
             <button type="button" class="btn btn-secundario" id="cfgTestar" style="width:auto;">📡 Testar conexão com a SEFAZ</button>
           </div>
           <div style="font-size:12px; color:var(--texto-fraco);">O certificado e a senha ficam guardados criptografados no banco do Nexofrete e nunca voltam para a tela.</div>
@@ -623,6 +628,11 @@
       if (!await confirmar('Remover o certificado digital? Sem ele não dá para transmitir.', { tipo: 'perigo', textoOk: 'Remover' })) return;
       await api('/certificado', { method: 'DELETE' }); await carregarConfig(); renderConfig();
     });
+    $('cfgGerarDemo')?.addEventListener('click', (e) => comBotaoCfg(e.currentTarget, async () => {
+      const r = await api('/certificado/demonstracao', { method: 'POST' });
+      await carregarConfig(); renderConfig();
+      mostrarAlerta(`Certificado de demonstração gerado para ${r.titular} (${r.cnpj}). Ele não vale na SEFAZ — serve só para o modo demonstração.`, { tipo: 'sucesso' });
+    }));
     $('cfgTestar').addEventListener('click', (e) => comBotaoCfg(e.currentTarget, async () => {
       const r = await api('/testar-conexao', { method: 'POST' });
       mostrarAlerta(`SEFAZ (${r.autorizador}): ${r.cStat} - ${r.xMotivo}${r.tMed ? ` · tempo médio ${r.tMed}s` : ''}`, { tipo: r.cStat === '107' ? 'sucesso' : 'aviso' });
@@ -635,14 +645,17 @@
   }
   async function salvarConfig() {
     const v = (id) => $(id).value.trim();
-    const ambienteNovo = Number(v('cfg_ambiente'));
+    const demo = v('cfg_ambiente') === 'demo';
+    const ambienteNovo = demo ? 2 : Number(v('cfg_ambiente'));
+    if (!demo && config?.cte_demonstracao && config?.certificado_demonstracao
+      && !await confirmar('Sair do modo demonstração? O certificado cadastrado é o de demonstração e não vale na SEFAZ: envie o certificado A1 da empresa antes de transmitir.', { textoOk: 'Sair da demonstração' })) return;
     if (ambienteNovo === 1 && Number(config?.cte_ambiente) !== 1
       && !await confirmar('Passar a emitir em PRODUÇÃO? Os CT-e autorizados terão valor fiscal. Confira antes se os testes em homologação deram certo.', { tipo: 'perigo', textoOk: 'Usar produção' })) return;
     const corpo = {
       cnpj: v('cfg_cnpj').toUpperCase().replace(/[^A-Z0-9]/g, ''), ie: v('cfg_ie'), razao_social: v('cfg_razao'), nome_fantasia: v('cfg_fantasia'),
       endereco: v('cfg_lgr'), numero: v('cfg_nro'), complemento: v('cfg_cpl'), bairro: v('cfg_bairro'), municipio: v('cfg_mun'),
       codigo_municipio: v('cfg_cmun').replace(/\D/g, ''), uf: v('cfg_uf'), cep: v('cfg_cep').replace(/\D/g, ''), telefone: v('cfg_fone'), email: v('cfg_email'),
-      rntrc: v('cfg_rntrc').replace(/\D/g, ''), crt: v('cfg_crt'), cte_ambiente: v('cfg_ambiente'), cte_serie: v('cfg_serie'), cte_proximo_numero: v('cfg_numero'),
+      rntrc: v('cfg_rntrc').replace(/\D/g, ''), crt: v('cfg_crt'), cte_ambiente: ambienteNovo, cte_demonstracao: demo, cte_serie: v('cfg_serie'), cte_proximo_numero: v('cfg_numero'),
       cte_cst_padrao: v('cfg_cst'), cte_aliquota_interna: v('cfg_aliq'), cte_verificar_servidor: $('cfg_verificar').checked,
       cte_ibscbs_ativo: $('cfg_ibs').checked, cte_ibscbs_cst: v('cfg_ibs_cst'), cte_ibscbs_class_trib: v('cfg_ibs_class'),
       cte_ibs_uf_aliquota: v('cfg_ibs_uf'), cte_ibs_mun_aliquota: v('cfg_ibs_mun'), cte_cbs_aliquota: v('cfg_cbs'),

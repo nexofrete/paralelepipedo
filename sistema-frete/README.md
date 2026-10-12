@@ -86,6 +86,8 @@ Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha
 
 Para a transportadora que usa o Nexofrete, o menu **🚛 Emissão de CT-e** monta, transmite e imprime o CT-e (modelo 57, modal rodoviário, versão 4.00).
 
+**Modo demonstração (para apresentar e treinar sem certificado):** em Configuração fiscal → Ambiente, escolha **Demonstração (simulada)**, salve e clique em **🧪 Gerar certificado de demonstração**. A SEFAZ passa a ser simulada dentro do próprio servidor: emite, imprime o DACTE (com a tarja "DEMONSTRAÇÃO — NÃO ENVIADO À SEFAZ"), consulta, cancela e faz carta de correção, sem internet. A assinatura digital, a chave de acesso e o ambiente são conferidos de verdade; nada é enviado e nada tem valor fiscal. Para emitir de verdade, envie o certificado A1 (.pfx) da empresa e troque o ambiente para Homologação — o certificado de demonstração é recusado fora desse modo, e os CT-e de demonstração ficam marcados na lista.
+
 **Antes de emitir (administrador), em Emissão de CT-e → ⚙️ Configuração fiscal:**
 
 1. Preencha os dados da empresa. O botão **Preencher pelo CNPJ** busca razão social, endereço e código IBGE do município.

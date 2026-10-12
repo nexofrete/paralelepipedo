@@ -89,8 +89,12 @@ async function transmitir(id) {
   if (!reg) throw new Error('CT-e não encontrado.');
   if (['autorizado', 'cancelado'].includes(reg.status)) throw new Error(`Esse CT-e já está ${reg.status}.`);
   const e = await carregarEmitente();
-  const cert = await certificadoDoEmitente(pool);
-  const opcoes = { uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor };
+  const cert = await certificadoParaUsar(e);
+  // Demonstração: o que for transmitido agora fica marcado e nunca vai à SEFAZ.
+  const demo = reg.demonstracao || (!reg.chave && !!e.cte_demonstracao);
+  if (demo && !reg.demonstracao) await pool.query('UPDATE ctes_emitidos SET demonstracao = TRUE WHERE id = $1', [id]);
+  if (!demo && reg.demonstracao) throw new Error('Esse CT-e foi feito no modo demonstração. Duplique para emitir de verdade.');
+  const opcoes = { uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, simulado: demo ? { conhecido: null } : null };
 
   if (reg.status === 'enviando' || reg.status === 'erro') {
     if (reg.chave && reg.xml_assinado) {
@@ -139,6 +143,18 @@ async function transmitir(id) {
   return carregar(id);
 }
 
+// O certificado de demonstração só serve no modo demonstração (e vice-versa não há problema:
+// no modo demonstração pode-se usar o certificado verdadeiro, nada é enviado).
+async function certificadoParaUsar(e, demonstracao = !!e.cte_demonstracao) {
+  const cert = await certificadoDoEmitente(pool);
+  if (cert.demonstracao && !demonstracao) {
+    throw new Error('O certificado cadastrado é o de DEMONSTRAÇÃO e não vale na SEFAZ. Envie o certificado A1 da empresa (.pfx) na Configuração fiscal, ou ligue o modo demonstração.');
+  }
+  return cert;
+}
+const simulacao = (reg) => (reg.demonstracao
+  ? { conhecido: reg.chave && reg.protocolo ? { chave: reg.chave, nProt: reg.protocolo, cancelado: reg.status === 'cancelado' } : null } : null);
+
 async function carregar(id) {
   const { rows } = await pool.query('SELECT * FROM ctes_emitidos WHERE id = $1', [id]);
   return rows[0] || null;
@@ -148,8 +164,8 @@ async function consultar(id) {
   const reg = await carregar(id);
   if (!reg?.chave) throw new Error('Esse CT-e ainda não foi transmitido.');
   const e = await carregarEmitente();
-  const cert = await certificadoDoEmitente(pool);
-  const c = await sefaz.consultar({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, chave: reg.chave });
+  const cert = await certificadoParaUsar(e, reg.demonstracao);
+  const c = await sefaz.consultar({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, chave: reg.chave, simulado: simulacao(reg) });
   if (['100', '150'].includes(c.cStat) && c.protCTe && reg.status !== 'autorizado' && reg.status !== 'cancelado' && reg.xml_assinado) {
     await registrarAutorizado(id, reg.xml_assinado, { ...c, cStat: '100' });
   }
@@ -161,10 +177,10 @@ async function consultar(id) {
 
 async function enviarEvento(reg, montar, tipo) {
   const e = await carregarEmitente();
-  const cert = await certificadoDoEmitente(pool);
+  const cert = await certificadoParaUsar(e, reg.demonstracao);
   const xml = montar({ chave: reg.chave, cnpj: e.cnpj, uf: e.uf, tpAmb: reg.ambiente });
   const assinado = assinar(xml, 'infEvento', cert);
-  const r = await sefaz.enviarEvento({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, xmlEventoAssinado: assinado });
+  const r = await sefaz.enviarEvento({ uf: e.uf, cert, verificarServidor: e.cte_verificar_servidor, tpAmb: reg.ambiente, xmlEventoAssinado: assinado, simulado: simulacao(reg) });
   // 134/135/136: evento registrado.
   const ok = ['134', '135', '136'].includes(r.cStat);
   const evento = { tipo, cStat: r.cStat, xMotivo: r.xMotivo, protocolo: r.nProt, em: r.dhRegEvento || new Date().toISOString(), ok,
@@ -193,8 +209,8 @@ async function cartaCorrecao(id, correcoes) {
 
 async function testarConexao() {
   const e = await carregarEmitente();
-  const cert = await certificadoDoEmitente(pool);
-  return sefaz.statusServico({ uf: e.uf, tpAmb: e.cte_ambiente, cert, verificarServidor: e.cte_verificar_servidor });
+  const cert = await certificadoParaUsar(e);
+  return sefaz.statusServico({ uf: e.uf, tpAmb: e.cte_ambiente, cert, verificarServidor: e.cte_verificar_servidor, simulado: e.cte_demonstracao ? {} : null });
 }
 
 module.exports = { carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar };

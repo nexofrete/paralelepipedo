@@ -49,8 +49,13 @@ function postar(url, corpo, acao, cert, { verificarServidor = false, timeout = 6
   });
 }
 
-async function chamar(servico, { uf, tpAmb, cert, dados, verificarServidor }) {
+// simulado: modo demonstração — responde aqui mesmo (src/cte/simulador.js), sem ir à SEFAZ.
+async function chamar(servico, { uf, tpAmb, cert, dados, verificarServidor, simulado }) {
   const ws = ufs.webservicesDaUf(uf, tpAmb);
+  if (simulado) {
+    const resposta = require('./simulador').responder(servico, dados, { uf: CODIGO_UF[uf], conhecido: simulado.conhecido });
+    return { resposta, url: 'demonstração (simulado no servidor)', autorizador: 'DEMONSTRAÇÃO' };
+  }
   const { operacao, metodo } = SERVICOS[servico];
   const nsWsdl = `${NS}/wsdl/${operacao}`;
   const envelope = '<?xml version="1.0" encoding="utf-8"?>'
@@ -67,17 +72,17 @@ const xmlStatus = (uf, tpAmb) => `<consStatServCTe xmlns="${NS}" versao="${VERSA
 const xmlConsulta = (tpAmb, chave) => `<consSitCTe xmlns="${NS}" versao="${VERSAO}"><tpAmb>${tpAmb}</tpAmb><xServ>CONSULTAR</xServ><chCTe>${chave}</chCTe></consSitCTe>`;
 
 // Status do serviço: serve também para testar certificado e conexão.
-async function statusServico({ uf, tpAmb, cert, verificarServidor }) {
+async function statusServico({ uf, tpAmb, cert, verificarServidor, simulado }) {
   const dados = xmlStatus(uf, tpAmb);
-  const r = await chamar('status', { uf, tpAmb, cert, dados, verificarServidor });
+  const r = await chamar('status', { uf, tpAmb, cert, dados, verificarServidor, simulado });
   return { cStat: tag(r.resposta, 'cStat'), xMotivo: tag(r.resposta, 'xMotivo'), tMed: tag(r.resposta, 'tMed'), autorizador: r.autorizador, url: r.url };
 }
 
 // Envia o CT-e assinado (autorização síncrona: a resposta já traz o protocolo).
-async function autorizar({ uf, tpAmb, cert, xmlAssinado, verificarServidor }) {
+async function autorizar({ uf, tpAmb, cert, xmlAssinado, verificarServidor, simulado }) {
   const xml = xmlAssinado.replace(/^<\?xml[^>]*\?>/, '');
   const dados = zlib.gzipSync(Buffer.from(xml, 'utf8')).toString('base64');
-  const r = await chamar('recepcao', { uf, tpAmb, cert, dados, verificarServidor });
+  const r = await chamar('recepcao', { uf, tpAmb, cert, dados, verificarServidor, simulado });
   const ret = elemento(r.resposta, 'retCTe') || r.resposta;
   const prot = elemento(ret, 'protCTe');
   return {
@@ -86,18 +91,18 @@ async function autorizar({ uf, tpAmb, cert, xmlAssinado, verificarServidor }) {
   };
 }
 
-async function consultar({ uf, tpAmb, cert, chave, verificarServidor }) {
+async function consultar({ uf, tpAmb, cert, chave, verificarServidor, simulado }) {
   const dados = xmlConsulta(tpAmb, chave);
-  const r = await chamar('consulta', { uf, tpAmb, cert, dados, verificarServidor });
+  const r = await chamar('consulta', { uf, tpAmb, cert, dados, verificarServidor, simulado });
   const ret = elemento(r.resposta, 'retConsSitCTe') || r.resposta;
   const prot = elemento(ret, 'protCTe');
   return { cStat: tag(ret, 'cStat'), xMotivo: tag(ret, 'xMotivo'), nProt: tag(prot, 'nProt'), protCTe: prot, retorno: ret };
 }
 
 // Evento já assinado (eventoCTe).
-async function enviarEvento({ uf, tpAmb, cert, xmlEventoAssinado, verificarServidor }) {
+async function enviarEvento({ uf, tpAmb, cert, xmlEventoAssinado, verificarServidor, simulado }) {
   const dados = xmlEventoAssinado.replace(/^<\?xml[^>]*\?>/, '');
-  const r = await chamar('evento', { uf, tpAmb, cert, dados, verificarServidor });
+  const r = await chamar('evento', { uf, tpAmb, cert, dados, verificarServidor, simulado });
   const ret = elemento(r.resposta, 'retEventoCTe') || r.resposta;
   return { cStat: tag(ret, 'cStat'), xMotivo: tag(ret, 'xMotivo'), nProt: tag(ret, 'nProt'), dhRegEvento: tag(ret, 'dhRegEvento'), retorno: ret };
 }

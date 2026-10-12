@@ -1329,6 +1329,9 @@ ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_senha TEXT;
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_titular VARCHAR(200);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_cnpj VARCHAR(14);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_validade TIMESTAMP;
+-- Modo demonstração: a SEFAZ é simulada no próprio servidor (sem certificado ICP-Brasil, nada é enviado).
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_demonstracao BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS certificado_demonstracao BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- CT-e emitidos pela transportadora. "dados" guarda o que foi preenchido na tela;
 -- o número é reservado na primeira transmissão e não muda mais (o código cCT
@@ -1360,6 +1363,7 @@ CREATE TABLE IF NOT EXISTS ctes_emitidos (
     criado_em           TIMESTAMP NOT NULL DEFAULT NOW(),
     atualizado_em       TIMESTAMP NOT NULL DEFAULT NOW()
 );
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS demonstracao BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_numero ON ctes_emitidos (ambiente, serie, numero) WHERE numero IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ctes_emitidos_chave ON ctes_emitidos (chave) WHERE chave IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ctes_emitidos_status ON ctes_emitidos (status, criado_em DESC);

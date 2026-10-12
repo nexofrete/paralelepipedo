@@ -53,13 +53,31 @@ function lerPfx(pfx, senha) {
 
 // Certificado do emitente guardado no banco (empresa.id = 1), já aberto.
 async function certificadoDoEmitente(pool) {
-  const { rows } = await pool.query('SELECT certificado_pfx, certificado_senha FROM empresa WHERE id = 1');
+  const { rows } = await pool.query('SELECT certificado_pfx, certificado_senha, certificado_demonstracao FROM empresa WHERE id = 1');
   if (!rows[0]?.certificado_pfx) throw new Error('Nenhum certificado digital cadastrado. Envie o certificado A1 em Transportadora → Configuração fiscal.');
   const pfx = descriptografar(rows[0].certificado_pfx);
   const senha = descriptografar(rows[0].certificado_senha).toString('utf8');
   const dados = lerPfx(pfx, senha);
   if (dados.validoAte < new Date()) throw new Error(`O certificado digital venceu em ${dados.validoAte.toLocaleDateString('pt-BR')}. Envie o certificado novo.`);
-  return { ...dados, pfx, senha };
+  return { ...dados, pfx, senha, demonstracao: !!rows[0].certificado_demonstracao };
 }
 
-module.exports = { criptografar, descriptografar, lerPfx, certificadoDoEmitente };
+// Certificado de DEMONSTRAÇÃO: autoassinado, no nome e CNPJ da empresa. Só
+// serve para o modo demonstração (a SEFAZ recusa: não é da ICP-Brasil).
+function gerarCertificadoDemonstracao({ razaoSocial, cnpj }) {
+  const chaves = forge.pki.rsa.generateKeyPair(2048);
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = chaves.publicKey;
+  cert.serialNumber = `01${crypto.randomBytes(8).toString('hex')}`;
+  cert.validity.notBefore = new Date(Date.now() - 86400000);
+  cert.validity.notAfter = new Date(Date.now() + 365 * 86400000);
+  const sujeito = [{ name: 'commonName', value: `${String(razaoSocial || 'EMPRESA DEMONSTRACAO').slice(0, 40)}:${cnpj}` },
+    { name: 'organizationName', value: 'DEMONSTRACAO NEXOFRETE - SEM VALOR' }, { name: 'countryName', value: 'BR' }];
+  cert.setSubject(sujeito); cert.setIssuer(sujeito);
+  cert.sign(chaves.privateKey, forge.md.sha256.create());
+  const senha = crypto.randomBytes(12).toString('hex');
+  const p12 = forge.pkcs12.toPkcs12Asn1(chaves.privateKey, [cert], senha, { algorithm: '3des' });
+  return { pfx: Buffer.from(forge.asn1.toDer(p12).getBytes(), 'binary'), senha };
+}
+
+module.exports = { criptografar, descriptografar, lerPfx, certificadoDoEmitente, gerarCertificadoDemonstracao };

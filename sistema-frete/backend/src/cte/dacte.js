@@ -43,7 +43,8 @@ async function gerarDacte(d, reg) {
   const autorizado = reg.status === 'autorizado' || reg.status === 'cancelado';
   const ws = webservicesDaUf(em.endereco.UF, reg.ambiente);
   const qr = reg.chave ? await QRCode.toString(`${ws.qrCode}?chCTe=${reg.chave}&tpAmb=${reg.ambiente}`, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }) : '';
-  const tarja = reg.status === 'cancelado' ? 'CANCELADO' : !autorizado ? 'SEM VALOR FISCAL — NÃO AUTORIZADO' : homolog ? 'SEM VALOR FISCAL — HOMOLOGAÇÃO' : '';
+  const tarja = reg.status === 'cancelado' ? 'CANCELADO' : !autorizado ? 'SEM VALOR FISCAL — NÃO AUTORIZADO'
+    : reg.demonstracao ? 'DEMONSTRAÇÃO — NÃO ENVIADO À SEFAZ' : homolog ? 'SEM VALOR FISCAL — HOMOLOGAÇÃO' : '';
   const comps = (d.valores?.componentes || []).filter((c) => Number(c.vComp) > 0);
   const qtds = (d.carga?.quantidades || []);
   // Data/hora de emissão que foi no XML enviado à SEFAZ.

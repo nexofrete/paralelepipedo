@@ -6,7 +6,7 @@ const multer = require('multer');
 const pool = require('../db');
 const { autenticar, apenasAdmin, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
-const { criptografar, lerPfx } = require('../cte/certificado');
+const { criptografar, lerPfx, gerarCertificadoDemonstracao } = require('../cte/certificado');
 const { lerNfe } = require('../cte/lerNfe');
 const emissao = require('../cte/emissao');
 const { gerarDacte } = require('../cte/dacte');
@@ -22,14 +22,14 @@ const CAMPOS_CONFIG = {
   razao_social: 'texto', nome_fantasia: 'texto', cnpj: 'texto', ie: 'texto', telefone: 'texto', email: 'texto',
   endereco: 'texto', numero: 'texto', complemento: 'texto', bairro: 'texto', municipio: 'texto', uf: 'texto', cep: 'texto',
   codigo_municipio: 'texto', rntrc: 'texto', crt: 'inteiro', cte_ambiente: 'inteiro', cte_serie: 'inteiro', cte_proximo_numero: 'inteiro',
-  cte_cst_padrao: 'texto', cte_aliquota_interna: 'numero', cte_verificar_servidor: 'bool',
+  cte_cst_padrao: 'texto', cte_aliquota_interna: 'numero', cte_verificar_servidor: 'bool', cte_demonstracao: 'bool',
   cte_ibscbs_ativo: 'bool', cte_ibscbs_cst: 'texto', cte_ibscbs_class_trib: 'texto',
   cte_ibs_uf_aliquota: 'numero', cte_ibs_mun_aliquota: 'numero', cte_cbs_aliquota: 'numero',
   resp_tec_cnpj: 'texto', resp_tec_contato: 'texto', resp_tec_email: 'texto', resp_tec_fone: 'texto',
 };
 const SEM_CERTIFICADO = 'id, razao_social, nome_fantasia, cnpj, ie, telefone, email, endereco, numero, complemento, bairro, municipio, uf, cep, '
   + `codigo_municipio, rntrc, crt, ${Object.keys(CAMPOS_CONFIG).filter((c) => c.startsWith('cte_') || c.startsWith('resp_tec')).join(', ')}, `
-  + 'certificado_titular, certificado_cnpj, certificado_validade, (certificado_pfx IS NOT NULL) AS tem_certificado';
+  + 'certificado_titular, certificado_cnpj, certificado_validade, certificado_demonstracao, (certificado_pfx IS NOT NULL) AS tem_certificado';
 
 router.get('/config', autenticar, async (req, res) => {
   try {
@@ -58,8 +58,14 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
     if (ibge && !/^\d{7}$/.test(ibge)) return res.status(400).json({ erro: 'O código IBGE do município tem 7 dígitos.' });
     const amb = pares.find(([c]) => c === 'cte_ambiente')?.[1];
     if (amb != null && ![1, 2].includes(amb)) return res.status(400).json({ erro: 'Ambiente inválido.' });
+    const demo = pares.find(([c]) => c === 'cte_demonstracao')?.[1];
+    if (demo && amb === 1) return res.status(400).json({ erro: 'O modo demonstração só funciona em homologação. Desligue a demonstração para usar produção.' });
+    // Demonstração sempre em homologação (o XML diz "sem valor fiscal").
+    if (demo && amb == null) pares.push(['cte_ambiente', 2]);
     await pool.query('INSERT INTO empresa (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
-    const { rows: antes } = await pool.query('SELECT cte_ambiente FROM empresa WHERE id = 1');
+    const { rows: antes } = await pool.query('SELECT cte_ambiente, cte_demonstracao FROM empresa WHERE id = 1');
+    if (demo === false && antes[0]?.cte_demonstracao) log(req, 'cte_config', 'Desligou o modo demonstração da emissão de CT-e');
+    if (demo && !antes[0]?.cte_demonstracao) log(req, 'cte_config', 'Ligou o modo demonstração da emissão de CT-e (SEFAZ simulada)');
     await pool.query(`UPDATE empresa SET ${pares.map(([c], i) => `${c} = $${i + 1}`).join(', ')}, atualizado_em = NOW() WHERE id = 1`,
       pares.map(([c, v]) => (c === 'uf' && v ? String(v).toUpperCase() : v)));
     if (amb != null && Number(antes[0]?.cte_ambiente) !== amb) {
@@ -84,7 +90,8 @@ router.post('/certificado', autenticar, apenasAdmin, (req, res, next) => uploadP
     if (c.validoAte < new Date()) return res.status(400).json({ erro: `Esse certificado venceu em ${c.validoAte.toLocaleDateString('pt-BR')}.` });
     await pool.query('INSERT INTO empresa (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
     await pool.query(
-      `UPDATE empresa SET certificado_pfx = $1, certificado_senha = $2, certificado_titular = $3, certificado_cnpj = $4, certificado_validade = $5, atualizado_em = NOW() WHERE id = 1`,
+      `UPDATE empresa SET certificado_pfx = $1, certificado_senha = $2, certificado_titular = $3, certificado_cnpj = $4, certificado_validade = $5,
+              certificado_demonstracao = FALSE, atualizado_em = NOW() WHERE id = 1`,
       [criptografar(req.file.buffer), criptografar(Buffer.from(senha, 'utf8')), c.titular, c.cnpj, c.validoAte]);
     log(req, 'cte_certificado', `Enviou o certificado digital de ${c.titular}${c.cnpj ? ` (${c.cnpj})` : ''}, válido até ${c.validoAte.toLocaleDateString('pt-BR')}`);
     res.json({ titular: c.titular, cnpj: c.cnpj, validade: c.validoAte });
@@ -93,10 +100,31 @@ router.post('/certificado', autenticar, apenasAdmin, (req, res, next) => uploadP
 
 router.delete('/certificado', autenticar, apenasAdmin, async (req, res) => {
   try {
-    await pool.query('UPDATE empresa SET certificado_pfx = NULL, certificado_senha = NULL, certificado_titular = NULL, certificado_cnpj = NULL, certificado_validade = NULL WHERE id = 1');
+    await pool.query('UPDATE empresa SET certificado_pfx = NULL, certificado_senha = NULL, certificado_titular = NULL, certificado_cnpj = NULL, certificado_validade = NULL, certificado_demonstracao = FALSE WHERE id = 1');
     log(req, 'cte_certificado', 'Removeu o certificado digital');
     res.json({ ok: true });
   } catch (err) { responderErro(res, err, 'Erro ao remover o certificado.'); }
+});
+
+// Certificado de demonstração (autoassinado, no CNPJ da empresa). Só com o modo
+// demonstração ligado e sem um certificado verdadeiro cadastrado.
+router.post('/certificado/demonstracao', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT razao_social, cnpj, cte_demonstracao, certificado_pfx IS NOT NULL AND NOT certificado_demonstracao AS tem_verdadeiro FROM empresa WHERE id = 1');
+    const e = rows[0];
+    if (!e?.cte_demonstracao) return res.status(400).json({ erro: 'Ligue o modo demonstração antes (Configuração fiscal → Ambiente).' });
+    if (e.tem_verdadeiro) return res.status(400).json({ erro: 'Já existe um certificado A1 verdadeiro cadastrado — ele também funciona na demonstração.' });
+    const cnpj = String(e.cnpj || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+    if (cnpj.length !== 14) return res.status(400).json({ erro: 'Preencha e salve o CNPJ da empresa antes de gerar o certificado de demonstração.' });
+    const { pfx, senha } = gerarCertificadoDemonstracao({ razaoSocial: e.razao_social, cnpj });
+    const c = lerPfx(pfx, senha);
+    await pool.query(
+      `UPDATE empresa SET certificado_pfx = $1, certificado_senha = $2, certificado_titular = $3, certificado_cnpj = $4, certificado_validade = $5,
+              certificado_demonstracao = TRUE, atualizado_em = NOW() WHERE id = 1`,
+      [criptografar(pfx), criptografar(Buffer.from(senha, 'utf8')), c.titular, cnpj, c.validoAte]);
+    log(req, 'cte_certificado', 'Gerou um certificado de DEMONSTRAÇÃO (não vale na SEFAZ)');
+    res.json({ titular: c.titular, cnpj, validade: c.validoAte, demonstracao: true });
+  } catch (err) { responderErro(res, err, 'Não consegui gerar o certificado de demonstração.'); }
 });
 
 router.post('/testar-conexao', autenticar, apenasAdmin, async (req, res) => {

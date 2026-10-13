@@ -1,0 +1,12 @@
+{
+  "name": "nexofrete-servidor-licencas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servidor de licenças do Nexofrete (bloquear/renovar clientes pela internet)",
+  "main": "servidor.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node servidor.js",
+    "test": "node --test test/*.test.js"
+  }
+}

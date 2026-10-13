@@ -299,7 +299,7 @@ async function apiFetch(caminho, opcoes = {}) {
   if (resposta.status === 423) {
     let corpo = {};
     try { corpo = await resposta.clone().json(); } catch (e) { /* sem JSON */ }
-    if (corpo.licenca && !['vencida'].includes(corpo.situacao)) { window.location.href = 'ativar.html'; throw new Error(corpo.erro || 'Sistema não ativado.'); }
+    if (corpo.licenca && !['vencida', 'bloqueada', 'sem_confirmacao'].includes(corpo.situacao)) { window.location.href = 'ativar.html'; throw new Error(corpo.erro || 'Sistema não ativado.'); }
   }
   if (resposta.status === 403) {
     try {

@@ -90,6 +90,26 @@ Cada instalação só funciona **ativada com uma chave emitida por você**.
 
 **Seus dados de contato:** preencha `backend/licenca-contato.json` (nome, WhatsApp e e-mail). Com isso, a tela de ativação ganha os botões "Pedir pelo WhatsApp" e "Pedir por e-mail", já com o código da máquina na mensagem.
 
+**Conferência pela internet (bloquear ou renovar à distância):**
+- Ao gerar a chave, marque **Conferir pela internet** e informe o endereço do seu servidor de licenças (pasta `servidor-licencas` do repositório; o README dela explica como colocar no ar). O endereço fica gravado para as próximas chaves.
+- O sistema do cliente confere sozinho ao ligar e a cada 6 horas. Em **Manutenção → Licença** aparece a última confirmação e um botão **Conferir agora**.
+- No painel do servidor você **bloqueia** (com uma mensagem para o cliente), **desbloqueia**, muda a **validade** e anota. O cliente recebe a mudança na próxima conferência.
+- Bloqueada, a licença deixa o sistema **só para consulta**. Ao desbloquear, volta ao normal sozinho, sem chave nova.
+- Sem internet: avisa a partir de 3 dias sem conferir. Depois de **10 dias**, fica só para consulta até conseguir conferir de novo. O prazo conta da última confirmação, ou da emissão da chave se nunca conferiu, então colar a chave de novo não reinicia a contagem.
+- As respostas do servidor são assinadas com uma **segunda chave privada**, só do servidor. Ninguém consegue montar um "servidor falso" que responda "ativa".
+
+**Pacote ofuscado (dificulta mexer no código):** para instalar ou atualizar clientes, gere o .zip com o código do servidor embaralhado:
+
+```
+cd ferramentas/empacotador
+npm install          (só da primeira vez)
+npm run empacotar    → saida/Nexofrete-<versão>.zip
+```
+
+O pacote deixa de fora `dados`, `.env`, os testes e o próprio empacotador, e se recusa a empacotar se encontrar uma chave privada na pasta. Use o .zip para instalar no cliente ou em **Manutenção → Atualizar o sistema**. O código legível continua só com você (no Git).
+
+**Limites (para saber o que esperar):** nenhuma proteção de software instalado no computador do cliente é impossível de quebrar. Um programador experiente, com tempo, consegue remover a verificação mesmo do código ofuscado. Juntas, a chave assinada, a conferência online e a ofuscação tiram a cópia do alcance de quem só "pegou a pasta" e tornam o desvio caro e trabalhoso. Para o restante, vale o contrato de licença de uso.
+
 ## Backup (faça antes de começar a usar)
 
 Fica em **Manutenção → Backup automático**. Ligue o backup diário e preencha a **pasta de cópia**. O recomendado é uma pasta do OneDrive ou do Google Drive para computador, para a cópia subir sozinha para a nuvem. Se o computador do servidor queimar, o backup continua lá.

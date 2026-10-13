@@ -282,6 +282,7 @@ async function iniciar() {
     require('./src/pastaXml').agendar();
     require('./src/caixaEmail').agendar();
     require('./src/avisosSeguranca').iniciar();
+    licenca.agendarConferencia();
     require('./src/servidorHttps').aplicar(app).then((st) => {
       require('./src/servidorHttps').vigiar();
       if (st.ativo) console.log(`Impressão digital do certificado da empresa (confira na instalação): ${String(require('./src/servidorHttps').impressaoDigital() || '').slice(0, 23)}`);

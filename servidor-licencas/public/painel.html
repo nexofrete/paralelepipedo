@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Licenças Nexofrete</title>
+<style>
+  :root { --fundo:#f5f6f8; --cartao:#fff; --texto:#1b1f27; --fraco:#667085; --borda:#dde1e7; --azul:#2a78d6; --verde:#1f9d55; --vermelho:#d63a40; }
+  @media (prefers-color-scheme: dark) { :root { --fundo:#14171d; --cartao:#1c2029; --texto:#e7e9ee; --fraco:#9aa3b2; --borda:#2c3240; --azul:#3987e5; --verde:#3fb66f; --vermelho:#ef5b61; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--fundo); color:var(--texto); font:14px system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { padding:16px; border-bottom:1px solid var(--borda); background:var(--cartao); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; flex:1; }
+  main { padding:16px; max-width:1200px; margin:0 auto; }
+  input, select, textarea, button { font:inherit; color:inherit; }
+  input, select, textarea { background:var(--fundo); border:1px solid var(--borda); border-radius:6px; padding:6px 8px; }
+  button { background:var(--azul); color:#fff; border:0; border-radius:6px; padding:7px 12px; cursor:pointer; }
+  button.sec { background:transparent; color:var(--texto); border:1px solid var(--borda); }
+  button.perigo { background:var(--vermelho); }
+  .cartao { background:var(--cartao); border:1px solid var(--borda); border-radius:10px; padding:14px; margin-bottom:12px; }
+  .linha { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:8px 16px; }
+  .fraco { color:var(--fraco); font-size:12.5px; }
+  .selo { display:inline-block; padding:2px 8px; border-radius:20px; font-size:12px; font-weight:600; color:#fff; }
+  .ativa { background:var(--verde); } .bloqueada { background:var(--vermelho); }
+  .acoes { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+  .mono { font-family:ui-monospace, monospace; }
+  #msg { position:fixed; bottom:16px; left:16px; right:16px; max-width:480px; margin:auto; padding:10px 14px; border-radius:8px; background:var(--texto); color:var(--fundo); display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔑 Licenças Nexofrete</h1>
+  <input id="busca" type="search" placeholder="Buscar cliente, CNPJ ou computador" />
+</header>
+<main>
+  <div class="cartao">
+    <b>Cadastrar licença antes do primeiro contato</b>
+    <p class="fraco">Opcional: as licenças aparecem aqui sozinhas quando o sistema do cliente confere pela primeira vez. Cole a chave para já poder bloquear ou renovar.</p>
+    <textarea id="novaChave" rows="2" style="width:100%" placeholder="NXF1...."></textarea>
+    <div class="acoes"><button id="cadastrar">Cadastrar</button></div>
+  </div>
+  <div id="lista"></div>
+</main>
+<div id="msg"></div>
+<script src="painel.js"></script>
+</body>
+</html>

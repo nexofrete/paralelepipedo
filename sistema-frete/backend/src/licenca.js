@@ -27,8 +27,20 @@ const CHAVE_PUBLICA = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAaK8m3ODzBJgrl9Jj3RI1SvIhvaOwJChkKjBBiMy90jg=
 -----END PUBLIC KEY-----
 `;
+// Chave pública do SERVIDOR de licenças (outro par de chaves): confere que a
+// resposta "ativa/bloqueada" veio mesmo do servidor do dono.
+const CHAVE_PUBLICA_SERVIDOR = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEArg7FyNY0lvj/CTU7dRWffcMFZDcBeSYWVR5ltqwPIGo=
+-----END PUBLIC KEY-----
+`;
+const ARQUIVO_ONLINE = path.join(PASTA_DADOS, 'licenca-online.json');
+const CONFIG_LICENCIADOR = path.join(PASTA_LICENCIADOR, 'config.json');
 const AVISO_DIAS = 15;
 const TOLERANCIA_DIAS = 7;
+// Licença com conferência pela internet: sem confirmar por mais de 10 dias, só consulta.
+const OFFLINE_AVISO_DIAS = 3;
+const OFFLINE_LIMITE_DIAS = 10;
+const DIA_MS = 86400000;
 
 const b64u = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const deB64u = (s) => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
@@ -94,19 +106,92 @@ function avaliar(texto = null) {
   if (normalizarCodigo(d.maquina) !== codigoDaMaquina()) {
     return { ...info, ativo: false, emissao: false, situacao: 'maquina_diferente', mensagem: 'Esta chave de ativação é de outro computador. Peça uma chave para este computador.' };
   }
-  if (d.validade) {
-    const dias = diasEntre(hoje(), d.validade);
+  let validade = d.validade || null;
+  let avisoOnline = '';
+  if (d.online) {
+    // O servidor do dono manda: bloqueio, renovação (validade nova) e a última confirmação.
+    const o = estadoOnline(d.id);
+    info.online = { servidor: d.servidor, confirmadoEm: o.confirmadoEm || null, ultimoErro: o.ultimoErro || null, status: o.status || null };
+    if (o.status === 'bloqueada') {
+      return { ...info, ativo: true, emissao: false, situacao: 'bloqueada', mensagem: o.mensagem || 'A licença foi suspensa pelo fornecedor do sistema. O sistema está só para consulta.' };
+    }
+    if (o.validade !== undefined) { validade = o.validade; info.validade = validade; }
+    // Conta da última confirmação; nunca confirmada, da emissão da chave (colar a
+    // chave de novo não reinicia o prazo).
+    const referencia = o.confirmadoEm || Date.parse(`${d.emitida}T03:00:00Z`) || 0;
+    const agora = Date.now();
+    if (referencia && agora < referencia - DIA_MS) {
+      return { ...info, ativo: true, emissao: false, situacao: 'sem_confirmacao', mensagem: 'O relógio deste computador está atrasado em relação à última conferência da licença. Acerte a data e a hora.' };
+    }
+    const dias = Math.floor((agora - referencia) / DIA_MS);
+    if (!referencia || dias > OFFLINE_LIMITE_DIAS) {
+      return { ...info, ativo: true, emissao: false, situacao: 'sem_confirmacao',
+        mensagem: `Não consegui conferir a licença pela internet há ${referencia ? `${dias} dias` : 'muito tempo'}. O sistema está só para consulta: verifique a internet deste computador.` };
+    }
+    if (dias >= OFFLINE_AVISO_DIAS) avisoOnline = ` Não consegui conferir a licença pela internet há ${dias} dias (o limite é ${OFFLINE_LIMITE_DIAS}): verifique a internet.`;
+  }
+  if (validade) {
+    const dias = diasEntre(hoje(), validade);
     if (dias < -TOLERANCIA_DIAS) {
       return { ...info, ativo: true, emissao: false, situacao: 'vencida', diasRestantes: dias,
-        mensagem: `A licença venceu em ${d.validade.split('-').reverse().join('/')}. O sistema está só para consulta: renove para voltar a emitir.` };
+        mensagem: `A licença venceu em ${validade.split('-').reverse().join('/')}. O sistema está só para consulta: renove para voltar a emitir.` };
     }
     if (dias < 0) {
       return { ...info, ativo: true, emissao: true, situacao: 'tolerancia', diasRestantes: dias,
-        mensagem: `A licença venceu em ${d.validade.split('-').reverse().join('/')}. Faltam ${TOLERANCIA_DIAS + dias} dia(s) de tolerância: renove para não parar.` };
+        mensagem: `A licença venceu em ${validade.split('-').reverse().join('/')}. Faltam ${TOLERANCIA_DIAS + dias} dia(s) de tolerância: renove para não parar.${avisoOnline}` };
     }
-    if (dias <= AVISO_DIAS) return { ...info, ativo: true, emissao: true, situacao: 'vencendo', diasRestantes: dias, mensagem: `A licença vence em ${dias} dia(s) (${d.validade.split('-').reverse().join('/')}).` };
+    if (dias <= AVISO_DIAS) return { ...info, ativo: true, emissao: true, situacao: 'vencendo', diasRestantes: dias, mensagem: `A licença vence em ${dias} dia(s) (${validade.split('-').reverse().join('/')}).${avisoOnline}` };
   }
-  return { ...info, ativo: true, emissao: true, situacao: 'ativa', mensagem: d.validade ? `Licença válida até ${d.validade.split('-').reverse().join('/')}.` : 'Licença sem vencimento.' };
+  if (avisoOnline) return { ...info, ativo: true, emissao: true, situacao: 'confirmar', mensagem: avisoOnline.trim() };
+  return { ...info, ativo: true, emissao: true, situacao: 'ativa', mensagem: validade ? `Licença válida até ${validade.split('-').reverse().join('/')}.` : 'Licença sem vencimento.' };
+}
+
+// ---------- Conferência pela internet ----------
+function estadoOnline(id) {
+  try { const o = JSON.parse(fs.readFileSync(ARQUIVO_ONLINE, 'utf8')); return o.id === id ? o : {}; } catch { return {}; }
+}
+function gravarOnline(o) { fs.mkdirSync(PASTA_DADOS, { recursive: true }); fs.writeFileSync(ARQUIVO_ONLINE, JSON.stringify(o, null, 2)); estadoEmCache = null; }
+
+// Resposta do servidor = NXR1.<dados>.<assinatura com a chave do servidor>.
+function lerResposta(texto, publica = CHAVE_PUBLICA_SERVIDOR) {
+  const m = /^NXR1\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/.exec(String(texto || '').trim());
+  if (!m) return null;
+  const buf = deB64u(m[1]);
+  try { if (!crypto.verify(null, buf, crypto.createPublicKey(publica), deB64u(m[2]))) return null; } catch { return null; }
+  try { return JSON.parse(buf.toString('utf8')); } catch { return null; }
+}
+
+// Pergunta ao servidor do dono se a licença continua valendo (bloqueio/renovação).
+async function conferirOnline() {
+  const conteudo = fs.existsSync(ARQUIVO_LICENCA) ? fs.readFileSync(ARQUIVO_LICENCA, 'utf8') : '';
+  const l = lerChave(conteudo);
+  if (!l.ok || !l.dados.online || !l.dados.servidor || temLicenciador()) return { conferida: false };
+  const d = l.dados; const antes = estadoOnline(d.id);
+  try {
+    const versao = require('../package.json').version;
+    const r = await fetch(`${String(d.servidor).replace(/\/+$/, '')}/api/verificar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ chave: l.texto, codigo: codigoDaMaquina(), versao }),
+    });
+    const j = await r.json().catch(() => ({}));
+    const resp = lerResposta(j.resposta);
+    if (!resp) throw new Error(j.erro || `o servidor de licenças respondeu ${r.status} sem resposta válida`);
+    if (resp.id !== d.id || normalizarCodigo(resp.maquina) !== codigoDaMaquina()) throw new Error('resposta do servidor não é desta licença');
+    if (antes.confirmadoEm && resp.ts < antes.confirmadoEm) throw new Error('resposta antiga do servidor');
+    if (Math.abs(resp.ts - Date.now()) > 2 * DIA_MS) throw new Error('o relógio deste computador está errado (confira a data e a hora)');
+    gravarOnline({ id: d.id, confirmadoEm: resp.ts, status: resp.status, validade: resp.validade === undefined ? d.validade || null : resp.validade, mensagem: resp.mensagem || null, ultimoErro: null });
+    return { conferida: true, status: resp.status };
+  } catch (err) {
+    const motivo = /fetch failed|timeout|abort/i.test(err.message) ? 'sem resposta do servidor de licenças (internet ou servidor fora do ar)' : err.message;
+    gravarOnline({ ...antes, id: d.id, ultimoErro: `${new Date().toLocaleString('pt-BR')}: ${motivo}` });
+    return { conferida: false, erro: motivo };
+  }
+}
+
+// Confere 30 s depois de ligar e a cada 6 horas.
+function agendarConferencia() {
+  setTimeout(() => conferirOnline().catch(() => {}), 30000).unref?.();
+  setInterval(() => conferirOnline().catch(() => {}), 6 * 3600000).unref?.();
 }
 
 let estadoEmCache = null; let estadoEm = 0;
@@ -121,7 +206,10 @@ function ativar(texto) {
   if (r.situacao === 'licenciador') return r;
   if (!['ativa', 'vencendo', 'tolerancia'].includes(r.situacao)) throw new Error(r.mensagem);
   fs.mkdirSync(PASTA_DADOS, { recursive: true });
-  fs.writeFileSync(ARQUIVO_LICENCA, lerChave(texto).texto);
+  const l = lerChave(texto);
+  fs.writeFileSync(ARQUIVO_LICENCA, l.texto);
+  // Licença com conferência pela internet: já confere agora.
+  if (l.dados.online) conferirOnline().catch(() => {});
   estadoEmCache = null;
   return estado();
 }
@@ -148,7 +236,10 @@ function chavePrivada() {
 }
 function temLicenciador() { return !!chavePrivada(); }
 
-function emitir({ cliente, cnpj, maquina, validade, observacao }) {
+function configLicenciador() { try { return JSON.parse(fs.readFileSync(CONFIG_LICENCIADOR, 'utf8')); } catch { return {}; } }
+function salvarConfigLicenciador(c) { fs.mkdirSync(PASTA_LICENCIADOR, { recursive: true }); fs.writeFileSync(CONFIG_LICENCIADOR, JSON.stringify({ ...configLicenciador(), ...c }, null, 2)); }
+
+function emitir({ cliente, cnpj, maquina, validade, observacao, online, servidor }) {
   const k = chavePrivada();
   if (!k) throw new Error('Este computador não é o licenciador.');
   const codigo = normalizarCodigo(maquina);
@@ -158,6 +249,12 @@ function emitir({ cliente, cnpj, maquina, validade, observacao }) {
   if (validade && !/^\d{4}-\d{2}-\d{2}$/.test(validade)) throw new Error('Validade inválida.');
   const dados = { v: 1, id: crypto.randomBytes(6).toString('hex'), cliente: String(cliente).trim().slice(0, 80), cnpj: String(cnpj).replace(/[^0-9A-Za-z]/g, '').toUpperCase(),
     maquina: codigo, emitida: hoje(), validade: validade || null };
+  if (online) {
+    const url = String(servidor || configLicenciador().servidor || '').trim().replace(/\/+$/, '');
+    if (!/^https:\/\/[^\s/]+/.test(url)) throw new Error('Para conferir pela internet, informe o endereço do servidor de licenças (https://...).');
+    dados.online = true; dados.servidor = url;
+    salvarConfigLicenciador({ servidor: url });
+  }
   const chave = montarChave(dados, k);
   const lista = listarEmitidas();
   lista.unshift({ ...dados, observacao: String(observacao || '').slice(0, 200), chave });
@@ -178,4 +275,4 @@ function contato() {
   try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'licenca-contato.json'), 'utf8')); } catch { return {}; }
 }
 
-module.exports = { montarChave, codigoDaMaquina, estado, ativar, avaliar, conferirEmpresa, emitir, listarEmitidas, temLicenciador, contato, lerChave, normalizarCodigo, CHAVE_PRIVADA };
+module.exports = { conferirOnline, agendarConferencia, lerResposta, configLicenciador, montarChave, codigoDaMaquina, estado, ativar, avaliar, conferirEmpresa, emitir, listarEmitidas, temLicenciador, contato, lerChave, normalizarCodigo, CHAVE_PRIVADA };

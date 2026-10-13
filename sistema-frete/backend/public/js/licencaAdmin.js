@@ -9,7 +9,9 @@
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const dia = (v) => (v ? String(v).split('-').reverse().join('/') : 'sem vencimento');
-  const SIT = { ativa: '✅ Ativa', vencendo: '⚠️ Vencendo', tolerancia: '⚠️ Vencida (tolerância)', vencida: '⛔ Vencida — só consulta', licenciador: '🔑 Computador do licenciador' };
+  const SIT = { ativa: '✅ Ativa', vencendo: '⚠️ Vencendo', tolerancia: '⚠️ Vencida (tolerância)', vencida: '⛔ Vencida — só consulta', licenciador: '🔑 Computador do licenciador',
+    confirmar: '⚠️ Sem conferir pela internet', bloqueada: '⛔ Suspensa pelo fornecedor — só consulta', sem_confirmacao: '⛔ Sem conferência pela internet — só consulta' };
+  const quando = (ms) => (ms ? new Date(ms).toLocaleString('pt-BR') : 'nunca');
 
   async function montar() {
     const e = await fetch('/api/licenca/estado').then((r) => r.json());
@@ -20,8 +22,21 @@
         <div><span style="color:var(--texto-fraco);">Validade</span><br><b>${e.licenciador ? '—' : dia(e.validade)}</b></div>
         <div><span style="color:var(--texto-fraco);">Código deste computador</span><br><b style="font-family:ui-monospace,monospace;">${esc(e.codigo)}</b></div>
       </div>
+      ${e.online ? `<div class="cte-secao" style="margin-top:12px; font-size:13px;"><b>🌐 Conferida pela internet</b> — ${esc(e.online.servidor)}<br>
+        Última confirmação: <b>${quando(e.online.confirmadoEm)}</b>${e.online.ultimoErro ? `<br><span style="color:var(--perigo, #d63a40);">Última falha: ${esc(e.online.ultimoErro)}</span>` : ''}
+        <br><small style="color:var(--texto-fraco);">O sistema confere sozinho a cada 6 horas. Sem conseguir conferir por mais de 10 dias, fica só para consulta.</small>
+        <br><button class="btn btn-secundario" id="licConferir" style="width:auto; margin-top:8px;">🔄 Conferir agora</button></div>` : ''}
       ${e.licenciador ? '' : '<p style="font-size:12px; color:var(--texto-fraco); margin:10px 0 0;">Para renovar ou trocar a chave, abra <a href="ativar.html">a tela de ativação</a> e cole a chave nova.</p>'}
       ${e.licenciador ? emissor() : ''}`;
+    $('licConferir')?.addEventListener('click', async (ev) => {
+      ev.currentTarget.disabled = true;
+      try {
+        const r = await apiFetch('/api/licenca/conferir', { method: 'POST' });
+        const j = await r.json();
+        mostrarAlerta(j.conferida ? 'Licença conferida com o servidor.' : `Não consegui conferir: ${j.erro || 'licença sem conferência pela internet'}`, { tipo: j.conferida ? 'sucesso' : 'erro' });
+      } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+      montar().catch(() => {});
+    });
     if (e.licenciador) { ligarEmissor(); carregarEmitidas(); }
   }
 
@@ -33,6 +48,8 @@
         <div class="campo largo"><label for="licMaquina">Código do computador do cliente</label><input type="text" id="licMaquina" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" style="font-family:ui-monospace,monospace; text-transform:uppercase;" /></div>
         <div class="campo"><label for="licPlano">Validade</label><select id="licPlano"><option value="30">30 dias</option><option value="90">90 dias</option><option value="365" selected>1 ano</option><option value="">Sem vencimento</option><option value="data">Escolher data…</option></select></div>
         <div class="campo"><label for="licData">Até</label><input type="date" id="licData" /></div>
+        <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="licOnline" style="width:auto;" /> Conferir pela internet (permite bloquear ou renovar à distância)</label></div>
+        <div class="campo inteiro" id="licServidorCampo" hidden><label for="licServidor">Endereço do seu servidor de licenças</label><input type="url" id="licServidor" placeholder="https://licencas.seudominio.com.br" /></div>
         <div class="campo inteiro"><label for="licObs">Observação (só para você)</label><input type="text" id="licObs" placeholder="ex.: plano mensal, pago até…" /></div>
       </div>
       <button class="btn btn-primario" id="licEmitir" style="width:auto;">🔑 Gerar chave</button>
@@ -47,15 +64,18 @@
       if (!p) $('licData').value = '';
     };
     $('licPlano').addEventListener('change', atualizarData); atualizarData();
+    $('licOnline').addEventListener('change', () => { $('licServidorCampo').hidden = !$('licOnline').checked; });
+    apiFetch('/api/licenca/licenciador').then((r) => r.json()).then((c) => { if (c.servidor) { $('licServidor').value = c.servidor; $('licOnline').checked = true; $('licServidorCampo').hidden = false; } }).catch(() => {});
     $('licEmitir').addEventListener('click', async (ev) => {
       const b = ev.currentTarget; b.disabled = true;
       try {
         const r = await apiFetch('/api/licenca/emitir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
           cliente: $('licCliente').value, cnpj: $('licCnpj').value, maquina: $('licMaquina').value,
-          validade: $('licPlano').value ? $('licData').value : null, observacao: $('licObs').value }) });
+          validade: $('licPlano').value ? $('licData').value : null, observacao: $('licObs').value,
+          online: $('licOnline').checked, servidor: $('licServidor').value }) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.erro);
-        $('licResultado').innerHTML = `<div class="cte-aviso ok">Chave gerada para <b>${esc(j.cliente)}</b> (${esc(j.cnpj)}) — ${j.validade ? `válida até ${dia(j.validade)}` : 'sem vencimento'}. Envie ao cliente:</div>
+        $('licResultado').innerHTML = `<div class="cte-aviso ok">Chave gerada para <b>${esc(j.cliente)}</b> (${esc(j.cnpj)}) — ${j.validade ? `válida até ${dia(j.validade)}` : 'sem vencimento'}${j.online ? ', conferida pela internet' : ''}. Envie ao cliente:</div>
           <textarea readonly style="width:100%; min-height:80px; font-family:ui-monospace,monospace; font-size:12px;" id="licChave">${esc(j.chave)}</textarea>
           <button class="btn btn-secundario" id="licCopiar" style="width:auto;">📋 Copiar chave</button>`;
         $('licCopiar').addEventListener('click', async () => { try { await navigator.clipboard.writeText(j.chave); mostrarAlerta('Chave copiada.', { tipo: 'sucesso' }); } catch { $('licChave').select(); } });
@@ -69,7 +89,7 @@
     const r = await apiFetch('/api/licenca/emitidas');
     const lista = r.ok ? await r.json() : [];
     $('licEmitidas').innerHTML = lista.length ? `<table class="edi-tabela"><thead><tr><th>Cliente</th><th>CNPJ</th><th>Computador</th><th>Emitida</th><th>Validade</th><th>Obs.</th><th></th></tr></thead><tbody>
-      ${lista.map((l, i) => `<tr><td>${esc(l.cliente)}</td><td>${esc(l.cnpj)}</td><td style="font-family:ui-monospace,monospace;">${esc(l.maquina)}</td><td>${dia(l.emitida)}</td><td>${dia(l.validade)}</td><td>${esc(l.observacao || '')}</td>
+      ${lista.map((l, i) => `<tr><td>${esc(l.cliente)}</td><td>${esc(l.cnpj)}</td><td style="font-family:ui-monospace,monospace;">${esc(l.maquina)}</td><td>${dia(l.emitida)}</td><td>${dia(l.validade)}${l.online ? ' 🌐' : ''}</td><td>${esc(l.observacao || '')}</td>
         <td><button class="btn btn-secundario" data-lic-copiar="${i}" style="width:auto; font-size:11.5px; padding:3px 8px;">Copiar chave</button></td></tr>`).join('')}</tbody></table>`
       : '<span style="color:var(--texto-fraco);">Nenhuma chave emitida ainda.</span>';
     document.querySelectorAll('[data-lic-copiar]').forEach((b) => b.addEventListener('click', async () => {

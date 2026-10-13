@@ -10,6 +10,7 @@ const router = express.Router();
 const publico = (e) => ({
   ativo: e.ativo, emissao: e.emissao, situacao: e.situacao, mensagem: e.mensagem, codigo: e.codigo, cliente: e.cliente || null,
   cnpj: e.cnpj || null, validade: e.validade || null, diasRestantes: e.diasRestantes ?? null, licenciador: !!e.licenciador, contato: licenca.contato(),
+  online: e.online || null,
 });
 
 router.get('/estado', (req, res) => res.json(publico(licenca.estado())));
@@ -22,13 +23,20 @@ router.post('/ativar', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHe
   } catch (err) { res.status(400).json({ erro: err.message }); }
 });
 
+// Confere agora com o servidor de licenças (licença com conferência pela internet).
+router.post('/conferir', autenticar, apenasAdmin, async (req, res) => {
+  const r = await licenca.conferirOnline();
+  res.json({ ...r, estado: publico(licenca.estado()) });
+});
+
 // ---------- Emissor de licenças (só com a chave privada neste computador) ----------
 const soLicenciador = (req, res, next) => (licenca.temLicenciador() ? next() : res.status(404).json({ erro: 'Não disponível.' }));
+router.get('/licenciador', autenticar, apenasAdmin, soLicenciador, (req, res) => res.json({ servidor: licenca.configLicenciador().servidor || '' }));
 router.get('/emitidas', autenticar, apenasAdmin, soLicenciador, (req, res) => res.json(licenca.listarEmitidas()));
 router.post('/emitir', autenticar, apenasAdmin, soLicenciador, (req, res) => {
   try {
     const l = licenca.emitir(req.body || {});
-    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'licenca_emitir', detalhes: `Emitiu licença para ${l.cliente} (CNPJ ${l.cnpj}, máquina ${l.maquina})${l.validade ? ` até ${l.validade}` : ''}` });
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'licenca_emitir', detalhes: `Emitiu licença para ${l.cliente} (CNPJ ${l.cnpj}, máquina ${l.maquina})${l.validade ? ` até ${l.validade}` : ''}${l.online ? ', conferida pela internet' : ''}` });
     res.json(l);
   } catch (err) { res.status(400).json({ erro: err.message }); }
 });

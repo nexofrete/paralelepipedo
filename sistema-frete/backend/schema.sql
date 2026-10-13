@@ -1654,3 +1654,7 @@ ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_nome VARCHAR(60);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_codigo VARCHAR(3);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_agencia VARCHAR(10);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_conta VARCHAR(20);
+
+-- Custos da viagem (no MDF-e) para o resultado por viagem do painel:
+-- { combustivel, pedagio, motorista, terceiro, outros } em R$.
+ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS custos JSONB;

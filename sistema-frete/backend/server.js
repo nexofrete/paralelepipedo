@@ -203,6 +203,7 @@ app.use('/api/romaneios', romaneiosRoutes);
 app.use('/api/motorista', motoristaRoutes);
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/faturamento', require('./src/routes/faturamento'));
+app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

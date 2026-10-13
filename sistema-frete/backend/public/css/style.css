@@ -1479,3 +1479,21 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 .rm-ordem { margin: 6px 0 14px; padding-left: 22px; max-height: 260px; overflow-y: auto; font-size: 12.5px; }
 .rm-ordem li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--borda); }
 .rm-ordem button { border: 1px solid var(--borda); background: var(--bg-elevado); color: var(--texto); border-radius: 4px; padding: 0 6px; margin-left: 3px; cursor: pointer; }
+
+/* ---------- Painel gerencial (transportadora) ---------- */
+/* Série única: azul validado para os dois temas (dataviz: contraste >= 3:1 na superfície). */
+:root { --pt-serie: #3987e5; --pt-grade: rgba(255,255,255,0.07); --pt-eixo: #9aa1ac; }
+html.tema-claro { --pt-serie: #2a78d6; --pt-grade: rgba(0,0,0,0.08); --pt-eixo: #656d7c; }
+.pt-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.pt-filtros .cte-entrada { width: auto; }
+.pt-grafico { position: relative; }
+.pt-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pt-grafico .barra { fill: var(--pt-serie); }
+.pt-grafico .alvo:hover + .barra, .pt-grafico .barra.ativa { fill-opacity: .8; }
+.pt-dica { position: absolute; pointer-events: none; background: var(--bg-elevado); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; color: var(--texto); box-shadow: 0 6px 18px rgba(0,0,0,.25); white-space: nowrap; transform: translate(-50%, -100%); z-index: 5; }
+.pt-dica b { display: block; font-size: 13px; margin-bottom: 2px; }
+.pt-barra-celula { display: flex; align-items: center; gap: 8px; }
+.pt-barra-celula .trilho { flex: 1; height: 8px; background: var(--pt-grade); border-radius: 4px; min-width: 60px; }
+.pt-barra-celula .cheia { height: 8px; background: var(--pt-serie); border-radius: 4px; }
+.pt-delta { font-size: 11.5px; font-weight: 600; }

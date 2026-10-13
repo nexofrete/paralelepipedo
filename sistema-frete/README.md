@@ -176,6 +176,23 @@ Em **🚛 Operação de Transporte → 📋 MDF-e**, o sistema emite o MDF-e (mo
 
 Com o MDF-e autorizado, também dá para **incluir motorista** (troca durante a viagem), consultar e cancelar. O cancelamento só vale antes de o caminhão sair; depois disso, encerre.
 
+## Painel gerencial
+
+Fica em **🚛 Operação de Transporte → 📊 Painel gerencial**. Acessa quem emite CT-e ou tem a permissão do Financeiro ou de Relatórios.
+
+- **Visão geral do período:** este mês, mês passado, 3 meses, ano, 12 meses ou datas à escolha. O painel compara com o período anterior de mesmo tamanho e mostra:
+  - faturamento;
+  - CT-e emitidos e peso transportado;
+  - frete por kg e ticket médio por CT-e;
+  - frete sobre o valor da mercadoria;
+  - entregas no prazo;
+  - quanto há a receber.
+
+  O CT-e complementar soma no faturamento, mas não conta como carga nova.
+- **Faturamento por mês:** cobre os últimos 12 meses, mostra os números ao passar o mouse e tem versão em tabela.
+- **Clientes e rotas:** mostra faturamento, CT-e, peso, frete por kg e % de entregas no prazo de cada cliente e de cada rota (origem → destino).
+- **Resultado por viagem:** cada MDF-e soma a receita dos CT-e que leva. Em **Lançar custos** você informa combustível, pedágio, motorista, terceiro/agregado e outros. O painel mostra a margem da viagem e marca ⚠ prejuízo quando ela é negativa.
+
 ## Faturamento e contas a receber
 
 Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a receber**. Acessa quem emite CT-e ou tem a permissão do Financeiro.

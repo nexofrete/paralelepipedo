@@ -56,6 +56,7 @@
            continuam aqui, escondidos, porque as permissões e os atalhos usam eles. -->
       <div class="nav-grupo oculto" id="navGrupoTransporte">🚛 Operação de Transporte <span id="navTranspSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubTransporte">
+        <div class="nav-tsub" data-ir="painel-transporte" data-aba="geral">📊 Painel gerencial</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="lista">📄 CT-e</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="mdfe">📋 MDF-e</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
@@ -70,6 +71,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="faturamento" id="navFaturamento">💰 Faturamento</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="painel-transporte" id="navPainelTransporte">📊 Painel gerencial</div>
       <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios">
@@ -282,6 +284,28 @@
         <div id="fat-aba-faturas" class="oculto"></div>
         <div id="fat-aba-afaturar" class="oculto"></div>
         <div id="fat-aba-config" class="oculto"></div>
+      </section>
+      <!-- ===== Painel gerencial da transportadora ===== -->
+      <section id="pagina-painel-transporte" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>📊 Painel gerencial</h2>
+            <p>Faturamento, carga, frete por kg, clientes, rotas, entregas no prazo e o resultado de cada viagem</p>
+          </div>
+        </div>
+        <div class="pt-filtros">
+          <select id="ptPeriodo" class="cte-entrada" aria-label="Período">
+            <option value="mes">Este mês</option><option value="mes_passado">Mês passado</option><option value="3m">Últimos 3 meses</option>
+            <option value="ano">Este ano</option><option value="12m">Últimos 12 meses</option><option value="custom">Escolher datas…</option></select>
+          <input type="date" id="ptDe" class="cte-entrada" aria-label="De" /><span style="color:var(--texto-fraco);">até</span><input type="date" id="ptAte" class="cte-entrada" aria-label="Até" />
+          <span id="ptComparacao" style="font-size:12px; color:var(--texto-fraco);"></span>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-pt-aba="geral">Visão geral</div>
+          <div class="cte-aba" data-pt-aba="viagens">🚛 Resultado por viagem</div>
+        </div>
+        <div id="pt-aba-geral"></div>
+        <div id="pt-aba-viagens" class="oculto"></div>
       </section>
       <div class="modal-overlay oculto" id="modalFatura">
         <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="fatModalConteudo"></div>
@@ -3234,6 +3258,7 @@
   <script src="js/ocorrencias.js"></script>
   <script src="js/mdfe.js"></script>
   <script src="js/faturamento.js"></script>
+  <script src="js/painelTransporte.js"></script>
   <script src="js/menuTransporte.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/roteirizacao.js"></script>

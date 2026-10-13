@@ -9059,7 +9059,7 @@ async function carregarContasEmail() {
     alvo.innerHTML = contas.length ? `<table style="width:100%;"><thead><tr><th style="text-align:left;">Caixa</th><th style="text-align:left;">Pasta</th>
       <th style="text-align:left;">Remetentes</th><th style="text-align:left;">Última leitura</th><th></th></tr></thead><tbody>
       ${contas.map((c) => `<tr style="${c.ativo ? '' : 'opacity:0.55;'}">
-        <td><b>${cfEsc(c.nome || c.usuario || '—')}</b><br><small style="color:var(--texto-fraco);">${cfEsc(c.usuario || '')}${c.ativo ? '' : ' · desligada'}</small></td>
+        <td><b>${cfEsc(c.nome || c.usuario || '—')}</b><br><small style="color:var(--texto-fraco);">${cfEsc(c.usuario || '')}${c.ativo ? '' : ' · desligada'}${c.finalidade === 'cte' ? ' · 🚛 NF-e → CT-e' : ''}</small></td>
         <td>${cfEsc(c.pasta || '—')}</td>
         <td><small>${cfEsc(c.remetentes || 'todos')}</small></td>
         <td><small>${c.ultima_execucao ? new Date(c.ultima_execucao).toLocaleString('pt-BR') : '—'}<br>
@@ -9085,8 +9085,16 @@ function emAbrirForm(c) {
   document.getElementById('emIntervalo').value = c?.intervalo_minutos || 15;
   document.getElementById('emRemetentes').value = c?.remetentes || '';
   document.getElementById('emAtivo').checked = c ? !!c.ativo : true;
+  if (document.getElementById('emFinalidade')) { document.getElementById('emFinalidade').value = c?.finalidade || 'auditoria'; emAjustarFinalidade(); }
   document.getElementById('emFormConta').classList.remove('oculto');
 }
+// Para NF-e de clientes a pasta é a caixa de entrada (não a de enviados).
+function emAjustarFinalidade() {
+  const cte = document.getElementById('emFinalidade')?.value === 'cte';
+  document.getElementById('emPasta').placeholder = cte ? 'INBOX (Caixa de entrada)' : 'INBOX.Sent (Enviados)';
+  document.getElementById('emRemetentes').placeholder = cte ? 'Em branco = NF-e de qualquer cliente' : 'Ex.: maria@imporiente.com.br, joao@imporiente.com.br';
+}
+document.getElementById('emFinalidade')?.addEventListener('change', emAjustarFinalidade);
 function emEditar(id) { emAbrirForm((window.__emContas || []).find((c) => c.id === id)); }
 async function emTestar(id, botao) {
   botao.disabled = true;
@@ -9122,7 +9130,7 @@ document.getElementById('btnEmSalvar')?.addEventListener('click', async () => {
     porta: document.getElementById('emPorta').value, usuario: document.getElementById('emUsuario').value,
     senha: document.getElementById('emSenha').value, pasta: document.getElementById('emPasta').value,
     intervalo_minutos: document.getElementById('emIntervalo').value, remetentes: document.getElementById('emRemetentes').value,
-    ativo: document.getElementById('emAtivo').checked,
+    ativo: document.getElementById('emAtivo').checked, finalidade: document.getElementById('emFinalidade')?.value || 'auditoria',
   };
   const url = emEditandoId ? `/api/manutencao/email/contas/${emEditandoId}` : '/api/manutencao/email/contas';
   const resposta = await apiFetch(url, { method: emEditandoId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });

@@ -128,6 +128,26 @@ O submenu **📄 CT-e** monta, transmite e imprime o CT-e (modelo 57, modal rodo
 3. Confira o ICMS. O sistema sugere o CFOP e a alíquota interestadual (7% ou 12%) e avisa casos especiais.
 4. **Salvar e transmitir**. Se autorizado, o DACTE abre para imprimir.
 
+**NF-e dos clientes viram rascunho de CT-e sozinhas.** Há dois jeitos de fazer:
+- **Pelo e-mail:** em Manutenção → Leitura automática de e-mail, cadastre a caixa que recebe as notas dos clientes (por exemplo nfe@suaempresa.com.br, pasta INBOX) e escolha "NF-e dos clientes viram rascunho de CT-e". A caixa é lida no intervalo configurado, ou na hora pelo botão **📥 Buscar NF-e no e-mail**.
+- **Pelos arquivos:** em **📄 Importar NF-e**, escolha vários XML ou ZIP.
+
+O que o sistema faz com cada nota:
+- Notas do mesmo remetente para o mesmo destino, no mesmo e-mail, viram um CT-e só.
+- O rascunho já sai com:
+  - remetente e destinatário;
+  - tomador CIF/FOB pela nota;
+  - início e fim da prestação, com o local de entrega da nota;
+  - CFOP e ICMS (alíquota interna ou 7%/12%);
+  - carga somada;
+  - frete pela tabela de preço da própria empresa, quando cadastrada.
+- Não viram CT-e:
+  - notas de outra transportadora;
+  - notas sem frete (modFrete 9);
+  - notas que já estão em CT-e;
+  - e-mails já lidos.
+- Na lista, o rascunho aparece com "✉ chegou por e-mail" e os avisos do que conferir.
+
 Depois de autorizado, também dá para baixar o XML, consultar na SEFAZ, registrar carta de correção e cancelar com justificativa. Se a SEFAZ rejeitar, o motivo aparece na lista: corrija e transmita de novo, que o número continua o mesmo. Se a SEFAZ não responder, **Tentar de novo** consulta primeiro, para não emitir o mesmo CT-e duas vezes.
 
 **Redespacho, subcontratação e expedidor/recebedor:** no formulário, escolha o **tipo de serviço**. No redespacho, clique em **📄 Ler XML do CT-e anterior** e escolha o CT-e da transportadora que contratou. O sistema preenche o documento anterior, o remetente, o destinatário, as NF-e, a carga e o expedidor, e a prestação passa a começar no expedidor. Assim o ICMS sai pela UF certa: por exemplo, um redespacho a partir de Guarulhos/SP. O tomador pode ser o expedidor ou o recebedor. No redespacho intermediário, só são obrigatórios o expedidor e o recebedor.

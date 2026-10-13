@@ -163,6 +163,7 @@ app.use('/api/rastreio', rateLimit({ windowMs: 60 * 1000, max: 30, standardHeade
 
 // XML de NF-e lido na emissão de CT-e pode passar do limite padrão (100 KB).
 app.use('/api/cte-emissao/ler-nfe', express.json({ limit: '5mb' }));
+app.use('/api/cte-emissao/importar-nfe', express.json({ limit: '40mb' }));
 // Arquivos EDI (NOTFIS/CONEMB/...) vêm como texto no corpo e podem passar de 1 MB.
 app.use('/api/edi', express.json({ limit: '10mb' }));
 app.use(express.json());

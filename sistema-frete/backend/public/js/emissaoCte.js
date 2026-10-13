@@ -117,7 +117,9 @@
         ${c.tp_serv && c.tp_serv !== '0' ? `<div class="cte-tipo">${esc(TIPO_SERV[c.tp_serv])}</div>` : ''}
         ${Number(c.tp_emis) > 1 ? `<div class="cte-tipo alerta">Contingência ${Number(c.tp_emis) === 7 ? 'SVC-RS' : 'SVC-SP'}</div>` : ''}
         ${c.chave_pendente_origem ? '<div class="cte-tipo alerta">Chave pendente na SEFAZ de origem</div>' : ''}
-        ${seloAverbacao(c)}</td>
+        ${seloAverbacao(c)}
+        ${c.status === 'rascunho' && c.origem_tipo === 'email' ? `<div class="cte-tipo" title="${esc(c.origem_remetente || '')}">✉ chegou por e-mail</div>` : ''}
+        ${c.status === 'rascunho' && (c.avisos_importacao || []).length ? `<div class="cte-tipo alerta">⚠ ${esc(c.avisos_importacao.join('; '))}</div>` : ''}</td>
       <td>${esc(c.tomador_nome || '—')}</td>
       <td style="font-size:12.5px;">${esc(c.remetente_nome || '—')}<br><span style="color:var(--texto-fraco);">→ ${esc(c.destinatario_nome || '—')}</span></td>
       <td>${esc(c.cidade_fim || '—')}${c.uf_fim ? `/${esc(c.uf_fim)}` : ''}</td>
@@ -232,7 +234,39 @@
   let nfes = [];          // chaves de acesso
   // Tipo do CT-e que está aberto: 0 normal, 1 complementar, 3 substituição (com a chave de referência).
   let tipoCte = { tpCTe: '0', complementados: [], substituido: null };
+  let origemCte = null;   // de onde veio o rascunho (e-mail, arquivo) — continua depois de editar
   $('btnNovoCte').addEventListener('click', () => abrirFormulario(null));
+
+  // NF-e em lote (arquivos ou e-mail) -> rascunhos de CT-e.
+  function resumoImportacao(r) {
+    const linhas = (r.criados || []).map((c) => `• NF ${c.nfs.join(', ')} → ${c.destinatario || ''}: ${c.valor ? moeda(c.valor) : 'frete a lançar'}${c.avisos?.length ? ` (${c.avisos.join('; ')})` : ''}`);
+    const ign = (r.ignoradas || []).map((i) => `• ${i.nf ? `NF ${i.nf}` : i.arquivo}: ${i.motivo}`);
+    return `${r.criados?.length || 0} rascunho(s) de CT-e criado(s).${linhas.length ? `\n${linhas.join('\n')}` : ''}${ign.length ? `\n\nNão viraram CT-e:\n${ign.join('\n')}` : ''}\n\nConfira e transmita (filtro "Rascunho").`;
+  }
+  $('btnCteImportarNfe').addEventListener('click', () => $('cteArquivosLote').click());
+  $('cteArquivosLote').addEventListener('change', async (e) => {
+    const arquivos = [...e.target.files]; e.target.value = '';
+    if (!arquivos.length) return;
+    const b = $('btnCteImportarNfe'); b.disabled = true;
+    try {
+      const lidos = await Promise.all(arquivos.map((f) => new Promise((ok, falha) => {
+        const fr = new FileReader(); fr.onload = () => ok({ nome: f.name, conteudo: String(fr.result).split(',')[1] }); fr.onerror = falha; fr.readAsDataURL(f);
+      })));
+      const r = await api('/importar-nfe', { method: 'POST', body: JSON.stringify({ arquivos: lidos }) });
+      mostrarAlerta(resumoImportacao(r), { tipo: r.criados.length ? 'sucesso' : 'aviso', titulo: 'NF-e importadas' });
+      $('cteFiltroStatus').value = 'rascunho'; carregarLista();
+    } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    b.disabled = false;
+  });
+  $('btnCteBuscarEmail').addEventListener('click', async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      const r = await api('/buscar-email', { method: 'POST' });
+      mostrarAlerta(`${r.mensagem}${r.detalhes?.length ? `\n\n${r.detalhes.slice(0, 15).map((d) => `• ${d}`).join('\n')}` : ''}`, { tipo: r.ok ? (r.cte ? 'sucesso' : 'info') : 'aviso', titulo: 'NF-e por e-mail' });
+      if (r.cte) { $('cteFiltroStatus').value = 'rascunho'; carregarLista(); }
+    } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    b.disabled = false;
+  });
   $('btnFecharCte').addEventListener('click', fecharFormulario);
   $('btnCteCancelarForm').addEventListener('click', fecharFormulario);
   function fecharFormulario() { $('modalCte').classList.add('oculto'); }
@@ -612,7 +646,7 @@
     }] : [];
     const temPessoa = (pre) => !!$(`${pre}_doc`).value.trim();
     const dados = {
-      tpCTe: tipoCte.tpCTe, tpServ: serv, complementados: tipoCte.complementados || [],
+      tpCTe: tipoCte.tpCTe, tpServ: serv, ...(origemCte ? { origem: origemCte } : {}), complementados: tipoCte.complementados || [],
       substituido: tipoCte.substituido ? { ...tipoCte.substituido, indAlteraToma: $('cteAlteraToma').checked } : null,
       docAnt,
       nfes: [...nfes],
@@ -645,6 +679,7 @@
   function preencher(d) {
     nfes = [...(d.nfes || [])]; desenharChips();
     tipoCte = { tpCTe: String(d.tpCTe ?? '0'), complementados: d.complementados || [], substituido: d.substituido || null };
+    origemCte = d.origem || null;
     $('cteTpServ').value = String(d.tpServ ?? '0');
     $('cteTemExped').checked = !!d.expedidor; $('cteTemReceb').checked = !!d.recebedor;
     if (d.expedidor) $('cteTemExped').dataset.mexeu = '1';
@@ -686,6 +721,7 @@
     editandoId = id;
     nfes = [];
     tipoCte = { tpCTe: '0', complementados: [], substituido: null };
+    origemCte = null;
     renderFormulario();
     $('cteTemExped').addEventListener('change', () => { $('cteTemExped').dataset.mexeu = '1'; });
     $('icms_aliq').addEventListener('input', () => { $('icms_aliq').dataset.editado = '1'; });

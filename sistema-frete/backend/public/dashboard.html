@@ -235,7 +235,12 @@
             <h2>🚛 Emissão de CT-e <span id="cteSeloAmbiente" class="badge badge-pendente" style="vertical-align:middle; margin-left:6px;">—</span></h2>
             <p>Conhecimento de Transporte Eletrônico (modelo 57, rodoviário): monte a partir das NF-e, transmita à SEFAZ e imprima o DACTE</p>
           </div>
-          <button class="btn btn-primario" id="btnNovoCte" style="width:auto;">+ Novo CT-e</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="btnCteBuscarEmail" style="width:auto;" title="Lê agora as caixas de e-mail de NF-e e monta os rascunhos de CT-e">📥 Buscar NF-e no e-mail</button>
+            <button class="btn btn-secundario" id="btnCteImportarNfe" style="width:auto;" title="Escolha vários XML (ou ZIP) de NF-e: sai um rascunho de CT-e por remetente e destino">📄 Importar NF-e</button>
+            <input type="file" id="cteArquivosLote" accept=".xml,.zip" multiple class="oculto" />
+            <button class="btn btn-primario" id="btnNovoCte" style="width:auto;">+ Novo CT-e</button>
+          </div>
         </div>
         <div class="cte-abas">
           <div class="cte-aba ativo" data-cte-aba="lista">CT-e emitidos</div>
@@ -2938,6 +2943,8 @@
             O sistema lê uma pasta de cada caixa cadastrada: registra sozinho as <b>devoluções / trocas de nota</b> escritas no modelo
             padrão e importa os <b>XML anexados</b> (NF-e, CT-e, cancelamentos). Cadastre a caixa de cada pessoa que envia esses e-mails,
             com a pasta de <b>Enviados</b> e o remetente. Cada e-mail é lido uma vez só, e nada na caixa é alterado.
+            <br><b>Transportadora:</b> cadastre a caixa que recebe as NF-e dos clientes (ex.: nfe@suaempresa.com.br, pasta INBOX) escolhendo
+            "NF-e dos clientes viram rascunho de CT-e": cada NF-e anexada vira um rascunho de CT-e, com o frete pela tabela, para conferir e transmitir.
           </p>
           <div id="emListaContas" style="font-size:12.5px; margin-bottom:12px;"></div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
@@ -2954,6 +2961,9 @@
                 <small id="emSenhaInfo" style="color:var(--texto-fraco);"></small></div>
               <div><label for="emPasta">Pasta</label><input type="text" id="emPasta" placeholder="INBOX.Sent (Enviados)" list="emPastasLista" /><datalist id="emPastasLista"></datalist></div>
               <div><label for="emIntervalo">Ler a cada (minutos)</label><input type="number" id="emIntervalo" value="15" min="5" /></div>
+              <div style="grid-column:1/-1;"><label for="emFinalidade">O que fazer com os e-mails</label>
+                <select id="emFinalidade"><option value="auditoria">Devoluções/trocas e XML para a auditoria de frete (embarcador)</option>
+                  <option value="cte">NF-e dos clientes viram rascunho de CT-e (transportadora)</option></select></div>
               <div style="grid-column:1/-1;"><label for="emRemetentes">Só e-mails enviados por</label>
                 <input type="text" id="emRemetentes" placeholder="Ex.: maria@imporiente.com.br, joao@imporiente.com.br" />
                 <small style="color:var(--texto-fraco);">Um ou mais e-mails, separados por vírgula. Em branco = todos os e-mails da pasta.</small></div>

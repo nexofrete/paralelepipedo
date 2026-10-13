@@ -1004,6 +1004,9 @@ CREATE TABLE IF NOT EXISTS contas_email (
     ultimo_erro         TEXT,
     criado_em           TIMESTAMP NOT NULL DEFAULT NOW()
 );
+-- auditoria: devoluções e XML para a auditoria de frete (embarcador);
+-- cte: NF-e dos clientes da transportadora viram rascunho de CT-e.
+ALTER TABLE contas_email ADD COLUMN IF NOT EXISTS finalidade VARCHAR(12) NOT NULL DEFAULT 'auditoria';
 
 -- Descarga e ICMS na tabela de preço (v1.72.0).
 --   descarga_modo: fixo (por entrega) | volume | kg | tonelada

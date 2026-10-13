@@ -172,6 +172,30 @@ router.post('/ler-nfe', autenticar, emitir, (req, res) => {
   try { res.json(lerNfe(req.body?.xml)); } catch (err) { responderErro(res, err, 'Não consegui ler a NF-e.'); }
 });
 
+// NF-e dos clientes -> rascunhos de CT-e: lê agora as caixas de e-mail de NF-e,
+// ou recebe os XML/ZIP escolhidos na tela (base64).
+router.post('/buscar-email', autenticar, emitir, async (req, res) => {
+  try {
+    const r = await require('../caixaEmail').executar(null, 'manual', 'cte');
+    log(req, 'cte_email', `Buscou NF-e no e-mail: ${r.mensagem}`);
+    res.json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao ler o e-mail.'); }
+});
+router.post('/importar-nfe', autenticar, emitir, async (req, res) => {
+  try {
+    const { lerXmlDoZip } = require('../utils/lerZip');
+    const xmls = [];
+    for (const a of (req.body?.arquivos || []).slice(0, 200)) {
+      const buffer = Buffer.from(String(a.conteudo || ''), 'base64');
+      if (/\.zip$/i.test(a.nome || '')) xmls.push(...lerXmlDoZip(buffer)); else xmls.push({ nome: a.nome || 'nota.xml', buffer });
+    }
+    if (!xmls.length) return res.status(400).json({ erro: 'Escolha os XML (ou ZIP) das NF-e.' });
+    const r = await require('../cte/rascunhoDaNfe').rascunhosDosXml(xmls, { tipo: 'arquivo', usuario: req.usuario.nome });
+    log(req, 'cte_rascunho', `Importou ${xmls.length} XML de NF-e: ${r.criados.length} rascunho(s) de CT-e`);
+    res.status(201).json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao importar as NF-e.'); }
+});
+
 router.post('/ler-cte', autenticar, emitir, (req, res) => {
   try { res.json(lerCteAnterior(req.body?.xml)); } catch (err) { responderErro(res, err, 'Não consegui ler o CT-e.'); }
 });
@@ -226,7 +250,8 @@ router.get('/', autenticar, emitir, async (req, res) => {
               COALESCE(dados->'complementados'->>0, dados->'substituido'->>'chave') AS chave_referencia,
               (SELECT s.serie || '/' || s.numero FROM ctes_emitidos s WHERE s.id = ctes_emitidos.substituido_por) AS substituido_por_numero,
               averbacao_status, averbacao->>'numero' AS averbacao_numero, averbacao->>'protocolo' AS averbacao_protocolo,
-              averbacao->>'mensagem' AS averbacao_mensagem, (averbacao->>'teste')::boolean AS averbacao_teste
+              averbacao->>'mensagem' AS averbacao_mensagem, (averbacao->>'teste')::boolean AS averbacao_teste,
+              dados->'origem'->>'tipo' AS origem_tipo, dados->'origem'->>'remetente' AS origem_remetente, dados->'avisosImportacao' AS avisos_importacao
          FROM ctes_emitidos ${cond.length ? `WHERE ${cond.join(' AND ')}` : ''}
         ORDER BY criado_em DESC LIMIT 500`, val);
     res.json(rows);

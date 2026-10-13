@@ -10,6 +10,8 @@
 //     pasta monitorada;
 //   - não altera nada na caixa (nem marca como lido). Cada mensagem é
 //     processada uma vez só (controle pelo Message-ID).
+// Caixa com finalidade "cte" (transportadora): cada NF-e anexada vira um
+// rascunho de CT-e (src/cte/rascunhoDaNfe.js); o texto e os outros XML são ignorados.
 // A senha fica criptografada no banco (mesma chave do portal da transportadora).
 const cron = require('node-cron');
 const pool = require('./db');
@@ -43,12 +45,12 @@ async function salvarConta(d, id = null) {
   const valores = [String(d.nome || d.usuario || '').trim() || null, d.ativo !== false && d.ativo !== 'false',
     String(d.servidor || '').trim() || null, Number(d.porta) || 993, String(d.usuario || '').trim() || null, senha,
     String(d.pasta || '').trim() || 'INBOX', listaRemetentes(d.remetentes).join(', ') || null,
-    Math.min(Math.max(Number(d.intervalo_minutos) || 15, 5), 1440)];
+    Math.min(Math.max(Number(d.intervalo_minutos) || 15, 5), 1440), d.finalidade === 'cte' ? 'cte' : (d.finalidade ? 'auditoria' : atual?.finalidade || 'auditoria')];
   const { rows } = id
     ? await pool.query(`UPDATE contas_email SET nome = $1, ativo = $2, servidor = $3, porta = $4, usuario = $5, senha = $6, pasta = $7,
-                          remetentes = $8, intervalo_minutos = $9 WHERE id = $10 RETURNING *`, [...valores, id])
-    : await pool.query(`INSERT INTO contas_email (nome, ativo, servidor, porta, usuario, senha, pasta, remetentes, intervalo_minutos)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, valores);
+                          remetentes = $8, intervalo_minutos = $9, finalidade = $10 WHERE id = $11 RETURNING *`, [...valores, id])
+    : await pool.query(`INSERT INTO contas_email (nome, ativo, servidor, porta, usuario, senha, pasta, remetentes, intervalo_minutos, finalidade)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`, valores);
   return semSenha(rows[0]);
 }
 async function excluirConta(id) {
@@ -85,13 +87,42 @@ async function testar(id) {
   }
 }
 
-async function processarMensagem(fonte) {
+// Anexos .xml e os .xml de dentro dos .zip.
+function anexosXml(email) {
+  const { lerXmlDoZip } = require('./utils/lerZip');
+  const xmls = []; let erros = 0;
+  for (const a of email.attachments || []) {
+    const nome = String(a.filename || '').toLowerCase();
+    if (nome.endsWith('.xml') || /xml/.test(a.contentType || '')) xmls.push({ nome: a.filename || 'anexo.xml', buffer: a.content });
+    else if (nome.endsWith('.zip')) { try { xmls.push(...lerXmlDoZip(a.content)); } catch { erros += 1; } }
+  }
+  return { xmls, erros };
+}
+
+// Transportadora: NF-e do cliente -> rascunho de CT-e.
+async function processarParaCte(email, conta) {
+  const { xmls } = anexosXml(email);
+  const resultado = { cte: 0, nfes: 0, ignoradas: [], assunto: email.subject || '(sem assunto)' };
+  if (!xmls.length) return resultado;
+  const r = await require('./cte/rascunhoDaNfe').rascunhosDosXml(xmls, {
+    tipo: 'email', caixa: conta.nome || conta.usuario, remetente: email.from?.text || '', assunto: email.subject || '',
+    recebido_em: email.date || null, usuario: `E-mail (${conta.nome || conta.usuario})`,
+  });
+  resultado.cte = r.criados.length;
+  resultado.nfes = r.criados.reduce((s, c) => s + c.nfs.length, 0);
+  resultado.ignoradas = r.ignoradas;
+  resultado.criados = r.criados;
+  return resultado;
+}
+
+async function processarMensagem(fonte, conta = {}) {
   const { simpleParser } = require('mailparser');
   const email = await simpleParser(fonte);
   const idMsg = email.messageId || `${email.date?.toISOString() || ''}|${email.subject || ''}|${email.from?.text || ''}`;
   const { rowCount } = await pool.query('INSERT INTO emails_processados (message_id, assunto, remetente, recebido_em) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
     [idMsg.slice(0, 500), (email.subject || '').slice(0, 300), (email.from?.text || '').slice(0, 300), email.date || null]);
   if (!rowCount) return { repetido: true };
+  if (conta.finalidade === 'cte') return { ...(await processarParaCte(email, conta)), finalidade: 'cte' };
 
   const resultado = { troca: null, xml: 0, xmlErros: 0, assunto: email.subject || '(sem assunto)' };
   // 1) Texto no modelo de devolução / troca
@@ -104,13 +135,8 @@ async function processarMensagem(fonte) {
   }
   // 2) Anexos XML / ZIP
   const { importarXmlInterno } = require('./routes/upload');
-  const { lerXmlDoZip } = require('./utils/lerZip');
-  const xmls = [];
-  for (const a of email.attachments || []) {
-    const nome = String(a.filename || '').toLowerCase();
-    if (nome.endsWith('.xml')) xmls.push({ nome: a.filename, buffer: a.content });
-    else if (nome.endsWith('.zip')) { try { xmls.push(...lerXmlDoZip(a.content)); } catch { resultado.xmlErros += 1; } }
-  }
+  const { xmls, erros } = anexosXml(email);
+  resultado.xmlErros += erros;
   const ordem = (b) => { const t = b.toString('utf-8', 0, 3000); return /<infNFe|nfeProc/.test(t) ? 1 : /<infCte|cteProc/.test(t) ? 2 : 3; };
   xmls.sort((a, b) => ordem(a.buffer) - ordem(b.buffer));
   for (const x of xmls) {
@@ -121,7 +147,7 @@ async function processarMensagem(fonte) {
 
 // Lê UMA caixa.
 async function executarConta(c, motivo = 'agendado') {
-  const resumo = { mensagens: 0, trocas: 0, xml: 0, xmlErros: 0, ignoradas: 0, detalhes: [] };
+  const resumo = { mensagens: 0, trocas: 0, xml: 0, xmlErros: 0, ignoradas: 0, cte: 0, nfes: 0, detalhes: [] };
   let cliente;
   try {
     cliente = await conectar(c);
@@ -145,9 +171,16 @@ async function executarConta(c, motivo = 'agendado') {
       for (const uid of candidatos.slice(-300)) {
         const msg = await cliente.fetchOne(String(uid), { source: true }, { uid: true });
         if (!msg?.source) continue;
-        const r = await processarMensagem(msg.source);
+        const r = await processarMensagem(msg.source, c);
         if (r.repetido) continue;
         resumo.mensagens += 1;
+        if (r.finalidade === 'cte') {
+          resumo.cte += r.cte; resumo.nfes += r.nfes;
+          if (r.cte) resumo.detalhes.push(`"${r.assunto}": ${r.cte} rascunho(s) com NF ${r.criados.flatMap((x) => x.nfs).join(', ')}`);
+          r.ignoradas.forEach((i) => resumo.detalhes.push(`${i.nf ? `NF ${i.nf}` : i.arquivo}: ${i.motivo}`));
+          if (!r.cte && !r.ignoradas.length) resumo.ignoradas += 1;
+          continue;
+        }
         resumo.xml += r.xml; resumo.xmlErros += r.xmlErros;
         if (r.troca) { resumo.trocas += 1; resumo.detalhes.push(`Devolução/troca da NF ${r.troca.nf}`); }
         if (!r.troca && !r.xml) { resumo.ignoradas += 1; resumo.detalhes.push(`Sem dados reconhecidos: "${r.assunto}"`); }
@@ -155,12 +188,14 @@ async function executarConta(c, motivo = 'agendado') {
     } finally {
       trava.release();
     }
-    const texto = `${resumo.mensagens} e-mail(s) novo(s): ${resumo.trocas} devolução(ões)/troca(s), ${resumo.xml} XML importado(s)`
+    const texto = c.finalidade === 'cte'
+      ? `${resumo.mensagens} e-mail(s) novo(s): ${resumo.cte} rascunho(s) de CT-e com ${resumo.nfes} NF-e${resumo.ignoradas ? `, ${resumo.ignoradas} sem NF-e anexada` : ''}.`
+      : `${resumo.mensagens} e-mail(s) novo(s): ${resumo.trocas} devolução(ões)/troca(s), ${resumo.xml} XML importado(s)`
       + `${resumo.xmlErros ? `, ${resumo.xmlErros} XML com erro` : ''}${resumo.ignoradas ? `, ${resumo.ignoradas} sem dados reconhecidos` : ''}.`;
     await pool.query('UPDATE contas_email SET ultima_execucao = NOW(), ultimo_resultado = $1, ultimo_erro = NULL WHERE id = $2',
       [`${texto}${resumo.detalhes.length ? ` ${resumo.detalhes.slice(0, 10).join('; ')}` : ''}`, c.id]);
     if (resumo.mensagens) require('./auditoria').registrar({ usuarioId: null, usuarioNome: USUARIO.nome, acao: 'ler_caixa_email', detalhes: `(${motivo}) ${c.nome || c.usuario}: ${texto}` });
-    return { ok: true, ...resumo, mensagem: texto };
+    return { ok: true, ...resumo, mensagem: texto, detalhes: resumo.detalhes };
   } catch (err) {
     const erro = err.authenticationFailed ? 'usuário ou senha recusados pelo servidor de e-mail'
       : err.code === 'ENOTFOUND' ? `servidor "${c.servidor}" não encontrado`
@@ -174,15 +209,16 @@ async function executarConta(c, motivo = 'agendado') {
 }
 
 // Lê uma caixa (id) ou todas as ativas. Uma de cada vez.
-async function executar(id = null, motivo = 'manual') {
+// finalidade: só as caixas dessa finalidade (ex.: 'cte', pelo botão da tela de CT-e).
+async function executar(id = null, motivo = 'manual', finalidade = null) {
   if (rodando) return { ok: false, mensagem: 'Já existe uma leitura de e-mail em andamento. Tente de novo em instantes.' };
   rodando = true;
   try {
-    const contas = id ? [await buscarConta(id)].filter(Boolean) : (await listarContas()).filter((c) => c.ativo);
-    if (!contas.length) return { ok: false, mensagem: 'Nenhuma caixa de e-mail ativa cadastrada.' };
+    const contas = id ? [await buscarConta(id)].filter(Boolean) : (await listarContas()).filter((c) => c.ativo && (!finalidade || c.finalidade === finalidade));
+    if (!contas.length) return { ok: false, mensagem: finalidade === 'cte' ? 'Nenhuma caixa de e-mail de NF-e cadastrada. Cadastre em Manutenção → Leitura automática de e-mail, escolhendo "NF-e dos clientes viram rascunho de CT-e".' : 'Nenhuma caixa de e-mail ativa cadastrada.' };
     const resultados = [];
     for (const c of contas) resultados.push(await executarConta(c, motivo));
-    return { ok: resultados.every((r) => r.ok), mensagem: resultados.map((r) => r.mensagem).join(' | ') };
+    return { ok: resultados.every((r) => r.ok), mensagem: resultados.map((r) => r.mensagem).join(' | '), cte: resultados.reduce((s, r) => s + (r.cte || 0), 0), detalhes: resultados.flatMap((r) => r.detalhes || []) };
   } finally {
     rodando = false;
   }
@@ -204,4 +240,4 @@ function agendar() {
   });
 }
 
-module.exports = { listarContas, buscarConta, salvarConta, excluirConta, semSenha, testar, executar, agendar };
+module.exports = { listarContas, buscarConta, salvarConta, excluirConta, semSenha, testar, executar, agendar, processarMensagem };

@@ -1949,8 +1949,8 @@ router.get('/relatorios/scorecard', autenticar, permitirAlguma('pode_ver_relator
          FROM sinistros GROUP BY transportadora
        )
        SELECT b.transportadora, b.qtd_fretes, b.preco_medio,
-              CASE WHEN b.qtd_com_sla > 0 THEN ROUND((b.qtd_no_prazo / b.qtd_com_sla) * 100, 1) ELSE NULL END AS percentual_no_prazo,
-              ROUND((b.qtd_retidos / b.qtd_fretes) * 100, 1) AS percentual_retido,
+              CASE WHEN b.qtd_com_sla > 0 THEN ROUND(((b.qtd_no_prazo / b.qtd_com_sla) * 100)::numeric, 1)::float ELSE NULL END AS percentual_no_prazo,
+              ROUND(((b.qtd_retidos / b.qtd_fretes) * 100)::numeric, 1)::float AS percentual_retido,
               COALESCE(s.qtd_sinistros, 0) AS qtd_sinistros,
               COALESCE(s.prejuizo_total, 0) AS prejuizo_total
        FROM base b
@@ -2024,7 +2024,7 @@ router.get('/relatorios/nfe-cte', autenticar, permitirAlguma('pode_ver_relatorio
       SELECT a.*, COALESCE(cn.quantidade, 0)::int AS nf_copias
       FROM agrupado a
       LEFT JOIN copias_nf cn ON cn.numero_nf = a.numero_nf
-      ORDER BY CASE WHEN numero_nf ~ '^[0-9]+$' THEN numero_nf::numeric END ASC NULLS LAST, numero_nf
+      ORDER BY CASE WHEN a.numero_nf ~ '^[0-9]+$' THEN a.numero_nf::numeric END ASC NULLS LAST, a.numero_nf
     `, params);
 
     const resultado = rows.map(r => ({

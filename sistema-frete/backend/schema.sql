@@ -248,6 +248,9 @@ CREATE TABLE IF NOT EXISTS configuracao_backup (
     ultimo_backup_mensagem  TEXT,
     CONSTRAINT configuracao_backup_unica CHECK (id = 1)
 );
+-- Senha do backup (opcional, guardada criptografada): protege a chave do sistema
+-- (config.json) dentro do .zip — sem ela, uma cópia na nuvem não abre o certificado.
+ALTER TABLE configuracao_backup ADD COLUMN IF NOT EXISTS senha_cripto TEXT;
 
 -- Avisos que o admin dispara para todos os usuários logados (ex: manutenção programada).
 CREATE TABLE IF NOT EXISTS avisos (

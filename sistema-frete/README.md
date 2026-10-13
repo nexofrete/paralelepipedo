@@ -70,6 +70,25 @@ Cada usuário faz isso uma vez no computador dele. O login continua sendo necess
 
 Se o IP do servidor mudar no futuro, é só rodar o `criar-atalho-desktop.bat` de novo com o novo endereço (ele substitui o atalho antigo).
 
+## Backup (faça antes de começar a usar)
+
+Fica em **Manutenção → Backup automático**. Ligue o backup diário e preencha a **pasta de cópia**. O recomendado é uma pasta do OneDrive ou do Google Drive para computador, para a cópia subir sozinha para a nuvem. Se o computador do servidor queimar, o backup continua lá.
+
+O backup é um arquivo **.zip completo**, conferido depois de gravado, que leva:
+- o banco de dados inteiro;
+- as fotos e assinaturas de entrega (app do motorista) e os anexos;
+- a **chave do sistema** (`dados/config.json`). Sem ela, o certificado digital e as senhas guardadas não abrem num computador novo.
+
+**Senha do backup (recomendada):** com ela, a chave vai protegida dentro do .zip, e uma cópia na nuvem não abre o certificado de ninguém. Anote a senha em lugar seguro: ela é pedida para restaurar num computador novo.
+
+**Para restaurar num computador novo:**
+1. Instale o Nexofrete.
+2. Copie o .zip para `backend\dados\backups`.
+3. Em Manutenção → Backups salvos → **Restaurar**, digite RESTAURAR e a senha do backup.
+4. Reinicie o servidor.
+
+Os backups antigos, que são só `.sql`, continuam restaurando normalmente.
+
 ## Criar login para os clientes e funcionários
 
 Agora isso é feito direto pela tela: logado como administrador, vá em **Usuários → + Novo usuário**. Você escolhe o tipo:

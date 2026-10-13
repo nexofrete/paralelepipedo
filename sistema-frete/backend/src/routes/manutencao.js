@@ -17,8 +17,8 @@ router.use(autenticar, apenasAdmin);
 // GET /api/manutencao/configuracao
 router.get('/configuracao', async (req, res) => {
   try {
-    const config = await backup.buscarConfiguracao();
-    res.json(config);
+    const { senha_cripto: senha, ...config } = await backup.buscarConfiguracao();
+    res.json({ ...config, tem_senha: !!senha });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao buscar configuração de backup.' });
@@ -28,16 +28,16 @@ router.get('/configuracao', async (req, res) => {
 // PUT /api/manutencao/configuracao
 router.put('/configuracao', async (req, res) => {
   try {
-    const config = await backup.salvarConfiguracao(req.body);
+    const { senha_cripto: senha, ...config } = await backup.salvarConfiguracao(req.body);
     await backup.reagendarTarefa();
     registrar({
       usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_backup_config',
-      detalhes: `Alterou a configuração de backup automático (${config.ativo ? 'ativado' : 'desativado'}, ${config.frequencia} às ${config.horario})`,
+      detalhes: `Alterou a configuração de backup automático (${config.ativo ? 'ativado' : 'desativado'}, ${config.frequencia} às ${config.horario})${req.body?.senha_backup ? ' e a senha do backup' : req.body?.remover_senha ? ' e removeu a senha do backup' : ''}`,
     });
-    res.json(config);
+    res.json({ ...config, tem_senha: !!senha });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao salvar configuração de backup.' });
+    res.status(400).json({ erro: err.message || 'Erro ao salvar configuração de backup.' });
   }
 });
 
@@ -61,12 +61,15 @@ router.post('/backups/:arquivo/restaurar', async (req, res) => {
     return res.status(400).json({ erro: 'Para restaurar, digite RESTAURAR na confirmação.' });
   }
   try {
-    const r = await backup.restaurarBackup(req.params.arquivo);
+    const r = await backup.restaurarBackup(req.params.arquivo, { senha: req.body?.senha });
     registrar({
       usuarioId: null, usuarioNome: req.usuario.nome, acao: 'restaurar_backup',
-      detalhes: `Restaurou o banco a partir de ${r.restaurado} (backup de segurança antes: ${r.seguranca})`,
+      detalhes: `Restaurou o banco a partir de ${r.restaurado} (backup de segurança antes: ${r.seguranca}; ${r.arquivosRestaurados} arquivo(s)${r.chaveTrocada ? '; chave do sistema restaurada' : ''})`,
     });
-    res.json({ mensagem: `Banco restaurado a partir de ${r.restaurado}. Antes, foi feito um backup de segurança (${r.seguranca}). Reinicie o servidor e peça para todos entrarem de novo.` });
+    res.json({ mensagem: `Banco restaurado a partir de ${r.restaurado}${r.arquivosRestaurados ? `, com ${r.arquivosRestaurados} foto(s)/assinatura(s)/anexo(s)` : ''}. Antes, foi feito um backup de segurança (${r.seguranca}).`
+      + `${r.chaveTrocada ? ' A chave do sistema (que abre o certificado digital) também foi restaurada.' : ''}`
+      + `${r.chaveNaoRestaurada ? ' ⚠ A chave do sistema está protegida pela senha do backup e não foi restaurada: se este é um computador novo, restaure de novo informando a senha.' : ''}`
+      + ' Reinicie o servidor e peça para todos entrarem de novo.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: `Não foi possível restaurar: ${err.message}` });

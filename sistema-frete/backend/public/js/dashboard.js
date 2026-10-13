@@ -2898,6 +2898,9 @@ async function carregarConfigBackup() {
     document.getElementById('bkManterUltimos').value = c.manter_ultimos ?? 7;
     document.getElementById('bkCaminhoPgDump').value = c.caminho_pg_dump || '';
     document.getElementById('bkPastaCopia').value = c.pasta_copia || '';
+    document.getElementById('bkSenha').value = '';
+    document.getElementById('bkRemoverSenha').checked = false;
+    document.getElementById('bkSenhaInfo').textContent = c.tem_senha ? '— ✓ senha cadastrada' : '— sem senha';
     document.getElementById('campoDiaSemana').classList.toggle('oculto', c.frequencia !== 'semanal');
 
     const statusEl = document.getElementById('statusUltimoBackup');
@@ -2940,6 +2943,8 @@ document.getElementById('btnSalvarConfigBackup').addEventListener('click', async
     manter_ultimos: Number(document.getElementById('bkManterUltimos').value) || 7,
     caminho_pg_dump: document.getElementById('bkCaminhoPgDump').value.trim() || null,
     pasta_copia: document.getElementById('bkPastaCopia').value.trim() || null,
+    ...(document.getElementById('bkSenha').value ? { senha_backup: document.getElementById('bkSenha').value } : {}),
+    ...(document.getElementById('bkRemoverSenha').checked ? { remover_senha: true } : {}),
   };
 
   try {
@@ -2997,7 +3002,7 @@ async function carregarBackups() {
     const corpo = document.querySelector('#tabelaBackups tbody');
     corpo.innerHTML = arquivos.map((a) => `
       <tr>
-        <td>${a.nome}</td>
+        <td>${a.nome}<br><small style="color:var(--texto-fraco);">${a.completo ? '📦 completo: banco + fotos/assinaturas + chave' : 'só o banco (formato antigo)'}</small></td>
         <td>${formatoTamanho(a.tamanho)}</td>
         <td>${formatoDataHora(a.criado_em)}</td>
         <td style="text-align:right;">
@@ -3022,10 +3027,18 @@ async function restaurarBackup(nome) {
     { tipo: 'perigo', titulo: 'Restaurar este backup?', placeholder: 'RESTAURAR', textoOk: 'Restaurar o banco' });
   if (texto === null) return;
   if (texto.trim().toUpperCase() !== 'RESTAURAR') { mostrarAlerta('Restauração cancelada: a palavra digitada não foi RESTAURAR.', { tipo: 'aviso' }); return; }
+  // Backup completo: a senha do backup abre a chave do sistema (só precisa num computador novo).
+  let senha = '';
+  if (/\.zip$/i.test(nome)) {
+    const s = await pedirTexto('Se o backup foi feito com senha, digite a senha do backup (precisa num computador novo, para o certificado digital voltar a funcionar). No mesmo computador pode deixar em branco.',
+      { titulo: 'Senha do backup', placeholder: 'senha do backup (opcional)', textoOk: 'Continuar' });
+    if (s === null) return;
+    senha = s;
+  }
   mostrarAlerta('Restaurando o banco… isso pode levar alguns minutos. Não feche o sistema.', { tipo: 'info' });
   try {
     const resposta = await apiFetch(`/api/manutencao/backups/${encodeURIComponent(nome)}/restaurar`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmacao: 'RESTAURAR' }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmacao: 'RESTAURAR', ...(senha ? { senha } : {}) }),
     });
     const d = await resposta.json();
     mostrarAlerta(resposta.ok ? d.mensagem : d.erro, { tipo: resposta.ok ? 'sucesso' : 'erro' });

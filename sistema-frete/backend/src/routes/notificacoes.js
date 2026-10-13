@@ -65,6 +65,12 @@ router.get('/', autenticar, async (req, res) => {
         notificacoes.push({ tipo: 'aviso', icone: '💾', pagina: 'manutencao', alvo: 'backup', texto: 'Nenhum backup foi feito ainda' });
       } else {
         const diasSemBackup = (Date.now() - new Date(backups[0].criado_em).getTime()) / (1000 * 60 * 60 * 24);
+        const cfgBackup = await backup.buscarConfiguracao().catch(() => null);
+        if (cfgBackup?.ultimo_backup_status === 'erro') {
+          notificacoes.push({ tipo: 'aviso', icone: '💾', pagina: 'manutencao', alvo: 'backup', texto: `O último backup deu erro: ${String(cfgBackup.ultimo_backup_mensagem || '').slice(0, 120)}` });
+        } else if (cfgBackup && !cfgBackup.pasta_copia) {
+          notificacoes.push({ tipo: 'aviso', icone: '💾', pagina: 'manutencao', alvo: 'backup', texto: 'Os backups ficam só neste computador: defina uma pasta de cópia (rede, OneDrive ou Google Drive)' });
+        }
         if (diasSemBackup > 2) {
           notificacoes.push({
             tipo: 'aviso', icone: '💾', pagina: 'manutencao', alvo: 'backup',

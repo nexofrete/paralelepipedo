@@ -3213,8 +3213,15 @@
             </div>
             <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
               <label>Copiar cada backup também para (fora do servidor — pasta de rede ou outro computador)</label>
-              <input type="text" id="bkPastaCopia" placeholder="Ex: \\OUTRO-PC\Backups-Nexofrete  ou  D:\Backups" />
-              <div style="font-size:11px; color:var(--texto-fraco); margin-top:4px;">Se o disco do servidor der problema, o backup continua existindo lá. Deixe vazio para não copiar.</div>
+              <input type="text" id="bkPastaCopia" placeholder="Ex: C:\Users\Fulano\OneDrive\Backups-Nexofrete  ou  \\OUTRO-PC\Backups" />
+              <div style="font-size:11px; color:var(--texto-fraco); margin-top:4px;">Se o disco do servidor der problema, o backup continua existindo lá. <b>Recomendado:</b> uma pasta do OneDrive ou do Google Drive para computador — a cópia sobe sozinha para a nuvem. Deixe vazio para não copiar.</div>
+            </div>
+            <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
+              <label for="bkSenha">Senha do backup <span id="bkSenhaInfo" style="font-weight:400; color:var(--texto-fraco);"></span></label>
+              <input type="password" id="bkSenha" autocomplete="new-password" placeholder="Opcional — mínimo 8 caracteres; preencha só para criar ou trocar" />
+              <div style="font-size:11px; color:var(--texto-fraco); margin-top:4px;">O backup leva o banco, as fotos e assinaturas de entrega e a <b>chave do sistema</b> (que abre o certificado digital).
+                Com senha, essa chave vai protegida: uma cópia na nuvem não abre o certificado sem ela. <b>Anote a senha em lugar seguro</b> — ela é pedida para restaurar num computador novo.
+                <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;"><input type="checkbox" id="bkRemoverSenha" style="width:auto;" /> remover a senha</label></div>
             </div>
             <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
               <label>Caminho do pg_dump (só preencha se der erro "não encontrado")</label>

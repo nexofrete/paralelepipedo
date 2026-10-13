@@ -1,0 +1,10 @@
+{
+  "name": "nexofrete-empacotador",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gera o .zip de instalação/atualização do Nexofrete com o código do servidor ofuscado",
+  "scripts": { "empacotar": "node empacotar.js" },
+  "dependencies": {
+    "javascript-obfuscator": "^4.1.1"
+  }
+}

@@ -147,6 +147,8 @@ async function processarMensagem(fonte, conta = {}) {
 
 // Lê UMA caixa.
 async function executarConta(c, motivo = 'agendado') {
+  const lic = require('./licenca').estado();
+  if (!lic.emissao) return { ok: false, mensagem: `Leitura de e-mail parada: ${lic.mensagem}` };
   const resumo = { mensagens: 0, trocas: 0, xml: 0, xmlErros: 0, ignoradas: 0, cte: 0, nfes: 0, detalhes: [] };
   let cliente;
   try {

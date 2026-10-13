@@ -59,6 +59,8 @@ function mover(arquivo, pastaBase, subpasta) {
 
 // Lê a pasta e importa o que for novo. Devolve um resumo.
 async function executar(motivo = 'automático') {
+  const lic = require('./licenca').estado();
+  if (!lic.emissao) return { ok: false, mensagem: `Leitura da pasta parada: ${lic.mensagem}` };
   if (rodando) return { ok: false, mensagem: 'Já tem uma importação da pasta em andamento.' };
   rodando = true;
   const { importarXmlInterno, tipoDoXml } = require('./routes/upload');

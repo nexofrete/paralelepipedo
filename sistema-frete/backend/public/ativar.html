@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ativar o sistema — Nexofrete</title>
+  <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/tema.js"></script>
+  <style>
+    .codigo-maquina { font-family: ui-monospace, Consolas, monospace; font-size: 18px; letter-spacing: 1px; font-weight: 700; white-space: nowrap; text-align: center;
+      padding: 12px; border: 1px dashed var(--borda); border-radius: 10px; margin: 8px 0 10px; user-select: all; }
+    .ativar-passos { font-size: 13px; color: var(--texto-fraco); line-height: 1.6; margin: 0 0 14px; padding-left: 18px; }
+    #chaveAtivacao { width: 100%; min-height: 96px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .ativar-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 14px; }
+    .ativar-acoes .btn { width: auto; }
+  </style>
+</head>
+<body>
+  <div class="tela-login">
+    <div class="card-login" style="max-width:560px;">
+      <div class="logo-area">
+        <img class="logo-login logo-login-escuro" src="img/nexofrete-horizontal-fundo-escuro.svg" alt="Nexofrete" />
+        <img class="logo-login logo-login-claro" src="img/nexofrete-horizontal-fundo-claro.svg" alt="" aria-hidden="true" />
+      </div>
+      <h2 style="margin:6px 0 4px; text-align:center;">🔒 Ativação do sistema</h2>
+      <div id="situacao" class="aviso-login" style="text-align:center;"></div>
+      <ol class="ativar-passos">
+        <li>Envie o <b>código deste computador</b> para quem forneceu o sistema.</li>
+        <li>Você vai receber uma <b>chave de ativação</b> (começa com <code>NXF1.</code>).</li>
+        <li>Cole a chave abaixo e clique em <b>Ativar</b>.</li>
+      </ol>
+      <div style="font-size:12px; color:var(--texto-fraco); text-align:center;">Código deste computador</div>
+      <div class="codigo-maquina" id="codigoMaquina">…</div>
+      <div class="ativar-acoes">
+        <button class="btn btn-secundario" id="btnCopiar" type="button">📋 Copiar código</button>
+        <a class="btn btn-secundario" id="btnWhatsapp" target="_blank" rel="noopener" style="text-decoration:none; display:none;">💬 Pedir pelo WhatsApp</a>
+        <a class="btn btn-secundario" id="btnEmail" style="text-decoration:none; display:none;">✉ Pedir por e-mail</a>
+      </div>
+      <div class="campo">
+        <label for="chaveAtivacao">Chave de ativação</label>
+        <textarea id="chaveAtivacao" placeholder="NXF1...." spellcheck="false"></textarea>
+      </div>
+      <div id="mensagemErro" class="mensagem-erro"></div>
+      <button class="btn btn-primario" id="btnAtivar" type="button">Ativar</button>
+      <p style="text-align:center; margin-top:14px;"><a href="login.html" id="linkEntrar" style="display:none;">Entrar no sistema</a></p>
+    </div>
+  </div>
+  <script src="js/ativar.js"></script>
+</body>
+</html>

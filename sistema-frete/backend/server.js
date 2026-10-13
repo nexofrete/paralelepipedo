@@ -168,6 +168,19 @@ app.use('/api/cte-emissao/importar-nfe', express.json({ limit: '40mb' }));
 app.use('/api/edi', express.json({ limit: '10mb' }));
 app.use(express.json());
 
+// Licença: sem ativação (ou cópia em outro computador) o sistema não funciona;
+// licença vencida deixa só consultar (GET), sem emitir nem alterar nada.
+const licenca = require('./src/licenca');
+app.use('/api/licenca', require('./src/routes/licenca'));
+app.use('/api', (req, res, next) => {
+  if (req.path === '/status') return next();
+  const e = licenca.estado();
+  if (!e.ativo) return res.status(423).json({ erro: e.mensagem, licenca: true, situacao: e.situacao });
+  if (!e.emissao && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.path.startsWith('/auth/')) {
+    return res.status(423).json({ erro: e.mensagem, licenca: true, situacao: e.situacao });
+  }
+  return next();
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/fretes', recordsRoutes);

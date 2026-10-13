@@ -70,6 +70,26 @@ Cada usuário faz isso uma vez no computador dele. O login continua sendo necess
 
 Se o IP do servidor mudar no futuro, é só rodar o `criar-atalho-desktop.bat` de novo com o novo endereço (ele substitui o atalho antigo).
 
+## Licença e ativação (proteção contra cópia)
+
+Cada instalação só funciona **ativada com uma chave emitida por você**.
+- A chave vale para **um computador** e **um CNPJ**. Copiar a pasta do sistema para outro computador, ou usá-la com outra empresa, não funciona.
+- A chave é assinada digitalmente: não dá para inventar uma nem alterar a validade.
+- Sem ativação, as telas vão para **ativar.html** e nada funciona: nem o rastreio, nem o app do motorista, nem as leituras automáticas.
+
+**Ativar um cliente:**
+1. Na instalação do cliente, a tela de ativação mostra o **código do computador**. O cliente copia e te envia.
+2. No **seu** computador, em **Manutenção → Licença do sistema**, preencha cliente, CNPJ, código e validade (30 dias, 90 dias, 1 ano ou sem vencimento) e clique em **Gerar chave**.
+3. Envie a chave (começa com `NXF1.`). O cliente cola na tela de ativação.
+
+**O emissor de chaves só aparece no seu computador**, porque depende da sua **chave privada** em `backend/dados/licenciador/chave-privada.pem`. A pasta `dados` nunca vai nos pacotes nem no Git. Guarde uma cópia dessa chave em lugar seguro (pendrive, gerenciador de senhas): sem ela você não emite mais chaves e precisaria trocar a chave do sistema.
+
+**Validade:**
+- 15 dias antes de vencer, aparece um aviso.
+- Depois de vencida, há 7 dias de tolerância. Em seguida o sistema fica **só para consulta**: o cliente continua vendo os seus documentos fiscais, mas não emite nem altera nada até receber a chave nova.
+
+**Seus dados de contato:** preencha `backend/licenca-contato.json` (nome, WhatsApp e e-mail). Com isso, a tela de ativação ganha os botões "Pedir pelo WhatsApp" e "Pedir por e-mail", já com o código da máquina na mensagem.
+
 ## Backup (faça antes de começar a usar)
 
 Fica em **Manutenção → Backup automático**. Ligue o backup diário e preencha a **pasta de cópia**. O recomendado é uma pasta do OneDrive ou do Google Drive para computador, para a cópia subir sozinha para a nuvem. Se o computador do servidor queimar, o backup continua lá.

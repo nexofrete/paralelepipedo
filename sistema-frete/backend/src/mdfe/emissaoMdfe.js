@@ -141,6 +141,7 @@ async function transmitir(id) {
   if (!reg) throw new Error('MDF-e não encontrado.');
   if (['autorizado', 'encerrado', 'cancelado'].includes(reg.status)) throw new Error(`Esse MDF-e já está ${reg.status}.`);
   const e = await carregarEmitente();
+  require('../licenca').conferirEmpresa(e.cnpj);
   const demo = reg.demonstracao || (!reg.chave && !!e.cte_demonstracao);
   if (demo && !reg.demonstracao) await pool.query('UPDATE mdfes SET demonstracao = TRUE WHERE id = $1', [id]);
   if (!demo && reg.demonstracao) throw new Error('Esse MDF-e foi feito no modo demonstração. Monte outro para emitir de verdade.');

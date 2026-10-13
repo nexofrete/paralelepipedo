@@ -295,6 +295,12 @@ async function apiFetch(caminho, opcoes = {}) {
     window.location.href = `login.html?motivo=${motivo}`;
     throw new Error('Sessão expirada.');
   }
+  // Licença: sem ativação vai para a tela de ativação; vencida avisa que está só para consulta.
+  if (resposta.status === 423) {
+    let corpo = {};
+    try { corpo = await resposta.clone().json(); } catch (e) { /* sem JSON */ }
+    if (corpo.licenca && !['vencida'].includes(corpo.situacao)) { window.location.href = 'ativar.html'; throw new Error(corpo.erro || 'Sistema não ativado.'); }
+  }
   if (resposta.status === 403) {
     try {
       const corpo = await resposta.clone().json();

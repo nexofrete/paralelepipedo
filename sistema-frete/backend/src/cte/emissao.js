@@ -119,6 +119,7 @@ async function transmitir(id) {
   if (!reg) throw new Error('CT-e não encontrado.');
   if (['autorizado', 'cancelado'].includes(reg.status)) throw new Error(`Esse CT-e já está ${reg.status}.`);
   const e = await carregarEmitente();
+  require('../licenca').conferirEmpresa(e.cnpj);   // a licença é desta empresa (CNPJ)?
   const cert = await certificadoParaUsar(e);
   // Demonstração: o que for transmitido agora fica marcado e nunca vai à SEFAZ.
   const demo = reg.demonstracao || (!reg.chave && !!e.cte_demonstracao);

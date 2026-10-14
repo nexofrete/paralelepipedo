@@ -197,7 +197,10 @@ function agendarConferencia() {
 let estadoEmCache = null; let estadoEm = 0;
 function estado() {
   // Recalcula a cada 10 minutos (a data muda; a licença pode ser trocada).
-  if (!estadoEmCache || Date.now() - estadoEm > 600000) { estadoEmCache = avaliar(); estadoEm = Date.now(); }
+  // Sem ativação, a cada 5 s: pôr a chave privada do licenciador na pasta
+  // dados/licenciador já libera, sem reiniciar.
+  const validoPor = estadoEmCache && !estadoEmCache.ativo ? 5000 : 600000;
+  if (!estadoEmCache || Date.now() - estadoEm > validoPor) { estadoEmCache = avaliar(); estadoEm = Date.now(); }
   return estadoEmCache;
 }
 

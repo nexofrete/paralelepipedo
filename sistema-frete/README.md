@@ -84,6 +84,8 @@ Cada instalação só funciona **ativada com uma chave emitida por você**.
 
 **O emissor de chaves só aparece no seu computador**, porque depende da sua **chave privada** em `backend/dados/licenciador/chave-privada.pem`. A pasta `dados` nunca vai nos pacotes nem no Git. Guarde uma cópia dessa chave em lugar seguro (pendrive, gerenciador de senhas): sem ela você não emite mais chaves e precisaria trocar a chave do sistema.
 
+**No seu próprio computador** você não precisa de chave de ativação. Crie a pasta `backend\dados\licenciador` e coloque nela o arquivo `chave-privada.pem`. Confira se o nome não ficou `chave-privada.pem.txt`: no Explorador, ative **Exibir → Extensões de nomes de arquivos**. Em até 5 segundos a tela de ativação libera o sistema; é só recarregar a página. Em **Manutenção → Licença** aparece "Computador do licenciador" e o emissor de chaves.
+
 **Validade:**
 - 15 dias antes de vencer, aparece um aviso.
 - Depois de vencida, há 7 dias de tolerância. Em seguida o sistema fica **só para consulta**: o cliente continua vendo os seus documentos fiscais, mas não emite nem altera nada até receber a chave nova.

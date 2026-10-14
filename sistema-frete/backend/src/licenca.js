@@ -228,10 +228,21 @@ function conferirEmpresa(cnpjEmpresa) {
 }
 
 // ---------- Licenciador (só no computador do dono) ----------
+// Aceita o arquivo salvo pelo Bloco de Notas: "chave-privada.pem.txt", com
+// espaços, linhas em branco ou BOM. Remonta o PEM só com o miolo base64.
+function lerPem(texto) {
+  const m = /-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/.exec(String(texto).replace(/^\uFEFF/, ''));
+  if (!m) return null;
+  const miolo = m[1].replace(/[^A-Za-z0-9+/=]/g, '');
+  return `-----BEGIN PRIVATE KEY-----\n${miolo.match(/.{1,64}/g)?.join('\n') || ''}\n-----END PRIVATE KEY-----\n`;
+}
 function chavePrivada() {
-  if (!fs.existsSync(CHAVE_PRIVADA)) return null;
+  const arquivo = [CHAVE_PRIVADA, `${CHAVE_PRIVADA}.txt`].find((a) => fs.existsSync(a));
+  if (!arquivo) return null;
   try {
-    const k = crypto.createPrivateKey(fs.readFileSync(CHAVE_PRIVADA));
+    const pem = lerPem(fs.readFileSync(arquivo, 'utf8'));
+    if (!pem) return null;
+    const k = crypto.createPrivateKey(pem);
     // Só vale se for o par da chave pública do sistema.
     const teste = Buffer.from('nexofrete');
     return crypto.verify(null, teste, crypto.createPublicKey(CHAVE_PUBLICA), crypto.sign(null, teste, k)) ? k : null;

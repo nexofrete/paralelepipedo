@@ -14,45 +14,51 @@
   const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const guardado = { ler: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, por: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sem armazenamento */ } } };
 
-  // Códigos das telas (fixos, para decorar). 001 = Coletas, como no SSW.
+  // Códigos das telas (fixos, para decorar). O primeiro número diz a área:
+  //   0xx operação · 1xx financeiro · 2xx frota · 3xx gestão e relatórios · 4xx notas e fretes contratados
+  //   5xx comunicação · 9xx sistema. Na mesma área, o número seguinte ao da tela é o "novo" (001 Coletas → 002 Nova coleta).
+  // 001 = Coletas, como no SSW.
   // Chave: "t:<página>:<aba>" (Operação de Transporte), "p:<página>" (menu) ou "r:<subaba>" (Relatórios).
+  const AREAS = { 0: 'Operação', 1: 'Financeiro', 2: 'Frota', 3: 'Gestão e relatórios', 4: 'Notas e fretes contratados', 5: 'Comunicação', 9: 'Sistema e tela' };
   const CODIGOS = {
-    't:coletas:': ['001', 'coleta pedido recolher'], 't:cotacoes:': ['002', 'cotacao orcamento preco proposta'],
-    't:emissao-cte:lista': ['004', 'cte conhecimento emitir dacte'], 't:emissao-cte:mdfe': ['006', 'mdfe manifesto'],
-    't:emissao-cte:nfse': ['007', 'nfse nota servico iss municipal'], 't:ocorrencias:entregas': ['010', 'ocorrencia entrega baixa comprovante canhoto'],
-    't:ocorrencias:romaneios': ['011', 'romaneio saida motorista app'], 't:conferencia:conferir': ['012', 'bipagem conferencia leitor codigo barras'],
-    't:conferencia:etiquetas': ['013', 'etiqueta volume imprimir zpl'], 't:filiais:estoque': ['014', 'estoque filial onde esta mercadoria armazem'],
-    't:filiais:transferencias': ['015', 'transferencia filial'], 't:faturamento:faturas': ['020', 'fatura faturar cobranca'],
-    't:faturamento:resumo': ['021', 'contas receber receber'], 't:faturamento:boletos': ['022', 'boleto cnab remessa retorno banco'],
-    't:pagar:contas': ['023', 'contas pagar despesa fornecedor'], 't:pagar:acertos': ['024', 'acerto viagem motorista ciot vale pedagio agregado'],
-    't:frota:painel': ['030', 'frota custo km'], 't:frota:abastecimentos': ['031', 'abastecimento combustivel diesel consumo'],
-    't:frota:manutencoes': ['032', 'manutencao oficina preventiva'], 't:emissao-cte:frota': ['033', 'veiculo motorista placa cadastro'],
-    't:painel-transporte:geral': ['040', 'painel gerencial indicadores'], 't:painel-transporte:resultado': ['041', 'margem resultado lucro cliente dre'],
-    't:edi:': ['050', 'edi notfis conemb ocoren doccob'], 't:portal-cliente:': ['051', 'portal cliente embarcador acesso'],
-    't:filiais:unidades': ['052', 'filial unidade'], 't:emissao-cte:config': ['053', 'configuracao fiscal certificado'],
-    'p:visao-geral': ['060', 'inicio'], 'p:upload': ['061', 'xml importar nota'], 'p:registros': ['062', 'registros fretes notas'],
-    'p:auditoria-frete': ['063', 'auditoria frete'], 'p:financeiro': ['064', 'financeiro'], 'p:sinistros': ['070', 'sinistro avaria'],
-    'p:mensagens': ['071', 'mensagem'], 'p:agenda': ['072', 'agenda compromisso'], 'p:cadastros': ['080', 'cadastro usuario transportadora tabela preco'],
-    'p:manutencao': ['081', 'manutencao sistema backup atualizacao'],
-    'r:graficos': ['090', 'relatorio grafico'], 'r:entregas': ['091', 'entregas previstas'], 'r:semMapa': ['092', 'mapa'],
-    'r:melhorTransp': ['093', 'melhor transportadora'], 'r:consolidacao': ['094', 'consolidar rotas'], 'r:roteirizar': ['095', 'roteirizar rota'],
-    'r:bi': ['096', 'bi relatorio montar'], 'r:comparador': ['097', 'comparar cotacoes'], 'r:anomalias': ['098', 'anomalias'],
-    'r:scorecard': ['099', 'scorecard'], 'r:nfeCte': ['100', 'nfe cte'], 'r:auditoriaFrete': ['101', 'conferencia cte'],
+    't:coletas:': ['001', 'coleta pedido recolher'], 't:cotacoes:': ['010', 'cotacao orcamento preco proposta'],
+    't:emissao-cte:lista': ['020', 'cte conhecimento emitir dacte'], 't:emissao-cte:mdfe': ['025', 'mdfe manifesto'],
+    't:emissao-cte:nfse': ['030', 'nfse nota servico iss municipal'],
+    't:ocorrencias:romaneios': ['040', 'romaneio saida motorista app'], 't:ocorrencias:entregas': ['041', 'ocorrencia entrega baixa comprovante canhoto'],
+    't:conferencia:conferir': ['050', 'bipagem conferencia leitor codigo barras'], 't:conferencia:etiquetas': ['051', 'etiqueta volume imprimir zpl'],
+    't:filiais:estoque': ['060', 'estoque filial onde esta mercadoria armazem'], 't:filiais:transferencias': ['061', 'transferencia filial'],
+    't:edi:': ['070', 'edi notfis conemb ocoren doccob'], 't:portal-cliente:': ['080', 'portal cliente embarcador acesso'],
+    't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:resumo': ['101', 'contas receber receber'],
+    't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],
+    't:pagar:acertos': ['120', 'acerto viagem motorista ciot vale pedagio agregado'], 'p:financeiro': ['130', 'financeiro'],
+    't:frota:painel': ['200', 'frota custo km'], 't:frota:abastecimentos': ['201', 'abastecimento combustivel diesel consumo'],
+    't:frota:manutencoes': ['210', 'manutencao oficina preventiva'], 't:emissao-cte:frota': ['220', 'veiculo motorista placa cadastro'],
+    't:painel-transporte:geral': ['300', 'painel gerencial indicadores'], 't:painel-transporte:resultado': ['301', 'margem resultado lucro cliente dre'],
+    'r:graficos': ['310', 'relatorio grafico'], 'r:entregas': ['311', 'entregas previstas'], 'r:semMapa': ['312', 'mapa'],
+    'r:melhorTransp': ['313', 'melhor transportadora'], 'r:consolidacao': ['314', 'consolidar rotas'], 'r:roteirizar': ['315', 'roteirizar rota'],
+    'r:bi': ['316', 'bi relatorio montar'], 'r:comparador': ['317', 'comparar cotacoes'], 'r:anomalias': ['318', 'anomalias'],
+    'r:scorecard': ['319', 'scorecard'], 'r:nfeCte': ['320', 'nfe cte'], 'r:auditoriaFrete': ['321', 'conferencia cte'],
+    'p:auditoria-frete': ['330', 'auditoria frete'],
+    'p:visao-geral': ['400', 'inicio'], 'p:upload': ['401', 'xml importar nota'], 'p:registros': ['402', 'registros fretes notas'],
+    'p:sinistros': ['410', 'sinistro avaria'],
+    'p:mensagens': ['500', 'mensagem'], 'p:agenda': ['501', 'agenda compromisso'],
+    'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:filiais:unidades': ['901', 'filial unidade'],
+    't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'],
   };
-  // Ações diretas: abrem a tela e clicam no botão de "novo".
+  // Ações diretas: abrem a tela e clicam no botão de "novo" (código = o da tela + 1).
   const ACOES = [
-    { codigo: '003', rotulo: '＋ Nova cotação', chave: 't:cotacoes:', botao: 'ctNova', palavras: 'nova cotacao' },
-    { codigo: '005', rotulo: '＋ Novo CT-e', chave: 't:emissao-cte:lista', botao: 'btnNovoCte', palavras: 'novo cte emitir' },
-    { codigo: '008', rotulo: '＋ Nova NFS-e', chave: 't:emissao-cte:nfse', botao: 'nsNova', palavras: 'nova nfse', tardio: true },
-    { codigo: '009', rotulo: '＋ Nova coleta', chave: 't:coletas:', botao: 'colNova', palavras: 'nova coleta' },
-    { codigo: '025', rotulo: '＋ Conta a pagar', chave: 't:pagar:contas', botao: 'cpNova', palavras: 'nova conta pagar' },
-    { codigo: '034', rotulo: '＋ Abastecimento', chave: 't:frota:abastecimentos', botao: 'fvNovoAbast', palavras: 'novo abastecimento' },
-    { codigo: '035', rotulo: '＋ Manutenção', chave: 't:frota:manutencoes', botao: 'fvNovaManut', palavras: 'nova manutencao' },
+    { codigo: '002', rotulo: '＋ Nova coleta', chave: 't:coletas:', botao: 'colNova', palavras: 'nova coleta' },
+    { codigo: '011', rotulo: '＋ Nova cotação', chave: 't:cotacoes:', botao: 'ctNova', palavras: 'nova cotacao' },
+    { codigo: '021', rotulo: '＋ Novo CT-e', chave: 't:emissao-cte:lista', botao: 'btnNovoCte', palavras: 'novo cte emitir' },
+    { codigo: '031', rotulo: '＋ Nova NFS-e', chave: 't:emissao-cte:nfse', botao: 'nsNova', palavras: 'nova nfse', tardio: true },
+    { codigo: '111', rotulo: '＋ Nova conta a pagar', chave: 't:pagar:contas', botao: 'cpNova', palavras: 'nova conta pagar' },
+    { codigo: '202', rotulo: '＋ Novo abastecimento', chave: 't:frota:abastecimentos', botao: 'fvNovoAbast', palavras: 'novo abastecimento' },
+    { codigo: '211', rotulo: '＋ Nova manutenção', chave: 't:frota:manutencoes', botao: 'fvNovaManut', palavras: 'nova manutencao' },
   ];
 
   const visivel = (el) => el && !el.classList.contains('oculto');
   // Nome do item sem os contadores (ex.: "Notas sem mapa 5").
-  const limpo = (el) => { const c = el.cloneNode(true); c.querySelectorAll('.nav-badge, [id^="badge"]').forEach((b) => b.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+  const limpo = (el) => { const c = el.cloneNode(true); c.querySelectorAll('.nav-badge, .nav-cod, [id^="badge"]').forEach((b) => b.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
 
   // Destinos que este usuário pode abrir (o menu já esconde o que ele não pode).
   function destinos() {
@@ -84,8 +90,8 @@
           setTimeout(clicar, 250);
         } });
     });
-    lista.push({ chave: 'x:compacto', codigo: '900', rotulo: document.body.classList.contains('modo-compacto') ? 'Desligar o modo compacto' : 'Ligar o modo compacto', grupo: 'Tela', palavras: 'compacto denso tela', abrir: alternarCompacto });
-    if ($('btnAlternarTema')) lista.push({ chave: 'x:tema', codigo: '901', rotulo: 'Trocar tema claro / escuro', grupo: 'Tela', palavras: 'tema claro escuro', abrir: () => $('btnAlternarTema').click() });
+    lista.push({ chave: 'x:compacto', codigo: '990', rotulo: document.body.classList.contains('modo-compacto') ? 'Desligar o modo compacto' : 'Ligar o modo compacto', grupo: 'Tela', palavras: 'compacto denso tela', abrir: alternarCompacto });
+    if ($('btnAlternarTema')) lista.push({ chave: 'x:tema', codigo: '991', rotulo: 'Trocar tema claro / escuro', grupo: 'Tela', palavras: 'tema claro escuro', abrir: () => $('btnAlternarTema').click() });
     lista.push({ chave: 'x:ajuda', codigo: '999', rotulo: 'Lista de todos os códigos', grupo: 'Tela', palavras: 'ajuda codigos atalhos', abrir: () => setTimeout(mostrarCodigos, 50) });
     return lista.map((d) => ({ ...d, codigo: d.codigo || CODIGOS[d.chave]?.[0] || '', palavras: `${d.palavras || ''} ${CODIGOS[d.chave]?.[1] || ''}` }));
   }
@@ -116,7 +122,7 @@
   fundo.innerHTML = `<div class="ir-caixa" role="dialog" aria-label="Ir para">
       <input id="irCampo" class="ir-campo" placeholder="Código da tela (ex.: 001) ou nome (ex.: fatura, abastecimento)…" autocomplete="off" spellcheck="false" />
       <div id="irLista" class="ir-lista" role="listbox"></div>
-      <div class="ir-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> escolher</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>999</kbd> lista de códigos</span></div></div>`;
+      <div class="ir-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> escolher</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>999</kbd> lista de códigos</span><span>0 operação · 1 financeiro · 2 frota · 3 gestão</span></div></div>`;
   document.body.appendChild(fundo);
   let atuais = []; let sel = 0; let lista = [];
 
@@ -160,7 +166,10 @@
     caixa.innerHTML = `<div class="painel modal-card" style="max-width:720px; width:100%; max-height:90vh; overflow-y:auto; padding:22px 24px;">
       <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">⌨ Códigos das telas</h3><span style="cursor:pointer; font-size:18px;" data-ir-fechar>✕</span></div>
       <p style="font-size:13px; color:var(--texto-fraco);">Aperte <kbd>Ctrl</kbd>+<kbd>K</kbd> (ou <kbd>F2</kbd>) em qualquer tela, digite o código e <kbd>Enter</kbd>. Também dá para digitar parte do nome.</p>
-      <div class="ir-codigos">${todos.map((d) => `<div><b>${esc(d.codigo)}</b> ${esc(d.rotulo)}</div>`).join('')}</div>
+      <div class="ir-codigos">${Object.entries(AREAS).map(([n, nome]) => {
+        const daArea = todos.filter((d) => d.codigo[0] === n);
+        return daArea.length ? `<h4>${n}xx · ${esc(nome)}</h4>${daArea.map((d) => `<div><b>${esc(d.codigo)}</b> ${esc(d.rotulo)}</div>`).join('')}` : '';
+      }).join('')}</div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;"><button class="btn btn-secundario" id="irImprimir" style="width:auto;">🖨 Imprimir</button><button class="btn btn-primario" data-ir-fechar style="width:auto;">Fechar</button></div></div>`;
     document.body.appendChild(caixa);
     caixa.addEventListener('click', (e) => { if (e.target === caixa || e.target.closest('[data-ir-fechar]')) caixa.remove(); });
@@ -168,10 +177,33 @@
       const w = window.open('', '_blank');
       if (!w) return;
       w.document.write(`<!doctype html><meta charset="utf-8"><title>Códigos das telas — Nexofrete</title><style>body{font-family:Arial;font-size:13px;columns:2;} div{padding:3px 0;break-inside:avoid;} b{display:inline-block;width:38px;}</style>
-        <h2 style="column-span:all;">Nexofrete — códigos das telas (Ctrl+K)</h2>${todos.map((d) => `<div><b>${esc(d.codigo)}</b> ${esc(d.rotulo.replace(/^[^\wÀ-ú＋]+/, ''))}</div>`).join('')}`);
+        <h2 style="column-span:all;">Nexofrete — códigos das telas (Ctrl+K)</h2>${Object.entries(AREAS).map(([n, nome]) => {
+        const daArea = todos.filter((d) => d.codigo[0] === n);
+        return daArea.length ? `<h4 style="margin:10px 0 4px;">${n}xx · ${esc(nome)}</h4>${daArea.map((d) => `<div><b>${esc(d.codigo)}</b> ${esc(d.rotulo.replace(/^[^\wÀ-ú＋]+/, ''))}</div>`).join('')}` : '';
+      }).join('')}`);
       w.document.close(); w.focus(); w.print();
     });
   }
+
+  // Código ao lado de cada item do menu (cinza, para ir decorando).
+  function codigosNoMenu() {
+    const por = (el, chave) => {
+      const cod = CODIGOS[chave]?.[0];
+      if (!cod || el.querySelector('.nav-cod')) return;
+      const sp = document.createElement('span');
+      sp.className = 'nav-cod'; sp.textContent = cod; sp.title = `Código ${cod}: Ctrl+K, ${cod}, Enter`;
+      el.classList.add('tem-cod');
+      // Item com contador (Mensagens, Agenda) ou seta (Relatórios): o código fica antes deles, no fluxo do texto.
+      const fim = el.querySelector('.nav-badge, [id^="badge"], [id$="Seta"]');
+      if (el.style.display === 'flex' && fim) { el.classList.add('cod-antes'); el.insertBefore(sp, fim); }
+      else if (fim) { sp.style.cssText = 'position:static; transform:none; float:right; margin-right:8px;'; el.classList.add('cod-antes'); el.insertBefore(sp, fim); }
+      else el.appendChild(sp);
+    };
+    document.querySelectorAll('.nav-tsub').forEach((el) => por(el, `t:${el.dataset.ir}:${el.dataset.aba || ''}`));
+    document.querySelectorAll('.barra-lateral .nav-item[data-pagina]').forEach((el) => { if (!el.classList.contains('nav-no-grupo')) por(el, `p:${el.dataset.pagina}`); });
+    document.querySelectorAll('.nav-subitem[data-subaba]').forEach((el) => por(el, `r:${el.dataset.subaba}`));
+  }
+  codigosNoMenu();
 
   // Botão no menu lateral.
   const marca = document.querySelector('.barra-lateral .marca');

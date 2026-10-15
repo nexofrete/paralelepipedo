@@ -1540,3 +1540,12 @@ body.modo-compacto .oc-resumo b { font-size: 18px; }
 body.modo-compacto .cte-aba { padding-top: 6px; padding-bottom: 6px; font-size: 12.5px; }
 body.modo-compacto .cte-secao { padding: 10px 12px; margin-bottom: 10px; }
 body.modo-compacto .modal-card { padding: 14px 16px !important; }
+/* Código da tela ao lado do item do menu (Ctrl+K). */
+.tem-cod { position: relative; padding-right: 40px !important; }
+.nav-cod { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 600 10.5px ui-monospace, Menlo, Consolas, monospace; color: #55627a; letter-spacing: .3px; }
+.nav-item.ativo .nav-cod, .nav-tsub.ativo .nav-cod, .nav-subitem.ativo .nav-cod { color: #c7d2fe; }
+/* Item com contador ou seta à direita: o código fica antes deles. */
+.tem-cod.cod-antes { padding-right: 14px !important; }
+.cod-antes .nav-cod { position: static; transform: none; margin: 0 6px 0 auto; }
+.ir-codigos h4 { break-after: avoid; margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-fraco); }
+.ir-codigos h4:first-child { margin-top: 0; }

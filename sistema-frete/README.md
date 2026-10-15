@@ -170,15 +170,19 @@ Juros ao mês, multa, protesto e baixa automática são configurados uma vez e v
 ## Atalhos para trabalhar rápido (quem vem do SSW)
 
 - **Ir para… (Ctrl+K ou F2)**, em qualquer tela: digite o **código da tela** e aperte Enter. Também dá para digitar parte do nome ("fatura", "abastecimento", "novo cte").
-  - O 001 é Coletas, como no SSW. Os outros códigos são do próprio Nexofrete.
-  - **999** mostra a lista de todos os códigos (dá para imprimir e deixar ao lado do computador).
+  - O código aparece ao lado de cada item do menu.
+  - **999** mostra a lista completa por área (dá para imprimir e deixar ao lado do computador).
   - Os últimos destinos usados aparecem primeiro.
   - Cada usuário só vê as telas que tem permissão de abrir.
-- Códigos principais:
-  - 001 Coletas · 002 Cotações · 004 CT-e · 005 Novo CT-e · 006 MDF-e · 007 NFS-e;
-  - 010 Ocorrências · 011 Romaneios · 012 Conferência · 020 Faturamento · 022 Boletos · 023 Contas a pagar · 024 Acerto de viagem;
-  - 031 Abastecimentos · 032 Manutenções · 040 Painel gerencial · 041 Margem por CT-e e cliente.
-- **Modo compacto** (botão no menu lateral, ou código 900): menos espaço e letra menor, para ver mais linhas na tela. Fica salvo naquele computador.
+- **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
+  - **0xx Operação:** 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
+  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 130 Financeiro
+  - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas
+  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 310 a 321 Relatórios · 330 Auditoria de frete
+  - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
+  - **5xx Comunicação:** 500 Mensagens · 501 Agenda
+  - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 990 Modo compacto · 991 Tema · 999 Lista de códigos
+- **Modo compacto** (botão no menu lateral, ou código 990): menos espaço e letra menor, para ver mais linhas na tela. Fica salvo naquele computador.
 - **Nos formulários** (janelas de cadastro e lançamento):
   - **Enter** passa para o próximo campo, como o Tab;
   - **Ctrl+Enter** aciona o botão principal (Salvar, Lançar, Transmitir);

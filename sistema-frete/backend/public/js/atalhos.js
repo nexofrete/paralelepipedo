@@ -21,6 +21,7 @@
   // Chave: "t:<página>:<aba>" (Operação de Transporte), "p:<página>" (menu) ou "r:<subaba>" (Relatórios).
   const AREAS = { 0: 'Operação', 1: 'Financeiro', 2: 'Frota', 3: 'Gestão e relatórios', 4: 'Notas e fretes contratados', 5: 'Comunicação', 9: 'Sistema e tela' };
   const CODIGOS = {
+    'p:hoje': ['000', 'hoje inicio pendencias tarefas do dia'],
     't:coletas:': ['001', 'coleta pedido recolher'], 't:cotacoes:': ['010', 'cotacao orcamento preco proposta'],
     't:emissao-cte:lista': ['020', 'cte conhecimento emitir dacte'], 't:emissao-cte:mdfe': ['025', 'mdfe manifesto'],
     't:emissao-cte:nfse': ['030', 'nfse nota servico iss municipal'],
@@ -69,7 +70,9 @@
     document.querySelectorAll('.nav-tsub').forEach((el) => {
       if (!visivel(el)) return;
       const chave = `t:${el.dataset.ir}:${el.dataset.aba || ''}`;
-      lista.push({ chave, rotulo: limpo(el), grupo: 'Operação de Transporte', abrir: () => el.click() });
+      const g = el.closest('.nav-sub')?.dataset.grupo;
+      const nomeGrupo = g ? limpo(document.querySelector(`.nav-grupo[data-grupo="${g}"]`)).replace(/[▸▾]/g, '').trim() : 'Menu';
+      lista.push({ chave, rotulo: limpo(el), grupo: nomeGrupo, abrir: () => el.click() });
     });
     document.querySelectorAll('.barra-lateral .nav-item[data-pagina]').forEach((el) => {
       if (!visivel(el) || el.classList.contains('nav-no-grupo') || el.dataset.pagina === 'relatorios') return;

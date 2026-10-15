@@ -184,6 +184,19 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - a tabela de um cliente **nunca** é usada para outro.
 - Na lista de tabelas, as de cliente aparecem com ⭐ e o nome do cliente. O filtro "Só as de clientes ⭐" mostra todas.
 
+## Menu por área e tela "Hoje"
+
+- **🏠 Hoje** (código **000**) é a primeira tela de quem emite CT-e ou cuida do financeiro. Ela mostra, por área, o que precisa de atenção:
+  - **Operação:** CT-e rejeitados ou com erro, rascunhos, entregas atrasadas, com ocorrência ou previstas para hoje, coletas a programar, cotações pedidas no portal e MDF-e em aberto.
+  - **Financeiro:** faturas vencidas e a receber na semana, CT-e a faturar, contas a pagar vencidas, de hoje e da semana, boletos rejeitados, extrato a conciliar, saldo em caixa e bancos e falha no envio ao contador.
+  - **Frota:** manutenção vencida e vencendo, CNH vencendo e veículos na oficina.
+  - Vermelho é para resolver já, amarelo é para hoje e azul é só para saber.
+  - Cada cartão abre a tela certa **já filtrada**. A tela se atualiza sozinha a cada 5 minutos.
+- **Menu em grupos**, com os mesmos números do "Ir para":
+  - 🚛 Operação, 💰 Financeiro, 🔧 Frota, 📊 Gestão, 📥 Notas e fretes (a parte do embarcador) e ⚙️ Configuração.
+  - O grupo da tela aberta abre sozinho. Os que você abrir à mão ficam abertos, e o navegador lembra.
+- **No celular**, o menu vira uma gaveta: o botão **☰ Menu** abre, e escolher a tela fecha.
+
 ## Atalhos para trabalhar rápido (quem vem do SSW)
 
 - **Ir para… (Ctrl+K ou F2)**, em qualquer tela: digite o **código da tela** e aperte Enter. Também dá para digitar parte do nome ("fatura", "abastecimento", "novo cte").
@@ -192,8 +205,8 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Os últimos destinos usados aparecem primeiro.
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
-  - **0xx Operação:** 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
-  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 130 Financeiro
+  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
+  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros

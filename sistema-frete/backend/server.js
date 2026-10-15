@@ -234,6 +234,7 @@ app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
 app.use('/api/contabil', require('./src/routes/contabil'));
 app.use('/api/bancos', require('./src/routes/bancos'));
+app.use('/api/hoje', require('./src/routes/hoje'));
 app.use('/api/frota', require('./src/routes/frota'));
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));

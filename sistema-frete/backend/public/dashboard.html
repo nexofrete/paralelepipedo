@@ -49,27 +49,27 @@
         </div>
       </div>
 
-      <div class="nav-item ativo" data-pagina="visao-geral">Visão geral</div>
-      <div class="nav-item" data-pagina="upload" id="navUpload">Enviar XML</div>
-      <div class="nav-item" data-pagina="registros">Todos os registros</div>
-      <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
-      <!-- Operação de Transporte: um item com submenus (js/menuTransporte.js). Os itens de página
-           continuam aqui, escondidos, porque as permissões e os atalhos usam eles. -->
-      <div class="nav-grupo oculto" id="navGrupoTransporte">🚛 Operação de Transporte <span id="navTranspSeta" style="float:right; font-size:11px;">▸</span></div>
-      <div class="nav-sub oculto" id="navSubTransporte">
-        <div class="nav-tsub" data-ir="painel-transporte" data-aba="geral">📊 Painel gerencial</div>
-        <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
-        <div class="nav-tsub" data-ir="cotacoes">💲 Cotações</div>
+      <!-- Menu por área, com os mesmos números do "Ir para" (js/menuTransporte.js monta os grupos).
+           Os itens de página escondidos (nav-no-grupo) guardam a permissão; os subitens abrem a aba certa. -->
+      <div class="nav-item oculto" data-pagina="hoje" id="navHoje">🏠 Hoje</div>
+      <div class="nav-grupo oculto" data-grupo="operacao">🚛 Operação <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="operacao">
         <div class="nav-tsub" data-ir="coletas">📦 Coletas</div>
+        <div class="nav-tsub" data-ir="cotacoes">💲 Cotações</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="lista">📄 CT-e</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="mdfe">📋 MDF-e</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="nfse">🧾 NFS-e (frete municipal)</div>
-        <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="romaneios">🚚 Romaneios</div>
-        <div class="nav-tsub" data-ir="filiais" data-aba="estoque">🏢 Onde está a mercadoria</div>
-        <div class="nav-tsub" data-ir="filiais" data-aba="transferencias">🔀 Transferências entre filiais</div>
+        <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
         <div class="nav-tsub" data-ir="conferencia" data-aba="conferir">🔎 Conferência (bipagem)</div>
         <div class="nav-tsub" data-ir="conferencia" data-aba="etiquetas">🏷 Etiquetas de volume</div>
+        <div class="nav-tsub" data-ir="filiais" data-aba="estoque">🏢 Onde está a mercadoria</div>
+        <div class="nav-tsub" data-ir="filiais" data-aba="transferencias">🔀 Transferências entre filiais</div>
+        <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
+        <div class="nav-tsub" data-ir="portal-cliente" data-so-admin="1">🌐 Portal do cliente</div>
+      </div>
+      <div class="nav-grupo oculto" data-grupo="financeiro">💰 Financeiro <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="financeiro">
         <div class="nav-tsub" data-ir="faturamento" data-aba="faturas">🧾 Faturamento</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="resumo">📈 Contas a receber</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="boletos">🏦 Boletos (CNAB)</div>
@@ -80,14 +80,18 @@
         <div class="nav-tsub" data-ir="bancos" data-aba="fluxo">📅 Fluxo de caixa</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="livro">🧮 Fiscal e contabilidade</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="pacote">📦 Pacote do contador</div>
-        <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
-        <div class="nav-tsub" data-ir="portal-cliente" data-so-admin="1">🌐 Portal do cliente</div>
-        <div class="nav-tsub" data-ir="frota" data-aba="painel">🔧 Frota: custos e alertas</div>
+      </div>
+      <div class="nav-grupo oculto" data-grupo="frota">🔧 Frota <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="frota">
+        <div class="nav-tsub" data-ir="frota" data-aba="painel">📊 Custos e alertas</div>
         <div class="nav-tsub" data-ir="frota" data-aba="abastecimentos">⛽ Abastecimentos</div>
         <div class="nav-tsub" data-ir="frota" data-aba="manutencoes">🛠 Manutenções</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="frota">🚛 Veículos e motoristas</div>
-        <div class="nav-tsub" data-ir="filiais" data-aba="unidades" data-so-admin="1">🏢 Filiais (unidades)</div>
-        <div class="nav-tsub" data-ir="emissao-cte" data-aba="config" data-so-admin="1">⚙️ Configuração fiscal</div>
+      </div>
+      <div class="nav-grupo oculto" data-grupo="gestao">📊 Gestão <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="gestao">
+        <div class="nav-tsub" data-ir="painel-transporte" data-aba="geral">📊 Painel gerencial</div>
+        <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
       </div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cotacoes" id="navCotacoes">💲 Cotações</div>
@@ -103,7 +107,15 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="portal-cliente" id="navPortalCliente">🌐 Portal do cliente</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="faturamento" id="navFaturamento">💰 Faturamento</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="painel-transporte" id="navPainelTransporte">📊 Painel gerencial</div>
-      <div class="nav-item" data-pagina="financeiro">💰 Financeiro</div>
+      <div class="nav-grupo" data-grupo="notas">📥 Notas e fretes <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="notas">
+        <div class="nav-item ativo" data-pagina="visao-geral">📊 Visão geral</div>
+        <div class="nav-item" data-pagina="upload" id="navUpload">📤 Enviar XML</div>
+        <div class="nav-item" data-pagina="registros">🗂 Todos os registros</div>
+        <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
+        <div class="nav-item" data-pagina="financeiro">💰 Pagamento de fretes</div>
+        <div class="nav-item" data-pagina="sinistros">📦 Sinistros</div>
+      </div>
       <div class="nav-item" data-pagina="relatorios">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios">
         <div class="nav-subitem ativo" data-subaba="graficos">📈 Gráficos</div>
@@ -119,7 +131,6 @@
         <div class="nav-subitem" data-subaba="nfeCte">📦 NF-e × CT-e</div>
         <div class="nav-subitem" data-subaba="auditoriaFrete">🔎 Conferência de CT-e</div>
       </div>
-      <div class="nav-item" data-pagina="sinistros">📦 Sinistros</div>
       <div class="nav-item" data-pagina="mensagens" style="display:flex; justify-content:space-between; align-items:center;">
         <span>✉️ Mensagens</span>
         <span id="badgeMensagens" class="oculto" style="background:var(--vermelho); color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
@@ -128,8 +139,13 @@
         <span>📅 Agenda</span>
         <span id="badgeAgenda" class="oculto" style="background:#f97316; color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
       </div>
-      <div class="nav-item oculto" data-pagina="cadastros" id="navCadastros">Cadastros</div>
-      <div class="nav-item oculto" data-pagina="manutencao" id="navManutencao">Manutenção</div>
+      <div class="nav-grupo" data-grupo="config">⚙️ Configuração <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="config">
+        <div class="nav-tsub" data-ir="filiais" data-aba="unidades" data-so-admin="1">🏢 Filiais (unidades)</div>
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="config" data-so-admin="1">⚙️ Configuração fiscal</div>
+        <div class="nav-item oculto" data-pagina="cadastros" id="navCadastros">👥 Cadastros</div>
+        <div class="nav-item oculto" data-pagina="manutencao" id="navManutencao">🛠 Manutenção</div>
+      </div>
 
       <div class="perfil-usuario">
         <div class="avatar-iniciais" id="avatarIniciais">?</div>
@@ -585,6 +601,17 @@
       </div>
 
       <!-- ===== Visão geral ===== -->
+      <section id="pagina-hoje" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2 id="hjTitulo">🏠 Hoje</h2>
+            <p id="hjSub">O que precisa da sua atenção agora</p>
+          </div>
+          <button class="btn btn-secundario" id="hjAtualizar" style="width:auto;">↻ Atualizar</button>
+        </div>
+        <div id="hjConteudo"></div>
+      </section>
+
       <section id="pagina-visao-geral">
         <div class="cabecalho-pagina">
           <div>
@@ -3549,6 +3576,7 @@
   <script src="js/nfse.js"></script>
   <script src="js/faturamento.js"></script>
   <script src="js/painelTransporte.js"></script>
+  <script src="js/hoje.js"></script>
   <script src="js/menuTransporte.js"></script>
   <script src="js/atalhos.js"></script>
   <script src="js/licencaAdmin.js"></script>

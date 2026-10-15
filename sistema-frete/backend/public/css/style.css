@@ -850,7 +850,16 @@ html.tema-claro::-webkit-scrollbar-corner, html.tema-claro *::-webkit-scrollbar-
 
 @media (max-width: 800px) {
   .app-shell { height: auto; overflow: visible; flex-direction: column; }
-  .barra-lateral { position: static; width: 100%; height: auto; flex-direction: row; overflow-x: auto; }
+  /* Celular: o menu vira gaveta — em cima só a marca e o botão ☰; abre na vertical. */
+  .barra-lateral { position: static; width: 100%; height: auto; flex-direction: column; overflow: visible; padding: 12px 16px; }
+  .barra-lateral .marca { margin-bottom: 0; }
+  .barra-lateral > :not(.marca) { display: none !important; }
+  body.menu-aberto .barra-lateral > :not(.marca):not(.oculto):not(.nav-no-grupo) { display: block !important; }
+  body.menu-aberto .barra-lateral > .nav-grupo:not(.oculto):not(.marca):not(.nav-no-grupo) { display: flex !important; }
+  body.menu-aberto .barra-lateral > .perfil-usuario:not(.oculto) { display: flex !important; }
+  body.menu-aberto .barra-lateral > .nav-item[style*="flex"]:not(.oculto) { display: flex !important; }
+  body.menu-aberto .barra-lateral .marca { margin-bottom: 12px; }
+  .btn-menu-celular { display: inline-flex !important; }
   .conteudo { margin-left: 0; height: auto; overflow: visible; }
   .perfil-usuario { margin-top: 0; border-top: none; }
   .grid-cards { grid-template-columns: repeat(2, 1fr); }
@@ -1293,6 +1302,16 @@ body:has(#faixaAmbienteTeste:not(.oculto)) .tela-login {
 .nav-grupo { padding: 12px 14px; border-radius: 8px; cursor: pointer; color: #94a3b8; font-size: 13.5px; font-weight: 500; margin-bottom: 4px; transition: background .15s, color .15s; }
 .nav-grupo:hover { background: #1e293b; color: #fff; }
 .nav-grupo.ativo { background: #2563eb; color: #fff; }
+/* Menu por área: cabeçalho de grupo e itens de página dentro dele. */
+.nav-grupo { display: flex; align-items: center; gap: 6px; padding: 10px 14px; margin-bottom: 2px; font-weight: 600; letter-spacing: .1px; }
+.nav-grupo .nav-seta { margin-left: auto; font-size: 11px; opacity: .8; }
+.nav-grupo.contem-ativo { color: #fff; }
+.nav-grupo.contem-ativo::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; margin-left: -10px; margin-right: 4px; }
+.nav-sub .nav-item { padding: 7px 12px; font-size: 13px; margin-bottom: 0; border-radius: 8px; color: #94a3b8; }
+.nav-sub .nav-item:hover { background: #1e293b; color: #fff; }
+.nav-sub .nav-item.ativo { background: rgba(37,99,235,0.25); color: #fff; font-weight: 600; }
+body.modo-compacto .nav-grupo { padding: 7px 12px; font-size: 12.5px; }
+body.modo-compacto .nav-sub .nav-item { padding-top: 4px; padding-bottom: 4px; font-size: 12px; }
 .nav-no-grupo { display: none !important; }
 .nav-tsub { padding: 7px 12px; font-size: 13px; color: #94a3b8; border-radius: 8px; cursor: pointer; }
 .nav-tsub:hover { background: #1e293b; color: #fff; }
@@ -1550,3 +1569,22 @@ body.modo-compacto .modal-card { padding: 14px 16px !important; }
 .cod-antes .nav-cod { position: static; transform: none; margin: 0 6px 0 auto; }
 .ir-codigos h4 { break-after: avoid; margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-fraco); }
 .ir-codigos h4:first-child { margin-top: 0; }
+
+.btn-menu-celular { display: none; align-items: center; gap: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+
+/* Tela "Hoje": cartões de pendência por área. */
+.hj-area { margin-bottom: 22px; }
+.hj-area h3 { font-size: 14px; margin: 0 0 10px; color: var(--texto-fraco); font-weight: 600; letter-spacing: .2px; }
+.hj-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.hj-cartao { text-align: left; background: var(--bg-card); border: 1px solid var(--borda); border-left: 4px solid var(--hj-cor); border-radius: var(--raio); padding: 14px 16px;
+  cursor: pointer; color: inherit; font: inherit; display: flex; flex-direction: column; gap: 4px; transition: transform .12s, border-color .12s; }
+.hj-cartao:hover { transform: translateY(-2px); border-color: var(--hj-cor); }
+.hj-cartao:focus-visible { outline: 2px solid var(--hj-cor); outline-offset: 2px; }
+.hj-topo { display: flex; justify-content: space-between; align-items: center; }
+.hj-icone { font-size: 20px; }
+.hj-num { font-size: 26px; font-weight: 700; color: var(--hj-cor); }
+.hj-titulo { font-weight: 600; font-size: 14px; }
+.hj-valor { font-weight: 600; font-size: 13px; }
+.hj-det { font-size: 12px; color: var(--texto-fraco); line-height: 1.4; }
+.hj-ir { font-size: 12px; color: var(--azul); margin-top: auto; padding-top: 6px; }
+.hj-ok { font-size: 13px; color: var(--verde); padding: 10px 0; }

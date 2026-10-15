@@ -1,75 +1,110 @@
 // =====================================================================
-// Menu "Operação de Transporte": junta cotações, coletas, CT-e, MDF-e, ocorrências, romaneios,
-// EDI, veículos/motoristas e configuração fiscal num item com submenus.
-// Cada subitem abre a página de sempre (o item escondido do menu, que guarda
-// a permissão) e já escolhe a aba certa dela.
+// Menu por área (Operação, Financeiro, Frota, Gestão, Notas e fretes
+// contratados, Configuração), com os mesmos números do "Ir para".
+// Cada grupo abre/fecha; o grupo da tela aberta fica sempre aberto e os que a
+// pessoa abriu à mão continuam abertos (lembrado neste navegador).
+// Os subitens ".nav-tsub" abrem a página de sempre (o item escondido do menu,
+// que guarda a permissão) e já escolhem a aba certa dela.
 // =====================================================================
 (() => {
-  const grupo = document.getElementById('navGrupoTransporte');
-  const sub = document.getElementById('navSubTransporte');
-  const seta = document.getElementById('navTranspSeta');
-  if (!grupo || !sub) return;
-  const itens = [...sub.querySelectorAll('.nav-tsub')];
-  const paginaDo = (el) => document.querySelector(`.nav-item[data-pagina="${el.dataset.ir}"]`);
+  const grupos = [...document.querySelectorAll('.barra-lateral .nav-grupo[data-grupo]')].map((cab) => ({
+    chave: cab.dataset.grupo, cab, sub: document.querySelector(`.barra-lateral .nav-sub[data-grupo="${cab.dataset.grupo}"]`),
+  })).filter((g) => g.sub);
+  // Celular: botão ☰ abre/fecha o menu; escolher uma tela fecha.
+  const marca = document.querySelector('.barra-lateral .marca');
+  if (marca && !document.getElementById('btnMenuCelular')) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = 'btnMenuCelular'; b.className = 'btn-menu-celular'; b.textContent = '☰ Menu';
+    b.addEventListener('click', () => { const ab = document.body.classList.toggle('menu-aberto'); b.textContent = ab ? '✕ Fechar' : '☰ Menu'; });
+    marca.insertBefore(b, marca.lastElementChild);
+    document.querySelector('.barra-lateral').addEventListener('click', (e) => {
+      if (e.target.closest('.nav-tsub, .nav-item:not([data-pagina="relatorios"]), .nav-subitem')) { document.body.classList.remove('menu-aberto'); b.textContent = '☰ Menu'; }
+    });
+  }
+  if (!grupos.length) return;
   const ehAdmin = usuario?.perfil === 'admin';
+  const paginaDo = (el) => document.querySelector(`.nav-item[data-pagina="${el.dataset.ir}"]`);
   // Atributo das abas de cada tela.
-  const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba', filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba' };
-  const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas', 'cotacoes', 'portal-cliente');
+  const ATRIBUTO_ABA = {
+    'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba',
+    filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba',
+  };
+  const DATASET = Object.fromEntries(Object.entries(ATRIBUTO_ABA).map(([p, a]) => [p, a.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())]));   // data-cte-aba → cteAba
+  const tsubs = [...document.querySelectorAll('.barra-lateral .nav-tsub')];
 
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
-  itens.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));
-  const visiveis = itens.filter((el) => !el.classList.contains('oculto'));
-  if (!visiveis.length) return;
-  grupo.classList.remove('oculto');
+  tsubs.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));
+  const itensDo = (g) => [...g.sub.querySelectorAll('.nav-tsub, .nav-item')];
+  const visivel = (el) => !el.classList.contains('oculto');
+  const atualizarVisiveis = () => grupos.forEach((g) => { g.cab.classList.toggle('oculto', !itensDo(g).some(visivel)); });
+  atualizarVisiveis();
+  // Itens de página dentro dos grupos (Cadastros, Manutenção...) aparecem depois, quando o dashboard confere a permissão.
+  const vigiaItens = new MutationObserver(atualizarVisiveis);
+  grupos.forEach((g) => g.sub.querySelectorAll('.nav-item').forEach((el) => vigiaItens.observe(el, { attributes: true, attributeFilter: ['class'] })));
 
-  const abrirSub = (abrir) => { sub.classList.toggle('oculto', !abrir); seta.textContent = abrir ? '▾' : '▸'; };
+  // Abertos à mão (lembrados); o grupo da tela atual abre sozinho.
+  const CHAVE = 'menuGruposAbertos';
+  let abertos;
+  try { abertos = new Set(JSON.parse(localStorage.getItem(CHAVE) || '[]')); } catch { abertos = new Set(); }
+  const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify([...abertos])); } catch { /* sem armazenamento */ } };
+  let grupoAtual = null;
+  const desenhar = () => grupos.forEach((g) => {
+    const aberto = abertos.has(g.chave) || g.chave === grupoAtual || grupos.filter((x) => visivel(x.cab)).length === 1;
+    g.sub.classList.toggle('oculto', !aberto);
+    g.cab.classList.toggle('aberto', aberto);
+    g.cab.classList.toggle('contem-ativo', g.chave === grupoAtual);
+    const seta = g.cab.querySelector('.nav-seta'); if (seta) seta.textContent = aberto ? '▾' : '▸';
+  });
+  grupos.forEach((g) => g.cab.addEventListener('click', () => {
+    const aberto = !g.sub.classList.contains('oculto');
+    if (aberto) { abertos.delete(g.chave); if (g.chave === grupoAtual) grupoAtual = null; } else abertos.add(g.chave);
+    salvar(); desenhar();
+  }));
+
   const marcar = (el) => {
-    itens.forEach((x) => x.classList.toggle('ativo', x === el));
-    grupo.classList.toggle('ativo', !!el);
+    tsubs.forEach((x) => x.classList.toggle('ativo', x === el));
+    const g = el ? grupos.find((x) => x.sub.contains(el)) : null;
+    grupoAtual = g ? g.chave : null;
+    desenhar();
   };
 
-  grupo.addEventListener('click', () => {
-    const aberto = !sub.classList.contains('oculto');
-    if (aberto) return abrirSub(false);
-    abrirSub(true);
-    // Fora das telas de transporte: abre a primeira (CT-e).
-    if (!grupo.classList.contains('ativo')) visiveis[0].click();
-    return null;
-  });
-
-  itens.forEach((el) => el.addEventListener('click', () => {
+  tsubs.forEach((el) => el.addEventListener('click', () => {
     const pagina = paginaDo(el);
     if (!pagina || pagina.classList.contains('oculto')) return;
     const naPagina = !document.getElementById(`pagina-${el.dataset.ir}`)?.classList.contains('oculto');
     if (!naPagina) pagina.click();
-    if (el.dataset.aba) {
-      const aba = document.querySelector(`[${ATRIBUTO_ABA[el.dataset.ir]}="${el.dataset.aba}"]`);
-      aba?.click();
-    }
-    abrirSub(true);
+    if (el.dataset.aba) document.querySelector(`[${ATRIBUTO_ABA[el.dataset.ir]}="${el.dataset.aba}"]`)?.click();
     marcar(el);
   }));
 
   // As abas dentro das telas também acendem o subitem certo.
-  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba], [data-fat-aba], [data-pt-aba], [data-bp-aba], [data-fl-aba], [data-cp-aba], [data-fv-aba], [data-cbl-aba], [data-bx-aba]').forEach((aba) => aba.addEventListener('click', () => {
-    const ir = aba.dataset.ocAba ? 'ocorrencias' : aba.dataset.fatAba ? 'faturamento' : aba.dataset.ptAba ? 'painel-transporte' : aba.dataset.bpAba ? 'conferencia' : aba.dataset.flAba ? 'filiais' : aba.dataset.cpAba ? 'pagar' : aba.dataset.fvAba ? 'frota' : aba.dataset.cblAba ? 'contabil' : aba.dataset.bxAba ? 'bancos' : 'emissao-cte';
-    const nome = aba.dataset.ocAba || aba.dataset.fatAba || aba.dataset.ptAba || aba.dataset.bpAba || aba.dataset.flAba || aba.dataset.cpAba || aba.dataset.fvAba || aba.dataset.cblAba || aba.dataset.bxAba || aba.dataset.cteAba;
-    const el = itens.find((x) => x.dataset.ir === ir && x.dataset.aba === nome);
+  const seletorAbas = Object.values(ATRIBUTO_ABA).map((a) => `[${a}]`).join(', ');
+  document.querySelectorAll(seletorAbas).forEach((aba) => aba.addEventListener('click', () => {
+    const ir = Object.keys(DATASET).find((p) => aba.dataset[DATASET[p]] != null);
+    const el = tsubs.find((x) => x.dataset.ir === ir && x.dataset.aba === aba.dataset[DATASET[ir]]);
     if (el) marcar(el);
   }));
 
-  // Outra página do menu (ou um atalho): apaga o destaque e fecha o submenu;
-  // se o atalho abriu uma tela de transporte, acende o subitem dela.
+  // Mudou a tela (menu, atalho, notificação): acende o item dela e abre o grupo.
+  const secoes = [...document.querySelectorAll('main > section[id^="pagina-"]')];
   const observar = new MutationObserver(() => {
-    const aberta = PAGINAS.find((p) => !document.getElementById(`pagina-${p}`)?.classList.contains('oculto'));
-    if (!aberta) { marcar(null); abrirSub(false); return; }
-    if (!itens.some((x) => x.classList.contains('ativo') && x.dataset.ir === aberta)) {
-      marcar(itens.find((x) => x.dataset.ir === aberta && !x.classList.contains('oculto')));
-      abrirSub(true);
-    }
+    const aberta = secoes.find((s) => !s.classList.contains('oculto'))?.id.slice(7);
+    if (!aberta) return;
+    const atual = tsubs.find((x) => x.classList.contains('ativo'));
+    if (atual && atual.dataset.ir === aberta) return;
+    const tsub = tsubs.find((x) => x.dataset.ir === aberta && visivel(x));
+    if (tsub) { marcar(tsub); return; }
+    // Página que é item direto dentro de um grupo (ex.: Visão geral, Cadastros).
+    tsubs.forEach((x) => x.classList.remove('ativo'));
+    const item = document.querySelector(`.barra-lateral .nav-sub .nav-item[data-pagina="${aberta}"]`);
+    const g = item ? grupos.find((x) => x.sub.contains(item)) : null;
+    grupoAtual = g ? g.chave : null;
+    desenhar();
   });
-  PAGINAS.forEach((p) => {
-    const sec = document.getElementById(`pagina-${p}`);
-    if (sec) observar.observe(sec, { attributes: true, attributeFilter: ['class'] });
-  });
+  secoes.forEach((s) => observar.observe(s, { attributes: true, attributeFilter: ['class'] }));
+  observar.takeRecords(); // estado inicial:
+  const inicial = secoes.find((s) => !s.classList.contains('oculto'))?.id.slice(7);
+  const itemIni = inicial && document.querySelector(`.barra-lateral .nav-sub .nav-item[data-pagina="${inicial}"]`);
+  grupoAtual = itemIni ? grupos.find((x) => x.sub.contains(itemIni))?.chave || null : null;
+  desenhar();
 })();

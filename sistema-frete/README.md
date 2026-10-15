@@ -167,6 +167,23 @@ Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), C
 
 Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
 
+## Atalhos para trabalhar rápido (quem vem do SSW)
+
+- **Ir para… (Ctrl+K ou F2)**, em qualquer tela: digite o **código da tela** e aperte Enter. Também dá para digitar parte do nome ("fatura", "abastecimento", "novo cte").
+  - O 001 é Coletas, como no SSW. Os outros códigos são do próprio Nexofrete.
+  - **999** mostra a lista de todos os códigos (dá para imprimir e deixar ao lado do computador).
+  - Os últimos destinos usados aparecem primeiro.
+  - Cada usuário só vê as telas que tem permissão de abrir.
+- Códigos principais:
+  - 001 Coletas · 002 Cotações · 004 CT-e · 005 Novo CT-e · 006 MDF-e · 007 NFS-e;
+  - 010 Ocorrências · 011 Romaneios · 012 Conferência · 020 Faturamento · 022 Boletos · 023 Contas a pagar · 024 Acerto de viagem;
+  - 031 Abastecimentos · 032 Manutenções · 040 Painel gerencial · 041 Margem por CT-e e cliente.
+- **Modo compacto** (botão no menu lateral, ou código 900): menos espaço e letra menor, para ver mais linhas na tela. Fica salvo naquele computador.
+- **Nos formulários** (janelas de cadastro e lançamento):
+  - **Enter** passa para o próximo campo, como o Tab;
+  - **Ctrl+Enter** aciona o botão principal (Salvar, Lançar, Transmitir);
+  - nos campos de texto longo, o Enter continua quebrando linha.
+
 ## Margem por CT-e e por cliente
 
 Em **Painel gerencial → 💹 Margem por CT-e e cliente** (mesmo período escolhido no topo do painel).

@@ -143,6 +143,28 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Contas a pagar e acerto de viagem
+
+Em **Operação de Transporte → Contas a pagar / Acerto de viagem**:
+
+**Contas a pagar** (quem tem permissão de financeiro):
+- Lance qualquer saída: combustível, pedágio, manutenção, pneus, salários, impostos, aluguel...
+- **Parcelas mensais:** o valor pode ser o total (dividido entre as parcelas) ou o de cada parcela (ex.: aluguel).
+- **Pagar:** total ou parcial, com forma de pagamento. O pagamento pode ser estornado.
+- **Topo da tela:** vencidas, vence hoje, próximos 7 dias, pago no mês e o **saldo dos próximos 30 dias** (faturas a receber − contas a pagar).
+
+**Acerto de viagem:**
+- **Motorista próprio:** abra o acerto na saída com o **adiantamento**. Na volta, lance as **despesas comprovadas** (combustível, pedágio, alimentação, hospedagem...). O saldo diz se a empresa reembolsa ou se o motorista devolve.
+- **Terceiro / agregado:**
+  - Informe o frete contratado, o adiantamento, o CIOT e o vale-pedágio.
+  - **Autônomo pessoa física (TAC):** o sistema calcula a retenção de **INSS (11%)** e **SEST/SENAT (2,5%)** sobre 20% do frete. O **IRRF** depende da tabela do mês e é lançado à mão.
+  - Lance descontos (avaria, falta) e acréscimos (estadia, descarga).
+- **O que acontece sozinho:**
+  - O adiantamento e, ao fechar, o saldo viram **contas a pagar**.
+  - O CIOT e o vale-pedágio vão para o **MDF-e** ainda não transmitido.
+  - O custo da viagem vai para o **resultado por viagem** do painel.
+- **🖨 Demonstrativo:** para o motorista assinar. Dá para reabrir o acerto enquanto o saldo não foi pago.
+
 ## Filiais e transferências
 
 Para transportadora com mais de uma unidade (matriz e filiais), em **Operação de Transporte**:

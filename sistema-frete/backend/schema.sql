@@ -1847,3 +1847,86 @@ CREATE TABLE IF NOT EXISTS transferencia_itens (
 );
 CREATE INDEX IF NOT EXISTS idx_transferencia_itens_cte ON transferencia_itens (cte_id);
 ALTER TABLE conferencias ADD COLUMN IF NOT EXISTS transferencia_id INTEGER REFERENCES transferencias(id) ON DELETE SET NULL;
+
+-- Contas a pagar (combustível, pedágio, manutenção, frete de terceiro, salários...).
+-- status: aberta, paga, cancelada (parcial = aberta com valor_pago > 0).
+CREATE TABLE IF NOT EXISTS contas_pagar (
+    id              SERIAL PRIMARY KEY,
+    descricao       VARCHAR(200) NOT NULL,
+    categoria       VARCHAR(20) NOT NULL DEFAULT 'outros',
+    fornecedor_nome VARCHAR(200),
+    fornecedor_doc  VARCHAR(20),
+    documento       VARCHAR(60),          -- nº da NF, boleto, recibo
+    vencimento      DATE NOT NULL,
+    valor           NUMERIC(14,2) NOT NULL,
+    valor_pago      NUMERIC(14,2) NOT NULL DEFAULT 0,
+    status          VARCHAR(10) NOT NULL DEFAULT 'aberta',
+    parcela         VARCHAR(10),          -- "2/6"
+    grupo           VARCHAR(40),          -- parcelas do mesmo lançamento
+    acerto_id       INTEGER,
+    unidade_id      INTEGER REFERENCES unidades(id) ON DELETE SET NULL,
+    observacao      TEXT,
+    pago_em         DATE,
+    criado_por_nome VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_contas_pagar_venc ON contas_pagar (status, vencimento);
+CREATE INDEX IF NOT EXISTS idx_contas_pagar_acerto ON contas_pagar (acerto_id);
+CREATE TABLE IF NOT EXISTS contas_pagar_pagamentos (
+    id          SERIAL PRIMARY KEY,
+    conta_id    INTEGER NOT NULL REFERENCES contas_pagar(id) ON DELETE CASCADE,
+    data        DATE NOT NULL,
+    valor       NUMERIC(14,2) NOT NULL,
+    forma       VARCHAR(20) NOT NULL DEFAULT 'pix',
+    observacao  VARCHAR(255),
+    usuario_nome VARCHAR(120),
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Acerto de viagem: motorista próprio (adiantamento − despesas comprovadas) ou
+-- terceiro/agregado (frete contratado − adiantamento − impostos retidos ± ajustes),
+-- com CIOT e vale-pedágio. status: aberto, acertado, cancelado.
+CREATE TABLE IF NOT EXISTS acertos (
+    id                  SERIAL PRIMARY KEY,
+    tipo                VARCHAR(10) NOT NULL DEFAULT 'proprio',   -- proprio, terceiro
+    status              VARCHAR(10) NOT NULL DEFAULT 'aberto',
+    motorista_nome      VARCHAR(120) NOT NULL,
+    motorista_cpf       VARCHAR(14),
+    proprietario_nome   VARCHAR(200),         -- terceiro: quem recebe o frete (TAC ou empresa)
+    proprietario_doc    VARCHAR(20),
+    rntrc               VARCHAR(20),
+    placa               VARCHAR(10),
+    descricao           VARCHAR(200),         -- rota / viagem
+    data_saida          DATE NOT NULL,
+    mdfe_id             INTEGER REFERENCES mdfes(id) ON DELETE SET NULL,
+    romaneio_id         INTEGER REFERENCES romaneios(id) ON DELETE SET NULL,
+    transferencia_id    INTEGER REFERENCES transferencias(id) ON DELETE SET NULL,
+    valor_frete         NUMERIC(14,2) NOT NULL DEFAULT 0,   -- terceiro: frete contratado
+    adiantamento        NUMERIC(14,2) NOT NULL DEFAULT 0,
+    reter_impostos      BOOLEAN NOT NULL DEFAULT FALSE,     -- TAC pessoa física: INSS, SEST/SENAT, IRRF
+    inss                NUMERIC(14,2) NOT NULL DEFAULT 0,
+    sest_senat          NUMERIC(14,2) NOT NULL DEFAULT 0,
+    irrf                NUMERIC(14,2) NOT NULL DEFAULT 0,
+    ciot                VARCHAR(20),
+    vale_pedagio_valor  NUMERIC(14,2) NOT NULL DEFAULT 0,
+    vale_pedagio_cnpj   VARCHAR(20),          -- fornecedora do vale-pedágio
+    vale_pedagio_compra VARCHAR(30),          -- nº do comprovante de compra
+    prazo_saldo_dias    INTEGER NOT NULL DEFAULT 0,
+    observacao          TEXT,
+    saldo               NUMERIC(14,2),        -- gravado no acerto (+ empresa paga / − motorista devolve)
+    acertado_em         TIMESTAMPTZ,
+    acertado_por_nome   VARCHAR(150),
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS acerto_lancamentos (
+    id          SERIAL PRIMARY KEY,
+    acerto_id   INTEGER NOT NULL REFERENCES acertos(id) ON DELETE CASCADE,
+    tipo        VARCHAR(10) NOT NULL,     -- despesa (próprio), desconto, acrescimo
+    categoria   VARCHAR(20) NOT NULL DEFAULT 'outros',
+    descricao   VARCHAR(200),
+    valor       NUMERIC(14,2) NOT NULL,
+    data        DATE,
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_acerto_lancamentos ON acerto_lancamentos (acerto_id);

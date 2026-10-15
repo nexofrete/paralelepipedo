@@ -70,6 +70,8 @@
         <div class="nav-tsub" data-ir="conferencia" data-aba="etiquetas">🏷 Etiquetas de volume</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="faturas">🧾 Faturamento</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="resumo">📈 Contas a receber</div>
+        <div class="nav-tsub" data-ir="pagar" data-aba="contas">💸 Contas a pagar</div>
+        <div class="nav-tsub" data-ir="pagar" data-aba="acertos">🧾 Acerto de viagem</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="frota">🚛 Veículos e motoristas</div>
         <div class="nav-tsub" data-ir="filiais" data-aba="unidades" data-so-admin="1">🏢 Filiais (unidades)</div>
@@ -80,6 +82,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="coletas" id="navColetas">📦 Coletas</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="conferencia" id="navConferencia">🔎 Conferência</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="filiais" id="navFiliais">🏢 Filiais</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="pagar" id="navPagar">💸 Contas a pagar</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="faturamento" id="navFaturamento">💰 Faturamento</div>
@@ -182,6 +185,28 @@
       </section>
       <div class="modal-overlay oculto" id="painelOcorrencia">
         <div class="painel modal-card" style="max-width:640px; width:100%; max-height:92vh; overflow-y:auto; padding:22px 24px;" id="ocModalConteudo"></div>
+      </div>
+
+      <section id="pagina-pagar" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>💸 Contas a pagar e acerto de viagem</h2>
+            <p>Tudo o que sai do caixa e o acerto dos motoristas (próprios e terceiros/agregados), com CIOT, vale-pedágio e o custo de cada viagem</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="axNovo" style="width:auto;">＋ Acerto de viagem</button>
+            <button class="btn btn-primario" id="cpNova" style="width:auto;">＋ Conta a pagar</button>
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-cp-aba="contas">💸 Contas a pagar</div>
+          <div class="cte-aba" data-cp-aba="acertos">🧾 Acertos de viagem</div>
+        </div>
+        <div id="cpAbaContas"></div>
+        <div id="cpAbaAcertos" class="oculto"></div>
+      </section>
+      <div class="modal-overlay oculto" id="modalPagar">
+        <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="cpModalConteudo"></div>
       </div>
 
       <section id="pagina-filiais" class="oculto">
@@ -3379,6 +3404,7 @@
   <script src="js/cotacoes.js"></script>
   <script src="js/conferencia.js"></script>
   <script src="js/filiais.js"></script>
+  <script src="js/contasPagar.js"></script>
   <script src="js/mdfe.js"></script>
   <script src="js/faturamento.js"></script>
   <script src="js/painelTransporte.js"></script>

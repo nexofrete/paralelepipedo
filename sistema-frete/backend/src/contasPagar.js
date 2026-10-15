@@ -1,0 +1,113 @@
+// Contas a pagar: lançamento (com parcelas), baixa total ou parcial,
+// estorno e cancelamento. O acerto de viagem também lança aqui.
+const crypto = require('crypto');
+const pool = require('./db');
+
+const CATEGORIAS = {
+  combustivel: 'Combustível', pedagio: 'Pedágio', manutencao: 'Manutenção', pneus: 'Pneus', frete_terceiro: 'Frete de terceiro',
+  adiantamento: 'Adiantamento de viagem', salarios: 'Salários e encargos', impostos: 'Impostos', seguro: 'Seguro', aluguel: 'Aluguel',
+  administrativo: 'Administrativo', outros: 'Outros',
+};
+const FORMAS = ['pix', 'boleto', 'transferencia', 'dinheiro', 'cartao', 'cheque', 'outro'];
+const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
+const texto = (v, max) => { const t = String(v ?? '').trim(); return t ? t.slice(0, max) : null; };
+const centavos = (v) => Math.round((Number(v) || 0) * 100) / 100;
+const valor = (v) => {
+  if (v === '' || v == null) return null;
+  const n = typeof v === 'number' ? v : Number(String(v).includes(',') ? String(v).replace(/\./g, '').replace(',', '.') : v);
+  return Number.isFinite(n) ? centavos(n) : null;
+};
+const iso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
+const hojeBr = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+// Mesmo dia nos meses seguintes (31/jan → 28/fev).
+function somarMeses(dataIso, meses) {
+  const [a, m, d] = dataIso.split('-').map(Number);
+  const alvo = new Date(Date.UTC(a, m - 1 + meses, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimo));
+  return alvo.toISOString().slice(0, 10);
+}
+
+// { descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcelas, dividir, observacao }
+// parcelas > 1: mensais a partir do vencimento; dividir = o valor é o total (senão, cada parcela tem o valor).
+function lerConta(b = {}) {
+  const c = {
+    descricao: texto(b.descricao, 200), categoria: CATEGORIAS[b.categoria] ? b.categoria : 'outros', fornecedor_nome: texto(b.fornecedor_nome, 200),
+    fornecedor_doc: String(b.fornecedor_doc || '').replace(/\D/g, '').slice(0, 14) || null, documento: texto(b.documento, 60),
+    vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null,
+    parcelas: Math.min(Math.max(parseInt(b.parcelas, 10) || 1, 1), 60), dividir: b.dividir !== false && b.dividir !== 'false',
+  };
+  if (!c.descricao) throw falha('Informe a descrição da conta.');
+  if (!c.vencimento) throw falha('Informe o vencimento.');
+  if (!(c.valor > 0)) throw falha('Informe o valor.');
+  if (c.fornecedor_doc && ![11, 14].includes(c.fornecedor_doc.length)) throw falha('CNPJ/CPF do fornecedor inválido.');
+  return c;
+}
+
+// Divide em parcelas sem perder centavos (a diferença vai na primeira).
+function parcelar(c) {
+  if (c.parcelas === 1) return [{ vencimento: c.vencimento, valor: c.valor, parcela: null }];
+  const cada = c.dividir ? Math.floor((c.valor / c.parcelas) * 100) / 100 : c.valor;
+  const resto = c.dividir ? centavos(c.valor - cada * c.parcelas) : 0;
+  return Array.from({ length: c.parcelas }, (_, i) => ({ vencimento: somarMeses(c.vencimento, i), valor: centavos(cada + (i === 0 ? resto : 0)), parcela: `${i + 1}/${c.parcelas}` }));
+}
+
+async function criar(b, usuarioNome, { cliente = pool, acertoId = null } = {}) {
+  const c = lerConta(b);
+  const grupo = c.parcelas > 1 ? crypto.randomBytes(6).toString('hex') : null;
+  const criadas = [];
+  for (const p of parcelar(c)) {
+    const { rows } = await cliente.query(
+      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome]);
+    criadas.push(rows[0]);
+  }
+  return criadas;
+}
+
+async function alterar(id, b) {
+  const c = lerConta({ ...b, parcelas: 1 });
+  const { rows } = await pool.query(
+    `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10
+      WHERE id = $1 AND status = 'aberta' AND valor_pago <= $8 RETURNING *`,
+    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id]);
+  if (!rows[0]) throw falha('Só dá para alterar conta em aberto (e o valor não pode ficar menor que o já pago).', 409);
+  return rows[0];
+}
+
+// Baixa: { data, valor (vazio = o que falta), forma, observacao }.
+async function pagar(id, b, usuarioNome, cliente = pool) {
+  const { rows } = await cliente.query('SELECT * FROM contas_pagar WHERE id = $1 FOR UPDATE', [id]);
+  const c = rows[0];
+  if (!c) throw falha('Conta não encontrada.', 404);
+  if (c.status !== 'aberta') throw falha(`Esta conta está ${c.status}.`, 409);
+  const falta = centavos(Number(c.valor) - Number(c.valor_pago));
+  const v = valor(b.valor) ?? falta;
+  if (!(v > 0)) throw falha('Informe o valor pago.');
+  if (v > falta + 0.001) throw falha(`O valor passa do que falta pagar (${falta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+  const data = iso(b.data) || hojeBr();
+  await cliente.query('INSERT INTO contas_pagar_pagamentos (conta_id, data, valor, forma, observacao, usuario_nome) VALUES ($1,$2,$3,$4,$5,$6)',
+    [id, data, v, FORMAS.includes(b.forma) ? b.forma : 'pix', texto(b.observacao, 255), usuarioNome]);
+  const pago = centavos(Number(c.valor_pago) + v);
+  const quitada = pago >= Number(c.valor) - 0.001;
+  const { rows: depois } = await cliente.query(
+    `UPDATE contas_pagar SET valor_pago = $2, status = $3, pago_em = $4 WHERE id = $1 RETURNING *`, [id, pago, quitada ? 'paga' : 'aberta', quitada ? data : null]);
+  return depois[0];
+}
+
+async function estornar(contaId, pagamentoId) {
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    const { rows } = await cliente.query('DELETE FROM contas_pagar_pagamentos WHERE id = $1 AND conta_id = $2 RETURNING valor', [pagamentoId, contaId]);
+    if (!rows[0]) throw falha('Pagamento não encontrado.', 404);
+    await cliente.query(
+      `UPDATE contas_pagar SET valor_pago = GREATEST(valor_pago - $2, 0), status = CASE WHEN status = 'cancelada' THEN status ELSE 'aberta' END, pago_em = NULL WHERE id = $1`,
+      [contaId, rows[0].valor]);
+    await cliente.query('COMMIT');
+    return Number(rows[0].valor);
+  } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); throw err; } finally { cliente.release(); }
+}
+
+module.exports = { CATEGORIAS, FORMAS, lerConta, parcelar, somarMeses, criar, alterar, pagar, estornar, hojeBr, centavos, valor };

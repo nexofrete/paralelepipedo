@@ -143,6 +143,19 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Etiquetas de volume e conferência (bipagem)
+
+**Etiquetas:** cada volume do CT-e ganha uma etiqueta com cidade/UF de destino em letra grande, destinatário, endereço, remetente, NF, peso, **VOL 3/12** e o **código de barras** do volume.
+- Onde imprimir: botão **🏷 Etiquetas** no CT-e autorizado, no romaneio, ou em **Operação de Transporte → Etiquetas de volume** (marque vários CT-e de uma vez).
+- Tamanhos: 100 × 100, 100 × 150 ou 100 × 50 mm. O administrador escolhe o padrão em "Usar sempre".
+- Impressora térmica (Zebra, Argox, Elgin...) com driver: escolha o papel do mesmo tamanho e margens "nenhuma". Sem driver: **⬇ ZPL (Zebra)** gera o arquivo para mandar direto à impressora.
+
+**Conferência:** use um leitor de código de barras USB ou Bluetooth (ele "digita" o código e dá Enter) ou a **câmera do celular** (Chrome no Android).
+- **Carga:** no romaneio, **🔎 Conferir carga**. Bipe os volumes que sobem no caminhão. A tela fica verde e apita quando está certo. Fica vermelha, com apito grave, quando o volume é de **outro romaneio** ("separe") ou o código não existe. Fica amarela quando o volume **já foi lido**. A barra mostra quantos volumes faltam e de quais CT-e; dá para **reimprimir** só as etiquetas que faltam.
+- **Recebimento no armazém (descarga):** bipe o que chega (coleta, devolução, transferência) e veja, por CT-e, quantos volumes chegaram.
+- A chave de acesso do DACTE também pode ser lida: conta o CT-e inteiro, para quem ainda não etiqueta.
+- Ao concluir, faltas e sobras ficam registradas. O romaneio mostra o resultado ("carga conferida: 24/24 ✓" ou "faltaram 2") antes de dar saída.
+
 ## Cotações de frete
 
 Em **Operação de Transporte → Cotações**:

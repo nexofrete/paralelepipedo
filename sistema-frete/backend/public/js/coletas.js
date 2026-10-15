@@ -116,62 +116,62 @@
     const editar = c && !repetir && !cotacao;
     $('colModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">${editar ? `📦 Coleta ${c.id}` : cotacao ? `📦 Coleta da cotação nº ${cotacao.id}` : '📦 Nova coleta'}</h3><span style="cursor:pointer; font-size:18px;" data-col-fechar>✕</span></div>
       <div class="cte-secao" style="margin-top:12px;"><h4>Quem pediu</h4><div class="cte-grade">
-        <div class="campo"><label for="cfCanal">Pedido por</label><select id="cfCanal">${Object.entries(CANAIS).map(([k, t]) => `<option value="${k}" ${c?.canal === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="campo"><label for="cfSolNome">Nome</label><input id="cfSolNome" maxlength="120" value="${v('solicitante_nome')}" /></div>
-        <div class="campo"><label for="cfSolFone">Telefone / WhatsApp</label><input id="cfSolFone" maxlength="30" value="${v('solicitante_telefone')}" /></div>
-        <div class="campo"><label for="cfSolEmail">E-mail (recebe o aviso da coleta)</label><input id="cfSolEmail" type="email" maxlength="250" value="${v('solicitante_email')}" /></div>
+        <div class="campo"><label for="klCanal">Pedido por</label><select id="klCanal">${Object.entries(CANAIS).map(([k, t]) => `<option value="${k}" ${c?.canal === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="campo"><label for="klSolNome">Nome</label><input id="klSolNome" maxlength="120" value="${v('solicitante_nome')}" /></div>
+        <div class="campo"><label for="klSolFone">Telefone / WhatsApp</label><input id="klSolFone" maxlength="30" value="${v('solicitante_telefone')}" /></div>
+        <div class="campo"><label for="klSolEmail">E-mail (recebe o aviso da coleta)</label><input id="klSolEmail" type="email" maxlength="250" value="${v('solicitante_email')}" /></div>
       </div></div>
       <div class="cte-secao"><h4>Onde coletar (remetente)</h4><div class="cte-grade">
-        <div class="campo largo" style="position:relative;"><label for="cfRemNome">Remetente (nome ou CNPJ, busca no cadastro)</label><input id="cfRemNome" maxlength="200" autocomplete="off" value="${v('remetente_nome')}" />
-          <div id="cfSugestoes" class="oculto" style="position:absolute; z-index:5; left:0; right:0; top:100%; background:var(--bg-card); border:1px solid var(--borda); border-radius:8px; max-height:240px; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,.25);"></div></div>
-        <div class="campo"><label for="cfRemDoc">CNPJ / CPF</label><input id="cfRemDoc" maxlength="18" value="${esc(docFmt(c?.remetente_doc))}" /></div>
-        <div class="campo"><label for="cfRemIe">IE</label><input id="cfRemIe" maxlength="30" value="${v('remetente_ie')}" /></div>
-        <div class="campo largo"><label for="cfLgr">Endereço</label><input id="cfLgr" maxlength="200" value="${v('logradouro')}" /></div>
-        <div class="campo"><label for="cfNro">Número</label><input id="cfNro" maxlength="30" value="${v('numero')}" /></div>
-        <div class="campo"><label for="cfCpl">Complemento</label><input id="cfCpl" maxlength="150" value="${v('complemento')}" /></div>
-        <div class="campo"><label for="cfBairro">Bairro</label><input id="cfBairro" maxlength="120" value="${v('bairro')}" /></div>
-        <div class="campo"><label for="cfCidade">Cidade</label><input id="cfCidade" maxlength="120" value="${v('cidade')}" /></div>
-        <div class="campo"><label for="cfUf">UF</label><input id="cfUf" maxlength="2" style="text-transform:uppercase;" value="${v('uf')}" /></div>
-        <div class="campo"><label for="cfCep">CEP</label><input id="cfCep" maxlength="9" value="${v('cep')}" /></div>
-        <div class="campo"><label for="cfContato">Falar com</label><input id="cfContato" maxlength="120" value="${v('contato_nome')}" /></div>
-        <div class="campo"><label for="cfContatoFone">Telefone do local</label><input id="cfContatoFone" maxlength="30" value="${v('contato_telefone')}" /></div>
-        <input type="hidden" id="cfCodMun" value="${v('cod_municipio')}" />
+        <div class="campo largo" style="position:relative;"><label for="klRemNome">Remetente (nome ou CNPJ, busca no cadastro)</label><input id="klRemNome" maxlength="200" autocomplete="off" value="${v('remetente_nome')}" />
+          <div id="klSugestoes" class="oculto" style="position:absolute; z-index:5; left:0; right:0; top:100%; background:var(--bg-card); border:1px solid var(--borda); border-radius:8px; max-height:240px; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,.25);"></div></div>
+        <div class="campo"><label for="klRemDoc">CNPJ / CPF</label><input id="klRemDoc" maxlength="18" value="${esc(docFmt(c?.remetente_doc))}" /></div>
+        <div class="campo"><label for="klRemIe">IE</label><input id="klRemIe" maxlength="30" value="${v('remetente_ie')}" /></div>
+        <div class="campo largo"><label for="klLgr">Endereço</label><input id="klLgr" maxlength="200" value="${v('logradouro')}" /></div>
+        <div class="campo"><label for="klNro">Número</label><input id="klNro" maxlength="30" value="${v('numero')}" /></div>
+        <div class="campo"><label for="klCpl">Complemento</label><input id="klCpl" maxlength="150" value="${v('complemento')}" /></div>
+        <div class="campo"><label for="klBairro">Bairro</label><input id="klBairro" maxlength="120" value="${v('bairro')}" /></div>
+        <div class="campo"><label for="klCidade">Cidade</label><input id="klCidade" maxlength="120" value="${v('cidade')}" /></div>
+        <div class="campo"><label for="klUf">UF</label><input id="klUf" maxlength="2" style="text-transform:uppercase;" value="${v('uf')}" /></div>
+        <div class="campo"><label for="klCep">CEP</label><input id="klCep" maxlength="9" value="${v('cep')}" /></div>
+        <div class="campo"><label for="klContato">Falar com</label><input id="klContato" maxlength="120" value="${v('contato_nome')}" /></div>
+        <div class="campo"><label for="klContatoFone">Telefone do local</label><input id="klContatoFone" maxlength="30" value="${v('contato_telefone')}" /></div>
+        <input type="hidden" id="klCodMun" value="${v('cod_municipio')}" />
       </div></div>
       <div class="cte-secao"><h4>Quando</h4><div class="cte-grade">
-        <div class="campo"><label for="cfData">Data da coleta</label><input id="cfData" type="date" value="${repetir || !c || cotacao ? hoje() : esc(String(c.data_coleta).slice(0, 10))}" /></div>
-        <div class="campo"><label for="cfHoraDe">Das</label><input id="cfHoraDe" type="time" value="${v('hora_de')}" /></div>
-        <div class="campo"><label for="cfHoraAte">Até</label><input id="cfHoraAte" type="time" value="${v('hora_ate')}" /></div>
+        <div class="campo"><label for="klData">Data da coleta</label><input id="klData" type="date" value="${repetir || !c || cotacao ? hoje() : esc(String(c.data_coleta).slice(0, 10))}" /></div>
+        <div class="campo"><label for="klHoraDe">Das</label><input id="klHoraDe" type="time" value="${v('hora_de')}" /></div>
+        <div class="campo"><label for="klHoraAte">Até</label><input id="klHoraAte" type="time" value="${v('hora_ate')}" /></div>
       </div></div>
       <div class="cte-secao"><h4>Carga e destino</h4><div class="cte-grade">
-        <div class="campo"><label for="cfVol">Volumes</label><input id="cfVol" inputmode="numeric" value="${v('volumes')}" /></div>
-        <div class="campo"><label for="cfPeso">Peso (kg)</label><input id="cfPeso" inputmode="decimal" value="${c?.peso_kg != null ? esc(num(c.peso_kg, 3)) : ''}" /></div>
-        <div class="campo"><label for="cfCub">Cubagem (m³)</label><input id="cfCub" inputmode="decimal" value="${c?.cubagem_m3 != null ? esc(num(c.cubagem_m3, 3)) : ''}" /></div>
-        <div class="campo"><label for="cfValor">Valor da mercadoria (R$)</label><input id="cfValor" inputmode="decimal" value="${c?.valor_mercadoria != null ? esc(num(c.valor_mercadoria, 2)) : ''}" /></div>
-        <div class="campo"><label for="cfProduto">Produto</label><input id="cfProduto" maxlength="120" value="${v('produto')}" /></div>
-        <div class="campo"><label for="cfNotas">NF (se já tiver)</label><input id="cfNotas" maxlength="250" value="${v('notas')}" /></div>
-        <div class="campo largo"><label for="cfDestNome">Destinatário</label><input id="cfDestNome" maxlength="200" value="${v('destinatario_nome')}" /></div>
-        <div class="campo"><label for="cfDestDoc">CNPJ / CPF do destinatário</label><input id="cfDestDoc" maxlength="18" value="${esc(docFmt(c?.destinatario_doc))}" /></div>
-        <div class="campo"><label for="cfDestCidade">Cidade de destino</label><input id="cfDestCidade" maxlength="120" value="${v('destino_cidade')}" /></div>
-        <div class="campo"><label for="cfDestUf">UF</label><input id="cfDestUf" maxlength="2" style="text-transform:uppercase;" value="${v('destino_uf')}" /></div>
-        <div class="campo"><label for="cfTomador">Quem paga o frete</label><select id="cfTomador"><option value="remetente">Remetente (CIF)</option><option value="destinatario" ${c?.tomador === 'destinatario' ? 'selected' : ''}>Destinatário (FOB)</option></select></div>
-        <div class="campo inteiro"><label for="cfObs">Observação para o motorista</label><textarea id="cfObs" rows="2" maxlength="2000">${v('observacao')}</textarea></div>
+        <div class="campo"><label for="klVol">Volumes</label><input id="klVol" inputmode="numeric" value="${v('volumes')}" /></div>
+        <div class="campo"><label for="klPeso">Peso (kg)</label><input id="klPeso" inputmode="decimal" value="${c?.peso_kg != null ? esc(num(c.peso_kg, 3)) : ''}" /></div>
+        <div class="campo"><label for="klCub">Cubagem (m³)</label><input id="klCub" inputmode="decimal" value="${c?.cubagem_m3 != null ? esc(num(c.cubagem_m3, 3)) : ''}" /></div>
+        <div class="campo"><label for="klValor">Valor da mercadoria (R$)</label><input id="klValor" inputmode="decimal" value="${c?.valor_mercadoria != null ? esc(num(c.valor_mercadoria, 2)) : ''}" /></div>
+        <div class="campo"><label for="klProduto">Produto</label><input id="klProduto" maxlength="120" value="${v('produto')}" /></div>
+        <div class="campo"><label for="klNotas">NF (se já tiver)</label><input id="klNotas" maxlength="250" value="${v('notas')}" /></div>
+        <div class="campo largo"><label for="klDestNome">Destinatário</label><input id="klDestNome" maxlength="200" value="${v('destinatario_nome')}" /></div>
+        <div class="campo"><label for="klDestDoc">CNPJ / CPF do destinatário</label><input id="klDestDoc" maxlength="18" value="${esc(docFmt(c?.destinatario_doc))}" /></div>
+        <div class="campo"><label for="klDestCidade">Cidade de destino</label><input id="klDestCidade" maxlength="120" value="${v('destino_cidade')}" /></div>
+        <div class="campo"><label for="klDestUf">UF</label><input id="klDestUf" maxlength="2" style="text-transform:uppercase;" value="${v('destino_uf')}" /></div>
+        <div class="campo"><label for="klTomador">Quem paga o frete</label><select id="klTomador"><option value="remetente">Remetente (CIF)</option><option value="destinatario" ${c?.tomador === 'destinatario' ? 'selected' : ''}>Destinatário (FOB)</option></select></div>
+        <div class="campo inteiro"><label for="klObs">Observação para o motorista</label><textarea id="klObs" rows="2" maxlength="2000">${v('observacao')}</textarea></div>
       </div></div>
       <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-col-fechar style="width:auto;">Cancelar</button>
-        <button class="btn btn-primario" id="cfSalvar" style="width:auto;">${editar ? 'Salvar' : 'Registrar coleta'}</button></div>`;
+        <button class="btn btn-primario" id="klSalvar" style="width:auto;">${editar ? 'Salvar' : 'Registrar coleta'}</button></div>`;
     modal.classList.remove('oculto');
-    $('cfRemNome').focus();
+    $('klRemNome').focus();
     ligarAutocompletar();
-    $('cfSalvar').addEventListener('click', async (e) => {
+    $('klSalvar').addEventListener('click', async (e) => {
       const b = e.currentTarget; b.disabled = true;
       try {
         const corpo = {
-          canal: $('cfCanal').value, solicitante_nome: $('cfSolNome').value, solicitante_telefone: $('cfSolFone').value, solicitante_email: $('cfSolEmail').value,
-          remetente_nome: $('cfRemNome').value, remetente_doc: $('cfRemDoc').value, remetente_ie: $('cfRemIe').value, logradouro: $('cfLgr').value, numero: $('cfNro').value,
-          complemento: $('cfCpl').value, bairro: $('cfBairro').value, cidade: $('cfCidade').value, uf: $('cfUf').value, cep: $('cfCep').value, cod_municipio: $('cfCodMun').value,
-          contato_nome: $('cfContato').value, contato_telefone: $('cfContatoFone').value, data_coleta: $('cfData').value, hora_de: $('cfHoraDe').value, hora_ate: $('cfHoraAte').value,
-          volumes: $('cfVol').value, peso_kg: $('cfPeso').value, cubagem_m3: $('cfCub').value, valor_mercadoria: $('cfValor').value, produto: $('cfProduto').value, notas: $('cfNotas').value,
-          destinatario_nome: $('cfDestNome').value, destinatario_doc: $('cfDestDoc').value, destino_cidade: $('cfDestCidade').value, destino_uf: $('cfDestUf').value,
-          tomador: $('cfTomador').value, observacao: $('cfObs').value, ...(cotacao ? { cotacao_id: cotacao.id } : {}),
+          canal: $('klCanal').value, solicitante_nome: $('klSolNome').value, solicitante_telefone: $('klSolFone').value, solicitante_email: $('klSolEmail').value,
+          remetente_nome: $('klRemNome').value, remetente_doc: $('klRemDoc').value, remetente_ie: $('klRemIe').value, logradouro: $('klLgr').value, numero: $('klNro').value,
+          complemento: $('klCpl').value, bairro: $('klBairro').value, cidade: $('klCidade').value, uf: $('klUf').value, cep: $('klCep').value, cod_municipio: $('klCodMun').value,
+          contato_nome: $('klContato').value, contato_telefone: $('klContatoFone').value, data_coleta: $('klData').value, hora_de: $('klHoraDe').value, hora_ate: $('klHoraAte').value,
+          volumes: $('klVol').value, peso_kg: $('klPeso').value, cubagem_m3: $('klCub').value, valor_mercadoria: $('klValor').value, produto: $('klProduto').value, notas: $('klNotas').value,
+          destinatario_nome: $('klDestNome').value, destinatario_doc: $('klDestDoc').value, destino_cidade: $('klDestCidade').value, destino_uf: $('klDestUf').value,
+          tomador: $('klTomador').value, observacao: $('klObs').value, ...(cotacao ? { cotacao_id: cotacao.id } : {}),
         };
         const salva = editar ? await api(`/${c.id}`, { method: 'PUT', body: JSON.stringify(corpo) }) : await api('', { method: 'POST', body: JSON.stringify(corpo) });
         await carregar();
@@ -183,25 +183,25 @@
 
   // Busca o remetente no cadastro de clientes e preenche o endereço.
   function ligarAutocompletar() {
-    const caixa = $('cfSugestoes'); let achados = []; let t = null;
+    const caixa = $('klSugestoes'); let achados = []; let t = null;
     const buscar = async () => {
       if (!document.body.contains(caixa)) return;   // o formulário já foi fechado
-      const q = $('cfRemNome').value.trim();
+      const q = $('klRemNome').value.trim();
       if (q.length < 3) { caixa.classList.add('oculto'); return; }
       achados = await api(`/clientes?q=${encodeURIComponent(q)}`).catch(() => []);
       if (!document.body.contains(caixa)) return;
       caixa.innerHTML = achados.map((k, i) => `<div data-col-sug="${i}" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--borda); font-size:13px;"><b>${esc(k.nome)}</b> <small style="color:var(--texto-fraco);">${esc(docFmt(k.documento))}</small><br><small style="color:var(--texto-fraco);">${esc([k.logradouro, k.numero, k.bairro].filter(Boolean).join(', '))} · ${esc(k.cidade || '')}/${esc(k.uf || '')}</small></div>`).join('');
       caixa.classList.toggle('oculto', !achados.length);
     };
-    $('cfRemNome').addEventListener('input', () => { clearTimeout(t); t = setTimeout(buscar, 300); });
-    $('cfRemNome').addEventListener('blur', () => setTimeout(() => caixa.classList.add('oculto'), 200));
+    $('klRemNome').addEventListener('input', () => { clearTimeout(t); t = setTimeout(buscar, 300); });
+    $('klRemNome').addEventListener('blur', () => setTimeout(() => caixa.classList.add('oculto'), 200));
     caixa.addEventListener('mousedown', (e) => {
       const el = e.target.closest('[data-col-sug]'); if (!el) return;
       const k = achados[Number(el.dataset.colSug)];
-      const por = { cfRemNome: k.nome, cfRemDoc: docFmt(k.documento), cfRemIe: k.ie, cfLgr: k.logradouro, cfNro: k.numero, cfCpl: k.complemento, cfBairro: k.bairro,
-        cfCidade: k.cidade, cfUf: k.uf, cfCep: k.cep, cfCodMun: k.cod_municipio, cfContatoFone: k.telefone };
+      const por = { klRemNome: k.nome, klRemDoc: docFmt(k.documento), klRemIe: k.ie, klLgr: k.logradouro, klNro: k.numero, klCpl: k.complemento, klBairro: k.bairro,
+        klCidade: k.cidade, klUf: k.uf, klCep: k.cep, klCodMun: k.cod_municipio, klContatoFone: k.telefone };
       Object.entries(por).forEach(([id, val]) => { $(id).value = val || ''; });
-      if (!$('cfSolEmail').value && k.email) $('cfSolEmail').value = k.email;
+      if (!$('klSolEmail').value && k.email) $('klSolEmail').value = k.email;
       caixa.classList.add('oculto');
     });
   }

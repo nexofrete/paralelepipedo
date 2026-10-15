@@ -97,7 +97,9 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM romaneios WHERE id = $1', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ erro: 'Romaneio não encontrado.' });
-    res.json({ ...rows[0], itens: await itensDoRomaneio(rows[0].id), coletas: await coletas.coletasDoRomaneio(rows[0].id) });
+    const { rows: conf } = await pool.query(
+      `SELECT id, status, resumo, concluida_em FROM conferencias WHERE romaneio_id = $1 AND tipo = 'carga' ORDER BY id DESC LIMIT 1`, [rows[0].id]);
+    res.json({ ...rows[0], itens: await itensDoRomaneio(rows[0].id), coletas: await coletas.coletasDoRomaneio(rows[0].id), conferencia: conf[0] || null });
   } catch (err) { erro(res, err, 'Erro ao abrir o romaneio.'); }
 });
 

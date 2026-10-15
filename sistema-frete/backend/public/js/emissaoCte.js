@@ -103,6 +103,7 @@
     if (c.chave_pendente_origem) acoes.push(b('pendente', '⚠ Chave pendente'));
     if (c.status === 'autorizado' && c.averbacao_status !== 'averbado') acoes.push(b('averbar', '🛡 Averbar'));
     acoes.push(b('dacte', c.status === 'autorizado' || c.status === 'cancelado' ? '🖨 DACTE' : '👁 Prévia'));
+    if (c.status === 'autorizado') acoes.push(b('etiquetas', '🏷 Etiquetas'));
     if (c.chave) acoes.push(b('xml', '⬇ XML'));
     acoes.push(b('duplicar', '⧉ Duplicar'));
     if (c.status === 'rascunho' && !c.numero) acoes.push(b('excluir', '🗑'));
@@ -152,6 +153,7 @@
     const acao = btn.dataset.cteAcao;
     try {
       if (acao === 'editar') return abrirFormulario(id);
+      if (acao === 'etiquetas') return window.open(`/api/etiquetas/imprimir?ctes=${id}&token=${encodeURIComponent(token)}`, '_blank');
       if (acao === 'dacte') return window.open(`/api/cte-emissao/${id}/dacte?token=${encodeURIComponent(token)}`, '_blank');
       if (acao === 'xml') { window.location.href = `/api/cte-emissao/${id}/xml?token=${encodeURIComponent(token)}`; return null; }
       btn.disabled = true;

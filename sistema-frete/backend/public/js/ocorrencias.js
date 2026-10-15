@@ -315,6 +315,13 @@
         ${r.saiu_em ? ` · saiu ${dataHora(r.saiu_em)}` : ''}</div></div><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>
       ${r.status !== 'fechado' ? `<div class="cte-aviso" style="margin:12px 0;">📱 App do motorista: <b>${esc(linkMotorista())}</b> · código <b style="font-size:15px; letter-spacing:2px;">${esc(r.codigo_acesso)}</b>
         <a href="#" id="rmCopiarLink">copiar link direto</a> · <a href="#" id="rmNovoCodigo">trocar código</a></div>` : ''}
+      ${r.itens.length && r.status === 'aberto' ? (() => {
+        const k = r.conferencia; const z = k?.resumo;
+        if (!k) return '<div class="cte-aviso" style="margin:8px 0;">🔎 Carga ainda não conferida. Use "Conferir carga" e bipe as etiquetas antes de dar saída.</div>';
+        if (k.status === 'aberta') return `<div class="cte-aviso" style="margin:8px 0;">🔎 Conferência da carga em andamento (nº ${k.id}).</div>`;
+        const ok = !z.faltam && !(z.sobras || []).length;
+        return `<div class="cte-aviso ${ok ? 'ok' : 'erro'}" style="margin:8px 0;">🔎 Carga conferida: ${z.lido}/${z.esperado} volume(s)${z.faltam ? ` · <b>faltaram ${z.faltam}</b>` : ''}${(z.sobras || []).length ? ` · <b>${z.sobras.length} volume(s) de outro romaneio</b>` : ''}${ok ? ' ✓' : ''}</div>`;
+      })() : ''}
       ${r.itens.length || !r.coletas?.length ? `<table class="edi-tabela" style="margin-top:8px;"><thead><tr><th>#</th><th>CT-e</th><th>Destinatário</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>
       ${r.itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}<br><small style="color:var(--texto-fraco);">NF ${esc(i.nfs.join(', '))}</small></td>
         <td>${esc(i.destinatario)}<br><small style="color:var(--texto-fraco);">${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}</small></td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
@@ -329,11 +336,14 @@
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
         ${r.status === 'aberto' ? '<button class="btn btn-secundario" id="rmExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : ''}
         <a class="btn btn-secundario" href="/api/romaneios/${r.id}/imprimir?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Imprimir</a>
+        ${r.itens.length ? `<a class="btn btn-secundario" href="/api/etiquetas/imprimir?ctes=${r.itens.map((i) => i.cte_id).join(',')}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🏷 Etiquetas</a>` : ''}
+        ${r.itens.length && r.status !== 'fechado' && window.nexoConferencia ? '<button class="btn btn-secundario" id="rmConferir" style="width:auto;">🔎 Conferir carga</button>' : ''}
         ${window.nexoMdfe && r.status !== 'fechado' ? '<button class="btn btn-secundario" id="rmMdfe" style="width:auto;">📋 Emitir MDF-e</button>' : ''}
         ${r.status === 'aberto' ? `<button class="btn btn-primario" id="rmSaida" style="width:auto;">▶ Dar saída (${r.itens.length ? 'saiu para entrega' : 'saiu para coletar'})</button>` : ''}
         ${r.status === 'em_rota' ? '<button class="btn btn-primario" id="rmFechar" style="width:auto;">✓ Fechar romaneio (retorno)</button>' : ''}</div>`;
     modal.classList.remove('oculto');
     const recarregar = async () => { await abrirRomaneio(id); carregarRomaneios().catch(() => {}); carregar().catch(() => {}); window.nexoColetas?.recarregar(); };
+    $('rmConferir')?.addEventListener('click', () => { fecharModal(); window.nexoConferencia.conferirRomaneio(r.id).catch((err) => mostrarAlerta(err.message, { tipo: 'erro' })); });
     $('rmCopiarLink')?.addEventListener('click', (e) => { e.preventDefault(); copiar(linkMotorista(r.codigo_acesso)); });
     $('rmNovoCodigo')?.addEventListener('click', async (e) => {
       e.preventDefault();

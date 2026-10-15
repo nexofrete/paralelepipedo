@@ -1767,3 +1767,31 @@ CREATE INDEX IF NOT EXISTS idx_cotacoes_cliente ON cotacoes (cliente_doc);
 ALTER TABLE coletas ADD COLUMN IF NOT EXISTS cotacao_id INTEGER REFERENCES cotacoes(id) ON DELETE SET NULL;
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cotacao_validade_dias INTEGER NOT NULL DEFAULT 10;
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cotacao_condicoes TEXT;
+
+-- Etiquetas de volume e conferência por código de barras (bipagem).
+-- Código do volume: 77 + id do CT-e (8 dígitos) + nº do volume (4 dígitos).
+-- tipo: carga (saída do romaneio) ou descarga (recebimento no armazém).
+CREATE TABLE IF NOT EXISTS conferencias (
+    id              SERIAL PRIMARY KEY,
+    tipo            VARCHAR(10) NOT NULL DEFAULT 'carga',
+    romaneio_id     INTEGER REFERENCES romaneios(id) ON DELETE SET NULL,
+    status          VARCHAR(10) NOT NULL DEFAULT 'aberta',   -- aberta, concluida
+    observacao      TEXT,
+    resumo          JSONB,
+    usuario_nome    VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    concluida_em    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_conferencias_romaneio ON conferencias (romaneio_id);
+CREATE TABLE IF NOT EXISTS conferencia_leituras (
+    id              SERIAL PRIMARY KEY,
+    conferencia_id  INTEGER NOT NULL REFERENCES conferencias(id) ON DELETE CASCADE,
+    codigo          VARCHAR(60) NOT NULL,
+    cte_id          INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL,
+    volume          INTEGER,                 -- 0 = CT-e inteiro (leu a chave do DACTE)
+    resultado       VARCHAR(12) NOT NULL,    -- ok, sobra
+    usuario_nome    VARCHAR(150),
+    lido_em         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_conferencia_leituras ON conferencia_leituras (conferencia_id);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS etiqueta_formato VARCHAR(10) NOT NULL DEFAULT '100x100';

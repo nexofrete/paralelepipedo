@@ -224,7 +224,7 @@
         <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:4px;">${dia(c.criado_em)} · ${esc(c.criado_por_nome || '')} · válida até ${dia(c.validade)}${c.enviada_em ? ` · enviada ${new Date(c.enviada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</div></div>
         <span style="cursor:pointer; font-size:18px;" data-ct-fechar>✕</span></div>
       ${c.motivo ? `<div class="cte-aviso erro" style="margin-top:10px;">${c.status === 'cancelada' ? 'Cancelada' : 'Recusada'}: ${esc(c.motivo)}</div>` : ''}
-      ${c.coleta_id ? `<div class="cte-aviso ok" style="margin-top:10px;">📦 Virou a coleta nº ${c.coleta_id} — <a href="#" id="cdVerColeta">abrir</a>${c.cte_id ? ' · já tem CT-e' : ''}</div>` : ''}
+      ${c.coleta_id ? `<div class="cte-aviso ok" style="margin-top:10px;">📦 Virou a coleta nº ${c.coleta_id} — <a href="#" id="czVerColeta">abrir</a>${c.cte_id ? ' · já tem CT-e' : ''}</div>` : ''}
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-top:14px;">
         <div style="font-size:13.5px; line-height:1.6;">
           <b>${esc(c.cliente_nome)}</b>${c.cliente_doc ? ` · ${esc(docFmt(c.cliente_doc))}` : ''}<br>
@@ -239,54 +239,54 @@
           ${c.valor_tabela && Number(c.valor_tabela) > Number(c.valor_total) ? `<small style="color:var(--texto-fraco);">Pela tabela: ${moeda(c.valor_tabela)} (desconto de ${num(((c.valor_tabela - c.valor_total) / c.valor_tabela) * 100, 1)}%)</small>` : ''}</div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
-        ${aberta || c.situacao === 'vencida' ? '<button class="btn btn-secundario" id="cdRecusar" style="width:auto; color:var(--vermelho);">✗ Recusada</button>' : ''}
-        ${['recusada', 'cancelada', 'vencida'].includes(c.situacao) || (c.status === 'aprovada' && !c.coleta_id) ? '<button class="btn btn-secundario" id="cdReabrir" style="width:auto;">Reabrir</button>' : ''}
-        <button class="btn btn-secundario" id="cdDuplicar" style="width:auto;">↻ Duplicar</button>
-        ${aberta ? '<button class="btn btn-secundario" id="cdEditar" style="width:auto;">Editar</button>' : ''}
+        ${aberta || c.situacao === 'vencida' ? '<button class="btn btn-secundario" id="czRecusar" style="width:auto; color:var(--vermelho);">✗ Recusada</button>' : ''}
+        ${['recusada', 'cancelada', 'vencida'].includes(c.situacao) || (c.status === 'aprovada' && !c.coleta_id) ? '<button class="btn btn-secundario" id="czReabrir" style="width:auto;">Reabrir</button>' : ''}
+        <button class="btn btn-secundario" id="czDuplicar" style="width:auto;">↻ Duplicar</button>
+        ${aberta ? '<button class="btn btn-secundario" id="czEditar" style="width:auto;">Editar</button>' : ''}
         <a class="btn btn-secundario" href="/api/cotacoes/${c.id}/proposta?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Proposta / PDF</a>
-        ${aberta ? `<a class="btn btn-secundario" id="cdWhats" href="${esc(wa)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">💬 WhatsApp</a>
-          <button class="btn btn-secundario" id="cdEmail" style="width:auto;">✉ Enviar por e-mail</button>` : ''}
-        ${aberta && c.situacao !== 'vencida' ? '<button class="btn btn-primario" id="cdAprovar" style="width:auto;">✓ Aprovada → programar coleta</button>' : ''}
-        ${c.status === 'aprovada' && !c.coleta_id ? '<button class="btn btn-primario" id="cdColeta" style="width:auto;">📦 Criar a coleta</button>' : ''}</div>`;
+        ${aberta ? `<a class="btn btn-secundario" id="czWhats" href="${esc(wa)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">💬 WhatsApp</a>
+          <button class="btn btn-secundario" id="czEmail" style="width:auto;">✉ Enviar por e-mail</button>` : ''}
+        ${aberta && c.situacao !== 'vencida' ? '<button class="btn btn-primario" id="czAprovar" style="width:auto;">✓ Aprovada → programar coleta</button>' : ''}
+        ${c.status === 'aprovada' && !c.coleta_id ? '<button class="btn btn-primario" id="czColeta" style="width:auto;">📦 Criar a coleta</button>' : ''}</div>`;
     modal.classList.remove('oculto');
     const depois = async () => { await carregar(); await abrir(id); };
-    $('cdEditar')?.addEventListener('click', () => formulario(c));
-    $('cdDuplicar').addEventListener('click', () => formulario(c, { duplicar: true }));
-    $('cdWhats')?.addEventListener('click', () => { api(`/${id}/marcar-enviada`, { method: 'POST' }).then(depois).catch(() => {}); });
-    $('cdEmail')?.addEventListener('click', async () => {
+    $('czEditar')?.addEventListener('click', () => formulario(c));
+    $('czDuplicar').addEventListener('click', () => formulario(c, { duplicar: true }));
+    $('czWhats')?.addEventListener('click', () => { api(`/${id}/marcar-enviada`, { method: 'POST' }).then(depois).catch(() => {}); });
+    $('czEmail')?.addEventListener('click', async () => {
       const para = await pedirTexto('Enviar a proposta para qual e-mail?', { titulo: `Cotação ${id}`, valor: c.email || '', placeholder: 'cliente@empresa.com.br', textoOk: 'Enviar' });
       if (para == null) return;
       try { const r = await api(`/${id}/enviar`, { method: 'POST', body: JSON.stringify({ email: para }) }); mostrarAlerta(`Proposta enviada para ${r.para}.`, { tipo: 'sucesso' }); await depois(); } catch (err) { erro(err); }
     });
-    $('cdRecusar')?.addEventListener('click', async () => {
+    $('czRecusar')?.addEventListener('click', async () => {
       const motivo = await pedirTexto('Por que o cliente não fechou? (preço, prazo, fechou com outro...)', { titulo: `Cotação ${id} recusada`, placeholder: 'Ex.: preço acima do concorrente', textoOk: 'Marcar como recusada' });
       if (motivo == null) return;
       try { await api(`/${id}/recusar`, { method: 'POST', body: JSON.stringify({ motivo }) }); await depois(); } catch (err) { erro(err); }
     });
-    $('cdReabrir')?.addEventListener('click', async () => { try { await api(`/${id}/reabrir`, { method: 'POST' }); await depois(); } catch (err) { erro(err); } });
+    $('czReabrir')?.addEventListener('click', async () => { try { await api(`/${id}/reabrir`, { method: 'POST' }); await depois(); } catch (err) { erro(err); } });
     const irParaColeta = async (cot) => {
       fecharModal();
       if (!window.nexoColetas?.novaDaCotacao) { mostrarAlerta('Cotação aprovada. Registre a coleta em Coletas.', { tipo: 'sucesso' }); return; }
       document.getElementById('navColetas')?.click();
       await window.nexoColetas.novaDaCotacao(cot);
     };
-    $('cdAprovar')?.addEventListener('click', async () => {
+    $('czAprovar')?.addEventListener('click', async () => {
       if (!await confirmar(`Marcar a cotação ${id} como aprovada pelo cliente (${moeda(c.valor_total)})? Em seguida você registra a coleta, e o CT-e sai com este preço.`, { textoOk: 'Aprovada' })) return;
       try { const cot = await api(`/${id}/aprovar`, { method: 'POST' }); await carregar(); await irParaColeta(cot); } catch (err) { erro(err); }
     });
-    $('cdColeta')?.addEventListener('click', () => irParaColeta(c).catch(erro));
-    $('cdVerColeta')?.addEventListener('click', (e) => { e.preventDefault(); fecharModal(); document.getElementById('navColetas')?.click(); window.nexoColetas?.abrir(c.coleta_id); });
+    $('czColeta')?.addEventListener('click', () => irParaColeta(c).catch(erro));
+    $('czVerColeta')?.addEventListener('click', (e) => { e.preventDefault(); fecharModal(); document.getElementById('navColetas')?.click(); window.nexoColetas?.abrir(c.coleta_id); });
   }
 
   async function configurar() {
     const cfg = await api('/config');
     $('ctModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">⚙ Validade e condições das cotações</h3><span style="cursor:pointer; font-size:18px;" data-ct-fechar>✕</span></div>
-      <div class="campo" style="margin-top:14px; max-width:220px;"><label for="cfgDias">Validade padrão (dias)</label><input id="cfgDias" inputmode="numeric" value="${cfg.validade_dias}" /></div>
-      <div class="campo"><label for="cfgCond">Condições gerais (saem no fim de toda proposta)</label><textarea id="cfgCond" rows="7" placeholder="Ex.: Valores para carga paletizada e descarga pelo destinatário. Sujeito à disponibilidade de veículo. Pagamento em 15 dias da emissão do CT-e...">${esc(cfg.condicoes)}</textarea></div>
-      <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-ct-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="cfgSalvar" style="width:auto;">Salvar</button></div>`;
+      <div class="campo" style="margin-top:14px; max-width:220px;"><label for="czCfgDias">Validade padrão (dias)</label><input id="czCfgDias" inputmode="numeric" value="${cfg.validade_dias}" /></div>
+      <div class="campo"><label for="czCfgCond">Condições gerais (saem no fim de toda proposta)</label><textarea id="czCfgCond" rows="7" placeholder="Ex.: Valores para carga paletizada e descarga pelo destinatário. Sujeito à disponibilidade de veículo. Pagamento em 15 dias da emissão do CT-e...">${esc(cfg.condicoes)}</textarea></div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-ct-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="czCfgSalvar" style="width:auto;">Salvar</button></div>`;
     modal.classList.remove('oculto');
-    $('cfgSalvar').addEventListener('click', async () => {
-      try { await api('/config', { method: 'PUT', body: JSON.stringify({ validade_dias: $('cfgDias').value, condicoes: $('cfgCond').value }) }); estado.config = null; await iniciar(); fecharModal(); mostrarAlerta('Salvo.', { tipo: 'sucesso' }); } catch (err) { erro(err); }
+    $('czCfgSalvar').addEventListener('click', async () => {
+      try { await api('/config', { method: 'PUT', body: JSON.stringify({ validade_dias: $('czCfgDias').value, condicoes: $('czCfgCond').value }) }); estado.config = null; await iniciar(); fecharModal(); mostrarAlerta('Salvo.', { tipo: 'sucesso' }); } catch (err) { erro(err); }
     });
   }
 })();

@@ -13,7 +13,7 @@ const STATUS = {
   pendente: 'A programar', programada: 'Programada', em_coleta: 'Saiu para coletar', coletada: 'Coletada',
   nao_coletada: 'Não coletada', cancelada: 'Cancelada',
 };
-const CANAIS = ['telefone', 'whatsapp', 'email', 'presencial', 'edi'];
+const CANAIS = ['telefone', 'whatsapp', 'email', 'presencial', 'edi', 'portal'];
 // Motivos que o motorista escolhe quando não coleta.
 const MOTIVOS = ['Mercadoria não estava pronta', 'Local fechado / sem responsável', 'Endereço não localizado', 'Cliente cancelou na hora',
   'Volume ou peso maior que o informado', 'Veículo sem espaço', 'Horário fora da janela', 'Outro'];

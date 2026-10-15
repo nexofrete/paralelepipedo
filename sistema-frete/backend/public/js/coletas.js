@@ -32,7 +32,7 @@
 
   const STATUS = { pendente: 'A programar', programada: 'Programada', em_coleta: 'Saiu para coletar', coletada: 'Coletada', nao_coletada: 'Não coletada', cancelada: 'Cancelada' };
   const COR = { pendente: 'pendente', programada: 'em_transito', em_coleta: 'em_rota', coletada: 'entregue', nao_coletada: 'ocorrencia', cancelada: 'cancelado' };
-  const CANAIS = { telefone: '📞 Telefone', whatsapp: '💬 WhatsApp', email: '✉ E-mail', presencial: '🏢 Presencial', edi: '🔁 EDI' };
+  const CANAIS = { telefone: '📞 Telefone', whatsapp: '💬 WhatsApp', email: '✉ E-mail', presencial: '🏢 Presencial', edi: '🔁 EDI', portal: '🌐 Portal do cliente' };
   const FILTROS = [['abertas', 'Em aberto'], ['pendente', 'A programar', 'a_programar'], ['programada', 'No caminhão', 'programadas'],
     ['sem_cte', 'Coletadas sem CT-e', 'sem_cte'], ['coletada', 'Coletadas'], ['cancelada', 'Canceladas'], ['todas', 'Todas']];
   let estado = { filtro: 'abertas', lista: [], resumo: {}, motivos: [] };

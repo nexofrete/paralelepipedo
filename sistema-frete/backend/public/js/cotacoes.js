@@ -29,9 +29,9 @@
   const fecharModal = () => modal.classList.add('oculto');
   modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-ct-fechar]')) fecharModal(); });
 
-  const SIT = { aberta: ['Em aberto', 'pendente'], enviada: ['Enviada', 'em_transito'], aprovada: ['Aprovada', 'entregue'], recusada: ['Recusada', 'cancelado'],
+  const SIT = { solicitada: ['🌐 Pedida no portal', 'ocorrencia'], aberta: ['Em aberto', 'pendente'], enviada: ['Enviada', 'em_transito'], aprovada: ['Aprovada', 'entregue'], recusada: ['Recusada', 'cancelado'],
     cancelada: ['Cancelada', 'cancelado'], vencida: ['Vencida', 'ocorrencia'] };
-  const FILTROS = [['abertas', 'Em aberto'], ['vencidas', 'Vencidas'], ['aprovadas', 'Aprovadas'], ['recusadas', 'Recusadas'], ['todas', 'Todas']];
+  const FILTROS = [['abertas', 'Em aberto'], ['portal', '🌐 Do portal'], ['vencidas', 'Vencidas'], ['aprovadas', 'Aprovadas'], ['recusadas', 'Recusadas'], ['todas', 'Todas']];
   let estado = { filtro: 'abertas', config: null };
 
   async function iniciar() {
@@ -49,17 +49,17 @@
     const r = await api(`?${new URLSearchParams({ filtro: estado.filtro, busca: $('ctBusca').value.trim() })}`);
     const s = r.resumo;
     const conversao = s.mes_decididas ? Math.round((s.mes_aprovadas / s.mes_decididas) * 100) : null;
-    $('ctResumo').innerHTML = `<div>Em aberto<b>${s.abertas}</b>${s.vencendo ? `<span style="color:#d97706;">${s.vencendo} vencendo em até 2 dias</span>` : ''}</div>
+    $('ctResumo').innerHTML = `${s.solicitadas ? `<div>Pedidas no portal<b style="color:#d97706;">${s.solicitadas}</b><span>calcule o preço e responda</span></div>` : ''}<div>Em aberto<b>${s.abertas}</b>${s.vencendo ? `<span style="color:#d97706;">${s.vencendo} vencendo em até 2 dias</span>` : ''}</div>
       <div>Valor em negociação<b>${moeda(s.valor_aberto)}</b></div>
       <div>Aprovadas no mês<b>${s.mes_aprovadas}</b><span>${moeda(s.mes_valor_aprovado)} de ${s.mes_total} cotação(ões)</span></div>
       <div>Conversão no mês<b>${conversao == null ? '—' : `${conversao}%`}</b><span>aprovadas ÷ decididas</span></div>`;
     $('ctFiltros').innerHTML = FILTROS.map(([id, nome]) => `<button class="oc-filtro ${estado.filtro === id ? 'ativo' : ''}" data-ct-filtro="${id}">${nome}</button>`).join('');
     $('ctTabela').innerHTML = r.cotacoes.length ? `<table class="edi-tabela"><thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Trajeto</th><th>Carga</th><th class="n">Frete</th><th>Válida até</th><th>Situação</th><th></th></tr></thead><tbody>
       ${r.cotacoes.map((c) => `<tr><td><b>${c.id}</b></td><td>${dia(c.criado_em)}</td>
-        <td><b>${esc(c.cliente_nome)}</b>${c.cliente_doc ? `<br><small style="color:var(--texto-fraco);">${esc(docFmt(c.cliente_doc))}</small>` : ''}</td>
+        <td><b>${esc(c.cliente_nome)}</b>${c.cliente_doc ? `<br><small style="color:var(--texto-fraco);">${esc(docFmt(c.cliente_doc))}</small>` : ''}${c.portal_usuario_nome ? `<br><small style="color:var(--texto-fraco);">🌐 ${esc(c.portal_usuario_nome)}</small>` : ''}</td>
         <td>${esc(c.origem_cidade)}/${esc(c.origem_uf)} → ${esc(c.destino_cidade)}/${esc(c.destino_uf)}</td>
         <td><small>${[c.peso_kg ? `${num(c.peso_kg, 1)} kg` : '', c.volumes ? `${num(c.volumes)} vol.` : ''].filter(Boolean).join(' · ')}</small></td>
-        <td class="n"><b>${moeda(c.valor_total)}</b>${c.valor_tabela && Number(c.valor_tabela) > Number(c.valor_total) ? `<br><small style="color:var(--texto-fraco);">tabela ${moeda(c.valor_tabela)}</small>` : ''}</td>
+        <td class="n"><b>${c.status === 'solicitada' ? '—' : moeda(c.valor_total)}</b>${c.valor_tabela && Number(c.valor_tabela) > Number(c.valor_total) ? `<br><small style="color:var(--texto-fraco);">tabela ${moeda(c.valor_tabela)}</small>` : ''}</td>
         <td>${dia(c.validade)}</td>
         <td><span class="oc-sit ${SIT[c.situacao][1]}">${SIT[c.situacao][0]}</span>${c.coleta_id ? `<br><small>coleta nº ${c.coleta_id}</small>` : ''}${c.motivo ? `<br><small style="color:var(--texto-fraco);">${esc(c.motivo)}</small>` : ''}</td>
         <td><div class="oc-linha-acoes"><button class="primario" data-ct-abrir="${c.id}">Abrir</button></div></td></tr>`).join('')}</tbody></table>`
@@ -216,6 +216,7 @@
   // ---------- Detalhe ----------
   async function abrir(id) {
     const c = await api(`/${id}`);
+    const solicitada = c.status === 'solicitada';
     const aberta = ['aberta', 'enviada'].includes(c.status);
     const fone = String(c.telefone || '').replace(/\D/g, '');
     const wa = `https://wa.me/${fone ? (fone.length <= 11 ? `55${fone}` : fone) : ''}?text=${encodeURIComponent(c.whatsapp)}`;
@@ -223,6 +224,7 @@
         <div><h3 style="margin:0;">💲 Cotação ${c.id} <span class="oc-sit ${SIT[c.situacao][1]}" style="vertical-align:middle;">${SIT[c.situacao][0]}</span></h3>
         <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:4px;">${dia(c.criado_em)} · ${esc(c.criado_por_nome || '')} · válida até ${dia(c.validade)}${c.enviada_em ? ` · enviada ${new Date(c.enviada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</div></div>
         <span style="cursor:pointer; font-size:18px;" data-ct-fechar>✕</span></div>
+      ${solicitada ? `<div class="cte-aviso" style="margin-top:10px;">🌐 Pedida pelo cliente no portal${c.portal_usuario_nome ? ` (${esc(c.portal_usuario_nome)})` : ''}. Clique em <b>Calcular o preço</b>, confira e salve: a cotação aparece para o cliente aprovar no portal.</div>` : ''}
       ${c.motivo ? `<div class="cte-aviso erro" style="margin-top:10px;">${c.status === 'cancelada' ? 'Cancelada' : 'Recusada'}: ${esc(c.motivo)}</div>` : ''}
       ${c.coleta_id ? `<div class="cte-aviso ok" style="margin-top:10px;">📦 Virou a coleta nº ${c.coleta_id} — <a href="#" id="czVerColeta">abrir</a>${c.cte_id ? ' · já tem CT-e' : ''}</div>` : ''}
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-top:14px;">
@@ -239,11 +241,12 @@
           ${c.valor_tabela && Number(c.valor_tabela) > Number(c.valor_total) ? `<small style="color:var(--texto-fraco);">Pela tabela: ${moeda(c.valor_tabela)} (desconto de ${num(((c.valor_tabela - c.valor_total) / c.valor_tabela) * 100, 1)}%)</small>` : ''}</div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
-        ${aberta || c.situacao === 'vencida' ? '<button class="btn btn-secundario" id="czRecusar" style="width:auto; color:var(--vermelho);">✗ Recusada</button>' : ''}
+        ${aberta || solicitada || c.situacao === 'vencida' ? '<button class="btn btn-secundario" id="czRecusar" style="width:auto; color:var(--vermelho);">✗ Recusada</button>' : ''}
         ${['recusada', 'cancelada', 'vencida'].includes(c.situacao) || (c.status === 'aprovada' && !c.coleta_id) ? '<button class="btn btn-secundario" id="czReabrir" style="width:auto;">Reabrir</button>' : ''}
         <button class="btn btn-secundario" id="czDuplicar" style="width:auto;">↻ Duplicar</button>
         ${aberta ? '<button class="btn btn-secundario" id="czEditar" style="width:auto;">Editar</button>' : ''}
-        <a class="btn btn-secundario" href="/api/cotacoes/${c.id}/proposta?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Proposta / PDF</a>
+        ${solicitada ? '<button class="btn btn-primario" id="czPrecificar" style="width:auto;">🧮 Calcular o preço</button>' : ''}
+        ${solicitada ? '' : `<a class="btn btn-secundario" href="/api/cotacoes/${c.id}/proposta?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Proposta / PDF</a>`}
         ${aberta ? `<a class="btn btn-secundario" id="czWhats" href="${esc(wa)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">💬 WhatsApp</a>
           <button class="btn btn-secundario" id="czEmail" style="width:auto;">✉ Enviar por e-mail</button>` : ''}
         ${aberta && c.situacao !== 'vencida' ? '<button class="btn btn-primario" id="czAprovar" style="width:auto;">✓ Aprovada → programar coleta</button>' : ''}
@@ -251,6 +254,7 @@
     modal.classList.remove('oculto');
     const depois = async () => { await carregar(); await abrir(id); };
     $('czEditar')?.addEventListener('click', () => formulario(c));
+    $('czPrecificar')?.addEventListener('click', () => { formulario(c); $('cqCalcular').click(); });
     $('czDuplicar').addEventListener('click', () => formulario(c, { duplicar: true }));
     $('czWhats')?.addEventListener('click', () => { api(`/${id}/marcar-enviada`, { method: 'POST' }).then(depois).catch(() => {}); });
     $('czEmail')?.addEventListener('click', async () => {

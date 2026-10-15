@@ -12,7 +12,8 @@ const erro = (res, err, padrao) => { if (!err.status) console.error('[cotacoes]'
 const comSituacao = (c) => ({ ...c, situacao: cot.situacao(c) });
 
 const FILTROS = {
-  abertas: `t.status IN ('aberta', 'enviada') AND t.validade >= $HOJE`,
+  abertas: `(t.status = 'solicitada' OR (t.status IN ('aberta', 'enviada') AND t.validade >= $HOJE))`,
+  portal: `t.status = 'solicitada'`,
   vencidas: `t.status IN ('aberta', 'enviada') AND t.validade < $HOJE`,
   aprovadas: `t.status = 'aprovada'`,
   recusadas: `t.status IN ('recusada', 'cancelada')`,
@@ -50,11 +51,13 @@ router.get('/', autenticar, emitir, async (req, res) => {
       onde.push(`(t.cliente_nome ILIKE $2 OR t.destino_cidade ILIKE $2 OR t.origem_cidade ILIKE $2 OR t.cliente_doc LIKE '%' || $3 || '%' OR t.id::text = $3)`);
     }
     const { rows } = await pool.query(
-      `SELECT t.*, k.status AS coleta_status FROM cotacoes t LEFT JOIN coletas k ON k.id = t.coleta_id
-        WHERE ${onde.join(' AND ')} ORDER BY t.criado_em DESC LIMIT 500`, valores);
+      `SELECT t.*, k.status AS coleta_status, p.nome AS portal_usuario_nome FROM cotacoes t LEFT JOIN coletas k ON k.id = t.coleta_id
+         LEFT JOIN portal_usuarios p ON p.id = t.portal_usuario_id
+        WHERE ${onde.join(' AND ')} ORDER BY (t.status = 'solicitada') DESC, t.criado_em DESC LIMIT 500`, valores);
     // Resumo do mês: quanto foi cotado, aprovado e a taxa de conversão.
     const { rows: r } = await pool.query(
-      `SELECT COUNT(*) FILTER (WHERE status IN ('aberta', 'enviada') AND validade >= $1::date)::int AS abertas,
+      `SELECT COUNT(*) FILTER (WHERE status = 'solicitada')::int AS solicitadas,
+              COUNT(*) FILTER (WHERE status IN ('aberta', 'enviada') AND validade >= $1::date)::int AS abertas,
               COALESCE(SUM(valor_total) FILTER (WHERE status IN ('aberta', 'enviada') AND validade >= $1::date), 0)::float AS valor_aberto,
               COUNT(*) FILTER (WHERE status IN ('aberta', 'enviada') AND validade >= $1::date AND validade <= $1::date + 2)::int AS vencendo,
               COUNT(*) FILTER (WHERE criado_em >= date_trunc('month', $1::date))::int AS mes_total,
@@ -68,7 +71,8 @@ router.get('/', autenticar, emitir, async (req, res) => {
 
 router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT t.*, k.status AS coleta_status, k.cte_id FROM cotacoes t LEFT JOIN coletas k ON k.id = t.coleta_id WHERE t.id = $1', [req.params.id]);
+    const { rows } = await pool.query(`SELECT t.*, k.status AS coleta_status, k.cte_id, p.nome AS portal_usuario_nome FROM cotacoes t LEFT JOIN coletas k ON k.id = t.coleta_id
+       LEFT JOIN portal_usuarios p ON p.id = t.portal_usuario_id WHERE t.id = $1`, [req.params.id]);
     if (!rows[0]) return res.status(404).json({ erro: 'Cotação não encontrada.' });
     const e = await cot.empresa();
     res.json({ ...comSituacao(rows[0]), whatsapp: cot.textoWhatsapp(rows[0], e) });
@@ -147,7 +151,7 @@ router.post('/:id(\\d+)/recusar', autenticar, emitir, async (req, res) => {
     if (!motivo) return res.status(400).json({ erro: 'Informe o motivo (ajuda a entender por que as cotações não fecham).' });
     const status = req.body?.cancelar ? 'cancelada' : 'recusada';
     const { rowCount } = await pool.query(
-      `UPDATE cotacoes SET status = $2, motivo = $3, decidida_em = NOW(), atualizado_em = NOW() WHERE id = $1 AND status IN ('aberta', 'enviada')`, [req.params.id, status, motivo]);
+      `UPDATE cotacoes SET status = $2, motivo = $3, decidida_em = NOW(), atualizado_em = NOW() WHERE id = $1 AND status IN ('solicitada', 'aberta', 'enviada')`, [req.params.id, status, motivo]);
     if (!rowCount) return res.status(409).json({ erro: 'Esta cotação não está em aberto.' });
     log(req, `Cotação ${req.params.id} ${status}: ${motivo}`);
     res.json({ ok: true });

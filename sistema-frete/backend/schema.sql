@@ -1961,3 +1961,32 @@ CREATE TABLE IF NOT EXISTS boleto_arquivos (
     usuario_nome    VARCHAR(150),
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Portal do cliente (embarcador): acesso próprio, separado dos usuários do
+-- sistema, ligado aos CNPJ/CPF do cliente. Ele vê as cargas em que aparece
+-- (remetente, destinatário, expedidor, recebedor ou pagador), baixa DACTE/XML
+-- e comprovante, vê as faturas/boletos em que é o pagador, pede coleta e cotação.
+CREATE TABLE IF NOT EXISTS portal_usuarios (
+    id              SERIAL PRIMARY KEY,
+    nome            VARCHAR(120) NOT NULL,
+    email           VARCHAR(250) NOT NULL,
+    senha_hash      TEXT NOT NULL,
+    cliente_nome    VARCHAR(200),
+    documentos      TEXT[] NOT NULL DEFAULT '{}',     -- CNPJ/CPF do cliente (só números)
+    por_raiz        BOOLEAN NOT NULL DEFAULT FALSE,    -- vale para todas as filiais (8 primeiros dígitos do CNPJ)
+    pode_financeiro BOOLEAN NOT NULL DEFAULT TRUE,     -- vê valores, faturas e boletos
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    trocar_senha    BOOLEAN NOT NULL DEFAULT TRUE,
+    sessao_versao   INTEGER NOT NULL DEFAULT 1,        -- muda ao trocar a senha / desativar: derruba os acessos abertos
+    reset_hash      VARCHAR(64),
+    reset_expira    TIMESTAMPTZ,
+    ultimo_acesso   TIMESTAMPTZ,
+    criado_por_nome VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_portal_usuarios_email ON portal_usuarios (LOWER(email));
+ALTER TABLE coletas ADD COLUMN IF NOT EXISTS portal_usuario_id INTEGER REFERENCES portal_usuarios(id) ON DELETE SET NULL;
+ALTER TABLE cotacoes ADD COLUMN IF NOT EXISTS portal_usuario_id INTEGER REFERENCES portal_usuarios(id) ON DELETE SET NULL;
+-- Endereço público do portal (vai nos e-mails de acesso e de "esqueci a senha")
+-- e se a cotação pedida no portal já sai com o preço da tabela.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS portal_endereco VARCHAR(250);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS portal_cotacao_automatica BOOLEAN NOT NULL DEFAULT FALSE;

@@ -14,7 +14,7 @@
   const ehAdmin = usuario?.perfil === 'admin';
   // Atributo das abas de cada tela.
   const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba', filiais: 'data-fl-aba', pagar: 'data-cp-aba' };
-  const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas', 'cotacoes');
+  const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas', 'cotacoes', 'portal-cliente');
 
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
   itens.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));

@@ -167,6 +167,32 @@ Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), C
 
 Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
 
+## Portal do cliente (embarcador)
+
+Página própria para o cliente da transportadora: **`/portal.html`** (funciona no celular). O acesso é separado dos usuários do sistema: um login do portal não abre nada do sistema interno.
+
+**Liberar um cliente** (administrador): **Operação de Transporte → 🌐 Portal do cliente → ＋ Novo acesso**.
+- Escolha o cliente, os CNPJ/CPF dele (ou marque "todas as filiais" para a raiz do CNPJ), o nome e o e-mail de quem vai usar.
+- O sistema gera uma **senha provisória** (aparece uma vez só). No primeiro acesso o cliente cria a própria senha.
+- "Nova senha" e "Desativar" derrubam na hora quem estiver conectado.
+- Desmarque "vê valores" para quem só acompanha entregas (expedição, SAC do cliente).
+
+**O que o cliente vê:**
+- **Início:** cargas em andamento, atrasadas, % de entregas no prazo (30 dias), frete do mês, faturas em aberto e as últimas movimentações.
+- **Cargas** em que ele aparece (remetente, destinatário, expedidor, recebedor ou pagador): situação, previsão, histórico, **DACTE, XML, foto do comprovante e assinatura**. Busca por NF, CT-e ou cidade. **XML do período** num .zip, para o fiscal dele.
+- **Valores do frete** só nos CT-e em que ele é o **pagador**.
+- **Financeiro:** faturas em que ele é o pagador, com a fatura impressa, o **boleto** e a linha digitável para copiar.
+- **Coletas:** pede coleta. Ela cai em Coletas com o canal "🌐 Portal" e ele acompanha a situação.
+- **Cotações:** pede cotação e aprova ou recusa pelo portal.
+  - Com a **cotação automática** ligada (⚙ Configurar), o preço da tabela sai na hora.
+  - Desligada, o pedido aparece em Cotações, filtro **"🌐 Do portal"**. A equipe clica em **Calcular o preço**, salva, e a cotação fica para o cliente aprovar.
+
+**Para o cliente acessar de fora da empresa**, o servidor precisa estar publicado na internet com HTTPS (domínio próprio ou redirecionamento de porta + certificado). Informe esse endereço em **⚙ Configurar**. Com ele:
+- o sistema manda o acesso por e-mail;
+- o cliente recupera a senha sozinho ("Esqueci a senha", com link que vale 1 hora).
+
+CT-e de demonstração só aparecem no portal enquanto a empresa está no modo demonstração.
+
 ## Contas a pagar e acerto de viagem
 
 Em **Operação de Transporte → Contas a pagar / Acerto de viagem**:

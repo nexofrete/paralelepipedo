@@ -203,4 +203,5 @@ router.put('/config', autenticar, pode, rota(async (req, res) => {
   return res.json(Object.fromEntries([...CAMPOS, 'razao_social', 'municipio'].map((c) => [c, e[c] ?? null])));
 }, 'Erro ao salvar.'));
 
+router.ajudantes = { boletoDaFatura, comBoleto };
 module.exports = router;

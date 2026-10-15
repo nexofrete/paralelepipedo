@@ -176,12 +176,14 @@ app.use(express.json());
 // Licença: sem ativação (ou cópia em outro computador) o sistema não funciona;
 // licença vencida deixa só consultar (GET), sem emitir nem alterar nada.
 const licenca = require('./src/licenca');
+// Entrar e trocar a senha no portal do cliente continuam valendo com a licença vencida.
+const PORTAL_LIVRE = ['/portal/entrar', '/portal/esqueci', '/portal/redefinir', '/portal/senha'];
 app.use('/api/licenca', require('./src/routes/licenca'));
 app.use('/api', (req, res, next) => {
   if (req.path === '/status') return next();
   const e = licenca.estado();
   if (!e.ativo) return res.status(423).json({ erro: e.mensagem, licenca: true, situacao: e.situacao });
-  if (!e.emissao && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.path.startsWith('/auth/')) {
+  if (!e.emissao && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.path.startsWith('/auth/') && !PORTAL_LIVRE.includes(req.path)) {
     return res.status(423).json({ erro: e.mensagem, licenca: true, situacao: e.situacao });
   }
   return next();
@@ -231,6 +233,9 @@ app.use('/api/acertos', contasPagarRoutes.acertos);
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
+// Portal do cliente (login próprio) e a administração dos acessos.
+app.use('/api/portal', require('./src/routes/portal').api);
+app.use('/api/portal-acessos', require('./src/routes/portal').admin);
 
 // Carimbo do pacote (data/hora em que foi gerado): todos os pacotes de uma versão
 // em desenvolvimento têm o mesmo número — o carimbo mostra QUAL está rodando.

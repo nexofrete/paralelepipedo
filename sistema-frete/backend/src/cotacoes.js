@@ -6,7 +6,7 @@ const pool = require('./db');
 const emissao = require('./cte/emissao');
 const { aliquotaInterestadual } = require('./icmsCte');
 
-const STATUS = { aberta: 'Em aberto', enviada: 'Enviada', aprovada: 'Aprovada', recusada: 'Recusada', cancelada: 'Cancelada', vencida: 'Vencida' };
+const STATUS = { solicitada: 'Pedida no portal', aberta: 'Em aberto', enviada: 'Enviada', aprovada: 'Aprovada', recusada: 'Recusada', cancelada: 'Cancelada', vencida: 'Vencida' };
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const texto = (v, max) => { const t = String(v ?? '').trim(); return t ? t.slice(0, max) : null; };
 const doc = (v) => String(v ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 20) || null;
@@ -95,8 +95,9 @@ async function alterar(id, b) {
   const e = await empresa();
   const c = lerCotacao(b, { validadeDias: e.cotacao_validade_dias || 10 });
   const { rows } = await pool.query(
-    `UPDATE cotacoes SET ${CAMPOS.map((k, i) => `${k} = $${i + 2}`).join(', ')}, atualizado_em = NOW()
-      WHERE id = $1 AND status IN ('aberta', 'enviada') RETURNING *`,
+    `UPDATE cotacoes SET ${CAMPOS.map((k, i) => `${k} = $${i + 2}`).join(', ')}, atualizado_em = NOW(),
+            status = CASE WHEN status = 'solicitada' THEN 'aberta' ELSE status END
+      WHERE id = $1 AND status IN ('solicitada', 'aberta', 'enviada') RETURNING *`,
     [id, ...CAMPOS.map((k) => (k === 'componentes' ? JSON.stringify(c[k]) : c[k]))]);
   if (!rows[0]) throw falha('Esta cotação não pode mais ser alterada (já foi aprovada, recusada ou cancelada).', 409);
   return rows[0];

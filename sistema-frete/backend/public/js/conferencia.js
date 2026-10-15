@@ -59,7 +59,7 @@
         <p class="edi-dica" style="margin:10px 0 0;">Use o leitor de código de barras (ele "digita" o código e dá Enter) ou a câmera do celular. Vale a etiqueta de volume e também a chave de acesso do DACTE (conta o CT-e inteiro).</p></div>
       <div class="painel oc-painel"><h3 style="margin-top:0; font-size:15px;">Conferências dos últimos 30 dias</h3>
       ${confs.length ? `<table class="edi-tabela"><thead><tr><th>Nº</th><th>Tipo</th><th>Romaneio</th><th>Início</th><th>Por</th><th class="n">Leituras</th><th>Resultado</th><th></th></tr></thead><tbody>
-        ${confs.map((c) => `<tr><td>${c.id}</td><td>${c.tipo === 'carga' ? '🚚 Carga' : '📥 Descarga'}</td><td>${c.romaneio_id ? `${c.romaneio_id} · ${esc(c.motorista_nome || '')}` : '—'}</td>
+        ${confs.map((c) => `<tr><td>${c.id}</td><td>${c.tipo === 'carga' ? '🚚 Carga' : '📥 Descarga'}</td><td>${c.romaneio_id ? `${c.romaneio_id} · ${esc(c.motorista_nome || '')}` : c.transferencia_id ? `transferência ${c.transferencia_id}` : '—'}</td>
           <td>${dia(c.criado_em)}</td><td>${esc(c.usuario_nome || '')}</td><td class="n">${c.leituras}</td>
           <td>${c.status === 'aberta' ? '<span class="oc-sit em_rota">Em andamento</span>' : resumoCurto(c.resumo)}</td>
           <td><div class="oc-linha-acoes"><button class="primario" data-bp-abrir="${c.id}">${c.status === 'aberta' ? 'Continuar' : 'Ver'}</button></div></td></tr>`).join('')}</tbody></table>`
@@ -87,7 +87,7 @@
     const temCamera = 'BarcodeDetector' in window && navigator.mediaDevices?.getUserMedia;
     $('bpAbaConferir').innerHTML = `<div class="painel oc-painel">
         <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-start;">
-          <div><h3 style="margin:0;">${c.tipo === 'carga' ? `🚚 Carga do romaneio ${c.romaneio_id}` : '📥 Recebimento no armazém'} <small style="color:var(--texto-fraco); font-weight:400;">conferência nº ${c.id}</small></h3>
+          <div><h3 style="margin:0;">${c.transferencia_id ? `🔀 ${c.tipo === 'carga' ? 'Carregamento' : 'Chegada'} da transferência ${c.transferencia_id} <small>${esc(c.origem_sigla || '')} → ${esc(c.destino_sigla || '')}</small>` : c.tipo === 'carga' ? `🚚 Carga do romaneio ${c.romaneio_id}` : '📥 Recebimento no armazém'} <small style="color:var(--texto-fraco); font-weight:400;">conferência nº ${c.id}</small></h3>
             <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:3px;">${c.motorista_nome ? `${esc(c.motorista_nome)}${c.placa ? ` · ${esc(c.placa)}` : ''} · ` : ''}início ${dia(c.criado_em)} por ${esc(c.usuario_nome || '')}${c.concluida_em ? ` · concluída ${dia(c.concluida_em)}` : ''}</div></div>
           <button class="btn btn-secundario" id="bpVoltar" style="width:auto;">← Conferências</button>
         </div>
@@ -95,7 +95,7 @@
             style="flex:1; font-size:20px; padding:12px 14px; letter-spacing:1px;" />${temCamera ? '<button class="btn btn-secundario" id="bpCamera" style="width:auto;" title="Ler pela câmera">📷</button>' : ''}</div>
           <video id="bpVideo" class="oculto" playsinline muted style="width:100%; max-height:260px; margin-top:8px; border-radius:8px; background:#000;"></video>` : ''}
         <div id="bpFeedback" style="margin-top:12px; padding:14px 16px; border-radius:10px; font-size:17px; font-weight:600; ${estiloFeedback(ultimo?.resultado)}">${ultimo ? esc(ultimo.mensagem) : aberta ? 'Pronto para ler.' : 'Conferência concluída.'}</div>
-        ${c.tipo === 'carga' ? `<div style="margin-top:14px;"><div style="display:flex; justify-content:space-between; font-size:13px;"><b>${c.totais.lido} de ${c.totais.esperado} volume(s)</b><span>${c.totais.faltam ? `faltam ${c.totais.faltam}` : '✓ todos lidos'}${c.totais.sobras ? ` · <b style="color:#ef4444;">${c.totais.sobras} sobra(s)</b>` : ''}</span></div>
+        ${c.com_lista ? `<div style="margin-top:14px;"><div style="display:flex; justify-content:space-between; font-size:13px;"><b>${c.totais.lido} de ${c.totais.esperado} volume(s)</b><span>${c.totais.faltam ? `faltam ${c.totais.faltam}` : '✓ todos lidos'}${c.totais.sobras ? ` · <b style="color:#ef4444;">${c.totais.sobras} sobra(s)</b>` : ''}</span></div>
           <div style="height:12px; background:var(--bg-elevado); border-radius:6px; margin-top:5px;"><div style="height:12px; border-radius:6px; width:${pct}%; background:${c.totais.faltam ? 'var(--azul)' : 'var(--verde)'};"></div></div></div>`
           : `<div style="margin-top:12px; font-size:13px;"><b>${c.totais.lido}</b> volume(s) recebido(s) de <b>${c.itens.length}</b> CT-e${c.totais.faltam ? ` · ${c.totais.faltam} volume(s) desses CT-e ainda não chegaram` : ''}</div>`}
         <table class="edi-tabela" style="margin-top:14px;"><thead><tr><th>CT-e</th><th>Destinatário</th><th>Cidade</th><th class="n">Lidos</th><th>Faltam</th><th></th></tr></thead><tbody>
@@ -103,14 +103,15 @@
             <td class="n"><b>${i.lidos}</b>/${i.total}</td>
             <td>${i.faltam.length ? `<span style="color:#d97706;">${i.faltam.length > 12 ? `${i.faltam.slice(0, 12).join(', ')}… (+${i.faltam.length - 12})` : i.faltam.join(', ')}</span>` : '<span class="oc-sit entregue">completo</span>'}</td>
             <td>${i.faltam.length ? `<a href="/api/etiquetas/imprimir?ctes=${i.cte_id}&volumes=${i.faltam.join(',')}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener" title="Reimprimir as etiquetas que faltam" style="white-space:nowrap;">🏷 reimprimir</a>` : ''}</td></tr>`).join('')
-            || `<tr><td colspan="6" style="color:var(--texto-fraco);">${c.tipo === 'carga' ? 'Este romaneio não tem CT-e.' : 'Nenhum volume lido ainda.'}</td></tr>`}</tbody></table>
+            || `<tr><td colspan="6" style="color:var(--texto-fraco);">${c.com_lista ? 'Nada a conferir.' : 'Nenhum volume lido ainda.'}</td></tr>`}</tbody></table>
         ${c.sobras.length ? `<div class="cte-aviso erro" style="margin-top:12px;"><b>Volumes que NÃO são deste romaneio (separe):</b> ${c.sobras.map((s) => `CT-e ${esc(s.cte?.numero || '?')} vol. ${s.volume || 'todos'}`).join(' · ')}</div>` : ''}
         ${c.leituras.length ? `<details style="margin-top:12px;"><summary style="cursor:pointer; font-size:13px;">Últimas leituras</summary><table class="edi-tabela" style="margin-top:6px;"><tbody>
           ${c.leituras.map((l) => `<tr><td>${dia(l.lido_em)}</td><td style="font-family:monospace;">${esc(l.codigo)}</td><td>${l.resultado === 'sobra' ? '⚠ sobra' : '✓'}</td><td>${esc(l.usuario_nome || '')}</td>
             <td>${aberta ? `<button class="btn btn-secundario" data-bp-desfazer="${l.id}" style="width:auto; padding:3px 8px; font-size:12px;">desfazer</button>` : ''}</td></tr>`).join('')}</tbody></table></details>` : ''}
         <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
           ${c.itens.length ? `<a class="btn btn-secundario" href="/api/etiquetas/imprimir?ctes=${c.itens.map((i) => i.cte_id).join(',')}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🏷 Etiquetas destes CT-e</a>` : ''}
-          ${aberta ? '<button class="btn btn-primario" id="bpConcluir" style="width:auto;">✓ Concluir conferência</button>' : '<button class="btn btn-secundario" id="bpReabrir" style="width:auto;">Reabrir</button>'}</div></div>`;
+          ${aberta ? '<button class="btn btn-primario" id="bpConcluir" style="width:auto;">✓ Concluir conferência</button>' : '<button class="btn btn-secundario" id="bpReabrir" style="width:auto;">Reabrir</button>'}
+          ${!aberta && c.transferencia_id && c.tipo === 'descarga' && c.transferencia_status === 'em_transito' ? '<button class="btn btn-primario" id="bpReceber" style="width:auto;">✓ Registrar a chegada da transferência</button>' : ''}</div></div>`;
     $('bpVoltar').addEventListener('click', () => lista().catch(erro));
     const campo = $('bpCodigo');
     if (campo) {
@@ -125,6 +126,13 @@
       const faltam = c.totais.faltam; const sobras = c.totais.sobras;
       if ((faltam || sobras) && !await confirmar(`${faltam ? `Ainda faltam ${faltam} volume(s).` : ''} ${sobras ? `Há ${sobras} volume(s) de outro romaneio.` : ''} Concluir mesmo assim? Fica registrado.`, { tipo: 'perigo', textoOk: 'Concluir' })) return;
       try { await json(`/api/conferencias/${id}/concluir`, { method: 'POST', body: '{}' }); await abrirConferencia(id); mostrarAlerta(faltam ? `Conferência concluída com ${faltam} volume(s) faltando.` : 'Conferência concluída: tudo certo.', { tipo: faltam ? 'aviso' : 'sucesso' }); } catch (err) { erro(err); }
+    });
+    $('bpReceber')?.addEventListener('click', async () => {
+      try {
+        const r = await json(`/api/transferencias/${c.transferencia_id}/receber`, { method: 'POST', body: JSON.stringify({ conferencia_id: c.id }) });
+        mostrarAlerta(`Chegada registrada: ${r.ctes} CT-e na unidade.${r.nao_chegaram ? ` ${r.nao_chegaram} CT-e não chegaram (nenhum volume lido) e continuam em transferência.` : ''}`, { tipo: r.nao_chegaram ? 'aviso' : 'sucesso' });
+        await abrirConferencia(c.id);
+      } catch (err) { erro(err); }
     });
     $('bpReabrir')?.addEventListener('click', async () => { try { await json(`/api/conferencias/${id}/reabrir`, { method: 'POST' }); await abrirConferencia(id); } catch (err) { erro(err); } });
   }
@@ -225,6 +233,13 @@
 
   // Outras telas (CT-e, romaneio) chamam daqui.
   window.nexoConferencia = {
+    conferirTransferencia: async (transferenciaId, tipo) => {
+      pularCarga = true; nav.click(); pularCarga = false;
+      aba = 'conferir';
+      document.querySelectorAll('[data-bp-aba]').forEach((x) => x.classList.toggle('ativo', x.dataset.bpAba === 'conferir'));
+      $('bpAbaConferir').classList.remove('oculto'); $('bpAbaEtiquetas').classList.add('oculto');
+      await comecar({ tipo, transferencia_id: transferenciaId });
+    },
     etiquetas: (ids) => imprimir(ids),
     conferirRomaneio: async (romaneioId) => {
       pularCarga = true; nav.click(); pularCarga = false;

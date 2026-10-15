@@ -143,6 +143,19 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Filiais e transferências
+
+Para transportadora com mais de uma unidade (matriz e filiais), em **Operação de Transporte**:
+
+1. **Filiais (unidades)** (administrador): cadastre cada filial com sigla, cidade e a **lista de cidades que ela entrega**. A matriz é criada sozinha com os dados da empresa.
+2. Todo CT-e autorizado sabe **onde a mercadoria está** (nasce na unidade que atende a cidade de início, ou na matriz) e **qual filial vai entregar** (a que atende a cidade de destino).
+3. **Onde está a mercadoria:** um quadro por unidade (a entregar, **a transferir**, chegando, volumes e peso) e a lista de CT-e com o local atual. Marque os "a transferir" e clique em **🔀 Transferir os marcados**.
+4. **Transferência (manifesto):** origem, destino, motorista, placa e lacre.
+   - Na origem: **🖨 Manifesto**, **🏷 Etiquetas**, **📋 MDF-e**, **🔎 Conferir carregamento** (bipagem) e **▶ Dar saída**. Os CT-e ficam "em transferência" e ganham a ocorrência.
+   - No destino: **🔎 Conferir chegada** (bipagem) e depois **Registrar a chegada**; ou **✓ Receber** sem bipar.
+   - Os CT-e passam a estar na filial, com a ocorrência "Chegada na filial" e as faltas anotadas. O CT-e de que nenhum volume chegou continua "em trânsito" até alguém clicar em **chegou depois**.
+5. **acertar** (administrador): corrige onde a mercadoria está ou qual filial entrega, para os casos fora do fluxo. Fica registrado na auditoria.
+
 ## Etiquetas de volume e conferência (bipagem)
 
 **Etiquetas:** cada volume do CT-e ganha uma etiqueta com cidade/UF de destino em letra grande, destinatário, endereço, remetente, NF, peso, **VOL 3/12** e o **código de barras** do volume.

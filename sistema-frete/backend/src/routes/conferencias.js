@@ -74,18 +74,24 @@ async function cabecalhoCtes(ids) {
 // Situação da conferência: o que se esperava, o que foi lido, faltas e sobras.
 async function situacao(id) {
   const { rows } = await pool.query(
-    `SELECT c.*, r.motorista_nome, r.placa, r.status AS romaneio_status FROM conferencias c LEFT JOIN romaneios r ON r.id = c.romaneio_id WHERE c.id = $1`, [id]);
+    `SELECT c.*, COALESCE(r.motorista_nome, t.motorista_nome) AS motorista_nome, COALESCE(r.placa, t.placa) AS placa, r.status AS romaneio_status,
+            t.status AS transferencia_status, uo.sigla AS origem_sigla, ud.sigla AS destino_sigla
+       FROM conferencias c LEFT JOIN romaneios r ON r.id = c.romaneio_id LEFT JOIN transferencias t ON t.id = c.transferencia_id
+       LEFT JOIN unidades uo ON uo.id = t.origem_id LEFT JOIN unidades ud ON ud.id = t.destino_id WHERE c.id = $1`, [id]);
   const conf = rows[0];
   if (!conf) throw falha('Conferência não encontrada.', 404);
   const { rows: leituras } = await pool.query('SELECT * FROM conferencia_leituras WHERE conferencia_id = $1 ORDER BY lido_em DESC, id DESC', [id]);
   let esperadosIds = [];
-  if (conf.tipo === 'carga' && conf.romaneio_id) {
+  const comLista = !!conf.transferencia_id || (conf.tipo === 'carga' && !!conf.romaneio_id);
+  if (conf.transferencia_id) {
+    esperadosIds = (await pool.query('SELECT cte_id FROM transferencia_itens WHERE transferencia_id = $1 ORDER BY cte_id', [conf.transferencia_id])).rows.map((r) => r.cte_id);
+  } else if (conf.tipo === 'carga' && conf.romaneio_id) {
     esperadosIds = (await pool.query('SELECT cte_id FROM romaneio_itens WHERE romaneio_id = $1 ORDER BY ordem', [conf.romaneio_id])).rows.map((r) => r.cte_id);
   }
   const lidosIds = [...new Set(leituras.map((l) => l.cte_id).filter(Boolean))];
   const ctes = await cabecalhoCtes([...new Set([...esperadosIds, ...lidosIds])]);
   const porCte = new Map(ctes.map((c) => [c.cte_id, c]));
-  const itens = (conf.tipo === 'carga' ? esperadosIds : lidosIds).map((cid) => {
+  const itens = (comLista ? esperadosIds : lidosIds).map((cid) => {
     const c = porCte.get(cid);
     const minhas = leituras.filter((l) => l.cte_id === cid && l.resultado === 'ok');
     const inteiro = minhas.some((l) => l.volume === 0);
@@ -96,15 +102,15 @@ async function situacao(id) {
   const sobras = leituras.filter((l) => l.resultado === 'sobra').map((l) => ({ ...l, cte: porCte.get(l.cte_id) || null }));
   const esperado = itens.reduce((s, i) => s + i.total, 0);
   const lido = itens.reduce((s, i) => s + i.lidos, 0);
-  return { ...conf, itens, sobras, leituras: leituras.slice(0, 50), totais: { esperado, lido, faltam: esperado - lido, sobras: sobras.length } };
+  return { ...conf, com_lista: comLista, itens, sobras, leituras: leituras.slice(0, 50), totais: { esperado, lido, faltam: esperado - lido, sobras: sobras.length } };
 }
 
 conferencias.get('/', autenticar, emitir, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT c.id, c.tipo, c.romaneio_id, c.status, c.usuario_nome, c.criado_em, c.concluida_em, c.resumo, r.motorista_nome, r.placa,
+      `SELECT c.id, c.tipo, c.romaneio_id, c.transferencia_id, c.status, c.usuario_nome, c.criado_em, c.concluida_em, c.resumo, COALESCE(r.motorista_nome, t.motorista_nome) AS motorista_nome, COALESCE(r.placa, t.placa) AS placa,
               (SELECT COUNT(*)::int FROM conferencia_leituras l WHERE l.conferencia_id = c.id) AS leituras
-         FROM conferencias c LEFT JOIN romaneios r ON r.id = c.romaneio_id
+         FROM conferencias c LEFT JOIN romaneios r ON r.id = c.romaneio_id LEFT JOIN transferencias t ON t.id = c.transferencia_id
         WHERE c.status = 'aberta' OR c.criado_em > NOW() - INTERVAL '30 days' ORDER BY (c.status = 'concluida'), c.criado_em DESC LIMIT 100`);
     res.json(rows);
   } catch (err) { erro(res, err, 'Erro ao listar.'); }
@@ -115,6 +121,17 @@ conferencias.post('/', autenticar, emitir, async (req, res) => {
   try {
     const tipo = req.body?.tipo === 'descarga' ? 'descarga' : 'carga';
     let romaneioId = null;
+    // Transferência entre filiais: carga na origem ou descarga (chegada) no destino.
+    const transferenciaId = Number(req.body?.transferencia_id) || null;
+    if (transferenciaId) {
+      const { rows: t } = await pool.query('SELECT id, status FROM transferencias WHERE id = $1', [transferenciaId]);
+      if (!t[0]) throw falha('Transferência não encontrada.', 404);
+      const { rows: aberta } = await pool.query(`SELECT id FROM conferencias WHERE transferencia_id = $1 AND tipo = $2 AND status = 'aberta'`, [transferenciaId, tipo]);
+      if (aberta[0]) return res.json({ id: aberta[0].id, existente: true });
+      const { rows } = await pool.query('INSERT INTO conferencias (tipo, transferencia_id, usuario_nome) VALUES ($1, $2, $3) RETURNING id', [tipo, transferenciaId, req.usuario.nome]);
+      log(req, `Começou a conferência de ${tipo === 'carga' ? 'carregamento' : 'chegada'} da transferência ${transferenciaId}`);
+      return res.status(201).json({ id: rows[0].id });
+    }
     if (tipo === 'carga') {
       romaneioId = Number(req.body?.romaneio_id) || null;
       const { rows: r } = await pool.query('SELECT id, status FROM romaneios WHERE id = $1', [romaneioId]);
@@ -158,13 +175,16 @@ conferencias.post('/:id(\\d+)/ler', autenticar, emitir, async (req, res) => {
       `SELECT 1 FROM conferencia_leituras WHERE conferencia_id = $1 AND cte_id = $2 AND (volume = $3 OR volume = 0)`, [id, cte.id, volume]);
     if (repetido) return resposta('repetido', `${rotulo}: ${volume ? `volume ${volume}/${total}` : 'CT-e'} já foi lido.`, { cte_id: cte.id, volume });
     let resultado = 'ok';
-    if (conf.tipo === 'carga') {
+    if (conf.transferencia_id) {
+      const { rowCount: naLista } = await pool.query('SELECT 1 FROM transferencia_itens WHERE transferencia_id = $1 AND cte_id = $2', [conf.transferencia_id, cte.id]);
+      if (!naLista) resultado = 'sobra';
+    } else if (conf.tipo === 'carga') {
       const { rowCount: noRomaneio } = await pool.query('SELECT 1 FROM romaneio_itens WHERE romaneio_id = $1 AND cte_id = $2', [conf.romaneio_id, cte.id]);
       if (!noRomaneio) resultado = 'sobra';
     }
     await pool.query('INSERT INTO conferencia_leituras (conferencia_id, codigo, cte_id, volume, resultado, usuario_nome) VALUES ($1, $2, $3, $4, $5, $6)',
       [id, codigo, cte.id, volume, resultado, req.usuario.nome]);
-    if (resultado === 'sobra') return resposta('sobra', `${rotulo}: NÃO é deste romaneio. Separe o volume ${volume || ''}.`, { cte_id: cte.id, volume });
+    if (resultado === 'sobra') return resposta('sobra', `${rotulo}: NÃO é ${conf.transferencia_id ? 'desta transferência' : 'deste romaneio'}. Separe o volume ${volume || ''}.`, { cte_id: cte.id, volume });
     return resposta('ok', volume ? `${rotulo} · volume ${volume}/${total}` : `${rotulo} · CT-e inteiro (${total} vol.) pela chave`, { cte_id: cte.id, volume, total });
   } catch (err) { erro(res, err, 'Erro na leitura.'); }
 });

@@ -92,6 +92,8 @@ async function registrarAutorizado(id, xmlAssinado, r) {
   // Previsão de entrega (prazo da tabela ou o padrão), para o acompanhamento das entregas.
   // O complementar só cobra um valor a mais: a entrega é acompanhada pelo CT-e original.
   if (String(d.tpCTe) !== '1') await require('./ocorrencias').definirPrevisao(id).catch((e) => console.error('[cte] previsão de entrega:', e.message));
+  // Filiais: onde a mercadoria está e qual unidade entrega.
+  await require('../unidades').aoAutorizar(id).catch((e) => console.error('[cte] unidade:', e.message));
   // Seguro da carga: averba na hora (se a averbação automática estiver ligada).
   await averbacao.semFalhar(averbacao.averbar('cte', id));
 }
@@ -101,7 +103,8 @@ async function registrarAutorizado(id, xmlAssinado, r) {
 async function concluirSubstituicao(novoId, chaveOriginal) {
   if (!chaveOriginal) return;
   const { rows } = await pool.query(`UPDATE ctes_emitidos SET status = 'substituido', substituido_por = $2, atualizado_em = NOW()
-     WHERE chave = $1 AND status = 'autorizado' RETURNING id, situacao_entrega, data_entrega, recebedor_nome, recebedor_documento, previsao_entrega, previsao_original`, [chaveOriginal, novoId]);
+     WHERE chave = $1 AND status = 'autorizado' RETURNING id, situacao_entrega, data_entrega, recebedor_nome, recebedor_documento, previsao_entrega, previsao_original,
+               unidade_origem_id, unidade_atual_id, unidade_destino_id, em_transferencia_id`, [chaveOriginal, novoId]);
   const o = rows[0];
   if (!o) return;
   await pool.query(`UPDATE ctes_emitidos SET situacao_entrega = $2, data_entrega = $3, recebedor_nome = $4, recebedor_documento = $5,
@@ -109,6 +112,11 @@ async function concluirSubstituicao(novoId, chaveOriginal) {
   [novoId, o.situacao_entrega, o.data_entrega, o.recebedor_nome, o.recebedor_documento, o.previsao_entrega, o.previsao_original]);
   await pool.query('UPDATE cte_ocorrencias SET cte_id = $2 WHERE cte_id = $1', [o.id, novoId]);
   await pool.query('UPDATE romaneio_itens SET cte_id = $2 WHERE cte_id = $1 AND NOT EXISTS (SELECT 1 FROM romaneio_itens x WHERE x.romaneio_id = romaneio_itens.romaneio_id AND x.cte_id = $2)', [o.id, novoId]);
+  // Filiais: a mercadoria continua onde estava (ou na mesma transferência).
+  await pool.query('UPDATE ctes_emitidos SET unidade_origem_id = $2, unidade_atual_id = $3, unidade_destino_id = $4, em_transferencia_id = $5 WHERE id = $1',
+    [novoId, o.unidade_origem_id, o.unidade_atual_id, o.unidade_destino_id, o.em_transferencia_id]);
+  await pool.query('UPDATE ctes_emitidos SET unidade_atual_id = NULL, em_transferencia_id = NULL WHERE id = $1', [o.id]);
+  await pool.query('UPDATE transferencia_itens SET cte_id = $2 WHERE cte_id = $1 AND NOT EXISTS (SELECT 1 FROM transferencia_itens x WHERE x.transferencia_id = transferencia_itens.transferencia_id AND x.cte_id = $2)', [o.id, novoId]);
 }
 
 // Transmite o CT-e. Se uma tentativa anterior ficou sem resposta, consulta a

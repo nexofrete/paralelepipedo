@@ -13,7 +13,7 @@
   const paginaDo = (el) => document.querySelector(`.nav-item[data-pagina="${el.dataset.ir}"]`);
   const ehAdmin = usuario?.perfil === 'admin';
   // Atributo das abas de cada tela.
-  const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba' };
+  const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba', filiais: 'data-fl-aba' };
   const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas', 'cotacoes');
 
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
@@ -51,9 +51,9 @@
   }));
 
   // As abas dentro das telas também acendem o subitem certo.
-  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba], [data-fat-aba], [data-pt-aba], [data-bp-aba]').forEach((aba) => aba.addEventListener('click', () => {
-    const ir = aba.dataset.ocAba ? 'ocorrencias' : aba.dataset.fatAba ? 'faturamento' : aba.dataset.ptAba ? 'painel-transporte' : aba.dataset.bpAba ? 'conferencia' : 'emissao-cte';
-    const nome = aba.dataset.ocAba || aba.dataset.fatAba || aba.dataset.ptAba || aba.dataset.bpAba || aba.dataset.cteAba;
+  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba], [data-fat-aba], [data-pt-aba], [data-bp-aba], [data-fl-aba]').forEach((aba) => aba.addEventListener('click', () => {
+    const ir = aba.dataset.ocAba ? 'ocorrencias' : aba.dataset.fatAba ? 'faturamento' : aba.dataset.ptAba ? 'painel-transporte' : aba.dataset.bpAba ? 'conferencia' : aba.dataset.flAba ? 'filiais' : 'emissao-cte';
+    const nome = aba.dataset.ocAba || aba.dataset.fatAba || aba.dataset.ptAba || aba.dataset.bpAba || aba.dataset.flAba || aba.dataset.cteAba;
     const el = itens.find((x) => x.dataset.ir === ir && x.dataset.aba === nome);
     if (el) marcar(el);
   }));

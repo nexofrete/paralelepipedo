@@ -46,6 +46,7 @@ const motoristaRoutes = require('./src/routes/motorista');
 const coletasRoutes = require('./src/routes/coletas');
 const cotacoesRoutes = require('./src/routes/cotacoes');
 const conferenciasRoutes = require('./src/routes/conferencias');
+const unidadesRoutes = require('./src/routes/unidades');
 const mdfeRoutes = require('./src/routes/mdfe');
 const agenda = require('./src/agenda');
 const garantirAdminPadrao = require('./src/criarAdminPadrao');
@@ -222,6 +223,8 @@ app.use('/api/coletas', coletasRoutes);
 app.use('/api/cotacoes', cotacoesRoutes);
 app.use('/api/etiquetas', conferenciasRoutes.etiquetas);
 app.use('/api/conferencias', conferenciasRoutes.conferencias);
+app.use('/api/unidades', unidadesRoutes.unidades);
+app.use('/api/transferencias', unidadesRoutes.transferencias);
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
@@ -290,6 +293,7 @@ async function iniciar() {
     require('./src/caixaEmail').agendar();
     require('./src/avisosSeguranca').iniciar();
     licenca.agendarConferencia();
+    require('./src/unidades').garantirMatriz().catch((e) => console.error('[unidades]', e.message));
     require('./src/servidorHttps').aplicar(app).then((st) => {
       require('./src/servidorHttps').vigiar();
       if (st.ativo) console.log(`Impressão digital do certificado da empresa (confira na instalação): ${String(require('./src/servidorHttps').impressaoDigital() || '').slice(0, 23)}`);

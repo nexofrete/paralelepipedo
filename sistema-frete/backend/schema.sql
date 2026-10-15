@@ -1795,3 +1795,55 @@ CREATE TABLE IF NOT EXISTS conferencia_leituras (
 );
 CREATE INDEX IF NOT EXISTS idx_conferencia_leituras ON conferencia_leituras (conferencia_id);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS etiqueta_formato VARCHAR(10) NOT NULL DEFAULT '100x100';
+
+-- Filiais (unidades) e transferência entre elas (estilo SSW).
+-- Cada CT-e sabe onde a mercadoria está (unidade_atual_id; NULL + em_transferencia
+-- = no caminhão entre filiais) e qual unidade entrega (unidade_destino_id, pela
+-- lista de cidades atendidas de cada unidade).
+CREATE TABLE IF NOT EXISTS unidades (
+    id          SERIAL PRIMARY KEY,
+    sigla       VARCHAR(6) NOT NULL UNIQUE,
+    nome        VARCHAR(120) NOT NULL,
+    cidade      VARCHAR(120),
+    uf          CHAR(2),
+    endereco    VARCHAR(250),
+    telefone    VARCHAR(30),
+    responsavel VARCHAR(120),
+    cidades     TEXT,                     -- cidades que esta unidade entrega (uma por linha ou separadas por vírgula; "Cidade/UF")
+    matriz      BOOLEAN NOT NULL DEFAULT FALSE,
+    ativa       BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS unidade_origem_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS unidade_atual_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS unidade_destino_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL;
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS em_transferencia_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_ctes_unidade_atual ON ctes_emitidos (unidade_atual_id);
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS unidade_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL;
+
+-- Manifesto de transferência: status aberta (carregando), em_transito, recebida.
+CREATE TABLE IF NOT EXISTS transferencias (
+    id                  SERIAL PRIMARY KEY,
+    origem_id           INTEGER NOT NULL REFERENCES unidades(id),
+    destino_id          INTEGER NOT NULL REFERENCES unidades(id),
+    status              VARCHAR(12) NOT NULL DEFAULT 'aberta',
+    motorista_nome      VARCHAR(120),
+    motorista_documento VARCHAR(30),
+    placa               VARCHAR(10),
+    veiculo             VARCHAR(60),
+    lacre               VARCHAR(60),
+    observacao          TEXT,
+    resumo_chegada      JSONB,            -- faltas/sobras do recebimento
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    saiu_em             TIMESTAMPTZ,
+    chegou_em           TIMESTAMPTZ,
+    recebido_por_nome   VARCHAR(150)
+);
+CREATE TABLE IF NOT EXISTS transferencia_itens (
+    transferencia_id INTEGER NOT NULL REFERENCES transferencias(id) ON DELETE CASCADE,
+    cte_id           INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
+    PRIMARY KEY (transferencia_id, cte_id)
+);
+CREATE INDEX IF NOT EXISTS idx_transferencia_itens_cte ON transferencia_itens (cte_id);
+ALTER TABLE conferencias ADD COLUMN IF NOT EXISTS transferencia_id INTEGER REFERENCES transferencias(id) ON DELETE SET NULL;

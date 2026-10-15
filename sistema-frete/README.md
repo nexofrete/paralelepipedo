@@ -143,6 +143,23 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Cotações de frete
+
+Em **Operação de Transporte → Cotações**:
+
+1. **＋ Nova cotação:** busque o cliente pelo cadastro e informe destino, peso, volumes, cubagem e valor da mercadoria. Clique em **🧮 Calcular pela tabela**: o sistema usa a **tabela de preço da própria empresa** (a mesma do CT-e), com peso cubado, ad valorem, GRIS, pedágio e as taxas, e mostra o prazo do trecho.
+2. Dá para **mudar valores**, incluir ou tirar linhas, ou aplicar um **desconto %** (sai do frete peso). A cotação guarda o valor da tabela, então você sempre vê quanto de desconto deu.
+3. Envie a proposta:
+   - **🖨 Proposta / PDF**: abre para imprimir ou salvar em PDF;
+   - **✉ E-mail**: vai no corpo do e-mail e como anexo;
+   - **💬 WhatsApp**: abre a conversa já com o texto pronto.
+4. Quando o cliente responder:
+   - **✓ Aprovada**: abre a **coleta já preenchida** (endereço do cadastro, carga e destino). Depois, o **CT-e sai com o preço combinado**, tanto pelo "Gerar CT-e" da coleta quanto pela NF-e que chega por e-mail.
+   - **✗ Recusada**: pede o motivo, para você ver por que as cotações não fecham.
+5. A cotação vence sozinha na data de validade e pode ser **reaberta** ou **duplicada**.
+
+No topo: cotações em aberto, valor em negociação, aprovadas no mês e a **taxa de conversão**. Em **⚙ Validade e condições** (só administrador) você define a validade padrão e as condições gerais que saem no fim de toda proposta.
+
 ## Coletas
 
 Em **Operação de Transporte → Coletas**:

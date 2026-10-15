@@ -110,10 +110,11 @@
   $('colProgramar').addEventListener('click', () => programar(marcadas()).catch(erro));
 
   // ---------- Formulário (nova / editar / repetir) ----------
-  function formulario(c = null, { repetir = false } = {}) {
+  // cotacao: a coleta nasce de uma cotação aprovada (o CT-e sai com o preço dela).
+  function formulario(c = null, { repetir = false, cotacao = null } = {}) {
     const v = (k) => esc(c?.[k] ?? '');
-    const editar = c && !repetir;
-    $('colModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">${editar ? `📦 Coleta ${c.id}` : '📦 Nova coleta'}</h3><span style="cursor:pointer; font-size:18px;" data-col-fechar>✕</span></div>
+    const editar = c && !repetir && !cotacao;
+    $('colModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">${editar ? `📦 Coleta ${c.id}` : cotacao ? `📦 Coleta da cotação nº ${cotacao.id}` : '📦 Nova coleta'}</h3><span style="cursor:pointer; font-size:18px;" data-col-fechar>✕</span></div>
       <div class="cte-secao" style="margin-top:12px;"><h4>Quem pediu</h4><div class="cte-grade">
         <div class="campo"><label for="cfCanal">Pedido por</label><select id="cfCanal">${Object.entries(CANAIS).map(([k, t]) => `<option value="${k}" ${c?.canal === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         <div class="campo"><label for="cfSolNome">Nome</label><input id="cfSolNome" maxlength="120" value="${v('solicitante_nome')}" /></div>
@@ -137,7 +138,7 @@
         <input type="hidden" id="cfCodMun" value="${v('cod_municipio')}" />
       </div></div>
       <div class="cte-secao"><h4>Quando</h4><div class="cte-grade">
-        <div class="campo"><label for="cfData">Data da coleta</label><input id="cfData" type="date" value="${repetir || !c ? hoje() : esc(String(c.data_coleta).slice(0, 10))}" /></div>
+        <div class="campo"><label for="cfData">Data da coleta</label><input id="cfData" type="date" value="${repetir || !c || cotacao ? hoje() : esc(String(c.data_coleta).slice(0, 10))}" /></div>
         <div class="campo"><label for="cfHoraDe">Das</label><input id="cfHoraDe" type="time" value="${v('hora_de')}" /></div>
         <div class="campo"><label for="cfHoraAte">Até</label><input id="cfHoraAte" type="time" value="${v('hora_ate')}" /></div>
       </div></div>
@@ -170,7 +171,7 @@
           contato_nome: $('cfContato').value, contato_telefone: $('cfContatoFone').value, data_coleta: $('cfData').value, hora_de: $('cfHoraDe').value, hora_ate: $('cfHoraAte').value,
           volumes: $('cfVol').value, peso_kg: $('cfPeso').value, cubagem_m3: $('cfCub').value, valor_mercadoria: $('cfValor').value, produto: $('cfProduto').value, notas: $('cfNotas').value,
           destinatario_nome: $('cfDestNome').value, destinatario_doc: $('cfDestDoc').value, destino_cidade: $('cfDestCidade').value, destino_uf: $('cfDestUf').value,
-          tomador: $('cfTomador').value, observacao: $('cfObs').value,
+          tomador: $('cfTomador').value, observacao: $('cfObs').value, ...(cotacao ? { cotacao_id: cotacao.id } : {}),
         };
         const salva = editar ? await api(`/${c.id}`, { method: 'PUT', body: JSON.stringify(corpo) }) : await api('', { method: 'POST', body: JSON.stringify(corpo) });
         await carregar();
@@ -232,6 +233,7 @@
         ${c.volumes && c.volumes_coletados !== c.volumes ? `<br><span style="color:#d97706;">⚠ Previsto: ${num(c.volumes)} volume(s)</span>` : ''}
         ${c.obs_motorista ? `<br>${esc(c.obs_motorista)}` : ''}<br>
         ${c.foto_arquivo ? `<a href="/api/coletas/${c.id}/arquivo?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📷 Foto</a> · ` : ''}${c.assinatura_arquivo ? `<a href="/api/coletas/${c.id}/arquivo?tipo=assinatura&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">✍ Assinatura</a> · ` : ''}${c.latitude != null ? `<a href="https://www.google.com/maps?q=${c.latitude},${c.longitude}" target="_blank" rel="noopener">📍 Local</a>` : ''}</div></div>` : ''}
+      ${c.cotacao_id ? `<div class="cte-aviso" style="margin-top:10px;">💲 Da cotação nº ${c.cotacao_id}: o CT-e sai com o preço combinado.</div>` : ''}
       ${c.cte_id ? `<div class="cte-aviso ok" style="margin-top:10px;">📄 ${c.cte_numero ? `CT-e ${esc(c.cte_serie)}/${esc(c.cte_numero)} (${esc(c.cte_status)})` : `Rascunho de CT-e #${c.cte_id}`} — <a href="#" id="cdAbrirCte">abrir</a></div>` : ''}
       <div id="cdBaixa"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
@@ -362,5 +364,25 @@
     } finally { if (botao) botao.disabled = false; }
   }
 
-  window.nexoColetas = { recarregar: () => { if (!$('pagina-coletas').classList.contains('oculto')) carregar().catch(() => {}); } };
+  // Cotação aprovada → formulário da coleta já preenchido (endereço do cadastro do cliente, se ele for o remetente).
+  async function novaDaCotacao(t) {
+    await iniciar();
+    const rem = t.cliente_papel !== 'destinatario';
+    let k = null;
+    if (rem && t.cliente_doc) k = (await api(`/clientes?q=${encodeURIComponent(t.cliente_doc)}`).catch(() => [])).find((x) => x.documento === t.cliente_doc) || null;
+    formulario({
+      canal: 'telefone', solicitante_nome: t.contato_nome, solicitante_telefone: t.telefone, solicitante_email: t.email,
+      ...(rem ? { remetente_nome: t.cliente_nome, remetente_doc: t.cliente_doc, remetente_ie: k?.ie, logradouro: k?.logradouro, numero: k?.numero, complemento: k?.complemento,
+        bairro: k?.bairro, cidade: k?.cidade || t.origem_cidade, uf: k?.uf || t.origem_uf, cep: k?.cep, cod_municipio: k?.cod_municipio, contato_telefone: k?.telefone || t.telefone }
+        : { cidade: t.origem_cidade, uf: t.origem_uf, destinatario_nome: t.cliente_nome, destinatario_doc: t.cliente_doc }),
+      destino_cidade: t.destino_cidade, destino_uf: t.destino_uf, tomador: rem ? 'remetente' : 'destinatario',
+      volumes: t.volumes, peso_kg: t.peso_kg, cubagem_m3: t.cubagem_m3, valor_mercadoria: t.valor_mercadoria, produto: t.produto,
+    }, { cotacao: t });
+  }
+
+  window.nexoColetas = {
+    recarregar: () => { if (!$('pagina-coletas').classList.contains('oculto')) carregar().catch(() => {}); },
+    novaDaCotacao,
+    abrir: (id) => iniciar().then(() => abrirColeta(id)).catch(erro),
+  };
 })();

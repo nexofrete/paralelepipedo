@@ -60,11 +60,19 @@ function lerColeta(b = {}) {
 }
 const CAMPOS = Object.keys(lerColeta({ remetente_nome: 'x', cidade: 'x', uf: 'SP', logradouro: 'x' }));
 
+// dados.cotacao_id: a coleta nasce de uma cotação aprovada (o CT-e sai com o preço dela).
 async function criar(dados, usuarioNome) {
   const c = lerColeta(dados);
+  const cotacaoId = Number(dados.cotacao_id) || null;
+  if (cotacaoId) {
+    const { rows: cot } = await pool.query('SELECT status, coleta_id FROM cotacoes WHERE id = $1', [cotacaoId]);
+    if (!cot[0]) throw falha('Cotação não encontrada.', 404);
+    if (cot[0].status !== 'aprovada') throw falha('A cotação ainda não foi aprovada.');
+  }
   const { rows } = await pool.query(
-    `INSERT INTO coletas (${CAMPOS.join(', ')}, criado_por_nome) VALUES (${CAMPOS.map((_, i) => `$${i + 1}`).join(', ')}, $${CAMPOS.length + 1}) RETURNING *`,
-    [...CAMPOS.map((k) => c[k]), usuarioNome]);
+    `INSERT INTO coletas (${CAMPOS.join(', ')}, criado_por_nome, cotacao_id) VALUES (${CAMPOS.map((_, i) => `$${i + 1}`).join(', ')}, $${CAMPOS.length + 1}, $${CAMPOS.length + 2}) RETURNING *`,
+    [...CAMPOS.map((k) => c[k]), usuarioNome, cotacaoId]);
+  if (cotacaoId) await pool.query('UPDATE cotacoes SET coleta_id = $2, atualizado_em = NOW() WHERE id = $1', [cotacaoId, rows[0].id]);
   return rows[0];
 }
 
@@ -242,6 +250,9 @@ async function gerarCte(id, usuarioNome) {
     origem: { tipo: 'coleta', coleta_id: c.id },
     avisosImportacao: ['Rascunho a partir da coleta: inclua as NF-e (chaves de acesso), confira CFOP, valores e o destino.'],
   };
+  // Coleta de cotação aprovada: o CT-e sai com o preço combinado.
+  const cot = await require('./cotacoes').cotacaoDaColeta(c.id);
+  if (cot) require('./cotacoes').aplicarNoCte(dados, cot, e);
   const r = emissao.resumo(dados);
   const { rows: novo } = await pool.query(
     `INSERT INTO ctes_emitidos (ambiente, dados, valor_total, tomador_nome, remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome)
@@ -263,6 +274,14 @@ async function vincularCte(cteId, remetenteDoc, origem) {
   if (!rows[0]) return null;
   await pool.query(`UPDATE ctes_emitidos SET dados = jsonb_set(dados, '{origem}', $2::jsonb) WHERE id = $1`,
     [cteId, JSON.stringify({ ...(origem || {}), coleta_id: rows[0].id })]);
+  // Coleta de cotação aprovada: troca o frete da tabela pelo preço combinado.
+  const cotacoes = require('./cotacoes');
+  const cot = await cotacoes.cotacaoDaColeta(rows[0].id);
+  if (cot) {
+    const { rows: ct } = await pool.query('SELECT dados FROM ctes_emitidos WHERE id = $1', [cteId]);
+    const dados = cotacoes.aplicarNoCte(ct[0].dados, cot, await emissao.carregarEmitente());
+    await pool.query('UPDATE ctes_emitidos SET dados = $2, valor_total = $3 WHERE id = $1', [cteId, dados, dados.valores.vTPrest]);
+  }
   return rows[0].id;
 }
 

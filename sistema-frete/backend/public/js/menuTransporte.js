@@ -1,5 +1,5 @@
 // =====================================================================
-// Menu "Operação de Transporte": junta coletas, CT-e, MDF-e, ocorrências, romaneios,
+// Menu "Operação de Transporte": junta cotações, coletas, CT-e, MDF-e, ocorrências, romaneios,
 // EDI, veículos/motoristas e configuração fiscal num item com submenus.
 // Cada subitem abre a página de sempre (o item escondido do menu, que guarda
 // a permissão) e já escolhe a aba certa dela.
@@ -14,7 +14,7 @@
   const ehAdmin = usuario?.perfil === 'admin';
   // Atributo das abas de cada tela.
   const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba' };
-  const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas');
+  const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas', 'cotacoes');
 
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
   itens.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));

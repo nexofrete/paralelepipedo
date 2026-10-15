@@ -1723,3 +1723,47 @@ CREATE TABLE IF NOT EXISTS coletas (
 CREATE INDEX IF NOT EXISTS idx_coletas_status ON coletas (status, data_coleta);
 CREATE INDEX IF NOT EXISTS idx_coletas_romaneio ON coletas (romaneio_id);
 CREATE INDEX IF NOT EXISTS idx_coletas_remetente ON coletas (remetente_doc);
+
+-- Cotações de frete: calculada pela tabela de preço da empresa, enviada ao
+-- cliente (e-mail/WhatsApp/PDF) e, aprovada, vira coleta → CT-e com o preço combinado.
+-- status: aberta, enviada, aprovada, recusada, cancelada (vencida = validade passou e não foi aprovada).
+CREATE TABLE IF NOT EXISTS cotacoes (
+    id                  SERIAL PRIMARY KEY,
+    status              VARCHAR(10) NOT NULL DEFAULT 'aberta',
+    cliente_doc         VARCHAR(20),
+    cliente_nome        VARCHAR(200) NOT NULL,
+    cliente_papel       VARCHAR(12) NOT NULL DEFAULT 'remetente',   -- o cliente é o remetente (CIF) ou o destinatário (FOB)
+    contato_nome        VARCHAR(120),
+    email               VARCHAR(250),
+    telefone            VARCHAR(30),
+    origem_cidade       VARCHAR(120) NOT NULL,
+    origem_uf           CHAR(2) NOT NULL,
+    destino_cidade      VARCHAR(120) NOT NULL,
+    destino_uf          CHAR(2) NOT NULL,
+    destino_bairro      VARCHAR(120),
+    volumes             INTEGER,
+    peso_kg             NUMERIC(12,3),
+    cubagem_m3          NUMERIC(10,3),
+    valor_mercadoria    NUMERIC(14,2),
+    produto             VARCHAR(120),
+    componentes         JSONB NOT NULL DEFAULT '[]',     -- [{ xNome, vComp }]
+    valor_total         NUMERIC(14,2) NOT NULL DEFAULT 0,
+    valor_tabela        NUMERIC(14,2),                   -- o que a tabela deu (para ver o desconto concedido)
+    prazo_dias          INTEGER,
+    tabela_nome         VARCHAR(150),
+    explicacao          TEXT,
+    validade            DATE NOT NULL,
+    observacao          TEXT,
+    motivo              VARCHAR(250),
+    coleta_id           INTEGER REFERENCES coletas(id) ON DELETE SET NULL,
+    enviada_em          TIMESTAMPTZ,
+    decidida_em         TIMESTAMPTZ,
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cotacoes_status ON cotacoes (status, validade);
+CREATE INDEX IF NOT EXISTS idx_cotacoes_cliente ON cotacoes (cliente_doc);
+ALTER TABLE coletas ADD COLUMN IF NOT EXISTS cotacao_id INTEGER REFERENCES cotacoes(id) ON DELETE SET NULL;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cotacao_validade_dias INTEGER NOT NULL DEFAULT 10;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cotacao_condicoes TEXT;

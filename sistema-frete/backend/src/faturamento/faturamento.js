@@ -26,8 +26,25 @@ async function pendentes({ de, ate, tomador } = {}) {
   if (dataIso(ate)) { val.push(ate); cond.push(`autorizado_em::date <= $${val.length}::date`); }
   const { rows } = await pool.query(`SELECT id, serie, numero, chave, autorizado_em, valor_total, dados, demonstracao, cidade_fim, uf_fim, destinatario_nome
     FROM ctes_emitidos WHERE ${cond.join(' AND ')} ORDER BY autorizado_em, numero LIMIT 3000`, val);
-  return rows.map((r) => ({ ...r, tomador: tomadorDe(r.dados), valor: valorCte(r), tp_cte: String(r.dados?.tpCTe ?? '0'), dados: undefined }))
-    .filter((r) => !tomador || r.tomador.doc === docLimpo(tomador));
+  const ctes = rows.map((r) => ({ ...r, tipo: 'cte', tomador: tomadorDe(r.dados), valor: valorCte(r), tp_cte: String(r.dados?.tpCTe ?? '0'), dados: undefined }));
+  // NFS-e do frete municipal também são cobradas na fatura.
+  const condN = ["status = 'autorizada'", 'fatura_id IS NULL'];
+  const valN = [];
+  if (dataIso(de)) { valN.push(de); condN.push(`autorizada_em >= $${valN.length}::date`); }
+  if (dataIso(ate)) { valN.push(ate); condN.push(`autorizada_em < $${valN.length}::date + 1`); }
+  const { rows: nfses } = await pool.query(`SELECT n.*, e.municipio, e.uf FROM nfse_emitidas n CROSS JOIN (SELECT municipio, uf FROM empresa WHERE id = 1) e
+    WHERE ${condN.join(' AND ')} ORDER BY autorizada_em LIMIT 3000`, valN);
+  const notas = nfses.map(itemNfse);
+  return [...ctes, ...notas].filter((r) => !tomador || r.tomador.doc === docLimpo(tomador));
+}
+// NFS-e no formato dos itens da fatura.
+function itemNfse(n) {
+  return {
+    id: n.id, tipo: 'nfse', serie: 'NFS-e', numero: n.numero_nfse, chave: n.chave, autorizado_em: n.autorizada_em, valor: centavos(n.valor_liquido ?? n.valor),
+    demonstracao: n.demonstracao, cidade_fim: n.municipio || null, uf_fim: n.uf || null, destinatario_nome: n.dados?.servico?.descricao ? 'Frete municipal' : null,
+    tomador: { doc: docLimpo(n.tomador_doc), nome: n.tomador_nome || '', email: n.dados?.tomador?.email || '' }, tp_cte: '0', nfs: (n.dados?.servico?.notas || []).map((k) => Number(String(k).slice(25, 34))),
+    remetente: null, iss_retido: n.iss_retido,
+  };
 }
 
 // Agrupa os pendentes por tomador (para a tela "A faturar").
@@ -50,18 +67,21 @@ async function carregar(id) {
   const { rows: itens } = await pool.query(`SELECT id, serie, numero, chave, autorizado_em, valor_total, dados, cidade_fim, uf_fim, destinatario_nome
     FROM ctes_emitidos WHERE fatura_id = $1 ORDER BY numero`, [id]);
   const { rows: pagamentos } = await pool.query('SELECT * FROM faturas_transporte_pagamentos WHERE fatura_id = $1 ORDER BY data, id', [id]);
+  const { rows: nfses } = await pool.query(`SELECT n.*, e.municipio, e.uf FROM nfse_emitidas n CROSS JOIN (SELECT municipio, uf FROM empresa WHERE id = 1) e
+    WHERE n.fatura_id = $1 ORDER BY n.numero_nfse`, [id]);
   return {
     ...f, valor_liquido: centavos(f.valor_bruto - f.desconto), saldo: centavos(f.valor_bruto - f.desconto - f.valor_pago),
     vencida: ['aberta', 'parcial'].includes(f.status) && String(f.vencimento instanceof Date ? f.vencimento.toISOString() : f.vencimento).slice(0, 10) < hoje(),
-    itens: itens.map((r) => ({ ...r, valor: valorCte(r), tp_cte: String(r.dados?.tpCTe ?? '0'), nfs: (r.dados?.nfes || []).map((k) => Number(String(k).slice(25, 34))), remetente: r.dados?.remetente?.xNome, dados: undefined })),
+    itens: [...itens.map((r) => ({ ...r, tipo: 'cte', valor: valorCte(r), tp_cte: String(r.dados?.tpCTe ?? '0'), nfs: (r.dados?.nfes || []).map((k) => Number(String(k).slice(25, 34))), remetente: r.dados?.remetente?.xNome, dados: undefined })), ...nfses.map(itemNfse)],
     pagamentos,
   };
 }
 
 // Cria a fatura com os CT-e escolhidos (todos do mesmo tomador, sem fatura).
-async function criar({ cteIds, vencimento, desconto = 0, observacoes = '', usuarioNome }) {
+async function criar({ cteIds, nfseIds, vencimento, desconto = 0, observacoes = '', usuarioNome }) {
   const ids = [...new Set((cteIds || []).map(Number).filter(Number.isInteger))];
-  if (!ids.length) throw erro('Escolha os CT-e da fatura.');
+  const idsN = [...new Set((nfseIds || []).map(Number).filter(Number.isInteger))];
+  if (!ids.length && !idsN.length) throw erro('Escolha os CT-e / NFS-e da fatura.');
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
@@ -69,10 +89,15 @@ async function criar({ cteIds, vencimento, desconto = 0, observacoes = '', usuar
     if (rows.length !== ids.length) throw erro('Algum CT-e não foi encontrado.');
     const problema = rows.find((r) => r.status !== 'autorizado' || r.fatura_id);
     if (problema) throw erro(`O CT-e ${problema.numero} ${problema.fatura_id ? 'já está em outra fatura' : `está ${problema.status}`}.`, 409);
-    const tomadores = [...new Set(rows.map((r) => tomadorDe(r.dados).doc))];
-    if (tomadores.length > 1 || !tomadores[0]) throw erro('Uma fatura é de um tomador só: os CT-e escolhidos são de clientes diferentes (ou sem CNPJ/CPF do tomador).');
-    const t = rows.map((r) => tomadorDe(r.dados)).find((x) => x.email) || tomadorDe(rows[0].dados);
-    const bruto = centavos(rows.reduce((s, r) => s + valorCte(r), 0));
+    const { rows: nrows } = await cliente.query('SELECT * FROM nfse_emitidas WHERE id = ANY($1::int[]) FOR UPDATE', [idsN]);
+    if (nrows.length !== idsN.length) throw erro('Alguma NFS-e não foi encontrada.');
+    const probN = nrows.find((r) => r.status !== 'autorizada' || r.fatura_id);
+    if (probN) throw erro(`A NFS-e ${probN.numero_nfse || probN.id} ${probN.fatura_id ? 'já está em outra fatura' : `está ${probN.status}`}.`, 409);
+    const partes = [...rows.map((r) => tomadorDe(r.dados)), ...nrows.map((n) => itemNfse(n).tomador)];
+    const tomadores = [...new Set(partes.map((p) => p.doc))];
+    if (tomadores.length > 1 || !tomadores[0]) throw erro('Uma fatura é de um tomador só: os documentos escolhidos são de clientes diferentes (ou sem CNPJ/CPF do tomador).');
+    const t = partes.find((x) => x.email) || partes[0];
+    const bruto = centavos(rows.reduce((s, r) => s + valorCte(r), 0) + nrows.reduce((s, n) => s + itemNfse(n).valor, 0));
     const desc = centavos(desconto);
     if (desc < 0 || desc >= bruto) throw erro('O desconto tem que ser menor que o valor da fatura.');
     const { rows: emp } = await cliente.query('SELECT fatura_proximo_numero, fatura_prazo_dias FROM empresa WHERE id = 1 FOR UPDATE');
@@ -82,8 +107,9 @@ async function criar({ cteIds, vencimento, desconto = 0, observacoes = '', usuar
     const { rows: [f] } = await cliente.query(
       `INSERT INTO faturas_transporte (numero, tomador_doc, tomador_nome, tomador_email, emissao, vencimento, valor_bruto, desconto, observacoes, demonstracao, criado_por_nome)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-      [numero, tomadores[0], t.nome, t.email || null, hoje(), venc, bruto, desc, String(observacoes || '').slice(0, 2000) || null, rows.some((r) => r.demonstracao), usuarioNome || null]);
+      [numero, tomadores[0], t.nome, t.email || null, hoje(), venc, bruto, desc, String(observacoes || '').slice(0, 2000) || null, [...rows, ...nrows].some((r) => r.demonstracao), usuarioNome || null]);
     await cliente.query('UPDATE ctes_emitidos SET fatura_id = $1 WHERE id = ANY($2::int[])', [f.id, ids]);
+    await cliente.query('UPDATE nfse_emitidas SET fatura_id = $1 WHERE id = ANY($2::int[])', [f.id, idsN]);
     await cliente.query('UPDATE empresa SET fatura_proximo_numero = $1 WHERE id = 1', [numero + 1]);
     await cliente.query('COMMIT');
     return carregar(f.id);
@@ -94,7 +120,9 @@ async function criar({ cteIds, vencimento, desconto = 0, observacoes = '', usuar
 async function faturarPeriodo({ de, ate, vencimento, usuarioNome }) {
   const grupos = (await pendentesPorTomador({ de, ate })).filter((g) => g.doc);
   const criadas = [];
-  for (const g of grupos) criadas.push(await criar({ cteIds: g.ctes.map((c) => c.id), vencimento, usuarioNome }));
+  for (const g of grupos) {
+    criadas.push(await criar({ cteIds: g.ctes.filter((c) => c.tipo !== 'nfse').map((c) => c.id), nfseIds: g.ctes.filter((c) => c.tipo === 'nfse').map((c) => c.id), vencimento, usuarioNome }));
+  }
   return criadas;
 }
 
@@ -146,6 +174,7 @@ async function cancelar(id, motivo) {
   if (f.pagamentos.length) throw erro('A fatura tem recebimentos: estorne os recebimentos antes de cancelar.');
   await pool.query(`UPDATE faturas_transporte SET status = 'cancelada', cancelada_em = NOW(), motivo_cancelamento = $2 WHERE id = $1`, [id, String(motivo || '').slice(0, 255) || null]);
   await pool.query('UPDATE ctes_emitidos SET fatura_id = NULL WHERE fatura_id = $1', [id]);
+  await pool.query('UPDATE nfse_emitidas SET fatura_id = NULL WHERE fatura_id = $1', [id]);
   return carregar(id);
 }
 
@@ -158,7 +187,7 @@ async function listar({ status, busca, tomador } = {}) {
   if (busca) { val.push(`%${String(busca).trim()}%`); cond.push(`(CAST(numero AS TEXT) = TRIM($${val.length}, '%') OR tomador_nome ILIKE $${val.length} OR tomador_doc ILIKE $${val.length})`); }
   const { rows } = await pool.query(`SELECT *, (valor_bruto - desconto) AS valor_liquido, (valor_bruto - desconto - valor_pago) AS saldo,
       (status IN ('aberta', 'parcial') AND vencimento < $1::date) AS vencida, ($1::date - vencimento) AS dias_atraso,
-      (SELECT COUNT(*)::int FROM ctes_emitidos c WHERE c.fatura_id = f.id) AS qtd_ctes
+      (SELECT COUNT(*)::int FROM ctes_emitidos c WHERE c.fatura_id = f.id) + (SELECT COUNT(*)::int FROM nfse_emitidas n WHERE n.fatura_id = f.id) AS qtd_ctes
     FROM faturas_transporte f WHERE ${cond.join(' AND ')} ORDER BY (status IN ('aberta', 'parcial')) DESC, vencimento, numero DESC LIMIT 500`, val);
   return rows;
 }

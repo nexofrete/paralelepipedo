@@ -62,6 +62,7 @@
         <div class="nav-tsub" data-ir="coletas">📦 Coletas</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="lista">📄 CT-e</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="mdfe">📋 MDF-e</div>
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="nfse">🧾 NFS-e (frete municipal)</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="romaneios">🚚 Romaneios</div>
         <div class="nav-tsub" data-ir="filiais" data-aba="estoque">🏢 Onde está a mercadoria</div>
@@ -395,6 +396,7 @@
         <div class="cte-abas">
           <div class="cte-aba ativo" data-cte-aba="lista">CT-e emitidos</div>
           <div class="cte-aba" data-cte-aba="mdfe">📋 MDF-e</div>
+          <div class="cte-aba" data-cte-aba="nfse">🧾 NFS-e (frete municipal)</div>
           <div class="cte-aba" data-cte-aba="frota">🚛 Veículos e motoristas</div>
           <div class="cte-aba" data-cte-aba="config" id="cteAbaConfig">⚙️ Configuração fiscal</div>
         </div>
@@ -418,6 +420,7 @@
           </div>
         </div>
         <div id="cte-aba-mdfe" class="oculto"></div>
+        <div id="cte-aba-nfse" class="oculto"></div>
         <div id="cte-aba-frota" class="oculto"></div>
         <div id="cte-aba-config" class="oculto"></div>
       </section>
@@ -466,6 +469,9 @@
       </section>
       <div class="modal-overlay oculto" id="modalFatura">
         <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="fatModalConteudo"></div>
+      </div>
+      <div class="modal-overlay oculto" id="modalNfse">
+        <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="nsModalConteudo"></div>
       </div>
       <div class="modal-overlay oculto" id="modalMdfe">
         <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="mdfeModalConteudo"></div>
@@ -3433,6 +3439,7 @@
   <script src="js/contasPagar.js"></script>
   <script src="js/portalAdmin.js"></script>
   <script src="js/mdfe.js"></script>
+  <script src="js/nfse.js"></script>
   <script src="js/faturamento.js"></script>
   <script src="js/painelTransporte.js"></script>
   <script src="js/menuTransporte.js"></script>

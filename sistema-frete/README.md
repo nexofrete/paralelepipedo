@@ -167,6 +167,27 @@ Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), C
 
 Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
 
+## NFS-e do frete municipal (Padrão Nacional)
+
+Frete com coleta e entrega no **mesmo município** não leva CT-e: é serviço de transporte municipal (item 16.02 da LC 116), com **ISS**, e sai em **NFS-e**. O sistema emite pelo **emissor nacional** (Sistema Nacional NFS-e, leiaute 1.01), com o mesmo certificado A1 do CT-e.
+
+**Antes de usar** (administrador, em **Emissão de CT-e → 🧾 NFS-e → ⚙ Configurar**):
+1. Confirme com a prefeitura ou o contador que o município da empresa aderiu ao **emissor nacional**. Município com sistema próprio que não aceita o nacional precisa de outra integração.
+2. Preencha a **inscrição municipal**, a **alíquota do ISS** e, se for o caso, o código de tributação municipal.
+   - O código nacional padrão é **160201** (outros serviços de transporte de natureza municipal).
+3. Comece em **homologação** (produção restrita), emita algumas notas de teste e só depois mude para **produção**.
+
+**No dia a dia:**
+- **＋ Nova NFS-e**: tomador (busca no cadastro de clientes), descrição, valor do frete, desconto e se o cliente **retém o ISS**.
+- **Pelo CT-e:** ao transmitir um CT-e com origem e destino na mesma cidade, o sistema pergunta se quer trocar por NFS-e. O rascunho vira NFS-e com o tomador, o endereço, o valor e as NF-e transportadas. Depois de autorizada, o rascunho de CT-e é apagado.
+- **Transmitir:** a nota volta com número, chave de 50 dígitos e o ISS calculado pelo Sistema Nacional. Se a resposta se perder, "Tentar de novo" confere antes se a nota já existe (não duplica).
+- **DANFSe** para imprimir/PDF, **XML** e **cancelamento** (com motivo).
+- A NFS-e autorizada entra em **Faturamento → A faturar** junto com os CT-e do mesmo cliente. Com ISS retido, a fatura cobra o valor líquido.
+- Não dá para cancelar uma NFS-e que está numa fatura: cancele a fatura antes.
+- O resumo mostra o **ISS a recolher no mês** (guia do município) e o retido pelos clientes.
+
+No modo demonstração, a NFS-e é simulada no próprio servidor (nada vai ao governo).
+
 ## Portal do cliente (embarcador)
 
 Página própria para o cliente da transportadora: **`/portal.html`** (funciona no celular). O acesso é separado dos usuários do sistema: um login do portal não abre nada do sistema interno.

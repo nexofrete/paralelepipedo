@@ -276,7 +276,7 @@ async function listarFaturas(u, { abertas = false } = {}) {
   const demo = await emDemonstracao();
   const { rows } = await pool.query(
     `SELECT f.id, f.numero, f.emissao, f.vencimento, f.valor_bruto, f.desconto, f.valor_pago, f.status, f.boleto_linha, f.boleto_status, f.boleto_vencimento,
-            (SELECT COUNT(*)::int FROM ctes_emitidos c WHERE c.fatura_id = f.id) AS qtd_ctes
+            (SELECT COUNT(*)::int FROM ctes_emitidos c WHERE c.fatura_id = f.id) + (SELECT COUNT(*)::int FROM nfse_emitidas n WHERE n.fatura_id = f.id) AS qtd_ctes
        FROM faturas_transporte f
       WHERE (f.tomador_doc = ANY($1::text[]) OR (LENGTH(f.tomador_doc) = 14 AND LEFT(f.tomador_doc, 8) = ANY($2::text[])))
         AND f.status ${abertas ? "IN ('aberta', 'parcial')" : "<> 'cancelada'"}${demo ? '' : ' AND NOT f.demonstracao'}

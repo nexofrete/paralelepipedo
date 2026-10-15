@@ -85,7 +85,7 @@ router.get('/:id(\\d+)', autenticar, pode, rota(async (req, res) => {
 
 router.post('/', autenticar, pode, rota(async (req, res) => {
   const f = await fat.criar({ ...req.body, usuarioNome: req.usuario.nome });
-  log(req, 'fatura', `Emitiu a fatura ${f.numero} de ${f.tomador_nome} (${f.itens.length} CT-e, R$ ${Number(f.valor_liquido).toFixed(2)})`);
+  log(req, 'fatura', `Emitiu a fatura ${f.numero} de ${f.tomador_nome} (${f.itens.length} documento(s), R$ ${Number(f.valor_liquido).toFixed(2)})`);
   res.status(201).json(f);
 }, 'Erro ao criar a fatura.'));
 router.post('/periodo', autenticar, pode, rota(async (req, res) => {

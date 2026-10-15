@@ -1990,3 +1990,45 @@ ALTER TABLE cotacoes ADD COLUMN IF NOT EXISTS portal_usuario_id INTEGER REFERENC
 -- e se a cotação pedida no portal já sai com o preço da tabela.
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS portal_endereco VARCHAR(250);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS portal_cotacao_automatica BOOLEAN NOT NULL DEFAULT FALSE;
+-- NFS-e Padrão Nacional (frete municipal: início e fim no mesmo município é
+-- serviço com ISS, não CT-e). Emitida pela API do Sistema Nacional da NFS-e.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS inscricao_municipal VARCHAR(15);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS nfse_ambiente SMALLINT NOT NULL DEFAULT 2;   -- 1 produção, 2 produção restrita (homologação)
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS nfse_serie INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS nfse_proximo_dps BIGINT NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS nfse_config JSONB;   -- { cTribNac, cTribMun, cNBS, aliquota, informar_aliquota, regApTribSN, regEspTrib, pTotTribSN, descricao_padrao }
+CREATE TABLE IF NOT EXISTS nfse_emitidas (
+    id              SERIAL PRIMARY KEY,
+    ambiente        SMALLINT NOT NULL DEFAULT 2,
+    serie           INTEGER,
+    numero_dps      BIGINT,
+    id_dps          VARCHAR(45),
+    chave           VARCHAR(50),
+    numero_nfse     BIGINT,
+    status          VARCHAR(12) NOT NULL DEFAULT 'rascunho',   -- rascunho, enviando, autorizada, rejeitada, erro, cancelada
+    dados           JSONB NOT NULL DEFAULT '{}'::jsonb,         -- { competencia, tomador, servico, valores, cte_origem }
+    valor           NUMERIC(14,2),
+    iss_aliquota    NUMERIC(5,2),
+    iss_valor       NUMERIC(14,2),
+    iss_retido      BOOLEAN NOT NULL DEFAULT FALSE,
+    valor_liquido   NUMERIC(14,2),
+    tomador_doc     VARCHAR(14),
+    tomador_nome    VARCHAR(200),
+    xml_dps         TEXT,
+    xml_nfse        TEXT,
+    xml_cancelamento TEXT,
+    erros           JSONB,
+    motivo          TEXT,
+    autorizada_em   TIMESTAMPTZ,
+    cancelada_em    TIMESTAMPTZ,
+    demonstracao    BOOLEAN NOT NULL DEFAULT FALSE,
+    fatura_id       INTEGER REFERENCES faturas_transporte(id) ON DELETE SET NULL,
+    coleta_id       INTEGER REFERENCES coletas(id) ON DELETE SET NULL,
+    criado_por_nome VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_nfse_dps ON nfse_emitidas (ambiente, serie, numero_dps) WHERE numero_dps IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_nfse_status ON nfse_emitidas (status, autorizada_em);
+CREATE INDEX IF NOT EXISTS idx_nfse_fatura ON nfse_emitidas (fatura_id);
+CREATE INDEX IF NOT EXISTS idx_nfse_tomador ON nfse_emitidas (tomador_doc);

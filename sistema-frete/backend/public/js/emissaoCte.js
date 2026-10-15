@@ -772,8 +772,18 @@
     await salvar(); fecharFormulario(); carregarLista();
     mostrarAlerta('Rascunho salvo.', { tipo: 'sucesso' });
   }));
+  // Mesma cidade no início e no fim: frete municipal é serviço com ISS (NFS-e), não CT-e.
+  const mesmoMunicipio = (d) => (d.inicio?.cMun && d.fim?.cMun ? d.inicio.cMun === d.fim.cMun
+    : !!d.inicio?.xMun && semAcento(d.inicio.xMun).trim().toUpperCase() === semAcento(d.fim?.xMun || '').trim().toUpperCase() && d.inicio.UF === d.fim?.UF);
   $('btnCteTransmitir').addEventListener('click', (e) => comBotao(e.currentTarget, async () => {
     const d = coletar();
+    if (mesmoMunicipio(d) && d.tpCTe === '0' && window.nexoNfse && await confirmar(`Origem e destino em ${d.inicio.xMun || 'um mesmo município'}: frete dentro do município não é CT-e, é serviço com ISS e sai em NFS-e. Trocar este rascunho por uma NFS-e?`, { textoOk: '🧾 Emitir NFS-e', textoCancelar: 'Continuar com CT-e' })) {
+      const c = await salvar();
+      fecharFormulario();
+      await window.nexoNfse.doCte(c.id);
+      carregarLista();
+      return;
+    }
     if (!d.nfes.length && d.tpCTe !== '1' && d.tpServ !== '3') throw new Error('Informe pelo menos uma NF-e transportada.');
     if (d.tpServ !== '0' && d.tpCTe !== '1' && !d.docAnt.length) throw new Error('Informe a chave do CT-e anterior (de quem contratou o serviço) — ou leia o XML dele.');
     if (!(d.valores.vTPrest > 0)) throw new Error('Informe os valores da prestação (componentes).');

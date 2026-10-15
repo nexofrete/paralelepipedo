@@ -60,12 +60,12 @@ ${paraEmail ? '' : '<div class="acoes"><button onclick="window.print()">Imprimir
     <div class="caixa"><span class="r">Vencimento</span><span class="v" style="font-size:16px;">${dia(f.vencimento)}</span></div>
     <div class="caixa"><span class="r">${f.status === 'paga' ? 'Valor pago' : 'Valor a pagar'}</span><span class="v" style="font-size:16px;">${moeda(f.status === 'paga' ? f.valor_pago : f.saldo)}</span></div>
   </div>
-  <table><thead><tr><th>CT-e</th><th>Emissão</th><th>Notas fiscais</th><th>Remetente → destinatário</th><th>Destino</th><th class="n">Valor</th></tr></thead><tbody>
-  ${f.itens.map((c) => `<tr><td>${esc(c.serie)}/${esc(c.numero)}${c.tp_cte === '1' ? ' <small>(complementar)</small>' : ''}</td><td>${dia(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td>
+  <table><thead><tr><th>Documento</th><th>Emissão</th><th>Notas fiscais</th><th>Remetente → destinatário</th><th>Destino</th><th class="n">Valor</th></tr></thead><tbody>
+  ${f.itens.map((c) => `<tr><td>${c.tipo === 'nfse' ? `NFS-e ${esc(c.numero)}` : `CT-e ${esc(c.serie)}/${esc(c.numero)}`}${c.tp_cte === '1' ? ' <small>(complementar)</small>' : ''}${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}</td><td>${dia(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td>
     <td>${esc(c.remetente || '')}<br><small>→ ${esc(c.destinatario_nome || '')}</small></td><td>${esc(c.cidade_fim || '')}/${esc(c.uf_fim || '')}</td><td class="n">${moeda(c.valor)}</td></tr>`).join('')}
   </tbody></table>
   <table class="totais">
-    <tr><td>${f.itens.length} CT-e</td><td class="n">${moeda(f.valor_bruto)}</td></tr>
+    <tr><td>${f.itens.length} documento(s)</td><td class="n">${moeda(f.valor_bruto)}</td></tr>
     ${Number(f.desconto) > 0 ? `<tr><td>Desconto</td><td class="n">− ${moeda(f.desconto)}</td></tr>` : ''}
     ${Number(f.valor_pago) > 0 ? `<tr><td>Já recebido</td><td class="n">− ${moeda(f.valor_pago)}</td></tr>` : ''}
     <tr class="total"><td>${f.status === 'paga' ? 'Total' : 'A pagar'}</td><td class="n">${moeda(f.status === 'paga' ? f.valor_liquido : f.saldo)}</td></tr>

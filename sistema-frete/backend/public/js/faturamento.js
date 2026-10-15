@@ -12,6 +12,8 @@
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const moeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  // CT-e (série/número) ou NFS-e do frete municipal.
+  const rotuloDoc = (c) => (c.tipo === 'nfse' ? `<span title="Frete municipal (ISS)">NFS-e ${esc(c.numero)}</span>${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}` : `${esc(c.serie)}/${esc(c.numero)}${c.tp_cte === '1' ? ' <small>(compl.)</small>' : ''}`);
   const num = (v) => { if (v == null || v === '') return null; const n = Number(String(v).replace(/\./g, '').replace(',', '.')); return Number.isNaN(n) ? null : n; };
   const iso = (v) => String(v instanceof Date ? v.toISOString() : v || '').slice(0, 10);
   const dia = (v) => (v ? new Date(`${iso(v)}T12:00:00`).toLocaleDateString('pt-BR') : '—');
@@ -97,7 +99,7 @@
     const b = (acao, texto, id) => `<button class="btn btn-secundario" data-fat-acao="${acao}" data-id="${id}">${texto}</button>`;
     document.querySelector('#fatTabela tbody').innerHTML = lista.map((f) => `<tr>
       <td><b>${f.numero}</b>${f.demonstracao ? '<div style="font-size:10.5px; color:var(--azul);">demonstração</div>' : ''}</td>
-      <td><b>${esc(f.tomador_nome)}</b><br><small style="color:var(--texto-fraco);">${esc(docFmt(f.tomador_doc))} · ${f.qtd_ctes} CT-e</small></td>
+      <td><b>${esc(f.tomador_nome)}</b><br><small style="color:var(--texto-fraco);">${esc(docFmt(f.tomador_doc))} · ${f.qtd_ctes} doc.</small></td>
       <td>${dia(f.emissao)}</td>
       <td style="${f.vencida ? 'color:var(--vermelho); font-weight:600;' : ''}">${dia(f.vencimento)}${f.vencida ? `<br><small>${f.dias_atraso} dia(s) de atraso</small>` : ''}</td>
       <td style="text-align:right;">${moeda(f.valor_liquido)}</td><td style="text-align:right;">${f.status === 'cancelada' ? '—' : moeda(f.saldo)}</td>
@@ -139,8 +141,8 @@
       ${secaoBoleto(f, aberta)}
       ${f.pagamentos.length ? `<div class="cte-secao"><h4>Recebimentos</h4><table class="edi-tabela"><tbody>${f.pagamentos.map((p) => `<tr><td>${dia(p.data)}</td><td>${moeda(p.valor)}</td><td>${FORMAS[p.forma] || p.forma}</td><td>${esc(p.observacao || '')}</td><td style="color:var(--texto-fraco);">${esc(p.usuario_nome || '')}</td>
         <td><button class="btn btn-secundario" data-estornar="${p.id}" style="width:auto; font-size:12px;">Estornar</button></td></tr>`).join('')}</tbody></table></div>` : ''}
-      <div class="cte-secao"><h4>CT-e da fatura (${f.itens.length})</h4><div style="max-height:34vh; overflow:auto;"><table class="edi-tabela"><thead><tr><th>CT-e</th><th>Emissão</th><th>NF</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Valor</th></tr></thead><tbody>
-        ${f.itens.map((c) => `<tr><td>${esc(c.serie)}/${esc(c.numero)}${c.tp_cte === '1' ? ' <small>(compl.)</small>' : ''}</td><td>${dia(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td><td>${esc(c.destinatario_nome || '')}</td><td>${esc(c.cidade_fim || '')}/${esc(c.uf_fim || '')}</td><td style="text-align:right;">${moeda(c.valor)}</td></tr>`).join('')}</tbody></table></div></div>
+      <div class="cte-secao"><h4>Documentos da fatura (${f.itens.length})</h4><div style="max-height:34vh; overflow:auto;"><table class="edi-tabela"><thead><tr><th>Documento</th><th>Emissão</th><th>NF</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Valor</th></tr></thead><tbody>
+        ${f.itens.map((c) => `<tr><td>${rotuloDoc(c)}</td><td>${dia(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td><td>${esc(c.destinatario_nome || '')}</td><td>${esc(c.cidade_fim || '')}/${esc(c.uf_fim || '')}</td><td style="text-align:right;">${moeda(c.valor)}</td></tr>`).join('')}</tbody></table></div></div>
       ${f.status !== 'cancelada' ? `<div class="cte-secao"><h4>Enviar ao cliente</h4><div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
         <input type="email" id="fatEmail" class="cte-entrada" value="${esc(f.tomador_email || '')}" placeholder="e-mail do financeiro do cliente" style="flex:1; min-width:220px;" />
         <button class="btn btn-primario" id="fatEnviar" style="width:auto;">✉ Enviar fatura por e-mail</button></div>
@@ -292,7 +294,7 @@
         const btn = e.currentTarget;
         const grupos = window.__afGrupos || [];
         if (!grupos.length) return mostrarAlerta('Nada a faturar nesse período.', { tipo: 'aviso' });
-        if (!await confirmar(`Gerar ${grupos.length} fatura(s), uma por cliente, com ${grupos.reduce((s, g) => s + g.ctes.length, 0)} CT-e (${moeda(grupos.reduce((s, g) => s + g.valor, 0))})?`, { textoOk: 'Faturar' })) return null;
+        if (!await confirmar(`Gerar ${grupos.length} fatura(s), uma por cliente, com ${grupos.reduce((s, g) => s + g.ctes.length, 0)} documento(s) (${moeda(grupos.reduce((s, g) => s + g.valor, 0))})?`, { textoOk: 'Faturar' })) return null;
         btn.disabled = true;
         try {
           const r = await post('/periodo', { de: $('afDe').value || null, ate: $('afAte').value || null, vencimento: $('afVenc').value || null });
@@ -313,21 +315,23 @@
     window.__afGrupos = grupos.filter((g) => g.doc);
     $('afLista').innerHTML = grupos.map((g, i) => `<details class="cte-secao" ${grupos.length <= 3 ? 'open' : ''} data-grupo="${i}"><summary style="cursor:pointer; display:flex; justify-content:space-between; gap:10px; align-items:center; padding:2px 0 10px;">
         <span><b>${esc(g.nome || 'Sem tomador')}</b> <small style="color:var(--texto-fraco);">${esc(docFmt(g.doc))}</small></span>
-        <span><b>${moeda(g.valor)}</b> · ${g.ctes.length} CT-e</span></summary>
+        <span><b>${moeda(g.valor)}</b> · ${g.ctes.length} doc.</span></summary>
       ${g.doc ? '' : '<div class="cte-aviso erro">Esses CT-e estão sem o CNPJ/CPF do tomador e não podem ser faturados.</div>'}
-      <table class="edi-tabela"><thead><tr><th><input type="checkbox" data-af-todos="${i}" checked /></th><th>CT-e</th><th>Emissão</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Valor</th></tr></thead><tbody>
-      ${g.ctes.map((c) => `<tr><td><input type="checkbox" data-af-cte="${c.id}" data-grupo="${i}" checked /></td><td>${esc(c.serie)}/${esc(c.numero)}${c.tp_cte === '1' ? ' <small>(compl.)</small>' : ''}${c.demonstracao ? ' <small style="color:var(--azul);">demo</small>' : ''}</td>
+      <table class="edi-tabela"><thead><tr><th><input type="checkbox" data-af-todos="${i}" checked /></th><th>Documento</th><th>Emissão</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Valor</th></tr></thead><tbody>
+      ${g.ctes.map((c) => `<tr><td><input type="checkbox" data-af-cte="${c.tipo || 'cte'}:${c.id}" data-grupo="${i}" checked /></td><td>${rotuloDoc(c)}${c.demonstracao ? ' <small style="color:var(--azul);">demo</small>' : ''}</td>
         <td>${dia(c.autorizado_em)}</td><td>${esc(c.destinatario_nome || '')}</td><td>${esc(c.cidade_fim || '')}/${esc(c.uf_fim || '')}</td><td style="text-align:right;">${moeda(c.valor)}</td></tr>`).join('')}</tbody></table>
       ${g.doc ? `<div style="display:flex; justify-content:flex-end; gap:8px; align-items:center; margin:10px 0 6px;"><span style="font-size:12px; color:var(--texto-fraco);">${g.email ? `e-mail: ${esc(g.email)}` : 'sem e-mail no CT-e'}</span>
         <button class="btn btn-primario" data-af-gerar="${i}" style="width:auto;">🧾 Gerar fatura dos marcados</button></div>` : ''}</details>`).join('')
-      || '<div style="text-align:center; color:var(--texto-fraco); padding:24px;">Nada a faturar: todos os CT-e autorizados já estão em faturas.</div>';
+      || '<div style="text-align:center; color:var(--texto-fraco); padding:24px;">Nada a faturar: todos os CT-e e NFS-e autorizados já estão em faturas.</div>';
     document.querySelectorAll('[data-af-todos]').forEach((cx) => cx.addEventListener('change', () => document.querySelectorAll(`[data-af-cte][data-grupo="${cx.dataset.afTodos}"]`).forEach((c) => { c.checked = cx.checked; })));
     document.querySelectorAll('[data-af-gerar]').forEach((btn) => btn.addEventListener('click', async () => {
-      const ids = [...document.querySelectorAll(`[data-af-cte][data-grupo="${btn.dataset.afGerar}"]:checked`)].map((c) => Number(c.dataset.afCte));
-      if (!ids.length) return mostrarAlerta('Marque os CT-e da fatura.', { tipo: 'aviso' });
+      const marcados = [...document.querySelectorAll(`[data-af-cte][data-grupo="${btn.dataset.afGerar}"]:checked`)].map((c) => c.dataset.afCte.split(':'));
+      const ids = marcados.filter(([t]) => t === 'cte').map(([, id]) => Number(id));
+      const nfseIds = marcados.filter(([t]) => t === 'nfse').map(([, id]) => Number(id));
+      if (!ids.length && !nfseIds.length) return mostrarAlerta('Marque os documentos da fatura.', { tipo: 'aviso' });
       btn.disabled = true;
       try {
-        const f = await post('/', { cteIds: ids, vencimento: $('afVenc').value || null });
+        const f = await post('/', { cteIds: ids, nfseIds, vencimento: $('afVenc').value || null });
         await carregarAFaturar();
         abrirAba('faturas');
         await abrirFatura(f.id);

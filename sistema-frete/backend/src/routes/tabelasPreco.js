@@ -18,7 +18,19 @@ const CAMPOS_TABELA = [
   'gris_minimo', 'tda', 'trt', 'valor_pallet',
   'descarga_valor', 'descarga_modo', 'descarga_minimo', 'descarga_aplicar', 'descarga_clientes',
   'icms_incluir', 'icms_aliquota', 'icms_modo', 'retorno_percentual',
+  'cliente_doc', 'cliente_nome', 'cliente_por_raiz',
 ];
+
+// Cliente da tabela (tabela exclusiva): só números, CNPJ ou CPF. Vazio = tabela geral.
+function lerCliente(body) {
+  if (!('cliente_doc' in body)) return null;
+  const doc = String(body.cliente_doc || '').replace(/\D/g, '');
+  if (doc && ![11, 14].includes(doc.length)) return 'CNPJ/CPF do cliente da tabela inválido.';
+  body.cliente_doc = doc || null;
+  body.cliente_nome = doc ? (String(body.cliente_nome || '').trim().slice(0, 200) || null) : null;
+  body.cliente_por_raiz = !!doc && (body.cliente_por_raiz === true || body.cliente_por_raiz === 'true') && doc.length === 14;
+  return null;
+}
 
 // Busca uma tabela de preço com suas faixas de peso já juntas.
 async function buscarComFaixas(id) {
@@ -52,13 +64,15 @@ async function salvarFaixas(tabelaId, faixas) {
 // GET /api/tabelas-preco?transportadora_id=123
 router.get('/', autenticar, permitir('pode_gerenciar_tabelas_preco'), async (req, res) => {
   try {
-    const { transportadora_id } = req.query;
+    const { transportadora_id, tipo } = req.query;
     const condicoes = [];
     const valores = [];
     if (transportadora_id) {
       valores.push(transportadora_id);
       condicoes.push(`tp.transportadora_id = $${valores.length}`);
     }
+    if (tipo === 'gerais') condicoes.push('tp.cliente_doc IS NULL');
+    if (tipo === 'clientes') condicoes.push('tp.cliente_doc IS NOT NULL');
     const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
 
     const { rows } = await pool.query(
@@ -67,7 +81,7 @@ router.get('/', autenticar, permitir('pode_gerenciar_tabelas_preco'), async (req
        FROM tabelas_preco tp
        JOIN transportadoras t ON t.id = tp.transportadora_id
        ${where}
-       ORDER BY t.razao_social ASC, tp.nome ASC`,
+       ORDER BY t.razao_social ASC, (tp.cliente_doc IS NOT NULL), tp.cliente_nome NULLS FIRST, tp.nome ASC`,
       valores
     );
     res.json(rows);
@@ -181,7 +195,9 @@ router.post('/', autenticar, permitir('pode_gerenciar_tabelas_preco'), async (re
     if (!req.body.transportadora_id || !req.body.nome) {
       return res.status(400).json({ erro: 'Informe a transportadora e o nome da tabela.' });
     }
-    const campos = Object.keys(req.body).filter((c) => CAMPOS_TABELA.includes(c) && req.body[c] !== '');
+    const errCliente = lerCliente(req.body);
+    if (errCliente) return res.status(400).json({ erro: errCliente });
+    const campos = Object.keys(req.body).filter((c) => CAMPOS_TABELA.includes(c) && req.body[c] !== '' && req.body[c] !== null);
     const valores = campos.map((c) => req.body[c]);
     const placeholders = campos.map((_, i) => `$${i + 1}`);
 
@@ -208,6 +224,8 @@ router.put('/:id(\\d+)', autenticar, permitir('pode_gerenciar_tabelas_preco'), a
     // Guarda uma "foto" de como a tabela estava ANTES dessa edição — assim
     // um frete antigo sempre pode ser conferido com o preço que valia na
     // época, mesmo depois de a tabela mudar várias vezes.
+    const errCliente = lerCliente(req.body);
+    if (errCliente) return res.status(400).json({ erro: errCliente });
     const estadoAntes = await buscarComFaixas(req.params.id);
     if (estadoAntes) {
       await pool.query(
@@ -240,6 +258,56 @@ router.put('/:id(\\d+)', autenticar, permitir('pode_gerenciar_tabelas_preco'), a
     console.error(err);
     res.status(500).json({ erro: 'Erro ao atualizar tabela de preço.' });
   }
+});
+
+// POST /api/tabelas-preco/:id/copiar-para-cliente
+// Corpo: { cliente_doc, cliente_nome, cliente_por_raiz, nome, ajuste_pct, ajustar_taxas }
+// Copia a tabela (com todos os trechos) para um cliente, com desconto (ajuste negativo)
+// ou acréscimo no frete peso — e, se pedir, também nas taxas em R$ (pedágio, TDE, TDA...).
+const CAMPOS_VALOR_TABELA = ['valor_minimo', 'excedente_por_kg', 'pedagio', 'tde', 'tda', 'trt', 'despacho_valor', 'gris_minimo', 'valor_pallet', 'descarga_minimo'];
+const CAMPOS_PCT_TABELA = ['ad_valorem_percentual', 'gris_percentual'];
+router.post('/:id(\\d+)/copiar-para-cliente', autenticar, permitir('pode_gerenciar_tabelas_preco'), async (req, res) => {
+  const cliente = await pool.connect();
+  try {
+    const b = { ...req.body };
+    const errCliente = lerCliente(b);
+    if (errCliente) return res.status(400).json({ erro: errCliente });
+    if (!b.cliente_doc) return res.status(400).json({ erro: 'Informe o CNPJ/CPF do cliente.' });
+    const ajuste = Number(String(b.ajuste_pct ?? 0).replace(',', '.'));
+    if (!Number.isFinite(ajuste) || ajuste <= -90 || ajuste > 300) return res.status(400).json({ erro: 'Ajuste entre -90% e +300%.' });
+    const f = 1 + ajuste / 100;
+    const r = (v, casas = 2) => (v == null ? null : Math.round(Number(v) * f * 10 ** casas) / 10 ** casas);
+    const origem = await buscarComFaixas(req.params.id);
+    if (!origem) return res.status(404).json({ erro: 'Tabela de preço não encontrada.' });
+    const { rows: ja } = await pool.query('SELECT id, nome FROM tabelas_preco WHERE transportadora_id = $1 AND cliente_doc = $2 AND ativa AND copiada_de = $3',
+      [origem.transportadora_id, b.cliente_doc, origem.id]);
+    if (ja[0]) return res.status(409).json({ erro: `Este cliente já tem uma cópia desta tabela ("${ja[0].nome}"). Edite a cópia ou desative-a antes.` });
+    const nova = { ...origem };
+    ['id', 'faixas', 'criado_em', 'atualizado_em'].forEach((k) => delete nova[k]);
+    if (b.ajustar_taxas) CAMPOS_VALOR_TABELA.forEach((k) => { if (nova[k] != null) nova[k] = r(nova[k], k === 'excedente_por_kg' ? 4 : 2); });
+    if (b.ajustar_taxas) CAMPOS_PCT_TABELA.forEach((k) => { if (nova[k] != null) nova[k] = r(nova[k], 3); });
+    Object.assign(nova, { cliente_doc: b.cliente_doc, cliente_nome: b.cliente_nome, cliente_por_raiz: b.cliente_por_raiz, copiada_de: origem.id, ativa: true,
+      nome: String(b.nome || '').trim().slice(0, 150) || `${origem.nome} — ${b.cliente_nome || b.cliente_doc}${ajuste ? ` (${ajuste > 0 ? '+' : ''}${String(ajuste).replace('.', ',')}%)` : ''}`.slice(0, 150) });
+    const campos = Object.keys(nova).filter((k) => nova[k] !== undefined);
+    await cliente.query('BEGIN');
+    const { rows } = await cliente.query(`INSERT INTO tabelas_preco (${campos.join(', ')}) VALUES (${campos.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
+      campos.map((k) => nova[k]));
+    for (const fx of origem.faixas) {
+      await cliente.query(
+        `INSERT INTO tabela_preco_faixas (tabela_preco_id, peso_de, peso_ate, valor_por_kg, origem, destino, tipo_carga, frete_minimo, volume_minimo, prazo_dias, cidades, ordem, modo_calculo, valor_kg_excedente, regiao)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        [rows[0].id, fx.peso_de, fx.peso_ate, r(fx.valor_por_kg, 4), fx.origem, fx.destino, fx.tipo_carga, r(fx.frete_minimo), fx.volume_minimo, fx.prazo_dias, fx.cidades, fx.ordem,
+          fx.modo_calculo, r(fx.valor_kg_excedente, 4), fx.regiao]);
+    }
+    await cliente.query('COMMIT');
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'criar_tabela_preco',
+      detalhes: `Copiou a tabela "${origem.nome}" para o cliente ${b.cliente_nome || b.cliente_doc} (${ajuste > 0 ? '+' : ''}${ajuste}% ${b.ajustar_taxas ? 'no frete e nas taxas' : 'no frete peso'})` });
+    return res.status(201).json(await buscarComFaixas(rows[0].id));
+  } catch (err) {
+    await cliente.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    return res.status(500).json({ erro: 'Erro ao copiar a tabela.' });
+  } finally { cliente.release(); }
 });
 
 // DELETE /api/tabelas-preco/:id

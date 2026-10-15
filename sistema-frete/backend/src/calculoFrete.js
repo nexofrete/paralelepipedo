@@ -17,7 +17,7 @@ async function buscarTrechos(transportadoraNome, transportadoraCnpj) {
         `SELECT f.*, tp.id AS tabela_preco_id, tp.nome AS tabela_nome, tp.uf_destino AS tabela_uf_destino, tp.prazo_dias AS tabela_prazo_dias,
                 tp.ad_valorem_percentual, tp.gris_percentual, tp.gris_minimo,
                 tp.pedagio AS tabela_pedagio, tp.tde AS tabela_tde, tp.tda AS tabela_tda,
-                tp.trt AS tabela_trt, tp.despacho_valor, tp.cubagem_kg_m3, tp.descarga_valor, tp.descarga_modo, tp.descarga_minimo, tp.descarga_aplicar, tp.descarga_clientes, tp.icms_incluir, tp.icms_aliquota, tp.icms_modo,
+                tp.trt AS tabela_trt, tp.despacho_valor, tp.cubagem_kg_m3, tp.descarga_valor, tp.descarga_modo, tp.descarga_minimo, tp.descarga_aplicar, tp.descarga_clientes, tp.icms_incluir, tp.icms_aliquota, tp.icms_modo, tp.cliente_doc, tp.cliente_nome, tp.cliente_por_raiz,
                 t.razao_social AS transportadora_nome
          FROM tabela_preco_faixas f
          JOIN tabelas_preco tp ON tp.id = f.tabela_preco_id
@@ -32,7 +32,7 @@ async function buscarTrechos(transportadoraNome, transportadoraCnpj) {
     `SELECT f.*, tp.id AS tabela_preco_id, tp.nome AS tabela_nome, tp.uf_destino AS tabela_uf_destino, tp.prazo_dias AS tabela_prazo_dias,
             tp.ad_valorem_percentual, tp.gris_percentual, tp.gris_minimo,
             tp.pedagio AS tabela_pedagio, tp.tde AS tabela_tde, tp.tda AS tabela_tda,
-            tp.trt AS tabela_trt, tp.despacho_valor, tp.cubagem_kg_m3, tp.descarga_valor, tp.descarga_modo, tp.descarga_minimo, tp.descarga_aplicar, tp.descarga_clientes, tp.icms_incluir, tp.icms_aliquota, tp.icms_modo,
+            tp.trt AS tabela_trt, tp.despacho_valor, tp.cubagem_kg_m3, tp.descarga_valor, tp.descarga_modo, tp.descarga_minimo, tp.descarga_aplicar, tp.descarga_clientes, tp.icms_incluir, tp.icms_aliquota, tp.icms_modo, tp.cliente_doc, tp.cliente_nome, tp.cliente_por_raiz,
             t.razao_social AS transportadora_nome
      FROM tabela_preco_faixas f
      JOIN tabelas_preco tp ON tp.id = f.tabela_preco_id
@@ -430,12 +430,12 @@ async function buscarTodosTrechosAtivos() {
     `SELECT f.*, tp.id AS tabela_preco_id, tp.nome AS tabela_nome, tp.uf_destino AS tabela_uf_destino,
             tp.ad_valorem_percentual, tp.gris_percentual, tp.gris_minimo,
             tp.pedagio AS tabela_pedagio, tp.tde AS tabela_tde, tp.tda AS tabela_tda,
-            tp.trt AS tabela_trt, tp.despacho_valor, tp.cubagem_kg_m3, tp.descarga_valor, tp.descarga_modo, tp.descarga_minimo, tp.descarga_aplicar, tp.descarga_clientes, tp.icms_incluir, tp.icms_aliquota, tp.icms_modo,
+            tp.trt AS tabela_trt, tp.despacho_valor, tp.cubagem_kg_m3, tp.descarga_valor, tp.descarga_modo, tp.descarga_minimo, tp.descarga_aplicar, tp.descarga_clientes, tp.icms_incluir, tp.icms_aliquota, tp.icms_modo, tp.cliente_doc, tp.cliente_nome, tp.cliente_por_raiz,
             t.razao_social AS transportadora_nome
      FROM tabela_preco_faixas f
      JOIN tabelas_preco tp ON tp.id = f.tabela_preco_id
      JOIN transportadoras t ON t.id = tp.transportadora_id
-     WHERE tp.ativa = TRUE
+     WHERE tp.ativa = TRUE AND tp.cliente_doc IS NULL
      ORDER BY t.razao_social ASC`
   );
   return rows;
@@ -449,11 +449,34 @@ async function buscarTodosTrechosAtivos() {
 // — sempre testando também o BAIRRO do cliente junto (algumas transportadoras
 // organizam a Capital por bairro, não pelo nome da cidade) — e por fim
 // calcula o Valor Total Calculado no trecho encontrado.
-async function calcularParaRegistro({ transportadoraCte, transportadoraCnpj, cidade, bairro, cidadeRedespacho, redespacho, observacoes, qtdVolumes, pesoKg, cubagemM3, valorFaturado, registro, xmlNfe, redespachoCnpj }) {
-  if (!transportadoraCte && !transportadoraCnpj) return { erro: 'Registro sem "Transporte Cte" (transportadora do CT-e) preenchida.' };
+// A tabela com cliente vale só para esse cliente (tomador): o CNPJ/CPF exato, ou a raiz do CNPJ (filiais).
+function tabelaDoCliente(t, doc) {
+  const d = String(doc || '').replace(/\D/g, '');
+  const c = String(t.cliente_doc || '');
+  if (!c || !d) return false;
+  return c === d || (t.cliente_por_raiz && c.length === 14 && d.length === 14 && c.slice(0, 8) === d.slice(0, 8));
+}
 
-  const trechos = await buscarTrechos(transportadoraCte, transportadoraCnpj);
-  if (trechos.length === 0) return { erro: 'Nenhuma tabela de preço ativa encontrada para a transportadora do CT-e.' };
+// clienteDoc: CNPJ/CPF de quem paga o frete. Primeiro tenta a tabela desse cliente;
+// sem trecho para o destino nela, usa a tabela geral. Tabela de outro cliente nunca vale.
+async function calcularParaRegistro(args) {
+  const { transportadoraCte, transportadoraCnpj, clienteDoc } = args;
+  if (!transportadoraCte && !transportadoraCnpj) return { erro: 'Registro sem "Transporte Cte" (transportadora do CT-e) preenchida.' };
+  const todos = await buscarTrechos(transportadoraCte, transportadoraCnpj);
+  const doCliente = todos.filter((t) => tabelaDoCliente(t, clienteDoc));
+  const gerais = todos.filter((t) => !t.cliente_doc);
+  if (doCliente.length) {
+    const r = await calcularComTrechos(doCliente, args);
+    if (!r.erro) return { ...r, tabelaCliente: true, explicacao: `Tabela do cliente ${doCliente[0].cliente_nome || doCliente[0].cliente_doc}: ${r.explicacao}` };
+    if (!gerais.length) return { ...r, erro: `Tabela do cliente sem trecho para este destino. ${r.erro}` };
+    const g = await calcularComTrechos(gerais, args);
+    return g.erro ? g : { ...g, explicacao: `${g.explicacao} — a tabela do cliente não tem este destino, usada a tabela geral`, avisoTabelaCliente: true };
+  }
+  if (gerais.length === 0) return { erro: 'Nenhuma tabela de preço ativa encontrada para a transportadora do CT-e.' };
+  return calcularComTrechos(gerais, args);
+}
+
+async function calcularComTrechos(trechos, { cidade, bairro, cidadeRedespacho, redespacho, observacoes, qtdVolumes, pesoKg, cubagemM3, valorFaturado, registro, xmlNfe, redespachoCnpj }) {
 
   let candidatos = [];
   let origemCidade = null;
@@ -609,6 +632,6 @@ async function calcularEGravar(id, origem = 'importacao') {
 module.exports = {
   calcularEGravar, prazoDoTrecho,
   buscarTrechos, buscarTodosTrechosAtivos, encontrarTrechoPorCidade, trechosDaCidade, preferirTrecho, encontrarCidadeMencionadaEmTexto, normalizarCidade, calcularFreteBase,
-  calcularComponentesEValorTotal, calcularParaRegistro, extrasDoRegistro, clienteNaLista,
+  calcularComponentesEValorTotal, calcularParaRegistro, extrasDoRegistro, clienteNaLista, tabelaDoCliente,
   ufDoTrecho, trechoNoEstado, escolherTrechoDoDestino, cidadeDeEntregaNaNota, municipiosComUf, municipiosConhecidos, bairrosConhecidos, citacaoValida, municipioNoTexto, cidadeDoRedespachoNoTexto,
 };

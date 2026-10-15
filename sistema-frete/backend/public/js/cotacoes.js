@@ -158,7 +158,7 @@
       $('cqDesc').value = ''; totalizar();
     });
     const dadosCarga = () => ({ destino_cidade: $('cqDesCid').value, destino_uf: $('cqDesUf').value, destino_bairro: $('cqDesBairro').value, peso_kg: $('cqPeso').value,
-      volumes: $('cqVol').value, cubagem_m3: $('cqCub').value, valor_mercadoria: $('cqValor').value, cliente_nome: $('cqCliente').value });
+      volumes: $('cqVol').value, cubagem_m3: $('cqCub').value, valor_mercadoria: $('cqValor').value, cliente_nome: $('cqCliente').value, cliente_doc: $('cqDoc').value });
     $('cqCalcular').addEventListener('click', async (e) => {
       const b = e.currentTarget; b.disabled = true;
       try {

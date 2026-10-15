@@ -2103,3 +2103,11 @@ CREATE INDEX IF NOT EXISTS idx_manutencao_planos_veiculo ON manutencao_planos (v
 -- Resultado por CT-e e por cliente: % de impostos sobre o frete (PIS/COFINS/IR/CSLL),
 -- % do seguro da carga sobre o valor da mercadoria e a meta de margem.
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS resultado_config JSONB;
+-- Tabela de frete por cliente (como no SSW): a tabela com cliente só vale para
+-- quem paga o frete (tomador) com esse CNPJ/CPF — ou qualquer filial, com a raiz.
+-- Sem trecho para o destino na tabela do cliente, vale a tabela geral.
+ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS cliente_doc VARCHAR(14);
+ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS cliente_nome VARCHAR(200);
+ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS cliente_por_raiz BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS copiada_de INTEGER;
+CREATE INDEX IF NOT EXISTS idx_tabelas_preco_cliente ON tabelas_preco (cliente_doc) WHERE cliente_doc IS NOT NULL;

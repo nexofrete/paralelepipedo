@@ -2476,9 +2476,10 @@ const CAMPOS_TABELA_PRECO = [
   ['pDescargaAplicar', 'descarga_aplicar'], ['pDescargaClientes', 'descarga_clientes'],
   ['pIcmsIncluir', 'icms_incluir'], ['pIcmsAliquota', 'icms_aliquota'], ['pIcmsModo', 'icms_modo'],
   ['pRetornoPercentual', 'retorno_percentual'],
+  ['pClienteNome', 'cliente_nome'], ['pClienteDoc', 'cliente_doc'],
 ];
 // Campos novos sempre vão no salvar (vazio = apagar o valor); os outros só quando preenchidos.
-const CAMPOS_TABELA_SEMPRE = ['descarga_valor', 'descarga_modo', 'descarga_minimo', 'descarga_aplicar', 'descarga_clientes', 'icms_incluir', 'icms_aliquota', 'icms_modo', 'retorno_percentual'];
+const CAMPOS_TABELA_SEMPRE = ['cliente_doc', 'cliente_nome', 'descarga_valor', 'descarga_modo', 'descarga_minimo', 'descarga_aplicar', 'descarga_clientes', 'icms_incluir', 'icms_aliquota', 'icms_modo', 'retorno_percentual'];
 
 function abrirFormularioTabelaPreco(tabela = null) {
   editandoTabelaPrecoId = tabela ? tabela.id : null;
@@ -2498,6 +2499,8 @@ function abrirFormularioTabelaPreco(tabela = null) {
   });
   atualizarUfTransportadoraSelecionada();
   document.getElementById('pAtiva').checked = tabela ? !!tabela.ativa : true;
+  document.getElementById('pClientePorRaiz').checked = !!tabela?.cliente_por_raiz;
+  document.getElementById('btnCopiarTabelaCliente').classList.toggle('oculto', !tabela);
 
   corpoFaixas.innerHTML = '';
   if (tabela && tabela.faixas && tabela.faixas.length) {
@@ -2522,7 +2525,7 @@ document.getElementById('btnSalvarTabelaPreco').addEventListener('click', async 
   const erroEl = document.getElementById('erroFormTabelaPreco');
   erroEl.classList.remove('visivel');
 
-  const corpo = { ativa: document.getElementById('pAtiva').checked, faixas: lerFaixasDoFormulario() };
+  const corpo = { ativa: document.getElementById('pAtiva').checked, faixas: lerFaixasDoFormulario(), cliente_por_raiz: document.getElementById('pClientePorRaiz').checked };
   CAMPOS_TABELA_PRECO.forEach(([elId, campo]) => {
     const el = document.getElementById(elId);
     let valor = el.value;
@@ -2604,11 +2607,76 @@ document.getElementById('buscaTransportadoraTabela').addEventListener('input', (
 });
 document.getElementById('pTransportadoraId').addEventListener('change', atualizarUfTransportadoraSelecionada);
 document.getElementById('filtroTransportadoraTabela').addEventListener('change', carregarTabelasPreco);
+document.getElementById('filtroTipoTabela')?.addEventListener('change', carregarTabelasPreco);
+
+// ---------- Tabela de preço por cliente ----------
+const escaparHtmlTabelaCliente = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const docFmtTabela = (d) => { const x = String(d || '').replace(/\D/g, ''); return x.length === 14 ? x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : x.length === 11 ? x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : x; };
+// Busca no cadastro de clientes enquanto digita o nome (ou o CNPJ) e preenche o outro campo.
+function ligarBuscaClienteTabela(campoNome, campoDoc, caixa) {
+  let achados = []; let tempo = null;
+  const buscar = async () => {
+    const q = campoNome.value.trim();
+    if (q.length < 3) { caixa.classList.add('oculto'); return; }
+    const r = await apiFetch(`/api/clientes?q=${encodeURIComponent(q)}`).then((x) => (x.ok ? x.json() : { clientes: [] })).catch(() => ({ clientes: [] }));
+    achados = (r.clientes || []).slice(0, 12);
+    caixa.innerHTML = achados.map((k, i) => `<div data-sug="${i}" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--borda); font-size:13px;"><b>${escaparHtmlTabelaCliente(k.razao_social)}</b> <small style="color:var(--texto-fraco);">${docFmtTabela(k.documento)} · ${escaparHtmlTabelaCliente(k.municipio || '')}/${escaparHtmlTabelaCliente(k.uf || '')}</small></div>`).join('');
+    caixa.classList.toggle('oculto', !achados.length);
+  };
+  campoNome.addEventListener('input', () => { clearTimeout(tempo); tempo = setTimeout(buscar, 300); });
+  campoNome.addEventListener('blur', () => setTimeout(() => caixa.classList.add('oculto'), 200));
+  caixa.addEventListener('mousedown', (e) => {
+    const el = e.target.closest('[data-sug]'); if (!el) return;
+    const k = achados[Number(el.dataset.sug)];
+    campoNome.value = k.razao_social || ''; campoDoc.value = docFmtTabela(k.documento);
+    caixa.classList.add('oculto');
+  });
+}
+ligarBuscaClienteTabela(document.getElementById('pClienteNome'), document.getElementById('pClienteDoc'), document.getElementById('pClienteSug'));
+
+// "Copiar para um cliente": a tabela geral vira a tabela do cliente, com desconto ou acréscimo.
+document.getElementById('btnCopiarTabelaCliente').addEventListener('click', () => {
+  if (!editandoTabelaPrecoId) return;
+  const fundo = document.createElement('div');
+  fundo.className = 'modal-overlay';
+  fundo.innerHTML = `<div class="painel modal-card" style="max-width:560px; width:100%; padding:22px 24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">⭐ Copiar a tabela para um cliente</h3><span style="cursor:pointer; font-size:18px;" data-tcp-fechar>✕</span></div>
+    <p style="font-size:13px; color:var(--texto-fraco);">Cria uma tabela só deste cliente com todos os trechos de "${escaparHtmlTabelaCliente(document.getElementById('pNome').value)}". Use desconto (ex.: -5) ou acréscimo (ex.: 3). Depois dá para editar trecho por trecho.</p>
+    <div class="campo" style="position:relative;"><label for="tcpNome">Cliente</label><input id="tcpNome" placeholder="Nome do cliente (busca no cadastro)" autocomplete="off" />
+      <div id="tcpSug" class="oculto" style="position:absolute; z-index:20; left:0; right:0; top:100%; background:var(--bg-card); border:1px solid var(--borda); border-radius:8px; max-height:220px; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,.25);"></div></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div class="campo"><label for="tcpDoc">CNPJ/CPF</label><input id="tcpDoc" maxlength="18" /></div>
+      <div class="campo"><label for="tcpAjuste">Desconto (−) ou acréscimo (+) em %</label><input id="tcpAjuste" inputmode="decimal" placeholder="ex.: -5" /></div></div>
+    <label style="display:flex; gap:8px; align-items:center; font-size:13px; margin:4px 0;"><input type="checkbox" id="tcpRaiz" style="width:auto;" /> Vale para todas as filiais do cliente (mesma raiz de CNPJ)</label>
+    <label style="display:flex; gap:8px; align-items:center; font-size:13px; margin:4px 0 12px;"><input type="checkbox" id="tcpTaxas" style="width:auto;" /> Aplicar o % também nas taxas (pedágio, TDE, TDA, TRT, despacho, ad valorem, GRIS)</label>
+    <div id="tcpErro" class="mensagem-erro"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-tcp-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="tcpCriar" style="width:auto;">Criar tabela do cliente</button></div></div>`;
+  document.body.appendChild(fundo);
+  const fechar = () => fundo.remove();
+  fundo.addEventListener('click', (e) => { if (e.target === fundo || e.target.closest('[data-tcp-fechar]')) fechar(); });
+  ligarBuscaClienteTabela(fundo.querySelector('#tcpNome'), fundo.querySelector('#tcpDoc'), fundo.querySelector('#tcpSug'));
+  fundo.querySelector('#tcpNome').focus();
+  fundo.querySelector('#tcpCriar').addEventListener('click', async () => {
+    const erroEl = fundo.querySelector('#tcpErro'); erroEl.classList.remove('visivel');
+    try {
+      const r = await apiFetch(`/api/tabelas-preco/${editandoTabelaPrecoId}/copiar-para-cliente`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_nome: fundo.querySelector('#tcpNome').value, cliente_doc: fundo.querySelector('#tcpDoc').value, cliente_por_raiz: fundo.querySelector('#tcpRaiz').checked,
+          ajuste_pct: fundo.querySelector('#tcpAjuste').value || 0, ajustar_taxas: fundo.querySelector('#tcpTaxas').checked }) });
+      const dados = await r.json();
+      if (!r.ok) { erroEl.textContent = dados.erro || 'Erro ao copiar.'; erroEl.classList.add('visivel'); return; }
+      fechar();
+      carregarTabelasPreco();
+      abrirFormularioTabelaPreco(dados);
+      mostrarAlerta(`Tabela do cliente criada: "${dados.nome}".`, { tipo: 'sucesso' });
+    } catch { erroEl.textContent = 'Falha de conexão com o servidor.'; erroEl.classList.add('visivel'); }
+  });
+});
 
 async function carregarTabelasPreco() {
   try {
     const transportadoraId = document.getElementById('filtroTransportadoraTabela').value;
-    const query = transportadoraId ? `?transportadora_id=${transportadoraId}` : '';
+    const tipoTabela = document.getElementById('filtroTipoTabela')?.value || '';
+    const query = `?${new URLSearchParams({ ...(transportadoraId ? { transportadora_id: transportadoraId } : {}), ...(tipoTabela ? { tipo: tipoTabela } : {}) })}`;
     const resposta = await apiFetch(`/api/tabelas-preco${query}`);
     if (!resposta.ok) return;
     const tabelas = await resposta.json();
@@ -2618,7 +2686,8 @@ async function carregarTabelasPreco() {
       <tr>
         <td><a class="link-registro" onclick="abrirTabelaPrecoParaEdicao(${t.id})">${t.nome}</a>
           <a class="link-registro" title="Imprimir / salvar em PDF só esta tabela" style="margin-left:8px; text-decoration:none;" onclick="imprimirTabelasPreco({ tabela_id: ${t.id} })">🖨</a>
-          <a class="link-registro" title="Exportar a tabela completa (dados + trechos) em Excel, para usar em outra empresa" style="margin-left:6px; text-decoration:none;" onclick="exportarTabelaCompleta(${t.id})">⬇</a></td>
+          <a class="link-registro" title="Exportar a tabela completa (dados + trechos) em Excel, para usar em outra empresa" style="margin-left:6px; text-decoration:none;" onclick="exportarTabelaCompleta(${t.id})">⬇</a>
+          ${t.cliente_doc ? `<br><span class="badge badge-pendente" title="Vale só quando este cliente paga o frete">⭐ ${escaparHtmlTabelaCliente(t.cliente_nome || t.cliente_doc)}${t.cliente_por_raiz ? ' (todas as filiais)' : ''}</span>` : ''}</td>
         <td>${t.transportadora_nome}</td>
         <td>${t.cidade_destino ? `${t.cidade_destino}/${t.uf_destino || ''}` : (t.uf_destino || 'Todos')}</td>
         <td>${formatoMoeda(t.valor_minimo)}</td>

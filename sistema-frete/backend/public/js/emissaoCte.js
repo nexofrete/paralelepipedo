@@ -609,6 +609,10 @@
     } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
   }
 
+  // CNPJ/CPF de quem paga o frete: a tabela de preço do cliente vale para ele.
+  function docTomador() {
+    try { const d = coletar(); const p = { 0: d.remetente, 1: d.expedidor, 2: d.recebedor, 3: d.destinatario, 4: d.outroTomador }[String(d.tomador ?? '0')] || {}; return String(p.cnpj || p.cpf || '').replace(/\D/g, ''); } catch { return ''; }
+  }
   async function calcularPelaTabela() {
     try {
       const r = await api('/calcular-frete', {
@@ -616,12 +620,12 @@
         body: JSON.stringify({
           cidade: $('fim_mun').value, uf: $('fim_uf').value, bairro: $('dest_bairro').value, peso: num($('carga_peso').value),
           volumes: Number($('carga_vol').value) || 0, cubagem: num($('carga_m3').value), valorCarga: num($('carga_valor').value),
-          cliente: $('dest_nome').value, tipoCarga: $('carga_tipo').value,
+          cliente: $('dest_nome').value, tipoCarga: $('carga_tipo').value, tomadorDoc: docTomador(),
         }),
       });
       $('cteComponentes').innerHTML = '';
       r.componentes.forEach((c) => adicionarComponente(c.xNome, c.vComp));
-      $('cteExplicaCalculo').textContent = `Tabela "${r.tabela}": ${r.explicacao}${r.prazo ? ` · prazo ${r.prazo} dia(s)` : ''}`;
+      $('cteExplicaCalculo').textContent = `${r.tabela_cliente ? '★ Tabela do cliente — ' : ''}Tabela "${r.tabela}": ${r.explicacao}${r.prazo ? ` · prazo ${r.prazo} dia(s)` : ''}`;
     } catch (err) { mostrarAlerta(err.message, { tipo: 'aviso' }); }
   }
 

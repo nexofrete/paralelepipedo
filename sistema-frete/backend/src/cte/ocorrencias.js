@@ -77,6 +77,7 @@ async function prazoDoCte(reg, empresa) {
     const r = await require('../calculoFrete').calcularParaRegistro({
       transportadoraCte: empresa.razao_social, transportadoraCnpj: empresa.cnpj, cidade: d.fim?.xMun, bairro: d.destinatario?.endereco?.xBairro,
       qtdVolumes: 1, pesoKg: 1, valorFaturado: 0, registro: { uf: d.fim?.UF }, xmlNfe: null,
+      clienteDoc: (() => { const p = { 0: d.remetente, 1: d.expedidor, 2: d.recebedor, 3: d.destinatario, 4: d.outroTomador }[String(d.tomador ?? '0')] || {}; return p.cnpj || p.cpf; })(),
     });
     const p = r?.trecho?.prazo_dias ?? r?.trecho?.tabela_prazo_dias;
     if (p != null && Number(p) >= 0) return { dias: Number(p), origem: 'tabela' };

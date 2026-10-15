@@ -42,12 +42,14 @@ function agrupar(nfes) {
   return [...grupos.values()];
 }
 
+// CNPJ/CPF de quem paga o frete (tabela de preço do cliente).
+const tomadorDoc = (d) => { const p = { 0: d.remetente, 1: d.expedidor, 2: d.recebedor, 3: d.destinatario, 4: d.outroTomador }[String(d.tomador ?? '0')] || {}; return String(p.cnpj || p.cpf || '').replace(/\D/g, ''); };
 async function freteDaTabela(e, d, notas) {
   try {
     const r = await require('../calculoFrete').calcularParaRegistro({
       transportadoraCte: e.razao_social, transportadoraCnpj: e.cnpj, cidade: d.fim.xMun, bairro: d.destinatario?.endereco?.xBairro,
       qtdVolumes: notas.reduce((s, n) => s + (n.volumes || 0), 0), pesoKg: notas.reduce((s, n) => s + (n.pesoBruto || 0), 0), cubagemM3: null,
-      valorFaturado: notas.reduce((s, n) => s + (n.valor || 0), 0),
+      valorFaturado: notas.reduce((s, n) => s + (n.valor || 0), 0), clienteDoc: tomadorDoc(d),
       registro: { uf: d.fim.UF, cliente: d.destinatario?.xNome, tipo_carga: null }, xmlNfe: null,
     });
     if (r.erro) return { erro: r.erro };

@@ -167,6 +167,23 @@ Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), C
 
 Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
 
+## Tabela de frete por cliente
+
+Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadastros → Tabelas de Preço**, na tabela da própria empresa.
+
+- **⭐ Copiar para um cliente** (abra a tabela geral):
+  - escolha o cliente e o **desconto ou acréscimo em %** (ex.: −8);
+  - marque se vale para **todas as filiais** (mesma raiz de CNPJ);
+  - marque se o % vale também para as taxas (pedágio, TDE, TDA, ad valorem, GRIS...).
+
+  O sistema cria a tabela do cliente com todos os trechos, e depois dá para ajustar trecho por trecho.
+- Também dá para preencher o **Cliente da tabela** em qualquer tabela. Em branco, é a tabela geral.
+- **Como o preço é escolhido:**
+  - na **cotação**, no **CT-e** (botão "Calcular pela tabela"), no rascunho de CT-e que vem da NF-e/coleta e no prazo de entrega, o sistema usa primeiro a tabela de **quem paga o frete (tomador)**;
+  - destino que não está na tabela do cliente usa a **tabela geral**, com aviso na explicação do cálculo;
+  - a tabela de um cliente **nunca** é usada para outro.
+- Na lista de tabelas, as de cliente aparecem com ⭐ e o nome do cliente. O filtro "Só as de clientes ⭐" mostra todas.
+
 ## Atalhos para trabalhar rápido (quem vem do SSW)
 
 - **Ir para… (Ctrl+K ou F2)**, em qualquer tela: digite o **código da tela** e aperte Enter. Também dá para digitar parte do nome ("fatura", "abastecimento", "novo cte").

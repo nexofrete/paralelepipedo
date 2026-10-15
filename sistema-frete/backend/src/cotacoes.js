@@ -68,7 +68,7 @@ async function calcular(b = {}) {
   const calc = require('./calculoFrete');
   const r = await calc.calcularParaRegistro({
     transportadoraCte: e.razao_social, transportadoraCnpj: e.cnpj, cidade: destino, bairro: texto(b.destino_bairro, 120),
-    qtdVolumes: vol, pesoKg: peso, cubagemM3: cub, valorFaturado: numero(b.valor_mercadoria, 2) || 0,
+    qtdVolumes: vol, pesoKg: peso, cubagemM3: cub, valorFaturado: numero(b.valor_mercadoria, 2) || 0, clienteDoc: doc(b.cliente_doc),
     registro: { uf, cliente: texto(b.cliente_nome, 200), tipo_carga: null }, xmlNfe: null,
   });
   if (r.erro) {

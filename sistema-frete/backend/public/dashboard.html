@@ -1431,9 +1431,13 @@
                 <h3 style="margin:0; font-size:16px;">Tabelas de Preço</h3>
                 <p style="margin:4px 0 0;">Preço por faixa de peso de cada transportadora</p>
               </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <select id="filtroTransportadoraTabela" class="busca-input" style="width:260px;">
                 <option value="">Todas as transportadoras</option>
               </select>
+              <select id="filtroTipoTabela" class="busca-input" style="width:190px;" aria-label="Tipo de tabela">
+                <option value="">Gerais e de clientes</option><option value="gerais">Só as gerais</option><option value="clientes">Só as de clientes ⭐</option>
+              </select></div>
             </div>
             <div style="display:flex; gap:8px;">
               <button class="btn btn-secundario" id="btnImprimirTabelasPreco" style="width:auto;" title="Relatório das tabelas (da transportadora escolhida no filtro, ou de todas) pra imprimir ou salvar em PDF">🖨 Imprimir / PDF</button>
@@ -1495,6 +1499,15 @@
                 <div class="campo" style="margin-bottom:0; grid-column: span 2;">
                   <label>Nome da tabela</label>
                   <input type="text" id="pNome" placeholder="Ex: SP → RJ Capital 2026" />
+                </div>
+                <div class="campo" style="margin-bottom:0; grid-column: 1 / -1; border:1px dashed var(--borda); border-radius:10px; padding:10px 12px;">
+                  <label style="margin-bottom:8px;">⭐ Cliente da tabela <span style="font-weight:400;">— deixe em branco para a tabela geral. Com cliente, a tabela vale só quando ele paga o frete (tomador); destino que não estiver nela usa a tabela geral.</span></label>
+                  <div style="display:grid; grid-template-columns:minmax(220px, 2fr) minmax(160px, 1fr) auto; gap:10px; align-items:center;">
+                    <div style="position:relative;"><input type="text" id="pClienteNome" placeholder="Nome do cliente (busca no cadastro)" autocomplete="off" />
+                      <div id="pClienteSug" class="oculto" style="position:absolute; z-index:20; left:0; right:0; top:100%; background:var(--bg-card); border:1px solid var(--borda); border-radius:8px; max-height:220px; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,.25);"></div></div>
+                    <input type="text" id="pClienteDoc" placeholder="CNPJ/CPF" maxlength="18" />
+                    <label style="display:flex; gap:6px; align-items:center; margin:0; white-space:nowrap; font-size:12.5px;"><input type="checkbox" id="pClientePorRaiz" style="width:auto;" /> todas as filiais</label>
+                  </div>
                 </div>
                 <div class="campo" style="margin-bottom:0;">
                   <label>UF Destino</label>
@@ -1696,6 +1709,7 @@
                 <button class="btn btn-primario" id="btnSalvarTabelaPreco" style="width:auto; padding:10px 20px;">Salvar</button>
                 <button class="btn btn-secundario" id="btnCancelarTabelaPreco" style="width:auto; padding:10px 20px;">Cancelar</button>
                 <button class="btn btn-secundario oculto" id="btnVerHistoricoTabelaPreco" style="width:auto; padding:10px 20px;">🕐 Ver Histórico</button>
+                <button class="btn btn-secundario oculto" id="btnCopiarTabelaCliente" style="width:auto; padding:10px 20px;" title="Cria uma tabela só deste cliente a partir desta, com desconto ou acréscimo">⭐ Copiar para um cliente</button>
                 <button class="btn btn-secundario oculto" id="btnExcluirTabelaPreco" style="width:auto; padding:10px 20px; color:var(--vermelho); border-color:var(--vermelho); margin-left:auto;">Excluir</button>
               </div>
               <div id="erroFormTabelaPreco" class="mensagem-erro" style="margin-top:14px;"></div>

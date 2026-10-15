@@ -220,7 +220,7 @@ router.post('/calcular-frete', autenticar, emitir, async (req, res) => {
     const b = req.body || {};
     const r = await require('../calculoFrete').calcularParaRegistro({
       transportadoraCte: e.razao_social, transportadoraCnpj: e.cnpj, cidade: b.cidade, bairro: b.bairro,
-      qtdVolumes: b.volumes, pesoKg: b.peso, cubagemM3: b.cubagem, valorFaturado: b.valorCarga,
+      qtdVolumes: b.volumes, pesoKg: b.peso, cubagemM3: b.cubagem, valorFaturado: b.valorCarga, clienteDoc: b.tomadorDoc,
       registro: { uf: b.uf, cliente: b.cliente, tipo_carga: b.tipoCarga }, xmlNfe: null,
     });
     if (r.erro) return res.status(404).json({ erro: `${r.erro} (cadastre a própria empresa em Cadastros → Transportadoras, com a tabela de preço dela).` });
@@ -230,7 +230,7 @@ router.post('/calcular-frete', autenticar, emitir, async (req, res) => {
       ['TRT', c.trt], ['DESPACHO', c.despacho], ['DESCARGA', c.descarga],
     ].filter(([, v]) => Number(v) > 0).map(([xNome, v]) => ({ xNome, vComp: Math.round(v * 100) / 100 }));
     // O ICMS embutido pela tabela entra no total, não como componente.
-    res.json({ componentes, total: Math.round(c.total * 100) / 100, explicacao: r.explicacao, tabela: r.trecho.tabela_nome, prazo: r.trecho.prazo_dias ?? r.trecho.tabela_prazo_dias ?? null });
+    res.json({ componentes, total: Math.round(c.total * 100) / 100, explicacao: r.explicacao, tabela: r.trecho.tabela_nome, tabela_cliente: !!r.tabelaCliente, prazo: r.trecho.prazo_dias ?? r.trecho.tabela_prazo_dias ?? null });
   } catch (err) { responderErro(res, err, 'Erro ao calcular o frete.'); }
 });
 

@@ -1930,3 +1930,34 @@ CREATE TABLE IF NOT EXISTS acerto_lancamentos (
     criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_acerto_lancamentos ON acerto_lancamentos (acerto_id);
+
+-- Boleto registrado (CNAB 240): configuração do banco, boleto de cada fatura,
+-- arquivos de remessa e de retorno.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS boleto_config JSONB;   -- { banco, agencia, agencia_dv, conta, conta_dv, carteira, convenio, ... }
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS boleto_proximo_nn BIGINT NOT NULL DEFAULT 1;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS boleto_proximo_nsa INTEGER NOT NULL DEFAULT 1;
+-- boleto_status: gerado, remetido, registrado, rejeitado, pago, baixar (pedido de baixa a enviar), baixado
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_banco VARCHAR(3);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_nosso_numero VARCHAR(25);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_nn_exibir VARCHAR(30);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_linha VARCHAR(47);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_codigo VARCHAR(44);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_valor NUMERIC(14,2);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_vencimento DATE;
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_status VARCHAR(12);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_mensagem VARCHAR(250);
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS boleto_remessa_id INTEGER;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_faturas_boleto_nn ON faturas_transporte (boleto_banco, boleto_nosso_numero) WHERE boleto_nosso_numero IS NOT NULL;
+CREATE TABLE IF NOT EXISTS boleto_arquivos (
+    id              SERIAL PRIMARY KEY,
+    tipo            VARCHAR(8) NOT NULL,       -- remessa, retorno
+    banco           VARCHAR(3),
+    nsa             INTEGER,
+    nome_arquivo    VARCHAR(120),
+    conteudo        TEXT NOT NULL,
+    qtd             INTEGER NOT NULL DEFAULT 0,
+    valor_total     NUMERIC(14,2) NOT NULL DEFAULT 0,
+    resultado       JSONB,                     -- retorno: o que foi feito em cada título
+    usuario_nome    VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

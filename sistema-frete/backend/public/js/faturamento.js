@@ -36,8 +36,8 @@
   function abrirAba(nome) {
     abaAtual = nome;
     document.querySelectorAll('[data-fat-aba]').forEach((a) => a.classList.toggle('ativo', a.dataset.fatAba === nome));
-    ['resumo', 'faturas', 'afaturar', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
-    ({ resumo: resumo, faturas: faturas, afaturar: aFaturar, config: configuracao })[nome]().catch(erro);
+    ['resumo', 'faturas', 'afaturar', 'boletos', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
+    ({ resumo: resumo, faturas: faturas, afaturar: aFaturar, boletos: boletos, config: configuracao })[nome]().catch(erro);
   }
 
   // ---------------- Contas a receber ----------------
@@ -136,6 +136,7 @@
         <div class="campo"><label for="fatRecForma">Forma</label><select id="fatRecForma">${Object.entries(FORMAS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
         <div class="campo largo"><label for="fatRecObs">Observação</label><input type="text" id="fatRecObs" placeholder="ex.: com juros de 2 dias" /></div>
         <div class="campo" style="display:flex; align-items:flex-end;"><button class="btn btn-primario" id="fatReceber" style="width:auto;">💵 Dar baixa</button></div></div></div>` : ''}
+      ${secaoBoleto(f, aberta)}
       ${f.pagamentos.length ? `<div class="cte-secao"><h4>Recebimentos</h4><table class="edi-tabela"><tbody>${f.pagamentos.map((p) => `<tr><td>${dia(p.data)}</td><td>${moeda(p.valor)}</td><td>${FORMAS[p.forma] || p.forma}</td><td>${esc(p.observacao || '')}</td><td style="color:var(--texto-fraco);">${esc(p.usuario_nome || '')}</td>
         <td><button class="btn btn-secundario" data-estornar="${p.id}" style="width:auto; font-size:12px;">Estornar</button></td></tr>`).join('')}</tbody></table></div>` : ''}
       <div class="cte-secao"><h4>CT-e da fatura (${f.itens.length})</h4><div style="max-height:34vh; overflow:auto;"><table class="edi-tabela"><thead><tr><th>CT-e</th><th>Emissão</th><th>NF</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Valor</th></tr></thead><tbody>
@@ -152,6 +153,12 @@
     modal.classList.remove('oculto');
     const recarregar = async () => { await abrirFatura(id); carregarFaturas().catch(() => {}); };
     $('fatImprimir').addEventListener('click', () => imprimir(id));
+    $('fbGerar')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try { await post(`/${id}/boleto`); await recarregar(); } catch (err) { erro(err); btn.disabled = false; }
+    });
+    $('fbVer')?.addEventListener('click', () => window.open(`/api/faturamento/${id}/boleto?token=${encodeURIComponent(token)}`, '_blank'));
+    $('fbCopiar')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(f.boleto_linha); mostrarAlerta('Linha digitável copiada.', { tipo: 'sucesso' }); } catch { await pedirTexto('Copie a linha digitável:', { valor: f.boleto_linha }); } });
     $('fatCopiarPix')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(f.pix); mostrarAlerta('PIX copia e cola copiado.', { tipo: 'sucesso' }); } catch { await pedirTexto('Copie o PIX copia e cola:', { valor: f.pix, multilinha: true }); } });
     $('fatReceber')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget; btn.disabled = true;
@@ -174,6 +181,94 @@
       const motivo = await pedirTexto('Motivo do cancelamento. Os CT-e voltam para “A faturar”.', { titulo: 'Cancelar fatura', tipo: 'aviso', textoOk: 'Cancelar fatura' });
       if (motivo == null) return;
       try { await post(`/${id}/cancelar`, { motivo }); await recarregar(); } catch (err) { erro(err); }
+    });
+  }
+
+  // ---------------- Boleto ----------------
+  const BOLETO = { gerado: ['Gerado — falta mandar ao banco (remessa)', 'badge-cte-rascunho'], remetido: ['Na remessa — aguardando o banco', 'badge-cte-enviando'],
+    registrado: ['Registrado no banco', 'badge-cte-autorizado'], rejeitado: ['Rejeitado pelo banco', 'badge-cte-rejeitado'], pago: ['Pago', 'badge-cte-autorizado'],
+    baixar: ['Baixa a pedir na próxima remessa', 'badge-cte-rascunho'], baixa_pedida: ['Baixa pedida ao banco', 'badge-cte-enviando'], baixado: ['Baixado', 'badge-cte-cancelado'] };
+  const linhaFmt = (l) => (l ? `${l.slice(0, 5)}.${l.slice(5, 10)} ${l.slice(10, 15)}.${l.slice(15, 21)} ${l.slice(21, 26)}.${l.slice(26, 32)} ${l[32]} ${l.slice(33)}` : '');
+  function secaoBoleto(f, aberta) {
+    const ativo = ['gerado', 'remetido', 'registrado'].includes(f.boleto_status);
+    if (!ativo && !aberta) return f.boleto_status ? `<div class="cte-secao"><h4>Boleto</h4><span class="badge ${BOLETO[f.boleto_status]?.[1] || ''}">${esc(BOLETO[f.boleto_status]?.[0] || f.boleto_status)}</span></div>` : '';
+    return `<div class="cte-secao"><h4>🏦 Boleto</h4>${ativo ? `
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;"><span class="badge ${BOLETO[f.boleto_status][1]}">${BOLETO[f.boleto_status][0]}</span>
+        <span style="font-size:13px;">nosso número <b>${esc(f.boleto_nn_exibir)}</b> · ${moeda(f.boleto_valor)} · vence ${dia(f.boleto_vencimento)}</span></div>
+      <div style="font-family:monospace; font-size:15px; margin:8px 0;">${esc(linhaFmt(f.boleto_linha))}</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-secundario" id="fbVer" style="width:auto;">🖨 Ver / imprimir boleto</button><button class="btn btn-secundario" id="fbCopiar" style="width:auto;">📋 Copiar linha digitável</button></div>
+      <div style="font-size:12px; color:var(--texto-fraco); margin-top:6px;">O boleto também sai junto com a fatura impressa e no e-mail.${f.boleto_status === 'gerado' ? ' Ele só vale depois de ir para o banco na remessa (aba 🏦 Boletos).' : ''}</div>`
+      : `${f.boleto_status ? `<div style="margin-bottom:8px;"><span class="badge ${BOLETO[f.boleto_status]?.[1] || ''}">${esc(BOLETO[f.boleto_status]?.[0] || f.boleto_status)}</span>${f.boleto_mensagem ? ` <small>${esc(f.boleto_mensagem)}</small>` : ''}</div>` : ''}
+        <button class="btn btn-secundario" id="fbGerar" style="width:auto;">🏦 Gerar boleto de ${moeda(f.saldo)}</button>`}</div>`;
+  }
+
+  async function boletos() {
+    const [cfg, pend, arqs] = await Promise.all([api('/boleto/config'), api('/boleto/pendentes'), api('/boleto/arquivos')]);
+    const campo = (id, rotulo, valor, extra = '') => `<div class="campo"><label for="${id}">${rotulo}</label><input type="text" id="${id}" value="${esc(valor ?? '')}" ${extra} /></div>`;
+    $('fat-aba-boletos').innerHTML = `<div class="painel" style="padding:20px; margin-bottom:16px;">
+        <div class="cte-aviso" style="margin-top:0;">⚠ <b>Antes de usar:</b> peça ao banco a <b>cobrança registrada com CNAB 240</b> e faça a <b>homologação</b>: mande ao banco a primeira remessa (com 1 ou 2 boletos de teste) e espere a aprovação. Cada banco confere o arquivo e o boleto do jeito dele.</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:18px; margin-top:14px;">
+          <div class="cte-secao" style="margin:0;"><h4>1. Mandar ao banco (remessa)</h4>
+            ${pend.length ? `<table class="edi-tabela"><tbody>${pend.map((p) => `<tr><td>Fatura ${esc(p.numero)}</td><td>${esc(p.tomador_nome || '')}</td><td class="n">${moeda(p.boleto_valor)}</td><td><small>${p.boleto_status === 'baixar' ? 'pedido de baixa' : 'boleto novo'}</small></td></tr>`).join('')}</tbody></table>
+              <button class="btn btn-primario" id="fbRemessa" style="width:auto; margin-top:10px;">⬇ Gerar arquivo de remessa (${pend.length})</button>
+              <div style="font-size:12px; color:var(--texto-fraco); margin-top:6px;">Envie o arquivo pelo internet banking (área de cobrança / transferência de arquivos).</div>`
+              : '<p style="font-size:13px; color:var(--texto-fraco);">Nada para mandar. Gere os boletos nas faturas (botão 🏦 Gerar boleto).</p>'}</div>
+          <div class="cte-secao" style="margin:0;"><h4>2. Ler o retorno do banco</h4>
+            <p style="font-size:13px; margin-top:0;">Baixe o arquivo de retorno no internet banking (todo dia) e escolha aqui. Os boletos pagos dão <b>baixa sozinhos</b> nas faturas.</p>
+            <input type="file" id="fbRetorno" accept=".ret,.txt,.RET,.TXT" />
+            <div id="fbResultado" style="margin-top:10px;"></div></div>
+        </div></div>
+      <div class="painel" style="padding:20px; margin-bottom:16px;"><h4 style="margin-top:0;">Arquivos</h4>
+        ${arqs.length ? `<table class="edi-tabela"><thead><tr><th>Data</th><th>Tipo</th><th>Arquivo</th><th class="n">Títulos</th><th class="n">Valor</th><th>Por</th><th></th></tr></thead><tbody>
+          ${arqs.map((a) => `<tr><td>${new Date(a.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td><td>${a.tipo === 'remessa' ? '⬆ Remessa' : '⬇ Retorno'}</td>
+            <td>${esc(a.nome_arquivo || '')}</td><td class="n">${a.qtd}</td><td class="n">${moeda(a.valor_total)}</td><td>${esc(a.usuario_nome || '')}</td>
+            <td><a href="/api/faturamento/boleto/arquivos/${a.id}/baixar?token=${encodeURIComponent(token)}">baixar</a></td></tr>`).join('')}</tbody></table>`
+          : '<p style="font-size:13px; color:var(--texto-fraco);">Nenhum arquivo ainda.</p>'}</div>
+      <div class="painel" style="padding:20px;"><h4 style="margin-top:0;">⚙ Configuração do boleto (do contrato de cobrança com o banco)</h4>
+        <div class="cte-grade">
+          <div class="campo"><label for="fbBanco">Banco</label><select id="fbBanco"><option value="">— escolha —</option>${Object.entries(cfg.bancos).map(([k, b]) => `<option value="${k}" ${cfg.banco === k ? 'selected' : ''}>${k} — ${esc(b.nome)}</option>`).join('')}</select></div>
+          ${campo('fbAg', 'Agência', cfg.agencia)}${campo('fbAgDv', 'DV agência', cfg.agencia_dv, 'maxlength="1"')}${campo('fbConta', 'Conta', cfg.conta)}${campo('fbContaDv', 'DV conta', cfg.conta_dv, 'maxlength="1"')}
+          ${campo('fbCarteira', 'Carteira', cfg.carteira, 'placeholder="ex.: 17, 109, 09, 101, 1"')}${campo('fbConvenio', 'Convênio / código do beneficiário', cfg.convenio)}${campo('fbModalidade', 'Modalidade (Sicoob)', cfg.modalidade, 'placeholder="01"')}
+          ${campo('fbJuros', 'Juros ao mês (%)', cfg.juros_mes, 'inputmode="decimal" placeholder="1"')}${campo('fbMulta', 'Multa (%)', cfg.multa, 'inputmode="decimal" placeholder="2"')}
+          ${campo('fbProtesto', 'Protestar após (dias, 0 = não)', cfg.protesto_dias, 'inputmode="numeric"')}${campo('fbBaixa', 'Baixa automática após (dias)', cfg.baixa_dias || 60, 'inputmode="numeric"')}
+          ${campo('fbNn', 'Próximo nosso número', cfg.proximo_nn, 'inputmode="numeric"')}${campo('fbNsa', 'Próxima remessa (NSA)', cfg.proximo_nsa, 'inputmode="numeric"')}
+          ${campo('fbLayoutArq', 'Versão do layout (arquivo)', cfg.layout_arquivo || '087', 'maxlength="3"')}${campo('fbLayoutLote', 'Versão do layout (lote)', cfg.layout_lote || '045', 'maxlength="3"')}
+          <div class="campo inteiro"><label for="fbInstr">Instruções no boleto</label><input type="text" id="fbInstr" maxlength="400" value="${esc(cfg.instrucoes || '')}" placeholder="ex.: Não receber após 30 dias do vencimento" /></div>
+        </div>
+        <div style="font-size:12px; color:var(--texto-fraco); margin-bottom:10px;">O banco informa no contrato: carteira, convênio/código do beneficiário e a versão do layout CNAB 240. O nosso número segue a sequência daqui (se já usa boleto em outro sistema, continue a numeração).</div>
+        <div style="display:flex; justify-content:flex-end;"><button class="btn btn-primario" id="fbSalvar" style="width:auto;">💾 Salvar</button></div></div>`;
+    $('fbBanco').addEventListener('change', () => { const b = cfg.bancos[$('fbBanco').value]; if (b && !$('fbCarteira').value) $('fbCarteira').value = b.carteira; });
+    $('fbSalvar').addEventListener('click', async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try {
+        await api('/boleto/config', { method: 'PUT', body: JSON.stringify({ banco: $('fbBanco').value, agencia: $('fbAg').value, agencia_dv: $('fbAgDv').value, conta: $('fbConta').value, conta_dv: $('fbContaDv').value,
+          carteira: $('fbCarteira').value, convenio: $('fbConvenio').value, modalidade: $('fbModalidade').value, juros_mes: $('fbJuros').value, multa: $('fbMulta').value, protesto_dias: $('fbProtesto').value,
+          baixa_dias: $('fbBaixa').value, proximo_nn: $('fbNn').value, proximo_nsa: $('fbNsa').value, layout_arquivo: $('fbLayoutArq').value, layout_lote: $('fbLayoutLote').value, instrucoes: $('fbInstr').value }) });
+        mostrarAlerta('Configuração do boleto salva.', { tipo: 'sucesso' });
+      } catch (err) { erro(err); }
+      btn.disabled = false;
+    });
+    $('fbRemessa')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try {
+        const r = await post('/boleto/remessa');
+        window.location.href = `/api/faturamento/boleto/arquivos/${r.id}/baixar?token=${encodeURIComponent(token)}`;
+        mostrarAlerta(`Remessa ${r.nome} gerada: ${r.entradas} boleto(s) novo(s)${r.baixas ? ` e ${r.baixas} pedido(s) de baixa` : ''}. Envie o arquivo ao banco.`, { tipo: 'sucesso' });
+        setTimeout(() => boletos().catch(() => {}), 800);
+      } catch (err) { erro(err); btn.disabled = false; }
+    });
+    $('fbRetorno').addEventListener('change', async () => {
+      const arq = $('fbRetorno').files[0]; if (!arq) return;
+      try {
+        const buf = await arq.arrayBuffer();
+        const conteudo = new TextDecoder('latin1').decode(buf);
+        const r = await post('/boleto/retorno', { nome: arq.name, conteudo });
+        const html = `<div class="cte-aviso ok">${r.titulos} título(s) no arquivo · <b>${r.pagos} pago(s): ${moeda(r.valorPago)}</b> baixado(s) nas faturas.</div>
+          <table class="edi-tabela" style="margin-top:6px;"><tbody>${r.resultado.map((x) => `<tr><td>${esc(x.nossoNumero)}</td><td>${x.fatura ? `fatura ${esc(x.fatura)}` : '—'}</td><td>${esc(x.descricao)}</td><td>${esc(x.acao)}</td></tr>`).join('')}</tbody></table>`;
+        await boletos();
+        $('fbResultado').innerHTML = html;
+      } catch (err) { erro(err); }
+      $('fbRetorno').value = '';
     });
   }
 

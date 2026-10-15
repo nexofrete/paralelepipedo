@@ -143,6 +143,30 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Boleto registrado (CNAB 240)
+
+Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), Caixa (104) e Sicoob (756)**.
+
+**Antes de usar:**
+1. Peça ao banco a **cobrança registrada com arquivo CNAB 240**.
+2. Preencha em **Faturamento → 🏦 Boletos → Configuração** os dados do contrato: agência, conta, carteira, convênio/código do beneficiário e versão do layout.
+3. Faça a **homologação**: gere um boleto de teste, mande a primeira remessa ao banco e espere a aprovação. Cada banco confere o boleto e o arquivo do jeito dele.
+
+**No dia a dia:**
+1. Na fatura, **🏦 Gerar boleto**. Ele sai junto com a fatura impressa e no e-mail (linha digitável no corpo, boleto no anexo), ao lado do PIX.
+2. **Remessa:** em **🏦 Boletos**, **Gerar arquivo de remessa** e envie pelo internet banking.
+   - A remessa leva os boletos novos e os **pedidos de baixa**.
+   - O pedido de baixa é gerado sozinho quando a fatura é cancelada ou recebida por outro meio (PIX, depósito).
+3. **Retorno:** todo dia, baixe o arquivo de retorno no internet banking e escolha-o na mesma tela.
+   - Boletos **pagos dão baixa sozinhos** na fatura, com juros/multa e a tarifa anotados.
+   - Também são tratados: registrados, rejeitados (com o motivo do banco) e baixados.
+   - Reimportar o mesmo arquivo não baixa duas vezes.
+4. **Prorrogar:**
+   - Antes da remessa, o boleto é descartado e um novo é gerado com a data nova.
+   - Depois da remessa, o sistema bloqueia, para não ficar diferente do que está no banco.
+
+Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
+
 ## Contas a pagar e acerto de viagem
 
 Em **Operação de Transporte → Contas a pagar / Acerto de viagem**:

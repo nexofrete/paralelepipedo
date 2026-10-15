@@ -75,6 +75,9 @@
         <div class="nav-tsub" data-ir="faturamento" data-aba="boletos">🏦 Boletos (CNAB)</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="contas">💸 Contas a pagar</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="acertos">🧾 Acerto de viagem</div>
+        <div class="nav-tsub" data-ir="bancos" data-aba="contas">🏦 Caixa e bancos</div>
+        <div class="nav-tsub" data-ir="bancos" data-aba="conciliacao">🔗 Conciliação bancária</div>
+        <div class="nav-tsub" data-ir="bancos" data-aba="fluxo">📅 Fluxo de caixa</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="livro">🧮 Fiscal e contabilidade</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="pacote">📦 Pacote do contador</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
@@ -94,6 +97,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="pagar" id="navPagar">💸 Contas a pagar</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="frota" id="navFrota">🔧 Frota</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="contabil" id="navContabil">🧮 Fiscal e contabilidade</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="bancos" id="navBancos">🏦 Caixa e bancos</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="portal-cliente" id="navPortalCliente">🌐 Portal do cliente</div>
@@ -219,6 +223,31 @@
       </section>
       <div class="modal-overlay oculto" id="modalPagar">
         <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="cpModalConteudo"></div>
+      </div>
+
+      <section id="pagina-bancos" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🏦 Caixa e bancos</h2>
+            <p>Saldo de cada conta, extrato do banco (OFX) conciliado com as faturas e contas a pagar, e o fluxo de caixa dos próximos dias</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="bxNovoLanc" style="width:auto;">＋ Lançamento avulso</button>
+            <button class="btn btn-secundario" id="bxTransf" style="width:auto;">⇄ Transferência</button>
+            <button class="btn btn-primario" id="bxImportar" style="width:auto;">📥 Importar extrato (OFX)</button>
+            <input type="file" id="bxArquivo" accept=".ofx,.OFX,application/x-ofx" class="oculto" />
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-bx-aba="contas">🏦 Contas e saldos</div>
+          <div class="cte-aba" data-bx-aba="movimentacao">📜 Movimentação</div>
+          <div class="cte-aba" data-bx-aba="conciliacao">🔗 Conciliação</div>
+          <div class="cte-aba" data-bx-aba="fluxo">📅 Fluxo de caixa</div>
+        </div>
+        <div id="bxConteudo"></div>
+      </section>
+      <div class="modal-overlay oculto" id="modalBancos">
+        <div class="painel modal-card" style="max-width:640px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="bxModalConteudo"></div>
       </div>
 
       <section id="pagina-contabil" class="oculto">
@@ -3514,6 +3543,7 @@
   <script src="js/portalAdmin.js"></script>
   <script src="js/frota.js"></script>
   <script src="js/contabil.js"></script>
+  <script src="js/bancos.js"></script>
   <script src="js/resultado.js"></script>
   <script src="js/mdfe.js"></script>
   <script src="js/nfse.js"></script>

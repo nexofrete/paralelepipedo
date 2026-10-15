@@ -115,6 +115,7 @@
   }
 
   async function abrirConta(id, pagarJa = false) {
+    const contasBx = await apiFetch('/api/bancos/contas/opcoes').then((r) => (r.ok ? r.json() : [])).catch(() => []);
     const c = await json(`/api/contas-pagar/${id}`);
     const falta = Number(c.valor) - Number(c.valor_pago);
     $('cpModalConteudo').innerHTML = `${titulo(`💸 ${esc(c.descricao)}${c.parcela ? ` <small>(${esc(c.parcela)})</small>` : ''}`)}
@@ -134,6 +135,7 @@
           <div class="campo"><label for="cpPgData">Data</label><input id="cpPgData" type="date" value="${hoje()}" /></div>
           <div class="campo"><label for="cpPgValor">Valor</label><input id="cpPgValor" inputmode="decimal" value="${esc(num2(falta))}" /></div>
           <div class="campo"><label for="cpPgForma">Forma</label><select id="cpPgForma">${cat.formas.map((f) => `<option>${f}</option>`).join('')}</select></div>
+          ${contasBx.length ? `<div class="campo"><label for="cpPgConta">Conta</label><select id="cpPgConta">${contasBx.map((x) => `<option value="${x.id}" ${x.padrao ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></div>` : ''}
           <div class="campo"><label for="cpPgObs">Observação</label><input id="cpPgObs" maxlength="255" /></div></div>
           <button class="btn btn-primario" id="cpPgOk" style="width:auto;">✓ Pagar</button></div>` : ''}
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:14px;">
@@ -142,9 +144,10 @@
     modal.classList.remove('oculto');
     if (pagarJa) $('cpPgValor')?.focus();
     const depois = async () => { await abrirConta(id); telaContas().catch(() => {}); };
+    $('cpPgForma')?.addEventListener('change', (e) => { const sel = $('cpPgConta'); if (!sel) return; const alvo = contasBx.find((x) => (e.target.value === 'dinheiro' ? x.tipo === 'caixa' : x.padrao)) || contasBx.find((x) => x.tipo === 'banco'); if (alvo) sel.value = alvo.id; });
     $('cpPgOk')?.addEventListener('click', async (ev) => {
       const b = ev.currentTarget; b.disabled = true;
-      try { await json(`/api/contas-pagar/${id}/pagar`, { method: 'POST', body: JSON.stringify({ data: $('cpPgData').value, valor: $('cpPgValor').value, forma: $('cpPgForma').value, observacao: $('cpPgObs').value }) }); await depois(); } catch (err) { erro(err); b.disabled = false; }
+      try { await json(`/api/contas-pagar/${id}/pagar`, { method: 'POST', body: JSON.stringify({ data: $('cpPgData').value, valor: $('cpPgValor').value, forma: $('cpPgForma').value, observacao: $('cpPgObs').value, conta_bancaria_id: $('cpPgConta')?.value || undefined }) }); await depois(); } catch (err) { erro(err); b.disabled = false; }
     });
     $('cpModalConteudo').querySelectorAll('[data-cp-estornar]').forEach((b) => b.addEventListener('click', async () => {
       if (!await confirmar('Estornar este pagamento? A conta volta a ficar em aberto.', { tipo: 'perigo', textoOk: 'Estornar' })) return;

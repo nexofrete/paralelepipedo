@@ -87,13 +87,15 @@ async function pagar(id, b, usuarioNome, cliente = pool) {
   if (!(v > 0)) throw falha('Informe o valor pago.');
   if (v > falta + 0.001) throw falha(`O valor passa do que falta pagar (${falta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
   const data = iso(b.data) || hojeBr();
-  await cliente.query('INSERT INTO contas_pagar_pagamentos (conta_id, data, valor, forma, observacao, usuario_nome) VALUES ($1,$2,$3,$4,$5,$6)',
-    [id, data, v, FORMAS.includes(b.forma) ? b.forma : 'pix', texto(b.observacao, 255), usuarioNome]);
+  const forma = FORMAS.includes(b.forma) ? b.forma : 'pix';
+  const banco = await require('./bancos/padrao').contaDoLancamento(b.conta_bancaria_id, forma, cliente);
+  const { rows: [pg] } = await cliente.query('INSERT INTO contas_pagar_pagamentos (conta_id, data, valor, forma, observacao, usuario_nome, conta_bancaria_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+    [id, data, v, forma, texto(b.observacao, 255), usuarioNome, banco]);
   const pago = centavos(Number(c.valor_pago) + v);
   const quitada = pago >= Number(c.valor) - 0.001;
   const { rows: depois } = await cliente.query(
     `UPDATE contas_pagar SET valor_pago = $2, status = $3, pago_em = $4 WHERE id = $1 RETURNING *`, [id, pago, quitada ? 'paga' : 'aberta', quitada ? data : null]);
-  return depois[0];
+  return { ...depois[0], pagamento_id: pg.id };
 }
 
 async function estornar(contaId, pagamentoId) {
@@ -102,6 +104,8 @@ async function estornar(contaId, pagamentoId) {
     await cliente.query('BEGIN');
     const { rows } = await cliente.query('DELETE FROM contas_pagar_pagamentos WHERE id = $1 AND conta_id = $2 RETURNING valor', [pagamentoId, contaId]);
     if (!rows[0]) throw falha('Pagamento não encontrado.', 404);
+    await cliente.query(`UPDATE extrato_linhas SET conciliado_tipo = NULL, conciliado_id = NULL, conciliado_acao = NULL, conciliado_em = NULL, conciliado_por = NULL
+      WHERE conciliado_tipo = 'pagamento' AND conciliado_id = $1`, [pagamentoId]);
     await cliente.query(
       `UPDATE contas_pagar SET valor_pago = GREATEST(valor_pago - $2, 0), status = CASE WHEN status = 'cancelada' THEN status ELSE 'aberta' END, pago_em = NULL WHERE id = $1`,
       [contaId, rows[0].valor]);

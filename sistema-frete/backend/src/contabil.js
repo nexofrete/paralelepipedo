@@ -40,6 +40,7 @@ const CONTAS_PADRAO = {
   despesa_combustivel: '4.1.1.01', despesa_pedagio: '4.1.1.02', despesa_manutencao: '4.1.1.03', despesa_pneus: '4.1.1.04', despesa_frete_terceiro: '4.1.1.05',
   despesa_adiantamento: '1.1.3.10', despesa_salarios: '4.2.1.01', despesa_impostos: '4.2.2.01', despesa_seguro: '4.2.3.01', despesa_aluguel: '4.2.4.01',
   despesa_administrativo: '4.2.5.01', despesa_outros: '4.2.9.01',
+  despesa_tarifas: '4.3.1.01', despesa_juros: '4.3.1.02', receita_financeira: '3.2.1.01', receita_outras: '3.2.9.01', socios: '2.4.1.01',
 };
 const NOMES_CONTAS = {
   clientes: 'Clientes (duplicatas a receber)', caixa: 'Caixa', banco: 'Banco (conta movimento)', iss_retido: 'ISS retido pelo tomador (a compensar)',
@@ -48,6 +49,8 @@ const NOMES_CONTAS = {
   despesa_combustivel: 'Combustível', despesa_pedagio: 'Pedágio', despesa_manutencao: 'Manutenção de veículos', despesa_pneus: 'Pneus', despesa_frete_terceiro: 'Fretes de terceiros (agregados)',
   despesa_adiantamento: 'Adiantamentos de viagem', despesa_salarios: 'Salários e encargos', despesa_impostos: 'Impostos e taxas', despesa_seguro: 'Seguros',
   despesa_aluguel: 'Aluguel', despesa_administrativo: 'Despesas administrativas', despesa_outros: 'Outras despesas',
+  despesa_tarifas: 'Tarifas bancárias', despesa_juros: 'Juros e multas pagos', receita_financeira: 'Receitas financeiras (rendimentos)', receita_outras: 'Outras receitas',
+  socios: 'Sócios (aportes e retiradas)',
 };
 const CONFIG_PADRAO = { contador_nome: '', contador_email: '', contador_crc: '', regime: 'competencia', separador: ';', envio_ativo: false, envio_dia: 5, contas: CONTAS_PADRAO, ultimo_envio: null };
 
@@ -154,22 +157,42 @@ async function lancamentos(p) {
   });
   // Recebimentos das faturas.
   const { rows: rec } = await pool.query(
-    `SELECT p.data, p.valor, p.forma, f.numero, f.tomador_doc, f.tomador_nome FROM faturas_transporte_pagamentos p JOIN faturas_transporte f ON f.id = p.fatura_id
+    `SELECT p.data::text AS data, p.valor, p.forma, f.numero, f.tomador_doc, f.tomador_nome, b.tipo AS conta_tipo, b.conta_contabil FROM faturas_transporte_pagamentos p
+      JOIN faturas_transporte f ON f.id = p.fatura_id LEFT JOIN contas_bancarias b ON b.id = p.conta_bancaria_id
       WHERE p.data BETWEEN $1::date AND $2::date ORDER BY p.data, p.id`, [de, ate]);
-  rec.forEach((r) => lanc(dataLocal(r.data), r.forma === 'dinheiro' ? c.caixa : c.banco, c.clientes, r.valor, `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`, `FAT ${r.numero}`, r.tomador_doc));
+  // Conta do dinheiro: a conta contábil da conta bancária; sem ela, caixa ou banco.
+  const disponivel = (x) => x.conta_contabil || (x.conta_tipo ? (x.conta_tipo === 'caixa' ? c.caixa : c.banco) : (x.forma === 'dinheiro' ? c.caixa : c.banco));
+  rec.forEach((r) => lanc(dataLocal(r.data), disponivel(r), c.clientes, r.valor, `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`, `FAT ${r.numero}`, r.tomador_doc));
   // Contas a pagar: competência (despesa no lançamento, fornecedor no pagamento) ou caixa (despesa no pagamento).
   const contaDespesa = (cat) => c[`despesa_${cat}`] || c.despesa_outros;
   if (cfg.regime === 'competencia') {
     const { rows: cp } = await pool.query(
-      `SELECT id, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, valor, (criado_em AT TIME ZONE 'America/Sao_Paulo')::date AS data FROM contas_pagar
+      `SELECT id, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, valor, (criado_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS data FROM contas_pagar
         WHERE status <> 'cancelada' AND (criado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date ORDER BY criado_em, id`, [de, ate]);
     cp.forEach((x) => lanc(dataLocal(x.data), contaDespesa(x.categoria), c.fornecedores, x.valor, `${x.descricao}${x.fornecedor_nome ? ` — ${x.fornecedor_nome}` : ''}`, x.documento || `CP ${x.id}`, x.fornecedor_doc || ''));
   }
   const { rows: pg } = await pool.query(
-    `SELECT p.data, p.valor, p.forma, c.id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento FROM contas_pagar_pagamentos p
-       JOIN contas_pagar c ON c.id = p.conta_id WHERE p.data BETWEEN $1::date AND $2::date ORDER BY p.data, p.id`, [de, ate]);
-  pg.forEach((x) => lanc(dataLocal(x.data), cfg.regime === 'competencia' ? c.fornecedores : contaDespesa(x.categoria), x.forma === 'dinheiro' ? c.caixa : c.banco, x.valor,
+    `SELECT p.data::text AS data, p.valor, p.forma, c.id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, b.tipo AS conta_tipo, b.conta_contabil FROM contas_pagar_pagamentos p
+       JOIN contas_pagar c ON c.id = p.conta_id LEFT JOIN contas_bancarias b ON b.id = p.conta_bancaria_id WHERE p.data BETWEEN $1::date AND $2::date ORDER BY p.data, p.id`, [de, ate]);
+  pg.forEach((x) => lanc(dataLocal(x.data), cfg.regime === 'competencia' ? c.fornecedores : contaDespesa(x.categoria), disponivel(x), x.valor,
     `Pagamento: ${x.descricao}${x.fornecedor_nome ? ` — ${x.fornecedor_nome}` : ''}`, x.documento || `CP ${x.id}`, x.fornecedor_doc || ''));
+  // Caixa e bancos: tarifa, rendimento, sócios, transferência (uma partida só, pela ponta que entra).
+  const { rows: mv } = await pool.query(
+    `SELECT m.id, m.data::text AS data, m.valor, m.categoria, m.descricao, m.transferencia_id, b.tipo AS conta_tipo, b.conta_contabil, b.nome AS conta_nome,
+            o.tipo AS outra_tipo, o.conta_contabil AS outra_contabil, o.nome AS outra_nome
+       FROM movimentos_bancarios m JOIN contas_bancarias b ON b.id = m.conta_id
+       LEFT JOIN movimentos_bancarios t ON t.transferencia_id = m.transferencia_id AND t.id <> m.id LEFT JOIN contas_bancarias o ON o.id = t.conta_id
+      WHERE m.data BETWEEN $1::date AND $2::date ORDER BY m.data, m.id`, [de, ate]);
+  mv.forEach((m) => {
+    const v = Number(m.valor); const aqui = disponivel(m);
+    if (m.categoria === 'transferencia') {
+      if (v > 0 && m.outra_tipo) lanc(dataLocal(m.data), aqui, disponivel({ conta_tipo: m.outra_tipo, conta_contabil: m.outra_contabil }), v, `Transferência de ${m.outra_nome} para ${m.conta_nome}`, `MOV ${m.id}`);
+      return;
+    }
+    const contra = { tarifa: c.despesa_tarifas, juros_pagos: c.despesa_juros, rendimento: c.receita_financeira, aporte: c.socios, retirada: c.socios }[m.categoria] || (v > 0 ? c.receita_outras : c.despesa_outros);
+    const hist = `${m.descricao || m.categoria} (${m.conta_nome})`;
+    if (v > 0) lanc(dataLocal(m.data), aqui, contra, v, hist, `MOV ${m.id}`); else lanc(dataLocal(m.data), contra, aqui, -v, hist, `MOV ${m.id}`);
+  });
   linhas.sort((a, b) => a.data.localeCompare(b.data));
   const totais = { linhas: linhas.length, valor: centavos(linhas.reduce((s, l) => s + l.valor, 0)) };
   // Resumo por conta (débitos, créditos, saldo do período): confere antes de mandar.

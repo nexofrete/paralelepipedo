@@ -294,6 +294,33 @@ Página própria para o cliente da transportadora: **`/portal.html`** (funciona 
 
 CT-e de demonstração só aparecem no portal enquanto a empresa está no modo demonstração.
 
+## Caixa e bancos (conciliação bancária e fluxo de caixa)
+
+Menu **Operação de Transporte → 🏦 Caixa e bancos** (códigos **150** contas, **151** conciliação, **152** fluxo de caixa e **153** importar extrato). Pede a permissão de ver o financeiro.
+
+- **Contas e saldos:** cada conta bancária e o caixa (dinheiro), com o saldo de um dia (o do extrato).
+  - A partir dessa data, o saldo é calculado assim: saldo inicial + recebimentos de faturas − pagamentos de contas + lançamentos avulsos.
+  - A primeira conta de cada tipo assume os recebimentos e pagamentos já lançados desde essa data: o que foi em dinheiro vai para o caixa, o resto para o banco.
+- **Conta no recebimento e no pagamento:** ao dar baixa numa fatura ou numa conta a pagar, escolha a conta.
+  - Sem escolha, dinheiro vai para o caixa e o resto para a conta padrão.
+  - Retorno de boleto e abastecimento pago à vista também caem na conta padrão.
+- **Conciliação (extrato OFX):** no internet banking, exporte o extrato em OFX e importe.
+  - Aceita OFX 1.x e 2.x. Importar o mesmo período de novo não duplica nada.
+  - O que já estava lançado (boleto baixado pelo retorno, PIX recebido, conta paga) é conciliado sozinho quando o valor e a data batem sem dúvida.
+  - O resto vem com uma sugestão:
+    - baixar a fatura de mesmo valor (★ quando o histórico cita o cliente ou o CNPJ);
+    - pagar a conta de mesmo valor;
+    - lançar como tarifa ou rendimento.
+  - Marque as sugestões certas e clique em **Confirmar marcadas**, ou escolha linha a linha.
+  - **Desfazer** estorna a baixa ou exclui o lançamento que a conciliação criou.
+  - O quadro de cima compara o saldo do banco (do último extrato) com o do sistema na mesma data.
+- **Lançamentos avulsos e transferências:** tarifa, rendimento, aporte ou retirada dos sócios, despesa paga no caixa, saque e depósito entre contas.
+- **Movimentação:** lançamentos da conta no período, com o saldo dia a dia e a marca do que já foi conferido com o extrato.
+- **Fluxo de caixa (30/60/90 dias):** saldo de hoje + faturas a receber − contas a pagar, semana a semana, pelo vencimento.
+  - Os vencidos entram na primeira semana.
+  - Avisa a semana em que o saldo fica negativo.
+- **Contabilidade:** os lançamentos contábeis usam a conta contábil de cada conta bancária. Tarifas, rendimentos, sócios e transferências também viram lançamento.
+
 ## Fiscal e contabilidade
 
 Menu **Operação de Transporte → 🧮 Fiscal e contabilidade** (código **140**; **141** abre direto o pacote do contador). Pede a permissão de ver o financeiro.

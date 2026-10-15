@@ -135,7 +135,7 @@ async function atualizarSituacao(cliente, id) {
 }
 
 // Baixa (recebimento). Juros/multa entram como valor acima do saldo.
-async function receber(id, { data, valor, forma = 'pix', observacao, usuarioNome }) {
+async function receber(id, { data, valor, forma = 'pix', observacao, usuarioNome, conta_bancaria_id: contaId }) {
   const f = await carregar(id);
   if (!f) throw erro('Fatura não encontrada.', 404);
   if (f.status === 'cancelada') throw erro('Fatura cancelada não recebe pagamento.');
@@ -144,14 +144,18 @@ async function receber(id, { data, valor, forma = 'pix', observacao, usuarioNome
   if (!(v > 0)) throw erro('Informe o valor recebido.');
   const formas = ['pix', 'boleto', 'deposito', 'dinheiro', 'cheque', 'outro'];
   const cliente = await pool.connect();
+  let pagamentoId = null;
   try {
     await cliente.query('BEGIN');
-    await cliente.query('INSERT INTO faturas_transporte_pagamentos (fatura_id, data, valor, forma, observacao, usuario_nome) VALUES ($1,$2,$3,$4,$5,$6)',
-      [id, dataIso(data) || hoje(), v, formas.includes(forma) ? forma : 'outro', String(observacao || '').slice(0, 255) || null, usuarioNome || null]);
+    const f2 = formas.includes(forma) ? forma : 'outro';
+    const banco = await require('../bancos/padrao').contaDoLancamento(contaId, f2, cliente);
+    const { rows: [pg] } = await cliente.query('INSERT INTO faturas_transporte_pagamentos (fatura_id, data, valor, forma, observacao, usuario_nome, conta_bancaria_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+      [id, dataIso(data) || hoje(), v, f2, String(observacao || '').slice(0, 255) || null, usuarioNome || null, banco]);
+    pagamentoId = pg.id;
     await atualizarSituacao(cliente, id);
     await cliente.query('COMMIT');
   } catch (e) { await cliente.query('ROLLBACK').catch(() => {}); throw e; } finally { cliente.release(); }
-  return carregar(id);
+  return { ...(await carregar(id)), pagamento_id: pagamentoId };
 }
 
 async function estornar(id, pagamentoId) {
@@ -160,6 +164,9 @@ async function estornar(id, pagamentoId) {
     await cliente.query('BEGIN');
     const { rowCount } = await cliente.query('DELETE FROM faturas_transporte_pagamentos WHERE id = $1 AND fatura_id = $2', [pagamentoId, id]);
     if (!rowCount) throw erro('Recebimento não encontrado.', 404);
+    // A linha do extrato que estava ligada a ele volta para "a conciliar".
+    await cliente.query(`UPDATE extrato_linhas SET conciliado_tipo = NULL, conciliado_id = NULL, conciliado_acao = NULL, conciliado_em = NULL, conciliado_por = NULL
+      WHERE conciliado_tipo = 'recebimento' AND conciliado_id = $1`, [pagamentoId]);
     await atualizarSituacao(cliente, id);
     await cliente.query('COMMIT');
   } catch (e) { await cliente.query('ROLLBACK').catch(() => {}); throw e; } finally { cliente.release(); }

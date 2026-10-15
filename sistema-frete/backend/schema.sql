@@ -2112,3 +2112,65 @@ ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS cliente_nome VARCHAR(200);
 ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS cliente_por_raiz BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS copiada_de INTEGER;
 CREATE INDEX IF NOT EXISTS idx_tabelas_preco_cliente ON tabelas_preco (cliente_doc) WHERE cliente_doc IS NOT NULL;
+
+-- ===== Caixa e bancos: contas, extrato (OFX), conciliação e lançamentos avulsos =====
+CREATE TABLE IF NOT EXISTS contas_bancarias (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL,
+  tipo VARCHAR(10) NOT NULL DEFAULT 'banco',          -- banco | caixa
+  banco_codigo VARCHAR(5),
+  agencia VARCHAR(12),
+  numero VARCHAR(25),
+  saldo_inicial NUMERIC(14,2) NOT NULL DEFAULT 0,
+  saldo_inicial_data DATE NOT NULL DEFAULT CURRENT_DATE,
+  padrao BOOLEAN NOT NULL DEFAULT FALSE,              -- recebe os lançamentos sem conta escolhida
+  conta_contabil VARCHAR(40),
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE faturas_transporte_pagamentos ADD COLUMN IF NOT EXISTS conta_bancaria_id INTEGER REFERENCES contas_bancarias(id);
+ALTER TABLE contas_pagar_pagamentos ADD COLUMN IF NOT EXISTS conta_bancaria_id INTEGER REFERENCES contas_bancarias(id);
+
+-- Lançamentos que não são fatura nem conta a pagar: tarifa, rendimento, aporte, transferência...
+CREATE TABLE IF NOT EXISTS movimentos_bancarios (
+  id SERIAL PRIMARY KEY,
+  conta_id INTEGER NOT NULL REFERENCES contas_bancarias(id),
+  data DATE NOT NULL,
+  valor NUMERIC(14,2) NOT NULL,                       -- + entrada, − saída
+  categoria VARCHAR(20) NOT NULL DEFAULT 'outros',
+  descricao VARCHAR(200),
+  transferencia_id INTEGER,                           -- as duas pontas de uma transferência
+  usuario_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_mov_bancarios_conta ON movimentos_bancarios (conta_id, data);
+
+CREATE TABLE IF NOT EXISTS extrato_importacoes (
+  id SERIAL PRIMARY KEY,
+  conta_id INTEGER NOT NULL REFERENCES contas_bancarias(id),
+  arquivo VARCHAR(200),
+  de DATE, ate DATE,
+  saldo_banco NUMERIC(14,2), saldo_banco_data DATE,
+  linhas INTEGER NOT NULL DEFAULT 0, novas INTEGER NOT NULL DEFAULT 0,
+  usuario_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS extrato_linhas (
+  id SERIAL PRIMARY KEY,
+  conta_id INTEGER NOT NULL REFERENCES contas_bancarias(id),
+  importacao_id INTEGER REFERENCES extrato_importacoes(id),
+  fitid VARCHAR(120) NOT NULL,
+  data DATE NOT NULL,
+  valor NUMERIC(14,2) NOT NULL,
+  tipo VARCHAR(20),
+  descricao VARCHAR(255),
+  documento VARCHAR(60),
+  conciliado_tipo VARCHAR(12),                        -- recebimento | pagamento | movimento | ignorado
+  conciliado_id INTEGER,
+  conciliado_acao VARCHAR(10),                        -- vinculou | baixou | lancou (desfazer sabe o que reverter)
+  conciliado_em TIMESTAMPTZ,
+  conciliado_por VARCHAR(120),
+  UNIQUE (conta_id, fitid)
+);
+CREATE INDEX IF NOT EXISTS idx_extrato_pendentes ON extrato_linhas (conta_id, data) WHERE conciliado_tipo IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_extrato_um_vinculo ON extrato_linhas (conciliado_tipo, conciliado_id) WHERE conciliado_id IS NOT NULL;

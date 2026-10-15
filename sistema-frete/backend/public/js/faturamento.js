@@ -119,6 +119,8 @@
   }
 
   async function abrirFatura(id) {
+    // Contas do Caixa e bancos (onde o dinheiro entrou); sem contas cadastradas, o campo não aparece.
+    const contasBx = await apiFetch('/api/bancos/contas/opcoes').then((r) => (r.ok ? r.json() : [])).catch(() => []);
     const f = await api(`/${id}`);
     const aberta = ['aberta', 'parcial'].includes(f.status);
     $('fatModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
@@ -136,6 +138,7 @@
         <div class="campo"><label for="fatRecData">Data</label><input type="date" id="fatRecData" value="${hojeIso()}" /></div>
         <div class="campo"><label for="fatRecValor">Valor recebido</label><input type="text" id="fatRecValor" value="${Number(f.saldo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}" /></div>
         <div class="campo"><label for="fatRecForma">Forma</label><select id="fatRecForma">${Object.entries(FORMAS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
+        ${contasBx.length ? `<div class="campo"><label for="fatRecConta">Conta</label><select id="fatRecConta">${contasBx.map((c) => `<option value="${c.id}" data-tipo="${c.tipo}" ${c.padrao ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>` : ''}
         <div class="campo largo"><label for="fatRecObs">Observação</label><input type="text" id="fatRecObs" placeholder="ex.: com juros de 2 dias" /></div>
         <div class="campo" style="display:flex; align-items:flex-end;"><button class="btn btn-primario" id="fatReceber" style="width:auto;">💵 Dar baixa</button></div></div></div>` : ''}
       ${secaoBoleto(f, aberta)}
@@ -162,10 +165,12 @@
     $('fbVer')?.addEventListener('click', () => window.open(`/api/faturamento/${id}/boleto?token=${encodeURIComponent(token)}`, '_blank'));
     $('fbCopiar')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(f.boleto_linha); mostrarAlerta('Linha digitável copiada.', { tipo: 'sucesso' }); } catch { await pedirTexto('Copie a linha digitável:', { valor: f.boleto_linha }); } });
     $('fatCopiarPix')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(f.pix); mostrarAlerta('PIX copia e cola copiado.', { tipo: 'sucesso' }); } catch { await pedirTexto('Copie o PIX copia e cola:', { valor: f.pix, multilinha: true }); } });
+    // Dinheiro vai para o caixa; o resto para a conta padrão.
+    $('fatRecForma')?.addEventListener('change', (e) => { const sel = $('fatRecConta'); if (!sel) return; const alvo = contasBx.find((c) => (e.target.value === 'dinheiro' ? c.tipo === 'caixa' : c.padrao)) || contasBx.find((c) => c.tipo === 'banco'); if (alvo) sel.value = alvo.id; });
     $('fatReceber')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget; btn.disabled = true;
       try {
-        const r = await post(`/${id}/receber`, { data: $('fatRecData').value, valor: num($('fatRecValor').value), forma: $('fatRecForma').value, observacao: $('fatRecObs').value });
+        const r = await post(`/${id}/receber`, { data: $('fatRecData').value, valor: num($('fatRecValor').value), forma: $('fatRecForma').value, observacao: $('fatRecObs').value, conta_bancaria_id: $('fatRecConta')?.value || undefined });
         mostrarAlerta(r.status === 'paga' ? `Fatura ${r.numero} quitada.` : `Recebimento lançado. Falta ${moeda(r.saldo)}.`, { tipo: 'sucesso' });
         await recarregar();
       } catch (err) { erro(err); btn.disabled = false; }

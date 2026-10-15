@@ -251,7 +251,7 @@ router.get('/', autenticar, emitir, async (req, res) => {
               (SELECT s.serie || '/' || s.numero FROM ctes_emitidos s WHERE s.id = ctes_emitidos.substituido_por) AS substituido_por_numero,
               averbacao_status, averbacao->>'numero' AS averbacao_numero, averbacao->>'protocolo' AS averbacao_protocolo,
               averbacao->>'mensagem' AS averbacao_mensagem, (averbacao->>'teste')::boolean AS averbacao_teste,
-              dados->'origem'->>'tipo' AS origem_tipo, dados->'origem'->>'remetente' AS origem_remetente, dados->'avisosImportacao' AS avisos_importacao
+              dados->'origem'->>'tipo' AS origem_tipo, dados->'origem'->>'remetente' AS origem_remetente, dados->'origem'->>'coleta_id' AS origem_coleta, dados->'avisosImportacao' AS avisos_importacao
          FROM ctes_emitidos ${cond.length ? `WHERE ${cond.join(' AND ')}` : ''}
         ORDER BY criado_em DESC LIMIT 500`, val);
     res.json(rows);

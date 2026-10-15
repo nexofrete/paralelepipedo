@@ -1,5 +1,5 @@
 // App do motorista: entra com o código do romaneio e dá baixa nas entregas
-// com foto, assinatura na tela e a localização do celular.
+// e nas coletas com foto, assinatura na tela e a localização do celular.
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -32,11 +32,13 @@
   const SIT = { pendente: 'A entregar', em_transito: 'A entregar', em_rota: 'Saiu para entrega', agendada: 'Agendado', ocorrencia: 'Com ocorrência', entregue: 'Entregue', devolvido: 'Devolvido' };
   function desenhar() {
     const r = dados.romaneio;
-    const feitos = dados.itens.filter((i) => ['entregue', 'devolvido'].includes(i.situacao)).length;
+    const coletas = dados.coletas || [];
+    const feitos = dados.itens.filter((i) => ['entregue', 'devolvido'].includes(i.situacao)).length + coletas.filter((c) => ['coletada', 'nao_coletada'].includes(c.status)).length;
+    const total = dados.itens.length + coletas.length;
     $('mtEmpresa').textContent = dados.empresa.nome;
-    $('mtTitulo').textContent = `Romaneio ${r.id} · ${feitos}/${dados.itens.length}`;
+    $('mtTitulo').textContent = `Romaneio ${r.id} · ${feitos}/${total}`;
     $('mtSub').textContent = [r.motorista, r.placa, r.veiculo].filter(Boolean).join(' · ');
-    $('mtBarra').style.width = `${dados.itens.length ? Math.round((feitos / dados.itens.length) * 100) : 0}%`;
+    $('mtBarra').style.width = `${total ? Math.round((feitos / total) * 100) : 0}%`;
     $('mtAviso').innerHTML = r.status === 'aberto'
       ? '<div class="rt-cartao"><b>A rota ainda não começou.</b><p class="mt-fraco">Quando sair com o caminhão, toque abaixo: o cliente é avisado que a entrega saiu.</p><button id="mtIniciar">▶ Iniciar a rota</button></div>' : '';
     $('mtIniciar')?.addEventListener('click', async (e) => {
@@ -57,13 +59,38 @@
           <button class="ok" data-mt-entregue="${i.cte_id}">✓ Entregue</button>
           <button class="ruim" data-mt-problema="${i.cte_id}">⚠ Não entregue</button></div>`}
       </article>`;
-    }).join('') || '<p class="mt-fraco">Nenhuma entrega neste romaneio.</p>';
+    }).join('') + desenharColetas(coletas, dados.itens.length) || '<p class="mt-fraco">Nenhuma entrega neste romaneio.</p>';
+  }
+
+  const SIT_COLETA = { programada: 'A coletar', em_coleta: 'A coletar', coletada: 'Coletada', nao_coletada: 'Não coletada' };
+  function desenharColetas(coletas, temEntregas) {
+    if (!coletas.length) return '';
+    return `${temEntregas ? '<h2 class="mt-secao">📦 Coletas</h2>' : ''}${coletas.map((c) => {
+      const feito = ['coletada', 'nao_coletada'].includes(c.status);
+      const endereco = [c.endereco, c.bairro, `${c.cidade}${c.uf ? ` - ${c.uf}` : ''}`, c.cep].filter(Boolean).join(', ');
+      return `<article class="mt-item mt-coleta ${c.status === 'coletada' ? 'feito' : ''} ${c.status === 'nao_coletada' ? 'problema' : ''}">
+        <h2><span class="mt-num">C</span>Coletar: ${esc(c.remetente)}</h2>
+        <div class="mt-end">${esc(endereco)}</div>
+        <div class="mt-info">Coleta nº ${c.id}${c.hora_de || c.hora_ate ? ` · ${esc(c.hora_de || '')}–${esc(c.hora_ate || '')}` : ''}${c.volumes ? ` · ${c.volumes} vol.` : ''}${c.peso ? ` · ${c.peso.toLocaleString('pt-BR')} kg` : ''}${c.destino ? ` · destino ${esc(c.destino)}` : ''}${c.notas ? ` · NF ${esc(c.notas)}` : ''}</div>
+        ${c.contato ? `<div class="mt-info">Falar com ${esc(c.contato)}</div>` : ''}
+        ${c.observacao ? `<div class="mt-info">📝 ${esc(c.observacao)}</div>` : ''}
+        <div class="mt-status" style="color:${c.status === 'coletada' ? 'var(--verde)' : c.status === 'nao_coletada' ? 'var(--laranja)' : 'var(--azul)'};">${esc(SIT_COLETA[c.status] || c.status)}${c.status === 'coletada' ? ` · ${c.volumes_coletados} vol. · ${esc(c.entregue_por || '')}` : c.status === 'nao_coletada' && c.motivo ? ` · ${esc(c.motivo)}` : ''}</div>
+        ${feito ? '' : `<div class="mt-botoes">
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}" target="_blank" rel="noopener">🗺 Mapa</a>
+          ${c.telefone ? `<a href="tel:${esc(String(c.telefone).replace(/[^\d+]/g, ''))}">📞 Ligar</a>` : '<span></span>'}
+          <button class="ok" data-mt-coletou="${c.id}">✓ Coletado</button>
+          <button class="ruim" data-mt-naocoletou="${c.id}">⚠ Não coletado</button></div>`}
+      </article>`;
+    }).join('')}`;
   }
 
   $('mtLista').addEventListener('click', (e) => {
     const ok = e.target.closest('[data-mt-entregue]'); const ruim = e.target.closest('[data-mt-problema]');
+    const col = e.target.closest('[data-mt-coletou]'); const naoCol = e.target.closest('[data-mt-naocoletou]');
     if (ok) abrirFolha(Number(ok.dataset.mtEntregue), 'entrega');
     if (ruim) abrirFolha(Number(ruim.dataset.mtProblema), 'problema');
+    if (col) abrirFolha(Number(col.dataset.mtColetou), 'coleta');
+    if (naoCol) abrirFolha(Number(naoCol.dataset.mtNaocoletou), 'nao_coleta');
   });
 
   // ---------- Folha de baixa ----------
@@ -86,17 +113,27 @@
   ['pointerup', 'pointercancel'].forEach((ev) => canvas.addEventListener(ev, () => { ponto = null; }));
   $('mtLimpar').addEventListener('click', prepararCanvas);
 
-  function abrirFolha(cteId, tipo) {
-    atual = dados.itens.find((i) => i.cte_id === cteId); modo = tipo;
-    $('mtFolhaTitulo').textContent = tipo === 'entrega' ? '✓ Confirmar entrega' : '⚠ Não entregue';
-    $('mtFolhaCte').textContent = `${atual.destinatario} · CT-e ${atual.serie}/${atual.numero}`;
-    $('mtCamposEntrega').classList.toggle('oculto', tipo !== 'entrega');
-    $('mtCampoTipo').classList.toggle('oculto', tipo === 'entrega');
-    $('mtTipo').innerHTML = `<option value="">Escolha...</option>${dados.ocorrencias.filter((o) => o.tipo !== 'entrega').map((o) => `<option value="${o.id}">${esc(o.rotulo)}</option>`).join('')}`;
-    ['mtRecebedor', 'mtDoc', 'mtObs'].forEach((id) => { $(id).value = ''; });
+  function abrirFolha(id, tipo) {
+    const coleta = tipo === 'coleta' || tipo === 'nao_coleta';
+    atual = coleta ? dados.coletas.find((c) => c.id === id) : dados.itens.find((i) => i.cte_id === id); modo = tipo;
+    $('mtFolhaTitulo').textContent = { entrega: '✓ Confirmar entrega', problema: '⚠ Não entregue', coleta: '✓ Confirmar coleta', nao_coleta: '⚠ Não coletado' }[tipo];
+    $('mtFolhaCte').textContent = coleta ? `${atual.remetente} · coleta nº ${atual.id}` : `${atual.destinatario} · CT-e ${atual.serie}/${atual.numero}`;
+    const comAssinatura = tipo === 'entrega' || tipo === 'coleta';
+    $('mtCamposEntrega').classList.toggle('oculto', !comAssinatura);
+    $('mtCamposColeta').classList.toggle('oculto', tipo !== 'coleta');
+    $('mtCampoDoc').classList.toggle('oculto', tipo === 'coleta');
+    $('mtRotuloRecebedor').textContent = tipo === 'coleta' ? 'Quem entregou a mercadoria' : 'Quem recebeu';
+    $('mtRotuloFoto').textContent = coleta ? 'Foto (mercadoria, etiqueta ou local)' : 'Foto (canhoto, fachada ou avaria)';
+    $('mtRecebedor').placeholder = tipo === 'coleta' ? 'Nome de quem liberou a carga' : 'Nome de quem recebeu';
+    $('mtCampoTipo').classList.toggle('oculto', comAssinatura);
+    $('mtTipo').innerHTML = tipo === 'nao_coleta'
+      ? `<option value="">Escolha...</option>${(dados.motivos_coleta || []).map((m) => `<option>${esc(m)}</option>`).join('')}`
+      : `<option value="">Escolha...</option>${dados.ocorrencias.filter((o) => o.tipo !== 'entrega').map((o) => `<option value="${o.id}">${esc(o.rotulo)}</option>`).join('')}`;
+    ['mtRecebedor', 'mtDoc', 'mtObs', 'mtVol', 'mtPeso'].forEach((el) => { $(el).value = ''; });
+    if (tipo === 'coleta' && atual.volumes) $('mtVol').value = atual.volumes;
     $('mtFoto').value = ''; $('mtPrevia').classList.add('oculto'); $('mtErro').textContent = '';
     $('mtFolha').classList.remove('oculto');
-    if (tipo === 'entrega') requestAnimationFrame(prepararCanvas);
+    if (comAssinatura) requestAnimationFrame(prepararCanvas);
   }
   $('mtFechar').addEventListener('click', () => $('mtFolha').classList.add('oculto'));
 
@@ -122,6 +159,7 @@
 
   $('mtEnviar').addEventListener('click', async (e) => {
     const b = e.currentTarget; $('mtErro').textContent = '';
+    if (modo === 'coleta' || modo === 'nao_coleta') { enviarColeta(b); return; }
     const tipoId = modo === 'entrega' ? 'entregue' : $('mtTipo').value;
     if (!tipoId) { $('mtErro').textContent = 'Escolha o que aconteceu.'; return; }
     if (modo === 'entrega' && !$('mtRecebedor').value.trim()) { $('mtErro').textContent = 'Informe o nome de quem recebeu.'; return; }
@@ -143,6 +181,32 @@
       $('mtErro').textContent = err.message;
     } finally { b.disabled = false; b.textContent = 'Confirmar'; }
   });
+
+  async function enviarColeta(b) {
+    const sim = modo === 'coleta';
+    if (!sim && !$('mtTipo').value) { $('mtErro').textContent = 'Escolha o motivo.'; return; }
+    if (sim && !(Number($('mtVol').value) > 0)) { $('mtErro').textContent = 'Informe quantos volumes você coletou.'; return; }
+    if (sim && !$('mtRecebedor').value.trim()) { $('mtErro').textContent = 'Informe quem entregou a mercadoria.'; return; }
+    if (sim && !desenhou && !$('mtFoto').files[0]) { $('mtErro').textContent = 'Colete a assinatura ou tire uma foto da mercadoria.'; return; }
+    b.disabled = true; b.textContent = 'Enviando...';
+    try {
+      const fd = new FormData();
+      fd.append('coletado', String(sim));
+      if (sim) { fd.append('volumes', $('mtVol').value); fd.append('peso', $('mtPeso').value); fd.append('entregue_por', $('mtRecebedor').value); } else fd.append('motivo', $('mtTipo').value);
+      fd.append('observacao', $('mtObs').value);
+      if (sim && desenhou) fd.append('assinatura', canvas.toDataURL('image/png'));
+      const foto = fotoReduzida || $('mtFoto').files[0];
+      if (foto) fd.append('foto', foto, 'foto.jpg');
+      const c = await localizacao();
+      if (c) { fd.append('latitude', c.latitude.toFixed(6)); fd.append('longitude', c.longitude.toFixed(6)); }
+      await api(`/coletas/${atual.id}`, { method: 'POST', body: fd });
+      $('mtFolha').classList.add('oculto');
+      fotoReduzida = null;
+      await entrar(codigo);
+    } catch (err) {
+      $('mtErro').textContent = err.message;
+    } finally { b.disabled = false; b.textContent = 'Confirmar'; }
+  }
 
   $('mtFormCodigo').addEventListener('submit', (e) => { e.preventDefault(); entrar($('mtCodigo').value); });
   $('mtSair').addEventListener('click', () => { guardar('motoristaCodigo', null); location.href = 'motorista.html'; });

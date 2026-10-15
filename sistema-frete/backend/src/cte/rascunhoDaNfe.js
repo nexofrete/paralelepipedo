@@ -112,7 +112,9 @@ async function rascunhosDosXml(xmls, origem) {
       `INSERT INTO ctes_emitidos (ambiente, dados, valor_total, tomador_nome, remetente_nome, destinatario_nome, cidade_fim, uf_fim, criado_por_nome)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [e.cte_ambiente || 2, dados, r.valor_total, r.tomador_nome, r.remetente_nome, r.destinatario_nome, r.cidade_fim, r.uf_fim, origem?.usuario || 'E-mail']);
-    criados.push({ id: rows[0].id, nfs: grupo.map((n) => n.numero), destinatario: dados.destinatario?.xNome, valor: dados.valores.vTPrest, avisos: dados.avisosImportacao });
+    // Coleta feita deste remetente e ainda sem CT-e: liga as duas.
+    const coleta = await require('../coletas').vincularCte(rows[0].id, dados.remetente?.cnpj || dados.remetente?.cpf, origem).catch(() => null);
+    criados.push({ coleta, id: rows[0].id, nfs: grupo.map((n) => n.numero), destinatario: dados.destinatario?.xNome, valor: dados.valores.vTPrest, avisos: dados.avisosImportacao });
   }
   return { criados, ignoradas };
 }

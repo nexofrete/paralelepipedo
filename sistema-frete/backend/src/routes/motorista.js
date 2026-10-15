@@ -8,6 +8,7 @@ const pool = require('../db');
 const oc = require('../cte/ocorrencias');
 const { itensDoRomaneio, darSaida } = require('./romaneios');
 const { registrar } = require('../auditoria');
+const coletas = require('../coletas');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, fields: 20 } });
@@ -36,6 +37,14 @@ router.get('/:codigo', async (req, res) => {
       empresa: { nome: emp[0]?.nome_fantasia || emp[0]?.razao_social || '', telefone: emp[0]?.telefone || '' },
       ocorrencias: oc.CATALOGO.filter((c) => DO_MOTORISTA.includes(c.id)).map(({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao }) => ({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao })),
       itens,
+      // Coletas do mesmo caminhão (sem valor da mercadoria no celular).
+      coletas: (await coletas.coletasDoRomaneio(r.id)).filter((c) => c.status !== 'cancelada').map((c) => ({
+        id: c.id, status: c.status, remetente: c.remetente_nome, endereco: [c.logradouro, c.numero, c.complemento].filter(Boolean).join(', '), bairro: c.bairro,
+        cidade: c.cidade, uf: c.uf, cep: c.cep, contato: c.contato_nome, telefone: c.contato_telefone, hora_de: c.hora_de, hora_ate: c.hora_ate,
+        volumes: c.volumes, peso: c.peso_kg != null ? Number(c.peso_kg) : null, notas: c.notas, observacao: c.observacao, destino: [c.destino_cidade, c.destino_uf].filter(Boolean).join('/'),
+        volumes_coletados: c.volumes_coletados, entregue_por: c.entregue_por, motivo: c.motivo,
+      })),
+      motivos_coleta: coletas.MOTIVOS,
     });
   } catch (err) { erro(res, err, 'Erro ao abrir o romaneio.'); }
 });
@@ -77,6 +86,27 @@ router.post('/:codigo/entregas/:cteId(\\d+)', upload.single('foto'), async (req,
     oc.depoisDeLancar([lancada]);
     res.status(201).json(lancada);
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao registrar.'); } finally { cliente.release(); }
+});
+
+// Baixa de uma coleta: multipart com coletado (true/false), volumes, peso,
+// entregue_por, motivo, observacao, latitude, longitude, foto e assinatura (PNG em data URL).
+router.post('/:codigo/coletas/:id(\\d+)', upload.single('foto'), async (req, res) => {
+  try {
+    const r = await romaneioDoCodigo(req.params.codigo);
+    const corpo = req.body || {};
+    let assinatura = null;
+    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(corpo.assinatura || ''));
+    if (m) {
+      assinatura = Buffer.from(m[1], 'base64');
+      if (assinatura.length > 1024 * 1024 || assinatura.slice(0, 8).toString('hex') !== '89504e470d0a1a0a') throw falha('Assinatura inválida.');
+    }
+    const coletado = corpo.coletado === 'true';
+    if (coletado && !req.file && !assinatura) throw falha('Colete a assinatura de quem entregou ou tire uma foto da mercadoria.');
+    const c = await coletas.baixar(Number(req.params.id), corpo, { foto: req.file, assinaturaPng: assinatura, usuarioNome: `Motorista ${r.motorista_nome}`, romaneioId: r.id });
+    registrar({ usuarioId: null, usuarioNome: `Motorista ${r.motorista_nome}`, acao: 'coleta',
+      detalhes: c.status === 'coletada' ? `Coleta ${c.id} feita pelo app (${c.volumes_coletados} vol.)` : `Coleta ${c.id} não coletada pelo app: ${c.motivo}` });
+    res.status(201).json({ id: c.id, status: c.status });
+  } catch (err) { erro(res, err, 'Erro ao registrar a coleta.'); }
 });
 
 module.exports = router;

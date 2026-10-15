@@ -1664,3 +1664,62 @@ ALTER TABLE empresa ADD COLUMN IF NOT EXISTS banco_conta VARCHAR(20);
 -- Custos da viagem (no MDF-e) para o resultado por viagem do painel:
 -- { combustivel, pedagio, motorista, terceiro, outros } em R$.
 ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS custos JSONB;
+
+-- Coletas (pedido do cliente → programação no romaneio → baixa pelo motorista → CT-e).
+-- status: pendente, programada (num romaneio que ainda não saiu), em_coleta (o
+-- caminhão saiu), coletada, nao_coletada (pode reprogramar) e cancelada.
+CREATE TABLE IF NOT EXISTS coletas (
+    id                  SERIAL PRIMARY KEY,
+    status              VARCHAR(14) NOT NULL DEFAULT 'pendente',
+    canal               VARCHAR(12) NOT NULL DEFAULT 'telefone',   -- telefone, whatsapp, email, presencial, edi
+    solicitante_nome    VARCHAR(120),
+    solicitante_telefone VARCHAR(30),
+    solicitante_email   VARCHAR(250),
+    remetente_doc       VARCHAR(20),
+    remetente_nome      VARCHAR(200) NOT NULL,
+    remetente_ie        VARCHAR(30),
+    logradouro          VARCHAR(200),
+    numero              VARCHAR(30),
+    complemento         VARCHAR(150),
+    bairro              VARCHAR(120),
+    cidade              VARCHAR(120) NOT NULL,
+    uf                  CHAR(2) NOT NULL,
+    cep                 VARCHAR(10),
+    cod_municipio       VARCHAR(10),
+    contato_nome        VARCHAR(120),
+    contato_telefone    VARCHAR(30),
+    destinatario_doc    VARCHAR(20),
+    destinatario_nome   VARCHAR(200),
+    destino_cidade      VARCHAR(120),
+    destino_uf          CHAR(2),
+    tomador             VARCHAR(12) NOT NULL DEFAULT 'remetente',   -- remetente, destinatario
+    data_coleta         DATE NOT NULL,
+    hora_de             VARCHAR(5),
+    hora_ate            VARCHAR(5),
+    volumes             INTEGER,
+    peso_kg             NUMERIC(12,3),
+    cubagem_m3          NUMERIC(10,3),
+    valor_mercadoria    NUMERIC(14,2),
+    produto             VARCHAR(120),
+    notas               VARCHAR(250),          -- números das NF, se o cliente já informou
+    observacao          TEXT,
+    motivo              VARCHAR(250),          -- não coletada / cancelada
+    romaneio_id         INTEGER REFERENCES romaneios(id) ON DELETE SET NULL,
+    ordem               INTEGER NOT NULL DEFAULT 0,
+    coletado_em         TIMESTAMPTZ,
+    volumes_coletados   INTEGER,
+    peso_coletado       NUMERIC(12,3),
+    entregue_por        VARCHAR(120),          -- quem entregou a mercadoria ao motorista
+    foto_arquivo        VARCHAR(200),
+    assinatura_arquivo  VARCHAR(200),
+    latitude            NUMERIC(9,6),
+    longitude           NUMERIC(9,6),
+    obs_motorista       TEXT,
+    cte_id              INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL,
+    criado_por_nome     VARCHAR(150),
+    criado_em           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_coletas_status ON coletas (status, data_coleta);
+CREATE INDEX IF NOT EXISTS idx_coletas_romaneio ON coletas (romaneio_id);
+CREATE INDEX IF NOT EXISTS idx_coletas_remetente ON coletas (remetente_doc);

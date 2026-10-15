@@ -257,7 +257,7 @@
     const lista = await apiRom('');
     $('ocRomaneios').innerHTML = lista.length ? `<table class="edi-tabela"><thead><tr><th>Nº</th><th>Data</th><th>Motorista</th><th>Placa</th><th class="n">CT-e</th><th>Andamento</th><th>Situação</th><th></th></tr></thead><tbody>
       ${lista.map((r) => `<tr><td><b>${r.id}</b></td><td>${dia(r.data)}</td><td>${esc(r.motorista_nome)}</td><td>${esc(r.placa || '—')}${r.veiculo ? `<br><small style="color:var(--texto-fraco);">${esc(r.veiculo)}</small>` : ''}</td>
-        <td class="n">${r.ctes}</td><td>${r.entregues} entregue(s)${r.com_ocorrencia ? ` · <span style="color:#d97706;">${r.com_ocorrencia} com ocorrência</span>` : ''}
+        <td class="n">${r.ctes}${r.coletas ? `<br><small style="color:var(--texto-fraco);">+${r.coletas} coleta(s)</small>` : ''}</td><td>${r.entregues} entregue(s)${r.coletas ? ` · ${r.coletadas}/${r.coletas} coletada(s)` : ''}${r.com_ocorrencia ? ` · <span style="color:#d97706;">${r.com_ocorrencia} com ocorrência</span>` : ''}
           <div style="height:5px; background:var(--bg-elevado); border-radius:3px; margin-top:4px; max-width:160px;"><div style="height:5px; border-radius:3px; background:var(--verde); width:${r.ctes ? Math.round((r.entregues / r.ctes) * 100) : 0}%;"></div></div></td>
         <td><span class="oc-sit ${STATUS_ROM[r.status][1]}">${STATUS_ROM[r.status][0]}</span></td>
         <td><div class="oc-linha-acoes"><button class="primario" data-rom-abrir="${r.id}">Abrir</button></div></td></tr>`).join('')}</tbody></table>`
@@ -311,24 +311,29 @@
     const entregues = r.itens.filter((i) => i.situacao === 'entregue').length;
     $('ocModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
         <div><h3 style="margin:0;">🚚 Romaneio ${r.id} <span class="oc-sit ${STATUS_ROM[r.status][1]}" style="vertical-align:middle;">${STATUS_ROM[r.status][0]}</span></h3>
-        <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:4px;">${dia(r.data)} · ${esc(r.motorista_nome)}${r.placa ? ` · ${esc(r.placa)}` : ''}${r.veiculo ? ` · ${esc(r.veiculo)}` : ''} · ${entregues}/${r.itens.length} entregue(s)
+        <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:4px;">${dia(r.data)} · ${esc(r.motorista_nome)}${r.placa ? ` · ${esc(r.placa)}` : ''}${r.veiculo ? ` · ${esc(r.veiculo)}` : ''}${r.itens.length ? ` · ${entregues}/${r.itens.length} entregue(s)` : ''}
         ${r.saiu_em ? ` · saiu ${dataHora(r.saiu_em)}` : ''}</div></div><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>
       ${r.status !== 'fechado' ? `<div class="cte-aviso" style="margin:12px 0;">📱 App do motorista: <b>${esc(linkMotorista())}</b> · código <b style="font-size:15px; letter-spacing:2px;">${esc(r.codigo_acesso)}</b>
         <a href="#" id="rmCopiarLink">copiar link direto</a> · <a href="#" id="rmNovoCodigo">trocar código</a></div>` : ''}
-      <table class="edi-tabela" style="margin-top:8px;"><thead><tr><th>#</th><th>CT-e</th><th>Destinatário</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>
+      ${r.itens.length || !r.coletas?.length ? `<table class="edi-tabela" style="margin-top:8px;"><thead><tr><th>#</th><th>CT-e</th><th>Destinatário</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>
       ${r.itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}<br><small style="color:var(--texto-fraco);">NF ${esc(i.nfs.join(', '))}</small></td>
         <td>${esc(i.destinatario)}<br><small style="color:var(--texto-fraco);">${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}</small></td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
         <td><span class="oc-sit ${esc(i.situacao)}">${esc(situacoes[i.situacao] || i.situacao)}</span>${i.situacao === 'entregue' && i.recebedor ? `<br><small>${esc(i.recebedor)}</small>` : i.ultima ? `<br><small style="color:var(--texto-fraco);">${esc(i.ultima.descricao)}</small>` : ''}</td></tr>`).join('')}
-      </tbody></table>
+      </tbody></table>` : ''}
+      ${r.coletas?.length ? `<h4 style="margin:14px 0 6px;">📦 Coletas (${r.coletas.filter((c) => c.status === 'coletada').length}/${r.coletas.length} feitas)</h4>
+      <table class="edi-tabela"><thead><tr><th>Nº</th><th>Remetente</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>
+      ${r.coletas.map((c) => `<tr><td>${c.id}</td><td>${esc(c.remetente_nome)}<br><small style="color:var(--texto-fraco);">${esc([c.logradouro, c.numero].filter(Boolean).join(', '))}${c.bairro ? ` — ${esc(c.bairro)}` : ''}</small></td>
+        <td>${esc(c.cidade)}/${esc(c.uf)}</td><td><span class="oc-sit ${{ coletada: 'entregue', nao_coletada: 'ocorrencia', cancelada: 'cancelado', em_coleta: 'em_rota' }[c.status] || 'pendente'}">${esc({ pendente: 'A programar', programada: 'Programada', em_coleta: 'Saiu para coletar', coletada: 'Coletada', nao_coletada: 'Não coletada', cancelada: 'Cancelada' }[c.status])}</span>
+        ${c.status === 'coletada' ? `<br><small>${c.volumes_coletados} vol. · ${esc(c.entregue_por || '')}</small>` : c.motivo ? `<br><small style="color:var(--texto-fraco);">${esc(c.motivo)}</small>` : ''}</td></tr>`).join('')}</tbody></table>` : ''}
       ${r.status === 'aberto' ? `<details style="margin-top:12px;"><summary style="cursor:pointer;">Editar motorista / veículo</summary>${formRomaneio(r)}<button class="btn btn-secundario" id="rmSalvar" style="width:auto;">Salvar</button></details>` : ''}
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
         ${r.status === 'aberto' ? '<button class="btn btn-secundario" id="rmExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : ''}
         <a class="btn btn-secundario" href="/api/romaneios/${r.id}/imprimir?token=${encodeURIComponent(token)}" target="_blank" rel="noopener" style="width:auto; text-decoration:none;">🖨 Imprimir</a>
         ${window.nexoMdfe && r.status !== 'fechado' ? '<button class="btn btn-secundario" id="rmMdfe" style="width:auto;">📋 Emitir MDF-e</button>' : ''}
-        ${r.status === 'aberto' ? '<button class="btn btn-primario" id="rmSaida" style="width:auto;">▶ Dar saída (saiu para entrega)</button>' : ''}
+        ${r.status === 'aberto' ? `<button class="btn btn-primario" id="rmSaida" style="width:auto;">▶ Dar saída (${r.itens.length ? 'saiu para entrega' : 'saiu para coletar'})</button>` : ''}
         ${r.status === 'em_rota' ? '<button class="btn btn-primario" id="rmFechar" style="width:auto;">✓ Fechar romaneio (retorno)</button>' : ''}</div>`;
     modal.classList.remove('oculto');
-    const recarregar = async () => { await abrirRomaneio(id); carregarRomaneios().catch(() => {}); carregar().catch(() => {}); };
+    const recarregar = async () => { await abrirRomaneio(id); carregarRomaneios().catch(() => {}); carregar().catch(() => {}); window.nexoColetas?.recarregar(); };
     $('rmCopiarLink')?.addEventListener('click', (e) => { e.preventDefault(); copiar(linkMotorista(r.codigo_acesso)); });
     $('rmNovoCodigo')?.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -342,9 +347,10 @@
     });
     $('rmSaida')?.addEventListener('click', async (e) => {
       const botao = e.currentTarget;   // depois do await o evento perde o currentTarget
-      if (!await confirmar(`Dar saída? Os ${r.itens.length} CT-e ficam como "Saiu para entrega".`, { textoOk: 'Dar saída' })) return;
+      const nCol = (r.coletas || []).filter((c) => c.status === 'programada').length;
+      if (!await confirmar(`Dar saída? ${[r.itens.length ? `Os ${r.itens.length} CT-e ficam como "Saiu para entrega".` : '', nCol ? `${nCol} coleta(s) ficam como "Saiu para coletar".` : ''].filter(Boolean).join(' ')}`, { textoOk: 'Dar saída' })) return;
       botao.disabled = true;
-      try { const x = await apiRom(`/${id}/saida`, { method: 'POST' }); mostrarAlerta(`Saída registrada: ${x.ctes} CT-e em "Saiu para entrega".`, { tipo: 'sucesso' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+      try { const x = await apiRom(`/${id}/saida`, { method: 'POST' }); mostrarAlerta(`Saída registrada${x.ctes ? `: ${x.ctes} CT-e em "Saiu para entrega"` : ''}.`, { tipo: 'sucesso' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
     });
     $('rmMdfe')?.addEventListener('click', async (e) => {
       const botao = e.currentTarget; botao.disabled = true;
@@ -352,8 +358,15 @@
     });
     $('rmFechar')?.addEventListener('click', async () => {
       const pendentes = r.itens.filter((i) => i.situacao === 'em_rota').length;
-      if (!await confirmar(pendentes ? `Fechar o romaneio? ${pendentes} CT-e ainda estão "saiu para entrega" e vão ficar como "Voltou para a base sem entregar".` : 'Fechar o romaneio?', { textoOk: 'Fechar' })) return;
-      try { const x = await apiRom(`/${id}/fechar`, { method: 'POST', body: '{}' }); mostrarAlerta(`Romaneio fechado.${x.voltaram ? ` ${x.voltaram} CT-e voltaram para a base.` : ''}`, { tipo: 'sucesso' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+      const semBaixa = (r.coletas || []).filter((c) => ['programada', 'em_coleta'].includes(c.status)).length;
+      const avisos = [pendentes ? `${pendentes} CT-e ainda estão "saiu para entrega" e vão ficar como "Voltou para a base sem entregar".` : '',
+        semBaixa ? `${semBaixa} coleta(s) sem baixa vão ficar como "Não coletada" (dá para reprogramar).` : ''].filter(Boolean).join(' ');
+      if (!await confirmar(`Fechar o romaneio?${avisos ? ` ${avisos}` : ''}`, { textoOk: 'Fechar' })) return;
+      try {
+        const x = await apiRom(`/${id}/fechar`, { method: 'POST', body: '{}' });
+        mostrarAlerta(`Romaneio fechado.${x.voltaram ? ` ${x.voltaram} CT-e voltaram para a base.` : ''}${x.coletas_sem_baixa ? ` ${x.coletas_sem_baixa} coleta(s) ficaram como não coletadas.` : ''}`, { tipo: 'sucesso' });
+        recarregar();
+      } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
     });
   }
 
@@ -397,4 +410,8 @@
   $('ocFeriados').addEventListener('click', () => abrirFeriados().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })));
 
   $('ocLinkRastreio').addEventListener('click', () => copiar(`${location.origin}/rastreio.html`));
+  // A tela de Coletas abre o romaneio daqui.
+  window.nexoRomaneio = {
+    abrir: async (id) => { if (!catalogo.length) { const c = await api('/catalogo'); catalogo = c.catalogo; situacoes = c.situacoes; $('ocLoteTipo').innerHTML = opcoesCatalogo(); } return abrirRomaneio(id); },
+  };
 })();

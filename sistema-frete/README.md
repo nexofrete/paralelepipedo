@@ -143,6 +143,19 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.
 
+## Coletas
+
+Em **Operação de Transporte → Coletas**:
+
+1. **Nova coleta** quando o cliente pedir (por telefone, WhatsApp, e-mail ou no balcão). Digite o nome ou o CNPJ do remetente e o endereço vem do cadastro de clientes. Informe a data, a janela de horário, os volumes, o peso, o destino e quem paga o frete. **↻ Repetir** cria outra igual, para o cliente que pede toda semana.
+2. **Programar no caminhão:** marque as coletas e escolha um romaneio que já existe (pode ser um caminhão que já está na rua) ou crie um novo com o motorista e a placa. As coletas entram no **mesmo romaneio das entregas**: uma folha impressa só e um código só no app do motorista.
+3. **No celular**, o motorista vê as coletas (em roxo) junto com as entregas. Para **Coletado**, informa os volumes, o peso, quem entregou, a assinatura e/ou a foto. Para **Não coletado**, escolhe o motivo (mercadoria não estava pronta, local fechado...). O escritório também pode dar a baixa pela tela.
+4. Ao **fechar o romaneio**, a coleta sem baixa fica como "Não coletada" e volta para a lista **A programar**.
+5. **CT-e:** **Gerar CT-e** cria o rascunho com o remetente, o destino e a carga coletada; falta incluir as NF-e e conferir os valores. Se a NF-e do cliente chegar por e-mail, o rascunho criado sozinho já se liga à coleta.
+6. Quem pediu a coleta recebe o aviso de "coletada" ou "não coletada" por e-mail ou WhatsApp, se os avisos automáticos estiverem ligados na Configuração fiscal.
+
+O resumo no topo mostra quantas coletas estão a programar (e quantas atrasadas), quantas estão no caminhão, quantas foram coletadas hoje e quantas ainda estão sem CT-e.
+
 ## Ocorrências de entrega (estilo SSW)
 
 Em **🚛 Operação de Transporte → 📍 Ocorrências de entrega** (quem emite CT-e): acompanha cada CT-e autorizado até a entrega.

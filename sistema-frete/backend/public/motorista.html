@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2f5bea" />
-  <title>Entregas — motorista</title>
+  <title>Entregas e coletas — motorista</title>
   <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
   <link rel="stylesheet" href="css/rastreio.css" />
   <link rel="stylesheet" href="css/motorista.css" />
@@ -12,7 +12,7 @@
 <body>
   <main class="mt">
     <section id="mtEntrar" class="rt-cartao">
-      <h1>🚚 Minhas entregas</h1>
+      <h1>🚚 Minhas entregas e coletas</h1>
       <p class="mt-fraco">Digite o código do romaneio (está na folha impressa ou a expedição manda pelo WhatsApp).</p>
       <form id="mtFormCodigo"><input id="mtCodigo" autocomplete="off" autocapitalize="characters" placeholder="Código do romaneio" maxlength="12" />
         <button type="submit">Entrar</button></form>
@@ -33,14 +33,18 @@
     <div class="mt-folha-conteudo">
       <div class="mt-folha-topo"><b id="mtFolhaTitulo"></b><button id="mtFechar" class="mt-x" title="Fechar">✕</button></div>
       <div id="mtFolhaCte" class="mt-fraco"></div>
-      <div id="mtCampoTipo" class="oculto"><label>O que aconteceu?</label><select id="mtTipo"></select></div>
+      <div id="mtCampoTipo" class="oculto"><label for="mtTipo">O que aconteceu?</label><select id="mtTipo"></select></div>
+      <div id="mtCamposColeta" class="oculto">
+        <label for="mtVol">Volumes coletados</label><input id="mtVol" inputmode="numeric" maxlength="6" />
+        <label for="mtPeso">Peso (kg) — se souber</label><input id="mtPeso" inputmode="decimal" maxlength="12" />
+      </div>
       <div id="mtCamposEntrega">
-        <label for="mtRecebedor">Quem recebeu</label><input id="mtRecebedor" maxlength="120" placeholder="Nome de quem recebeu" />
-        <label for="mtDoc">Documento (RG/CPF) — opcional</label><input id="mtDoc" maxlength="30" inputmode="numeric" />
+        <label for="mtRecebedor" id="mtRotuloRecebedor">Quem recebeu</label><input id="mtRecebedor" maxlength="120" placeholder="Nome de quem recebeu" />
+        <div id="mtCampoDoc"><label for="mtDoc">Documento (RG/CPF) — opcional</label><input id="mtDoc" maxlength="30" inputmode="numeric" /></div>
         <label>Assinatura</label>
         <div class="mt-assinatura"><canvas id="mtCanvas"></canvas><button type="button" id="mtLimpar">Limpar</button></div>
       </div>
-      <label for="mtFoto">Foto (canhoto, fachada ou avaria)</label>
+      <label for="mtFoto" id="mtRotuloFoto">Foto (canhoto, fachada ou avaria)</label>
       <input id="mtFoto" type="file" accept="image/*" capture="environment" />
       <img id="mtPrevia" class="oculto" alt="" />
       <label for="mtObs">Observação</label><textarea id="mtObs" rows="2" maxlength="500"></textarea>

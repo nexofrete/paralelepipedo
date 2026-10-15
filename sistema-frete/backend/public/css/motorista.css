@@ -31,3 +31,7 @@
 .mt-assinatura button { position: absolute; right: 6px; top: 6px; width: auto; padding: 4px 10px; font-size: 12px; background: #eee; color: #333; }
 #mtPrevia { max-width: 100%; max-height: 180px; margin-top: 8px; border-radius: 8px; }
 #mtEnviar { margin-top: 16px; }
+/* Coletas no mesmo romaneio */
+.mt-secao { font-size: 15px; margin: 18px 0 8px; color: var(--fraco); }
+.mt-coleta:not(.feito):not(.problema) { border-left-color: #8b5cf6; }
+.mt-coleta .mt-num { background: #8b5cf6; }

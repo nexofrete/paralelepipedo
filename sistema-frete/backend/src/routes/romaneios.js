@@ -9,6 +9,7 @@ const pool = require('../db');
 const { autenticar, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
 const oc = require('../cte/ocorrencias');
+const coletas = require('../coletas');
 
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
@@ -82,7 +83,9 @@ router.get('/', autenticar, emitir, async (req, res) => {
       `SELECT r.id, r.data, r.motorista_nome, r.placa, r.veiculo, r.status, r.codigo_acesso, r.saiu_em, r.fechado_em, r.criado_em,
               COUNT(i.cte_id)::int AS ctes,
               COUNT(i.cte_id) FILTER (WHERE c.situacao_entrega = 'entregue')::int AS entregues,
-              COUNT(i.cte_id) FILTER (WHERE c.situacao_entrega IN ('ocorrencia', 'devolvido'))::int AS com_ocorrencia
+              COUNT(i.cte_id) FILTER (WHERE c.situacao_entrega IN ('ocorrencia', 'devolvido'))::int AS com_ocorrencia,
+              (SELECT COUNT(*)::int FROM coletas k WHERE k.romaneio_id = r.id) AS coletas,
+              (SELECT COUNT(*)::int FROM coletas k WHERE k.romaneio_id = r.id AND k.status = 'coletada') AS coletadas
          FROM romaneios r LEFT JOIN romaneio_itens i ON i.romaneio_id = r.id LEFT JOIN ctes_emitidos c ON c.id = i.cte_id
         WHERE r.status <> 'fechado' OR r.data >= CURRENT_DATE - 30
         GROUP BY r.id ORDER BY (r.status = 'fechado'), r.data DESC, r.id DESC LIMIT 200`);
@@ -94,7 +97,7 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM romaneios WHERE id = $1', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ erro: 'Romaneio não encontrado.' });
-    res.json({ ...rows[0], itens: await itensDoRomaneio(rows[0].id) });
+    res.json({ ...rows[0], itens: await itensDoRomaneio(rows[0].id), coletas: await coletas.coletasDoRomaneio(rows[0].id) });
   } catch (err) { erro(res, err, 'Erro ao abrir o romaneio.'); }
 });
 
@@ -135,12 +138,17 @@ router.put('/:id(\\d+)', autenticar, emitir, async (req, res) => {
 });
 
 router.delete('/:id(\\d+)', autenticar, emitir, async (req, res) => {
+  const cliente = await pool.connect();
   try {
-    const { rows } = await pool.query(`DELETE FROM romaneios WHERE id = $1 AND status = 'aberto' RETURNING id`, [req.params.id]);
-    if (!rows[0]) return res.status(409).json({ erro: 'Só dá para excluir romaneio que ainda não saiu.' });
+    await cliente.query('BEGIN');
+    const { rows } = await cliente.query(`SELECT id FROM romaneios WHERE id = $1 AND status = 'aberto' FOR UPDATE`, [req.params.id]);
+    if (!rows[0]) throw falha('Só dá para excluir romaneio que ainda não saiu.', 409);
+    await coletas.soltarColetas(cliente, rows[0].id);   // as coletas voltam para "a programar"
+    await cliente.query('DELETE FROM romaneios WHERE id = $1', [rows[0].id]);
+    await cliente.query('COMMIT');
     log(req, 'romaneio', `Excluiu o romaneio ${req.params.id}`);
     res.json({ ok: true });
-  } catch (err) { erro(res, err, 'Erro ao excluir.'); }
+  } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao excluir.'); } finally { cliente.release(); }
 });
 
 // Saída: "Saiu para entrega" em todos os CT-e que ainda não foram entregues.
@@ -159,6 +167,7 @@ async function darSaida(id, usuarioNome) {
       lancadas.push(await oc.lancarOcorrencia(cliente, { cteId: it.cte_id, corpo: { tipo_id: 'saiu', data_hora: agora,
         observacao: `Romaneio ${id} · ${r.motorista_nome}${r.placa ? ` · ${r.placa}` : ''}` }, usuarioNome, romaneioId: id }));
     }
+    await coletas.sairComColetas(cliente, id);
     await cliente.query(`UPDATE romaneios SET status = 'em_rota', saiu_em = NOW() WHERE id = $1`, [id]);
     await cliente.query('COMMIT');
     oc.depoisDeLancar(lancadas);
@@ -190,11 +199,12 @@ router.post('/:id(\\d+)/fechar', autenticar, emitir, async (req, res) => {
       lancadas.push(await oc.lancarOcorrencia(cliente, { cteId: it.cte_id, corpo: { tipo_id: 'retorno_base', data_hora: agora,
         nova_previsao: req.body?.nova_previsao, observacao: `Romaneio ${rows[0].id} fechado` }, usuarioNome: req.usuario.nome, romaneioId: rows[0].id }));
     }
+    const { rows: semBaixa } = await coletas.fecharColetas(cliente, rows[0].id);
     await cliente.query(`UPDATE romaneios SET status = 'fechado', fechado_em = NOW() WHERE id = $1`, [rows[0].id]);
     await cliente.query('COMMIT');
     oc.depoisDeLancar(lancadas);
     log(req, 'romaneio', `Fechou o romaneio ${rows[0].id}: ${itens.filter((x) => x.situacao === 'entregue').length} entregue(s), ${lancadas.length} voltou(aram) para a base`);
-    res.json({ ok: true, voltaram: lancadas.length });
+    res.json({ ok: true, voltaram: lancadas.length, coletas_sem_baixa: semBaixa.length });
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao fechar o romaneio.'); } finally { cliente.release(); }
 });
 
@@ -215,6 +225,7 @@ router.get('/:id(\\d+)/imprimir', autenticar, emitir, async (req, res) => {
     const r = rows[0];
     if (!r) return res.status(404).send('Romaneio não encontrado.');
     const itens = await itensDoRomaneio(r.id);
+    const cols = (await coletas.coletasDoRomaneio(r.id)).filter((c) => c.status !== 'cancelada');
     const { rows: emp } = await pool.query('SELECT razao_social, nome_fantasia, cnpj, telefone, logo, endereco_publico FROM empresa WHERE id = 1');
     const e = emp[0] || {};
     const base = String(e.endereco_publico || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
@@ -234,22 +245,29 @@ router.get('/:id(\\d+)/imprimir', autenticar, emitir, async (req, res) => {
       .rodape div { border-top: 1px solid #000; padding-top: 3px; min-width: 220px; text-align: center; } button { margin: 10px; padding: 8px 16px; }
       @media print { button { display: none; } }</style></head><body>
       <button onclick="window.print()">Imprimir</button>
-      <div class="topo"><div>${e.logo ? `<img class="logo" src="${esc(e.logo)}" alt="">` : ''}<h1>Romaneio de entrega nº ${r.id}</h1>
+      <div class="topo"><div>${e.logo ? `<img class="logo" src="${esc(e.logo)}" alt="">` : ''}<h1>Romaneio ${itens.length && cols.length ? 'de entrega e coleta' : cols.length ? 'de coleta' : 'de entrega'} nº ${r.id}</h1>
         <div>${esc(e.razao_social || '')}${e.cnpj ? ` · CNPJ ${esc(e.cnpj)}` : ''}${e.telefone ? ` · ${esc(e.telefone)}` : ''}</div></div>
         <div class="dados"><span>Data</span><span>Motorista</span><span>Placa / veículo</span><span>Situação</span>
           <b>${dia(r.data)}</b><b>${esc(r.motorista_nome)}${r.motorista_documento ? ` (${esc(r.motorista_documento)})` : ''}</b><b>${esc(r.placa || '—')}${r.veiculo ? ` · ${esc(r.veiculo)}` : ''}</b>
           <b>${{ aberto: 'Aguardando saída', em_rota: 'Em rota', fechado: 'Fechado' }[r.status]}</b></div>
         ${qr ? `<div class="qr">${qr}<div>App do motorista<br>código <b>${esc(r.codigo_acesso)}</b></div></div>` : ''}</div>
-      <table><thead><tr><th>#</th><th>CT-e</th><th>NF</th><th>Destinatário</th><th>Endereço</th><th>Cidade</th><th class="n">Vol.</th><th class="n">Peso (kg)</th><th class="n">Valor carga</th><th>Recebido por (nome legível / documento / data e hora)</th></tr></thead><tbody>
+      ${itens.length || !cols.length ? `<table><thead><tr><th>#</th><th>CT-e</th><th>NF</th><th>Destinatário</th><th>Endereço</th><th>Cidade</th><th class="n">Vol.</th><th class="n">Peso (kg)</th><th class="n">Valor carga</th><th>Recebido por (nome legível / documento / data e hora)</th></tr></thead><tbody>
       ${itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}</td><td>${esc(i.nfs.join(', '))}</td><td>${esc(i.destinatario)}${i.telefone ? `<br>${esc(i.telefone)}` : ''}</td>
         <td>${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}${i.cep ? `<br>CEP ${esc(i.cep)}` : ''}</td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
         <td class="n">${n(i.volumes)}</td><td class="n">${n(i.peso, 1)}</td><td class="n">${n(i.valor_carga, 2)}</td>
         <td class="ass">${i.situacao === 'entregue' ? `Entregue · ${esc(i.recebedor || '')}` : ''}</td></tr>`).join('')}
-      <tr><th colspan="6">${itens.length} CT-e</th><th class="n">${n(tot.vol)}</th><th class="n">${n(tot.peso, 1)}</th><th class="n">${n(tot.carga, 2)}</th><th></th></tr></tbody></table>
+      <tr><th colspan="6">${itens.length} CT-e</th><th class="n">${n(tot.vol)}</th><th class="n">${n(tot.peso, 1)}</th><th class="n">${n(tot.carga, 2)}</th><th></th></tr></tbody></table>` : ''}
+      ${cols.length ? `<h2 style="font-size:14px; margin:14px 0 6px;">Coletas (${cols.length})</h2>
+      <table><thead><tr><th>Nº</th><th>Remetente</th><th>Endereço</th><th>Cidade</th><th>Horário</th><th>Contato</th><th class="n">Vol. previsto</th><th class="n">Peso previsto</th><th>NF / observação</th><th>Vol. coletados · entregue por (nome legível) · hora</th></tr></thead><tbody>
+      ${cols.map((c) => `<tr><td>${c.id}</td><td>${esc(c.remetente_nome)}</td><td>${esc([c.logradouro, c.numero, c.complemento].filter(Boolean).join(', '))}${c.bairro ? ` — ${esc(c.bairro)}` : ''}</td>
+        <td>${esc(c.cidade)}/${esc(c.uf)}</td><td>${c.hora_de || c.hora_ate ? `${esc(c.hora_de || '')}–${esc(c.hora_ate || '')}` : ''}</td>
+        <td>${esc(c.contato_nome || '')}${c.contato_telefone ? `<br>${esc(c.contato_telefone)}` : ''}</td><td class="n">${c.volumes ?? ''}</td><td class="n">${c.peso_kg != null ? n(c.peso_kg, 1) : ''}</td>
+        <td>${esc(c.notas || '')}${c.observacao ? `<br>${esc(c.observacao)}` : ''}</td>
+        <td class="ass">${c.status === 'coletada' ? `Coletada · ${c.volumes_coletados} vol. · ${esc(c.entregue_por || '')}` : c.status === 'nao_coletada' ? `Não coletada: ${esc(c.motivo || '')}` : ''}</td></tr>`).join('')}</tbody></table>` : ''}
       ${r.observacao ? `<p><b>Observação:</b> ${esc(r.observacao)}</p>` : ''}
       <div class="rodape"><div>Conferente (saída)</div><div>Motorista</div><div>Conferente (retorno)</div></div>
       </body></html>`);
   } catch (err) { console.error(err); res.status(500).send('Erro ao montar o romaneio.'); }
 });
 
-module.exports = { router, itensDoRomaneio, darSaida, itemDoCte };
+module.exports = { router, itensDoRomaneio, darSaida, itemDoCte, lerCabecalho, novoCodigo };

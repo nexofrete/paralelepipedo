@@ -118,6 +118,7 @@
         ${Number(c.tp_emis) > 1 ? `<div class="cte-tipo alerta">Contingência ${Number(c.tp_emis) === 7 ? 'SVC-RS' : 'SVC-SP'}</div>` : ''}
         ${c.chave_pendente_origem ? '<div class="cte-tipo alerta">Chave pendente na SEFAZ de origem</div>' : ''}
         ${seloAverbacao(c)}
+        ${c.origem_coleta ? `<div class="cte-tipo">📦 coleta nº ${esc(c.origem_coleta)}</div>` : ''}
         ${c.status === 'rascunho' && c.origem_tipo === 'email' ? `<div class="cte-tipo" title="${esc(c.origem_remetente || '')}">✉ chegou por e-mail</div>` : ''}
         ${c.status === 'rascunho' && (c.avisos_importacao || []).length ? `<div class="cte-tipo alerta">⚠ ${esc(c.avisos_importacao.join('; '))}</div>` : ''}</td>
       <td>${esc(c.tomador_nome || '—')}</td>
@@ -236,6 +237,8 @@
   let tipoCte = { tpCTe: '0', complementados: [], substituido: null };
   let origemCte = null;   // de onde veio o rascunho (e-mail, arquivo) — continua depois de editar
   $('btnNovoCte').addEventListener('click', () => abrirFormulario(null));
+  // A tela de Coletas abre o rascunho gerado da coleta.
+  window.nexoCte = { abrir: async (id) => { await carregarLista().catch(() => {}); return abrirFormulario(id); } };
 
   // NF-e em lote (arquivos ou e-mail) -> rascunhos de CT-e.
   function resumoImportacao(r) {

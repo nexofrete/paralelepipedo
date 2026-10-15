@@ -31,6 +31,7 @@
     't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:resumo': ['101', 'contas receber receber'],
     't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],
     't:pagar:acertos': ['120', 'acerto viagem motorista ciot vale pedagio agregado'], 'p:financeiro': ['130', 'financeiro'],
+    't:contabil:livro': ['140', 'fiscal contabilidade contador livro saidas apuracao icms iss cfop sped lancamentos'], 't:contabil:pacote': ['141', 'pacote contador xml zip mensal enviar'],
     't:frota:painel': ['200', 'frota custo km'], 't:frota:abastecimentos': ['201', 'abastecimento combustivel diesel consumo'],
     't:frota:manutencoes': ['210', 'manutencao oficina preventiva'], 't:emissao-cte:frota': ['220', 'veiculo motorista placa cadastro'],
     't:painel-transporte:geral': ['300', 'painel gerencial indicadores'], 't:painel-transporte:resultado': ['301', 'margem resultado lucro cliente dre'],

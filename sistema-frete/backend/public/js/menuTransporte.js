@@ -13,7 +13,7 @@
   const paginaDo = (el) => document.querySelector(`.nav-item[data-pagina="${el.dataset.ir}"]`);
   const ehAdmin = usuario?.perfil === 'admin';
   // Atributo das abas de cada tela.
-  const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba', filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba' };
+  const ATRIBUTO_ABA = { 'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba', filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba' };
   const PAGINAS = Object.keys(ATRIBUTO_ABA).concat('edi', 'coletas', 'cotacoes', 'portal-cliente');
 
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
@@ -51,9 +51,9 @@
   }));
 
   // As abas dentro das telas também acendem o subitem certo.
-  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba], [data-fat-aba], [data-pt-aba], [data-bp-aba], [data-fl-aba], [data-cp-aba], [data-fv-aba]').forEach((aba) => aba.addEventListener('click', () => {
-    const ir = aba.dataset.ocAba ? 'ocorrencias' : aba.dataset.fatAba ? 'faturamento' : aba.dataset.ptAba ? 'painel-transporte' : aba.dataset.bpAba ? 'conferencia' : aba.dataset.flAba ? 'filiais' : aba.dataset.cpAba ? 'pagar' : aba.dataset.fvAba ? 'frota' : 'emissao-cte';
-    const nome = aba.dataset.ocAba || aba.dataset.fatAba || aba.dataset.ptAba || aba.dataset.bpAba || aba.dataset.flAba || aba.dataset.cpAba || aba.dataset.fvAba || aba.dataset.cteAba;
+  document.querySelectorAll('.cte-aba[data-cte-aba], [data-oc-aba], [data-fat-aba], [data-pt-aba], [data-bp-aba], [data-fl-aba], [data-cp-aba], [data-fv-aba], [data-cbl-aba]').forEach((aba) => aba.addEventListener('click', () => {
+    const ir = aba.dataset.ocAba ? 'ocorrencias' : aba.dataset.fatAba ? 'faturamento' : aba.dataset.ptAba ? 'painel-transporte' : aba.dataset.bpAba ? 'conferencia' : aba.dataset.flAba ? 'filiais' : aba.dataset.cpAba ? 'pagar' : aba.dataset.fvAba ? 'frota' : aba.dataset.cblAba ? 'contabil' : 'emissao-cte';
+    const nome = aba.dataset.ocAba || aba.dataset.fatAba || aba.dataset.ptAba || aba.dataset.bpAba || aba.dataset.flAba || aba.dataset.cpAba || aba.dataset.fvAba || aba.dataset.cblAba || aba.dataset.cteAba;
     const el = itens.find((x) => x.dataset.ir === ir && x.dataset.aba === nome);
     if (el) marcar(el);
   }));

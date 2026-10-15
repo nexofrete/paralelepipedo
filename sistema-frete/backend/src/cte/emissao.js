@@ -38,6 +38,19 @@ function dadosParaXml(registro, e) {
   };
 }
 
+// ICMS tributado sem base (rascunho que veio sem frete e teve o valor lançado
+// depois): a base é o valor da prestação (com a redução, se houver) e o ICMS
+// sai da alíquota. Sem isso o XML iria sem vBC/vICMS (obrigatórios) e o livro
+// fiscal ficaria com ICMS zero.
+function completarIcms(d) {
+  const i = d?.icms || {};
+  const vazio = (v) => v == null || v === '';
+  if (!['00', '20', '90', 'OUTRAUF'].includes(String(i.cst || '')) || !(Number(i.pICMS) > 0) || !(vazio(i.vBC) || vazio(i.vICMS))) return null;
+  const c = (v) => Math.round(v * 100) / 100;
+  const base = vazio(i.vBC) ? c((Number(d.valores?.vTPrest) || 0) * (1 - (Number(i.pRedBC) || 0) / 100)) : Number(i.vBC);
+  return { ...d, icms: { ...i, vBC: base, vICMS: c((base * Number(i.pICMS)) / 100) } };
+}
+
 // Contingência (SVC): ligada na Configuração fiscal quando a SEFAZ da UF está fora.
 // A autorização vai para a SVC; consulta e eventos de CT-e autorizado na SVC
 // também, enquanto a contingência estiver ligada (depois a SEFAZ de origem
@@ -150,6 +163,9 @@ async function transmitir(id) {
       if (!c && contingencia && reg.chave[34] === '1') pendente = reg.chave;
     }
   }
+
+  const icms = completarIcms(reg.dados);
+  if (icms) await pool.query('UPDATE ctes_emitidos SET dados = $2 WHERE id = $1', [id, JSON.stringify(icms)]);
 
   await reservarNumero(id);
   reg = (await pool.query('SELECT * FROM ctes_emitidos WHERE id = $1', [id])).rows[0];
@@ -322,4 +338,4 @@ async function testarConexao() {
   return sefaz.statusServico({ uf: e.uf, tpAmb: e.cte_ambiente, cert, verificarServidor: e.cte_verificar_servidor, simulado: e.cte_demonstracao ? {} : null, contingencia: contingenciaLigada(e) });
 }
 
-module.exports = { certificadoParaUsar, carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar, rascunhoDerivado, cancelarPendenteOrigem, contingenciaDaUf };
+module.exports = { completarIcms, certificadoParaUsar, carregarEmitente, emitenteDoCadastro, dadosParaXml, resumo, transmitir, consultar, cancelar, cartaCorrecao, testarConexao, carregar, rascunhoDerivado, cancelarPendenteOrigem, contingenciaDaUf };

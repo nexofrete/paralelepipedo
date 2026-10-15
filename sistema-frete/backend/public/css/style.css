@@ -1337,6 +1337,7 @@ tr.cr-linha.cr-sel td { background: rgba(77,124,255,.14); }
 
 /* ---------- Emissão de CT-e ---------- */
 .cte-abas { display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--borda); }
+@media (max-width: 700px) { .cte-abas { overflow-x: auto; scrollbar-width: thin; } .cte-abas .cte-aba { flex-shrink: 0; } }
 .cte-aba { padding: 10px 4px; margin-right: 24px; color: var(--texto-fraco); font-size: 13.5px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
 .cte-aba:hover { color: var(--texto); }
 .cte-aba.ativo { color: var(--texto); border-bottom-color: var(--azul); }
@@ -1499,7 +1500,7 @@ html.tema-claro { --pt-serie: #2a78d6; --pt-grade: rgba(0,0,0,0.08); --pt-eixo: 
 .pt-delta { font-size: 11.5px; font-weight: 600; }
 
 /* Margem por CT-e e cliente: demonstrativo e clientes um embaixo do outro em tela estreita. */
-@media (max-width: 1000px) { .rs-grade { grid-template-columns: 1fr !important; } }
+@media (max-width: 1000px) { .rs-grade, .cbl-grade { grid-template-columns: 1fr !important; } }
 
 /* ---------- "Ir para…" (Ctrl+K / F2): código da tela ou nome ---------- */
 .ir-botao { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: calc(100% - 4px); margin: 6px 2px 14px; padding: 9px 12px;

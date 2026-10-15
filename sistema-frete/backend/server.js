@@ -232,6 +232,7 @@ app.use('/api/contas-pagar', contasPagarRoutes.contasPagar);
 app.use('/api/acertos', contasPagarRoutes.acertos);
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
+app.use('/api/contabil', require('./src/routes/contabil'));
 app.use('/api/frota', require('./src/routes/frota'));
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
@@ -301,6 +302,7 @@ async function iniciar() {
     agenda.agendarLembretes();
     require('./src/pastaXml').agendar();
     require('./src/caixaEmail').agendar();
+    require('./src/contabil').agendar();
     require('./src/avisosSeguranca').iniciar();
     licenca.agendarConferencia();
     require('./src/unidades').garantirMatriz().catch((e) => console.error('[unidades]', e.message));

@@ -294,6 +294,27 @@ Página própria para o cliente da transportadora: **`/portal.html`** (funciona 
 
 CT-e de demonstração só aparecem no portal enquanto a empresa está no modo demonstração.
 
+## Fiscal e contabilidade
+
+Menu **Operação de Transporte → 🧮 Fiscal e contabilidade** (código **140**; **141** abre direto o pacote do contador). Pede a permissão de ver o financeiro.
+
+- **Livro de saídas e apuração:** CT-e do período com CFOP, CST, alíquota, base, ICMS e isentas/outras.
+  - Resumos por CFOP, por CST/alíquota e por UF de início → fim.
+  - NFS-e com o ISS (e o ISS retido).
+  - Cancelados e substituídos aparecem na lista, mas não entram nas somas: vale o CT-e substituto.
+  - Imprime em PDF e baixa em planilha.
+- **Lançamentos contábeis:** partidas dobradas pelo plano de contas do contador:
+  - receita dos CT-e e NFS-e, com o ICMS e o ISS;
+  - recebimentos das faturas;
+  - contas a pagar, no regime de competência ou de caixa.
+  - Traz o resumo por conta (débitos = créditos) e a planilha para importar (separador `;`, `,` ou tabulação).
+- **Pacote do contador (.zip):** XML dos CT-e (autorizados, cancelados e substituídos em pastas separadas, mais os eventos), dos MDF-e e das NFS-e, junto com o livro, os lançamentos e um LEIA-ME.
+  - Baixa na tela ou vai por e-mail para o contador.
+  - Com o **envio automático** ligado, o pacote do mês anterior sai sozinho no dia escolhido; se falhar, tenta de novo a cada 6 horas.
+- **Contador e plano de contas:** nome, e-mail e CRC do contador, regime, separador e o código de cada conta.
+
+**O SPED não é gerado aqui.** A EFD ICMS/IPI e a EFD Contribuições precisam também das notas de **entrada** (diesel, peças, pneus, CT-e de subcontratação), que não passam pelo Nexofrete. O sistema do contador importa os XML do pacote junto com essas notas e apura o saldo do ICMS (débitos − créditos).
+
 ## Contas a pagar e acerto de viagem
 
 Em **Operação de Transporte → Contas a pagar / Acerto de viagem**:

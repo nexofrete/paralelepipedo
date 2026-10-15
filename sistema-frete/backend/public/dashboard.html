@@ -58,6 +58,7 @@
       <div class="nav-grupo oculto" id="navGrupoTransporte">🚛 Operação de Transporte <span id="navTranspSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubTransporte">
         <div class="nav-tsub" data-ir="painel-transporte" data-aba="geral">📊 Painel gerencial</div>
+        <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
         <div class="nav-tsub" data-ir="cotacoes">💲 Cotações</div>
         <div class="nav-tsub" data-ir="coletas">📦 Coletas</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="lista">📄 CT-e</div>
@@ -490,9 +491,11 @@
         <div class="cte-abas">
           <div class="cte-aba ativo" data-pt-aba="geral">Visão geral</div>
           <div class="cte-aba" data-pt-aba="viagens">🚛 Resultado por viagem</div>
+          <div class="cte-aba" data-pt-aba="resultado">💹 Margem por CT-e e cliente</div>
         </div>
         <div id="pt-aba-geral"></div>
         <div id="pt-aba-viagens" class="oculto"></div>
+        <div id="pt-aba-resultado" class="oculto"></div>
       </section>
       <div class="modal-overlay oculto" id="modalFatura">
         <div class="painel modal-card modal-tela-cheia" style="padding:20px 24px;" id="fatModalConteudo"></div>
@@ -3466,6 +3469,7 @@
   <script src="js/contasPagar.js"></script>
   <script src="js/portalAdmin.js"></script>
   <script src="js/frota.js"></script>
+  <script src="js/resultado.js"></script>
   <script src="js/mdfe.js"></script>
   <script src="js/nfse.js"></script>
   <script src="js/faturamento.js"></script>

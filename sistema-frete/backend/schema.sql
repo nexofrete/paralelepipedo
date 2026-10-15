@@ -2100,3 +2100,6 @@ CREATE TABLE IF NOT EXISTS manutencao_planos (
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_manutencao_planos_veiculo ON manutencao_planos (veiculo_id);
+-- Resultado por CT-e e por cliente: % de impostos sobre o frete (PIS/COFINS/IR/CSLL),
+-- % do seguro da carga sobre o valor da mercadoria e a meta de margem.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS resultado_config JSONB;

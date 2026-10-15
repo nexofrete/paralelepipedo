@@ -167,6 +167,24 @@ Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), C
 
 Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
 
+## Margem por CT-e e por cliente
+
+Em **Painel gerencial → 💹 Margem por CT-e e cliente** (mesmo período escolhido no topo do painel).
+
+**Como cada documento é calculado** (CT-e e NFS-e):
+- **Receita do frete** − **ICMS** do CT-e / **ISS** da NFS-e − **outros impostos** (% configurado: PIS, COFINS, IR, CSLL) − **seguro** (% do valor da mercadoria).
+- − **custo da viagem**: o custo lançado no MDF-e (à mão ou pelo acerto de viagem), ou o acerto do romaneio de entrega / da transferência entre filiais. É dividido entre os CT-e da viagem pelo **peso** (sem peso, pela receita).
+- − **frota própria**: combustível e manutenção do caminhão no período, divididos pelo peso que ele levou (pelo MDF-e, romaneio ou transferência). O combustível pago pelo motorista não entra aqui, porque já está no acerto.
+- = **margem** em R$ e em %, colorida conforme a **meta de margem**.
+
+**Na tela:**
+- **Por cliente** (quem paga o frete): receita, custos, margem, % e frete/kg contra custo/kg. Os que estão abaixo da meta aparecem destacados. Clicar no cliente filtra os documentos dele.
+- **Documentos:** filtros de margem negativa, abaixo da meta e **sem custo lançado** (a margem desses aparece maior do que é).
+- **Demonstrativo do período:** receita, impostos, custos, margem de contribuição, despesas da empresa (salários, aluguel, administrativo, seguro e outros, de Contas a pagar) e **resultado**.
+- **Avisos:** documentos sem custo, combustível possivelmente contado duas vezes (lançado à mão no MDF-e e também nos abastecimentos), custos sem CT-e para dividir.
+- **⬇ Planilha:** abre no Excel com a margem de cada documento.
+- **⚙ Percentuais e meta** (administrador): impostos sobre o faturamento (peça ao contador), seguro e meta de margem.
+
 ## Frota: abastecimento e manutenção
 
 Em **Operação de Transporte → 🔧 Frota** (quem emite CT-e ou vê o financeiro). Usa os veículos de **🚛 Veículos e motoristas**.

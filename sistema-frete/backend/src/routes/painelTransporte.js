@@ -145,5 +145,42 @@ router.put('/viagens/:id(\\d+)/custos', autenticar, pode, async (req, res) => {
   } catch (err) { res.status(400).json({ erro: err.message || 'Erro ao salvar os custos.' }); }
 });
 
+// Resultado (margem) por CT-e e por cliente e o demonstrativo do período.
+const resultado = require('../resultado');
+const periodoDe = (q) => { const ate = dataIso(q.ate) || hoje(); return { de: dataIso(q.de) || `${ate.slice(0, 8)}01`, ate }; };
+router.get('/resultado', autenticar, pode, async (req, res) => {
+  try {
+    const p = periodoDe(req.query);
+    if (p.de > p.ate) return res.status(400).json({ erro: 'A data inicial é depois da final.' });
+    const r = await resultado.calcular(p);
+    res.json({ ...r, documentos: r.documentos.slice(0, 2000), total_documentos: r.documentos.length });
+  } catch (err) { console.error('[resultado]', err); res.status(400).json({ erro: err.message || 'Erro ao calcular o resultado.' }); }
+});
+// Planilha (CSV, abre no Excel) com a margem de cada documento.
+router.get('/resultado.csv', autenticar, pode, async (req, res) => {
+  try {
+    const r = await resultado.calcular(periodoDe(req.query));
+    const n = (v) => (v == null ? '' : String(Number(v).toFixed(2)).replace('.', ','));
+    const campo = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const linhas = [['Data', 'Documento', 'Cliente (tomador)', 'CNPJ/CPF', 'Origem', 'Destino', 'Peso kg', 'Receita', 'ICMS', 'ISS', 'Outros impostos', 'Seguro',
+      'Custo da viagem', 'Frota própria', 'Custo total', 'Margem', 'Margem %', 'Viagens'].join(';')];
+    r.documentos.forEach((d) => linhas.push([d.data.split('-').reverse().join('/'), campo(d.documento), campo(d.tomador_nome), campo(d.tomador_doc), campo(d.origem), campo(d.destino),
+      d.peso, n(d.receita), n(d.icms), n(d.iss), n(d.impostos - d.icms - d.iss), n(d.seguro), n(d.viagem), n(d.frota), n(d.custo), n(d.margem), n(d.margem_pct), campo(d.viagens.join(', '))].join(';')));
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="resultado-${r.periodo.de}-a-${r.periodo.ate}.csv"` });
+    res.send(`\uFEFF${linhas.join('\r\n')}\r\n`);
+  } catch (err) { res.status(400).send(String(err.message || 'Erro.')); }
+});
+router.get('/resultado/config', autenticar, pode, async (req, res) => {
+  try { res.json(await resultado.config()); } catch (err) { res.status(400).json({ erro: err.message }); }
+});
+router.put('/resultado/config', autenticar, async (req, res) => {
+  try {
+    if (req.usuario?.perfil !== 'admin') return res.status(403).json({ erro: 'Só o administrador muda os percentuais do resultado.' });
+    const c = await resultado.salvarConfig(req.body || {});
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'resultado_config', detalhes: `Percentuais do resultado: impostos ${c.impostos_pct}%, seguro ${c.seguro_pct}%, meta ${c.meta_margem_pct}%` });
+    return res.json(c);
+  } catch (err) { return res.status(400).json({ erro: err.message }); }
+});
+
 module.exports = router;
 module.exports.ajudantes = { pesoKg, indicadores };

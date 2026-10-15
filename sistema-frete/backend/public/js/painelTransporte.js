@@ -47,9 +47,11 @@
     aba = a.dataset.ptAba;
     document.querySelectorAll('[data-pt-aba]').forEach((x) => x.classList.toggle('ativo', x === a));
     $('pt-aba-geral').classList.toggle('oculto', aba !== 'geral'); $('pt-aba-viagens').classList.toggle('oculto', aba !== 'viagens');
+    $('pt-aba-resultado').classList.toggle('oculto', aba !== 'resultado');
     carregar();
   }));
-  function carregar() { (aba === 'geral' ? geral() : viagens()).catch(erro); }
+  // A aba de margem fica em js/resultado.js (window.nexoResultado).
+  function carregar() { (aba === 'geral' ? geral() : aba === 'viagens' ? viagens() : (window.nexoResultado?.carregar($('ptDe').value, $('ptAte').value) || Promise.resolve())).catch(erro); }
 
   // ---------- Visão geral ----------
   function delta(atual, anterior, { inverso = false } = {}) {

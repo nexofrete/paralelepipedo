@@ -232,6 +232,7 @@ app.use('/api/contas-pagar', contasPagarRoutes.contasPagar);
 app.use('/api/acertos', contasPagarRoutes.acertos);
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
+app.use('/api/frota', require('./src/routes/frota'));
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
 // Portal do cliente (login próprio) e a administração dos acessos.

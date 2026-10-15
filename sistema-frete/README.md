@@ -167,6 +167,30 @@ Bancos: **Banco do Brasil (001), Itaú (341), Bradesco (237), Santander (033), C
 
 Juros ao mês, multa, protesto e baixa automática são configurados uma vez e vão no boleto e na remessa. O fator de vencimento já segue a regra nova da FEBRABAN (que voltou a 1000 em 22/02/2025).
 
+## Frota: abastecimento e manutenção
+
+Em **Operação de Transporte → 🔧 Frota** (quem emite CT-e ou vê o financeiro). Usa os veículos de **🚛 Veículos e motoristas**.
+
+**Abastecimentos** (＋ Abastecimento): veículo, km do hodômetro, combustível (diesel S10/S500, ARLA 32, gasolina, etanol, GNV), litros, valor, posto e se completou o tanque.
+- **Consumo (km/l)** medido de tanque cheio a tanque cheio. Os abastecimentos parciais entram no trecho seguinte, e o ARLA fica fora da conta.
+- O sistema recusa km que volta para trás e preço por litro fora do normal.
+- Com o **consumo esperado** do veículo ("Ajustar" no painel), avisa quando a média fica 15% abaixo (vazamento, pneus, desvio).
+- **Pagamento:**
+  - **à vista**: entra em Contas a pagar já pago;
+  - **a prazo**: conta em aberto com vencimento;
+  - **motorista pagou**: despesa no acerto de viagem aberto;
+  - **já lançado / cartão frota**: só registra.
+
+**Manutenções** (＋ Manutenção): preventiva ou corretiva, agendada → na oficina → concluída. Lance peças e serviços (quantidade × valor) ou só o total, a oficina e a NF/OS.
+- **Ao concluir:** o custo vai para Contas a pagar (à vista ou a prazo, parcelado), o km do veículo é atualizado e os itens do plano preventivo marcados recomeçam a contar.
+- **Ao excluir:** as contas geradas saem (se não tiverem pagamento) e o plano volta como estava.
+
+**Plano preventivo:** cada item vence por km e/ou por tempo, o que vier primeiro, com aviso antes.
+- Exemplos: troca de óleo a cada 20.000 km ou 180 dias, licenciamento a cada 365 dias, aferição do tacógrafo a cada 2 anos.
+- "✨ Plano sugerido" cria os itens mais comuns num veículo. Ajuste pelo manual do fabricante.
+
+**Custos e alertas:** por veículo e no período, mostra km rodados, litros, média km/l, combustível, manutenção e **custo por km**. Também lista o que está vencido ou vencendo no plano, os veículos na oficina, as manutenções agendadas para a semana, o consumo alto e as CNH vencendo.
+
 ## NFS-e do frete municipal (Padrão Nacional)
 
 Frete com coleta e entrega no **mesmo município** não leva CT-e: é serviço de transporte municipal (item 16.02 da LC 116), com **ISS**, e sai em **NFS-e**. O sistema emite pelo **emissor nacional** (Sistema Nacional NFS-e, leiaute 1.01), com o mesmo certificado A1 do CT-e.

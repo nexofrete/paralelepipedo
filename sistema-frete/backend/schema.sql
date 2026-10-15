@@ -2032,3 +2032,71 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_nfse_dps ON nfse_emitidas (ambiente, serie
 CREATE INDEX IF NOT EXISTS idx_nfse_status ON nfse_emitidas (status, autorizada_em);
 CREATE INDEX IF NOT EXISTS idx_nfse_fatura ON nfse_emitidas (fatura_id);
 CREATE INDEX IF NOT EXISTS idx_nfse_tomador ON nfse_emitidas (tomador_doc);
+-- Frota: abastecimentos (consumo km/l), manutenções (preventiva/corretiva,
+-- peças e serviços) e planos de manutenção preventiva por km e/ou por tempo.
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS km_atual INTEGER;
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS km_atualizado_em DATE;
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS consumo_referencia NUMERIC(6,2);   -- km/l esperado (alerta de consumo alto)
+CREATE TABLE IF NOT EXISTS abastecimentos (
+    id              SERIAL PRIMARY KEY,
+    veiculo_id      INTEGER NOT NULL REFERENCES veiculos(id) ON DELETE CASCADE,
+    data            DATE NOT NULL,
+    km              INTEGER,
+    combustivel     VARCHAR(12) NOT NULL DEFAULT 'diesel_s10',   -- diesel_s10, diesel_s500, arla32, gasolina, etanol, gnv
+    litros          NUMERIC(10,3) NOT NULL,
+    valor_total     NUMERIC(12,2) NOT NULL,
+    tanque_cheio    BOOLEAN NOT NULL DEFAULT TRUE,
+    posto_nome      VARCHAR(150),
+    posto_doc       VARCHAR(14),
+    documento       VARCHAR(60),             -- cupom / NF
+    motorista_nome  VARCHAR(120),
+    pagamento       VARCHAR(10) NOT NULL DEFAULT 'a_vista',   -- a_vista, a_prazo, motorista (acerto de viagem), nenhum
+    conta_pagar_id  INTEGER REFERENCES contas_pagar(id) ON DELETE SET NULL,
+    acerto_id       INTEGER REFERENCES acertos(id) ON DELETE SET NULL,
+    acerto_lancamento_id INTEGER REFERENCES acerto_lancamentos(id) ON DELETE SET NULL,
+    observacao      TEXT,
+    criado_por_nome VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_abastecimentos_veiculo ON abastecimentos (veiculo_id, data, km);
+CREATE TABLE IF NOT EXISTS manutencoes (
+    id              SERIAL PRIMARY KEY,
+    veiculo_id      INTEGER NOT NULL REFERENCES veiculos(id) ON DELETE CASCADE,
+    tipo            VARCHAR(10) NOT NULL DEFAULT 'corretiva',   -- preventiva, corretiva
+    status          VARCHAR(12) NOT NULL DEFAULT 'concluida',   -- agendada, em_andamento (na oficina), concluida, cancelada
+    data            DATE NOT NULL,            -- agendada para / entrada na oficina
+    data_saida      DATE,                     -- quando o veículo voltou
+    km              INTEGER,
+    descricao       VARCHAR(250) NOT NULL,
+    itens           JSONB NOT NULL DEFAULT '[]'::jsonb,   -- [{ tipo: peca|servico, descricao, qtd, valor_unit }]
+    valor_total     NUMERIC(12,2) NOT NULL DEFAULT 0,
+    oficina_nome    VARCHAR(150),
+    oficina_doc     VARCHAR(14),
+    documento       VARCHAR(60),
+    planos          INTEGER[] NOT NULL DEFAULT '{}',      -- planos preventivos que esta manutenção cumpre
+    pagamento       VARCHAR(10) NOT NULL DEFAULT 'a_vista',   -- a_vista, a_prazo, nenhum
+    vencimento      DATE,
+    parcelas        INTEGER NOT NULL DEFAULT 1,
+    contas_ids      INTEGER[] NOT NULL DEFAULT '{}',
+    planos_antes    JSONB,                -- como os planos estavam antes (volta se a manutenção for excluída)
+    observacao      TEXT,
+    criado_por_nome VARCHAR(150),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE manutencoes ADD COLUMN IF NOT EXISTS planos_antes JSONB;
+CREATE INDEX IF NOT EXISTS idx_manutencoes_veiculo ON manutencoes (veiculo_id, data);
+CREATE INDEX IF NOT EXISTS idx_manutencoes_status ON manutencoes (status);
+CREATE TABLE IF NOT EXISTS manutencao_planos (
+    id              SERIAL PRIMARY KEY,
+    veiculo_id      INTEGER NOT NULL REFERENCES veiculos(id) ON DELETE CASCADE,
+    item            VARCHAR(120) NOT NULL,
+    a_cada_km       INTEGER,
+    a_cada_dias     INTEGER,
+    aviso_km        INTEGER NOT NULL DEFAULT 1000,
+    aviso_dias      INTEGER NOT NULL DEFAULT 15,
+    ultima_km       INTEGER,
+    ultima_data     DATE,
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_manutencao_planos_veiculo ON manutencao_planos (veiculo_id);

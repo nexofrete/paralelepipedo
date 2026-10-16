@@ -212,10 +212,12 @@ async function iniciar(opcoes = {}) {
   if (estado.rodando) return { jaRodando: true, ...status() };
   const notas = await notasParaConsultar(opcoes);
   // Transportadoras com portal próprio (ex.: Lonngren / Andrade e Abreu).
-  const lonngren = require('./rastreioLonngren');
-  const portais = await lonngren.transportadorasComPortal(opcoes.transportadora).catch(() => []);
+  // Cada tipo de portal tem o seu módulo (Lonngren = Andrade e Abreu; ldrio = Central de Canhotos da LD Rio).
+  const MODULOS = { lonngren: require('./rastreioLonngren'), ldrio: require('./rastreioLdrio') };
+  const portais = [];
+  for (const m of Object.values(MODULOS)) portais.push(...await m.transportadorasComPortal(opcoes.transportadora).catch(() => []));
   let notasPortal = 0;
-  for (const t of portais) notasPortal += (await lonngren.notasEmAberto(t).catch(() => [])).length;
+  for (const t of portais) notasPortal += (await MODULOS[t.portal_tipo].notasEmAberto(t).catch(() => [])).length;
   Object.assign(estado, { rodando: true, total: notas.length + notasPortal, portalAchou: 0, portalEntregues: 0, portalErro: null, portalNaoAchadas: 0, portalNaoAchadasNfs: [], feitos: 0, entregues: 0, comOcorrencia: 0, erros: 0,
     remetenteConsultas: 0, remetenteAchou: 0, remetenteErro: null,
     inicio: new Date(), fim: null, ultimoErro: null });
@@ -258,7 +260,7 @@ async function iniciar(opcoes = {}) {
     // Depois da SSW, os portais próprios das transportadoras.
     for (const t of portais) {
       try {
-        const r = await lonngren.sincronizar(t, estado);
+        const r = await MODULOS[t.portal_tipo].sincronizar(t, estado);
         estado.portalAchou += r.consultadas; estado.portalEntregues += r.entregues; estado.entregues += r.entregues;
         estado.portalNaoAchadas = (estado.portalNaoAchadas || 0) + r.naoAchadas;
         estado.portalNaoAchadasNfs = [...(estado.portalNaoAchadasNfs || []), ...r.naoAchadasNfs].slice(0, 30);

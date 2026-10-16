@@ -41,9 +41,16 @@ router.post('/:id/testar-portal', autenticar, permitir('pode_gerenciar_transport
   try {
     const { rows } = await pool.query('SELECT * FROM transportadoras WHERE id = $1', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ erro: 'Transportadora não encontrada.' });
+    const t = rows[0];
+    if (t.portal_tipo === 'ldrio') {
+      const ldrio = require('../rastreioLdrio');
+      const r = await ldrio.testar(t);
+      const abertas = await ldrio.notasEmAberto(t);
+      return res.json({ ok: true, mensagem: `Login no portal funcionou: ${r.notasNoPortal} nota(s) na 1ª página do portal (${r.entreguesNoPortal} com data de entrega). ${abertas.length} nota(s) dessa transportadora em aberto no Nexofrete para acompanhar.` });
+    }
     const lonngren = require('../rastreioLonngren');
-    await lonngren.entrar(rows[0]);
-    const abertas = await lonngren.notasEmAberto(rows[0]);
+    await lonngren.entrar(t);
+    const abertas = await lonngren.notasEmAberto(t);
     res.json({ ok: true, mensagem: `Login no portal funcionou. ${abertas.length} nota(s) dessa transportadora em aberto no Nexofrete para acompanhar.` });
   } catch (err) {
     res.json({ ok: false, mensagem: `Não consegui entrar no portal: ${err.name === 'AbortError' ? 'o portal demorou demais' : err.message}` });
@@ -94,7 +101,9 @@ function semSenha(t) {
   return { ...resto, portal_tem_senha: !!senha };
 }
 function prepararPortal(corpo) {
-  if (corpo.portal_chave) corpo.portal_chave = chaveDoLink(corpo.portal_chave);
+  // Lonngren: a "chave" sai do link de login. LD Rio: endereço do Supabase (opcional; vazio = o padrão).
+  if (corpo.portal_chave && corpo.portal_tipo !== 'ldrio') corpo.portal_chave = chaveDoLink(corpo.portal_chave);
+  if (corpo.portal_tipo === 'ldrio' && corpo.portal_chave && !/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(corpo.portal_chave).trim())) corpo.portal_chave = null;
   if (corpo.portal_tipo === '') corpo.portal_tipo = null;
   return corpo;
 }

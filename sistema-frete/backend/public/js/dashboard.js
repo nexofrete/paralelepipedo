@@ -2017,7 +2017,12 @@ const CAMPOS_TRANSPORTADORA = [
   ['tPortalChave', 'portal_chave'], ['tPortalEmpresa', 'portal_empresa'], ['tPortalUsuario', 'portal_usuario'],
 ];
 function atualizarCamposPortal() {
-  document.getElementById('tPortalCampos').classList.toggle('oculto', !document.getElementById('tPortalTipo').value);
+  const tipo = document.getElementById('tPortalTipo').value;
+  document.getElementById('tPortalCampos').classList.toggle('oculto', !tipo);
+  // LD Rio: só e-mail e senha (o endereço do portal já é conhecido).
+  document.getElementById('tPortalCampoChave')?.classList.toggle('oculto', tipo === 'ldrio');
+  document.getElementById('tPortalCampoEmpresa')?.classList.toggle('oculto', tipo === 'ldrio');
+  document.getElementById('tPortalAjudaLdrio')?.classList.toggle('oculto', tipo !== 'ldrio');
 }
 document.getElementById('tPortalTipo')?.addEventListener('change', atualizarCamposPortal);
 

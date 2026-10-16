@@ -1376,11 +1376,13 @@
                     <select id="tPortalTipo">
                       <option value="">Nenhum</option>
                       <option value="lonngren">Lonngren (ex.: Andrade e Abreu / ATA)</option>
+                      <option value="ldrio">Central de Canhotos (LD Rio Pizzo)</option>
                     </select>
                     <div id="tPortalCampos" class="oculto" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-                      <div style="grid-column:1/-1;"><label for="tPortalChave">Link de login do portal</label>
+                      <div style="grid-column:1/-1;" id="tPortalAjudaLdrio" class="oculto"><small style="color:var(--texto-fraco); line-height:1.4;">Use o mesmo e-mail e senha que vocês usam no site da LD Rio (ldriopizzo-controle-de-entrega.netlify.app). O Nexofrete lê as notas de lá e preenche a Data da Entrega.</small></div>
+                      <div style="grid-column:1/-1;" id="tPortalCampoChave"><label for="tPortalChave">Link de login do portal</label>
                         <input type="text" id="tPortalChave" placeholder="Cole o link que a transportadora passou (…login.php?chave=…)" /></div>
-                      <div><label for="tPortalEmpresa">Empresa (código no portal)</label><input type="text" id="tPortalEmpresa" placeholder="Ex.: ATA" /><small style="color:var(--texto-fraco);">O código que o portal usa (Andrade e Abreu = ATA), não o nome.</small></div>
+                      <div id="tPortalCampoEmpresa"><label for="tPortalEmpresa">Empresa (código no portal)</label><input type="text" id="tPortalEmpresa" placeholder="Ex.: ATA" /><small style="color:var(--texto-fraco);">O código que o portal usa (Andrade e Abreu = ATA), não o nome.</small></div>
                       <div><label for="tPortalUsuario">Usuário (e-mail)</label><input type="text" id="tPortalUsuario" autocomplete="off" /></div>
                       <div style="grid-column:1/-1;"><label for="tPortalSenha">Senha</label>
                         <input type="password" id="tPortalSenha" autocomplete="new-password" placeholder="Digite só para cadastrar ou trocar" />

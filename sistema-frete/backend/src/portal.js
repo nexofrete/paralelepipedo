@@ -102,8 +102,8 @@ async function esqueci(email) {
     [rows[0].id, crypto.createHash('sha256').update(token).digest('hex')]);
   const nomeEmpresa = emp[0].nome_fantasia || emp[0].razao_social || 'Transportadora';
   const link = `${base}/portal.html#redefinir=${token}`;
-  // Falha no envio não muda a resposta (senão ela contaria quais e-mails existem).
-  await require('./email').enviarFatura({
+  // Envio em segundo plano: a resposta não espera nem muda (senão o tempo ou o erro contariam quais e-mails existem).
+  require('./email').enviarFatura({
     destinatarioEmail: rows[0].email, assunto: `${nomeEmpresa} — nova senha do portal do cliente`,
     html: `<div style="font-family:Arial,sans-serif; color:#1d2433;"><p>Olá, ${String(rows[0].nome).replace(/[<>&]/g, '')}.</p>
       <p>Recebemos um pedido para criar uma nova senha no portal do cliente da ${nomeEmpresa.replace(/[<>&]/g, '')}.</p>
@@ -321,15 +321,27 @@ async function enderecoDoCliente(u) {
   return rows[0] || null;
 }
 
-async function pedirColeta(u, b = {}) {
+// Só o que o cliente pode informar no portal (nada de vínculo com cotação, preço, situação...).
+const so = (b, campos) => Object.fromEntries(campos.filter((k) => b[k] !== undefined).map((k) => [k, b[k]]));
+const CAMPOS_COLETA_PORTAL = ['solicitante_telefone', 'remetente_doc', 'remetente_nome', 'remetente_ie', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'cep',
+  'cod_municipio', 'contato_nome', 'contato_telefone', 'destinatario_doc', 'destinatario_nome', 'destino_cidade', 'destino_uf', 'data_coleta', 'hora_de', 'hora_ate',
+  'volumes', 'peso_kg', 'cubagem_m3', 'valor_mercadoria', 'produto', 'notas', 'observacao'];
+const CAMPOS_COTACAO_PORTAL = ['telefone', 'origem_cidade', 'origem_uf', 'destino_cidade', 'destino_uf', 'destino_bairro', 'volumes', 'peso_kg', 'cubagem_m3',
+  'valor_mercadoria', 'produto', 'observacao'];
+
+async function pedirColeta(u, entrada = {}) {
   const coletas = require('./coletas');
+  const b = so(entrada, CAMPOS_COLETA_PORTAL);
   const doc = docLimpo(b.remetente_doc) || u.documentos[0] || null;
   // Quem pede pelo portal coleta no próprio endereço, ou num fornecedor que manda para ele (frete por conta do cliente).
-  const tomador = b.tomador === 'destinatario' ? 'destinatario' : 'remetente';
+  // Quem paga é sempre a empresa do cliente: remetente (frete pago) ou destinatário (frete a pagar).
+  const tomador = entrada.tomador === 'destinatario' ? 'destinatario' : 'remetente';
   if (tomador === 'remetente' && doc && !ehDoCliente(u, doc)) throw falha('Coleta com frete pago pelo remetente: o remetente precisa ser a sua empresa.');
+  const destDoc = docLimpo(b.destinatario_doc);
+  if (tomador === 'destinatario' && destDoc && !ehDoCliente(u, destDoc)) throw falha('Coleta com frete a pagar pelo destinatário: o destinatário precisa ser a sua empresa.');
   const dados = {
     ...b, canal: 'portal', solicitante_nome: u.nome, solicitante_email: u.email, remetente_doc: doc, tomador,
-    destinatario_doc: tomador === 'destinatario' ? (docLimpo(b.destinatario_doc) || u.documentos[0]) : docLimpo(b.destinatario_doc) || null,
+    destinatario_doc: tomador === 'destinatario' ? (destDoc || u.documentos[0]) : destDoc || null,
   };
   if (dados.data_coleta && dados.data_coleta < hoje()) throw falha('A data da coleta já passou.');
   const k = await coletas.criar(dados, `Portal: ${u.nome}`);
@@ -356,9 +368,10 @@ async function cotacaoDoCliente(u, id) {
   return rows[0];
 }
 
-async function pedirCotacao(u, b = {}) {
+async function pedirCotacao(u, entrada = {}) {
   const cot = require('./cotacoes');
   const e = await cot.empresa();
+  const b = { ...so(entrada, CAMPOS_COTACAO_PORTAL), cliente_papel: entrada.cliente_papel };
   const base = {
     ...b, cliente_doc: u.documentos[0] || null, cliente_nome: u.cliente_nome || u.nome, contato_nome: u.nome, email: u.email,
     cliente_papel: b.cliente_papel === 'destinatario' ? 'destinatario' : 'remetente',

@@ -90,6 +90,10 @@ async function desfazerContas(cliente, ids, pagamento) {
   if (!ids.length) return;
   const { rows } = await cliente.query('SELECT id, valor_pago, status FROM contas_pagar WHERE id = ANY($1::int[]) FOR UPDATE', [ids]);
   if (pagamento !== 'a_vista' && rows.some((c) => Number(c.valor_pago) > 0)) throw falha('Já tem pagamento lançado na conta a pagar deste registro. Estorne o pagamento em Contas a pagar antes de excluir.', 409);
+  // Pagamento já conferido com o extrato do banco não some junto: desfaça a conciliação primeiro.
+  const { rows: conc } = await cliente.query(`SELECT 1 FROM contas_pagar_pagamentos p JOIN extrato_linhas e ON e.conciliado_tipo = 'pagamento' AND e.conciliado_id = p.id
+    WHERE p.conta_id = ANY($1::int[]) LIMIT 1`, [ids]);
+  if (conc[0]) throw falha('O pagamento deste registro já foi conciliado com o extrato do banco. Desfaça a conciliação em Caixa e bancos antes de excluir.', 409);
   await cliente.query('DELETE FROM contas_pagar WHERE id = ANY($1::int[])', [ids]);
 }
 

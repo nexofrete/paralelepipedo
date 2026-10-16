@@ -2,12 +2,15 @@
 const express = require('express');
 const pool = require('../db');
 const { autenticar } = require('../middlewareAuth');
-const { permitirAlguma } = require('../permissoes');
+const { permitirAlguma, temAlguma } = require('../permissoes');
 const { registrar } = require('../auditoria');
 const frota = require('../frota');
 
 const router = express.Router();
 const pode = permitirAlguma('pode_emitir_cte', 'pode_ver_financeiro');
+// Pagamento à vista vira conta paga no caixa/banco: só quem cuida do financeiro.
+const pagaAgora = (req) => req.body?.pagamento === 'a_vista' && !temAlguma(req, 'pode_ver_financeiro');
+const negarPagamento = (res) => res.status(403).json({ erro: 'Pagamento à vista lança a saída no caixa/banco: precisa da permissão do financeiro. Lance "a prazo" ou peça para o financeiro.' });
 const log = (req, detalhes) => registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'frota', detalhes });
 const erro = (res, err, padrao) => { if (!err.status) console.error('[frota]', err.message); res.status(err.status || 400).json({ erro: err.message || padrao }); };
 const rota = (fn, padrao) => async (req, res) => { try { await fn(req, res); } catch (err) { erro(res, err, padrao); } };
@@ -39,6 +42,7 @@ router.get('/painel', autenticar, pode, rota(async (req, res) => res.json(await 
 // ---- Abastecimentos ----
 router.get('/abastecimentos', autenticar, pode, rota(async (req, res) => res.json(await frota.listarAbastecimentos(req.query)), 'Erro ao listar.'));
 router.post('/abastecimentos', autenticar, pode, rota(async (req, res) => {
+  if (pagaAgora(req)) return negarPagamento(res);
   const a = await frota.criarAbastecimento(req.body || {}, req.usuario.nome);
   log(req, `Abastecimento ${a.placa}: ${a.litros} L de ${frota.COMBUSTIVEIS[a.combustivel]} por ${moeda(a.valor_total)}${a.km != null ? ` (km ${a.km})` : ''} — ${frota.PAGAMENTOS[a.pagamento]}`);
   res.status(201).json(a);
@@ -52,11 +56,13 @@ router.delete('/abastecimentos/:id(\\d+)', autenticar, pode, rota(async (req, re
 // ---- Manutenções ----
 router.get('/manutencoes', autenticar, pode, rota(async (req, res) => res.json(await frota.listarManutencoes(req.query)), 'Erro ao listar.'));
 router.post('/manutencoes', autenticar, pode, rota(async (req, res) => {
+  if (pagaAgora(req)) return negarPagamento(res);
   const m = await frota.criarManutencao(req.body || {}, req.usuario.nome);
   log(req, `Manutenção ${m.id} (${frota.STATUS_MANUT[m.status]}): ${m.descricao} — ${moeda(m.valor_total)}`);
   res.status(201).json(m);
 }, 'Erro ao salvar a manutenção.'));
 router.put('/manutencoes/:id(\\d+)', autenticar, pode, rota(async (req, res) => {
+  if (pagaAgora(req)) return negarPagamento(res);
   const m = await frota.alterarManutencao(Number(req.params.id), req.body || {}, req.usuario.nome);
   log(req, `Manutenção ${m.id} ${m.status === 'concluida' ? 'concluída' : 'alterada'}: ${m.descricao} — ${moeda(m.valor_total)}`);
   res.json(m);

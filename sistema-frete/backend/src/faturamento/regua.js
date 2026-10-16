@@ -240,6 +240,7 @@ async function historico({ faturaId = null, limite = 100 } = {}) {
 async function pausarFatura(id, { ate, motivo } = {}) {
   const data = /^\d{4}-\d{2}-\d{2}$/.test(String(ate || '')) ? ate : null;
   if (data && data < hojeBr()) throw falha('A data da promessa já passou.');
+  if (data && data > new Date(Date.parse(`${hojeBr()}T12:00:00Z`) + 90 * 86400000).toISOString().slice(0, 10)) throw falha('A promessa de pagamento pode ir até 90 dias. Para mais, prorrogue o vencimento da fatura.');
   const { rows: [f] } = await pool.query(`UPDATE faturas_transporte SET cobranca_pausada_ate = $2, cobranca_motivo = $3 WHERE id = $1 RETURNING id, numero, cobranca_pausada_ate::text AS ate`,
     [id, data, data ? String(motivo || '').trim().slice(0, 200) || null : null]);
   if (!f) throw falha('Fatura não encontrada.', 404);

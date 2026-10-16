@@ -32,7 +32,7 @@ router.post('/faturas/:id(\\d+)/enviar', autenticar, ver, rota(async (req, res) 
   log(req, `Mandou lembrete de cobrança da fatura ${r.numero} por ${r.canal === 'whatsapp' ? 'WhatsApp' : 'e-mail'} para ${r.destino}`);
   res.json(r);
 }, 'Erro ao enviar.'));
-router.put('/faturas/:id(\\d+)/pausa', autenticar, ver, rota(async (req, res) => {
+router.put('/faturas/:id(\\d+)/pausa', autenticar, pode, rota(async (req, res) => {
   const f = await regua.pausarFatura(Number(req.params.id), req.body || {});
   log(req, f.ate ? `Pausou a cobrança da fatura ${f.numero} até ${dia(f.ate)} (pagamento prometido)` : `Retomou a cobrança da fatura ${f.numero}`);
   res.json(f);

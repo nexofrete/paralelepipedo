@@ -68,6 +68,7 @@ async function criar(dados, usuarioNome) {
     const { rows: cot } = await pool.query('SELECT status, coleta_id FROM cotacoes WHERE id = $1', [cotacaoId]);
     if (!cot[0]) throw falha('Cotação não encontrada.', 404);
     if (cot[0].status !== 'aprovada') throw falha('A cotação ainda não foi aprovada.');
+    if (cot[0].coleta_id) throw falha(`Esta cotação já virou a coleta ${cot[0].coleta_id}.`, 409);
   }
   const { rows } = await pool.query(
     `INSERT INTO coletas (${CAMPOS.join(', ')}, criado_por_nome, cotacao_id) VALUES (${CAMPOS.map((_, i) => `$${i + 1}`).join(', ')}, $${CAMPOS.length + 1}, $${CAMPOS.length + 2}) RETURNING *`,

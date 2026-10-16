@@ -54,6 +54,8 @@ const garantirAdminPadrao = require('./src/criarAdminPadrao');
 const pkg = require('./package.json');
 
 const app = express();
+// Atrás de proxy/túnel (portal publicado na internet): TRUST_PROXY=1 faz os limites de tentativas valerem por cliente, não pelo proxy.
+if (process.env.TRUST_PROXY) app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY);
 
 // Cabeçalhos de segurança HTTP padrão (protege contra alguns ataques comuns
 // de navegador, como clickjacking e sniffing de tipo de arquivo).

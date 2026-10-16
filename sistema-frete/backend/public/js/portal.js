@@ -5,6 +5,8 @@
   const moeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const num = (v, c = 0) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
   const dia = (v) => { if (!v) return ''; const s = String(v).slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : ''; };
+  // Data e hora do servidor (emissão, entrega, pedido): o dia no horário de Brasília.
+  const diaTs = (v) => (v ? new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '');
   const diaHora = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
   const docFmt = (d) => { const x = String(d || ''); return x.length === 14 ? x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : x.length === 11 ? x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : x; };
   const hojeIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -168,8 +170,8 @@
     const lista = await api(`/cargas?${new URLSearchParams({ filtro: filtroCargas, busca: $('ptBuscaCargas').value.trim() })}`);
     $('ptCargas').innerHTML = lista.length ? lista.map((c) => `<div class="pt-item clicavel" data-carga="${c.id}">
         <div><div class="titulo">${c.nfs.length ? `NF ${esc(c.nfs.join(', '))}` : `CT-e ${esc(c.cte)}`} · ${esc(c.destinatario || '')}</div>
-          <div class="linha">${esc(c.origem || '')} → ${esc(c.destino || '')} · CT-e ${esc(c.cte)} de ${dia(c.emissao)}${c.volumes ? ` · ${num(c.volumes)} vol.` : ''}${c.papeis.length ? ` · você é ${esc(c.papeis.join(' e ').toLowerCase())}` : ''}</div></div>
-        <div class="dir">${etiqueta(c)}<div class="linha">${c.entregue_em ? `entregue ${dia(c.entregue_em)}` : c.previsao ? `previsão ${dia(c.previsao)}` : ''}</div>${c.valor != null ? `<div class="valor">${moeda(c.valor)}</div>` : ''}</div>
+          <div class="linha">${esc(c.origem || '')} → ${esc(c.destino || '')} · CT-e ${esc(c.cte)} de ${diaTs(c.emissao)}${c.volumes ? ` · ${num(c.volumes)} vol.` : ''}${c.papeis.length ? ` · você é ${esc(c.papeis.join(' e ').toLowerCase())}` : ''}</div></div>
+        <div class="dir">${etiqueta(c)}<div class="linha">${c.entregue_em ? `entregue ${diaTs(c.entregue_em)}` : c.previsao ? `previsão ${dia(c.previsao)}` : ''}</div>${c.valor != null ? `<div class="valor">${moeda(c.valor)}</div>` : ''}</div>
       </div>`).join('') : `<div class="pt-vazio">${filtroCargas === 'transito' ? 'Nenhuma carga em andamento agora.' : 'Nenhuma carga encontrada.'}</div>`;
   }
   $('ptFiltrosCargas').addEventListener('click', (e) => { const b = e.target.closest('[data-filtro]'); if (b) { filtroCargas = b.dataset.filtro; carregarCargas().catch((err) => aviso(err.message)); } });
@@ -292,7 +294,7 @@
       const [txt, cor] = SIT_COT[t.situacao] || [t.situacao, 'cinza'];
       return `<div class="pt-item">
         <div><div class="titulo">Cotação nº ${t.id} · ${esc(t.origem_cidade)}/${esc(t.origem_uf)} → ${esc(t.destino_cidade)}/${esc(t.destino_uf)}</div>
-          <div class="linha">${dia(t.criado_em)} · ${[t.peso_kg ? `${num(t.peso_kg, 1)} kg` : '', t.volumes ? `${num(t.volumes)} vol.` : '', t.valor_mercadoria ? `NF ${moeda(t.valor_mercadoria)}` : ''].filter(Boolean).join(' · ')}
+          <div class="linha">${diaTs(t.criado_em)} · ${[t.peso_kg ? `${num(t.peso_kg, 1)} kg` : '', t.volumes ? `${num(t.volumes)} vol.` : '', t.valor_mercadoria ? `NF ${moeda(t.valor_mercadoria)}` : ''].filter(Boolean).join(' · ')}
           ${t.situacao !== 'solicitada' ? ` · válida até ${dia(t.validade)}` : ''}${t.prazo_dias ? ` · prazo ${t.prazo_dias} dia(s) útil(eis)` : ''}</div>
           ${t.status === 'aprovada' ? `<div class="linha" style="color:var(--verde);">${t.coleta_id ? `Coleta nº ${t.coleta_id} registrada.` : 'A transportadora vai programar a coleta.'}</div>` : ''}</div>
         <div class="dir"><span class="sit ${cor}">${txt}</span>${Number(t.valor_total) > 0 ? `<div class="valor">${moeda(t.valor_total)}</div>` : ''}</div>

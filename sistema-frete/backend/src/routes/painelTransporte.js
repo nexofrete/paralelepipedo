@@ -3,6 +3,7 @@
 // (receita dos CT-e do MDF-e menos os custos lançados nele).
 const express = require('express');
 const pool = require('../db');
+const { celula } = require('../utils/csv');
 const { autenticar } = require('../middlewareAuth');
 const { permitirAlguma } = require('../permissoes');
 const { registrar } = require('../auditoria');
@@ -161,7 +162,7 @@ router.get('/resultado.csv', autenticar, pode, async (req, res) => {
   try {
     const r = await resultado.calcular(periodoDe(req.query));
     const n = (v) => (v == null ? '' : String(Number(v).toFixed(2)).replace('.', ','));
-    const campo = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const campo = (v) => celula(v, ';', { aspas: true });
     const linhas = [['Data', 'Documento', 'Cliente (tomador)', 'CNPJ/CPF', 'Origem', 'Destino', 'Peso kg', 'Receita', 'ICMS', 'ISS', 'Outros impostos', 'Seguro',
       'Custo da viagem', 'Frota própria', 'Custo total', 'Margem', 'Margem %', 'Viagens'].join(';')];
     r.documentos.forEach((d) => linhas.push([d.data.split('-').reverse().join('/'), campo(d.documento), campo(d.tomador_nome), campo(d.tomador_doc), campo(d.origem), campo(d.destino),

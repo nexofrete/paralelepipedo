@@ -12,6 +12,9 @@ const configConexao = {
   port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
+  // Fuso de Brasília em toda conexão: as colunas de data e hora sem fuso (autorização do CT-e/MDF-e,
+  // entrega) e os filtros por dia/mês ficam no horário do Brasil mesmo se o PostgreSQL estiver em UTC.
+  options: `-c TimeZone=${process.env.DB_TIMEZONE || 'America/Sao_Paulo'}`,
 };
 const nomeBanco = process.env.DB_NAME || 'sistema_frete';
 

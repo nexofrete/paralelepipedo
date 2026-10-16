@@ -7,6 +7,8 @@ const { brCode } = require('./pix');
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const moeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dia = (v) => (v ? new Date(`${String(v instanceof Date ? v.toISOString() : v).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '');
+// Data e hora (autorização do CT-e/NFS-e): o dia no horário de Brasília (21h30 do dia 5 é dia 5, não 6).
+const diaDoMomento = (v) => (v ? new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '');
 const docFmt = (v) => {
   const d = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (d.length === 14) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
@@ -61,7 +63,7 @@ ${paraEmail ? '' : '<div class="acoes"><button onclick="window.print()">Imprimir
     <div class="caixa"><span class="r">${f.status === 'paga' ? 'Valor pago' : 'Valor a pagar'}</span><span class="v" style="font-size:16px;">${moeda(f.status === 'paga' ? f.valor_pago : f.saldo)}</span></div>
   </div>
   <table><thead><tr><th>Documento</th><th>Emissão</th><th>Notas fiscais</th><th>Remetente → destinatário</th><th>Destino</th><th class="n">Valor</th></tr></thead><tbody>
-  ${f.itens.map((c) => `<tr><td>${c.tipo === 'nfse' ? `NFS-e ${esc(c.numero)}` : `CT-e ${esc(c.serie)}/${esc(c.numero)}`}${c.tp_cte === '1' ? ' <small>(complementar)</small>' : ''}${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}</td><td>${dia(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td>
+  ${f.itens.map((c) => `<tr><td>${c.tipo === 'nfse' ? `NFS-e ${esc(c.numero)}` : `CT-e ${esc(c.serie)}/${esc(c.numero)}`}${c.tp_cte === '1' ? ' <small>(complementar)</small>' : ''}${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}</td><td>${diaDoMomento(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td>
     <td>${esc(c.remetente || '')}<br><small>→ ${esc(c.destinatario_nome || '')}</small></td><td>${esc(c.cidade_fim || '')}/${esc(c.uf_fim || '')}</td><td class="n">${moeda(c.valor)}</td></tr>`).join('')}
   </tbody></table>
   <table class="totais">

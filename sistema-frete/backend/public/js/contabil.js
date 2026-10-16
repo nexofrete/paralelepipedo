@@ -61,7 +61,10 @@
       `<th>${rotulo}</th><th class="n">Qtd</th><th class="n">Valor</th><th class="n">Base ICMS</th><th class="n">ICMS</th><th class="n">Isentas/outras</th>`,
       lista.map((g) => `<tr><td>${esc(g.chave)}</td><td class="n">${g.qtd}</td><td class="n">${num(g.valor)}</td><td class="n">${num(g.base)}</td><td class="n">${num(g.icms)}</td><td class="n">${num(g.isentas_outras)}</td></tr>`))}</div>`;
     const avisos = [
-      t.demonstracao ? 'Há documentos do modo demonstração no período (sem valor fiscal). Eles aparecem aqui, mas o contador deve desconsiderá-los.' : '',
+      t.demonstracao ? 'O sistema está no modo demonstração: aqui aparecem só os documentos de demonstração (sem valor fiscal). Em produção, aparecem só os de produção.' : '',
+      t.homologacao ? 'O CT-e está em homologação (ambiente de testes): estes documentos não têm valor fiscal.' : '',
+      t.icms_outra_uf ? `ICMS devido a outra UF (OUTRAUF): ${brl(t.icms_outra_uf)} fora da base e do débito próprios — recolhido por GNRE.` : '',
+      t.ajustes ? `${t.ajustes} documento(s) de meses anteriores cancelado(s) ou substituído(s) neste período: −${brl(t.ajustes_valor)} (ICMS −${brl(t.ajustes_icms)}). Veja "Ajustes de meses anteriores" abaixo; os lançamentos já trazem o estorno.` : '',
       l.ctes.some((d) => d.sem_base) ? `CT-e com CST tributado e alíquota, mas sem base de cálculo no XML: ${l.ctes.filter((d) => d.sem_base).map((d) => `${d.serie}/${d.numero}`).join(', ')}. O ICMS deles está zerado aqui — confira com o contador (os novos já saem com a base calculada).` : '',
       l.ctes.some((d) => !d.cfop) ? 'Há CT-e sem CFOP gravado (emitidos antes desta versão): confira no XML.' : '',
     ].filter(Boolean);
@@ -84,9 +87,13 @@
         '<th>Data</th><th>Série/nº</th><th>Situação</th><th>CFOP</th><th>CST</th><th class="n">Alíq.</th><th>Trajeto</th><th>Tomador</th><th class="n">Valor</th><th class="n">Base</th><th class="n">ICMS</th>',
         l.ctes.map((d) => `<tr${d.situacao !== 'autorizado' ? ' style="opacity:.6;"' : ''}><td>${dia(d.data)}</td><td>${d.serie}/${d.numero}${d.demonstracao ? ' <small title="Demonstração">🧪</small>' : ''}</td>
           <td><span class="oc-sit ${SITUACAO[d.situacao]?.[1] || ''}">${SITUACAO[d.situacao]?.[0] || esc(d.situacao)}</span>${d.tipo !== 'normal' ? ` <small>${esc(d.tipo)}</small>` : ''}</td>
-          <td>${esc(d.cfop || '—')}</td><td>${esc(d.cst || '—')}</td><td class="n">${d.aliquota ? `${num(d.aliquota)}%` : ''}</td><td>${esc(d.mun_ini || '')}/${esc(d.uf_ini || '?')} → ${esc(d.mun_fim || '')}/${esc(d.uf_fim || '?')}</td>
+          <td>${esc(d.cfop || '—')}</td><td>${esc(d.cst || '—')}</td><td class="n">${d.aliquota ? `${num(d.aliquota)}%` : ''}${d.outra_uf ? ' <small>outra UF</small>' : ''}</td><td>${esc(d.mun_ini || '')}/${esc(d.uf_ini || '?')} → ${esc(d.mun_fim || '')}/${esc(d.uf_fim || '?')}</td>
           <td>${esc(d.tomador_nome)}<br><small style="color:var(--texto-fraco);">${docFmt(d.tomador_doc)}</small></td><td class="n">${num(d.valor_original)}</td><td class="n">${num(d.base)}</td><td class="n">${num(d.icms)}</td></tr>`),
         'Nenhum CT-e autorizado no período.')}</div>
+      ${l.ajustes?.length ? `<div class="painel" style="padding:12px 14px; margin-bottom:14px;"><h4 style="margin:0 0 8px;">Ajustes de meses anteriores (${l.ajustes.length})</h4>${tabela(
+        '<th>Data do ajuste</th><th>Documento</th><th>Emitido em</th><th>Motivo</th><th>Tomador</th><th class="n">Valor</th><th class="n">ICMS/ISS</th>',
+        l.ajustes.map((a) => `<tr><td>${dia(a.data)}</td><td>${esc(a.documento)}</td><td>${dia(a.data_original)}</td><td>${esc(a.motivo)}</td><td>${esc(a.tomador_nome)}</td>
+          <td class="n">−${num(a.valor)}</td><td class="n">${a.icms || a.iss ? `−${num(a.icms || a.iss)}` : ''}</td></tr>`))}</div>` : ''}
       ${l.nfse.length ? `<div class="painel" style="padding:12px 14px;"><h4 style="margin:0 0 8px;">NFS-e do período (${l.nfse.length})</h4>${tabela(
         '<th>Data</th><th>Número</th><th>Situação</th><th>Tomador</th><th class="n">Valor</th><th class="n">Alíq. ISS</th><th class="n">ISS</th><th>ISS retido</th>',
         l.nfse.map((x) => `<tr${x.cancelada ? ' style="opacity:.6;"' : ''}><td>${dia(x.data)}</td><td>${esc(x.numero_nfse)}</td><td><span class="oc-sit ${x.cancelada ? 'cancelado' : 'entregue'}">${x.cancelada ? 'Cancelada' : 'Autorizada'}</span></td>

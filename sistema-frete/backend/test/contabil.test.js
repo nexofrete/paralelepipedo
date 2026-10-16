@@ -26,7 +26,12 @@ test('contabil: livro em planilha e HTML (com escape)', () => {
     por_cfop: [{ chave: '6353', qtd: 1, valor: 100, base: 100, icms: 12, isentas_outras: 0 }], por_cst: [], por_uf: [],
     totais: { ctes: 1, cancelados: 0, substituidos: 0, valor: 100, base: 100, icms: 12, isentas_outras: 0, nfse: 0, demonstracao: false },
   };
-  assert.ok(csvLivro(l).includes('10/10/2026;1;2;35;autorizado;normal;6353;00;12,00;SP;RJ;"<Cliente>";1;100,00;100,00;12,00;0,00'));
+  assert.ok(csvLivro(l).includes('10/10/2026;1;2;35;autorizado;normal;6353;00;12,00;SP;RJ;<Cliente>;1;100,00;100,00;12,00;0,00;'));
+  // Nome que parece fórmula vira texto; ajuste de mês anterior sai negativo.
+  const l2 = { ...l, ctes: [{ ...l.ctes[0], tomador_nome: '=HYPERLINK("x")' }], ajustes: [{ tipo: 'cte', documento: 'CT-e 1/1', chave: '35', data: '2026-10-05', data_original: '2026-09-20', motivo: 'cancelado', tomador_nome: 'A;B', tomador_doc: '2', valor: 50, icms: 6 }] };
+  const csv = csvLivro(l2);
+  assert.ok(csv.includes(`;"'=HYPERLINK(""x"")";`));
+  assert.ok(csv.includes('05/10/2026;;CT-e 1/1;35;ajuste: cancelado;cte;;;;;;"A;B";2;-50,00;;-6,00;;emitido em 20/09/2026'));
   const h = livroHtml(l, { razao_social: 'Transp & Cia', cnpj: '1' });
   assert.ok(h.includes('Transp &amp; Cia') && h.includes('&lt;Cliente&gt;') && !h.includes('<Cliente>'));
 });

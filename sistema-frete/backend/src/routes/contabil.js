@@ -47,7 +47,7 @@ router.get('/pacote.zip', autenticar, pode, rota(async (req, res) => {
 
 router.post('/enviar', autenticar, pode, rota(async (req, res) => {
   const b = req.body || {};
-  const r = await contabil.enviarPacote({ de: b.de, ate: b.ate }, { para: b.para });
+  const r = await contabil.enviarPacoteManual({ de: b.de, ate: b.ate }, { para: b.para });
   const per = contabil.periodo(b);
   log(req, `Enviou o pacote do contador (${dia(per.de)} a ${dia(per.ate)}) para ${r.para}`);
   res.json(r);

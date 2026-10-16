@@ -30,7 +30,9 @@
   const titulo = (t) => `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px;"><h3 style="margin:0;">${t}</h3><span style="cursor:pointer; font-size:18px;" data-cp-fechar>✕</span></div>`;
 
   let aba = podeFinanceiro ? 'contas' : 'acertos';
-  let cat = null; let filtro = 'abertas'; let filtroAc = 'abertos'; let catAc = null;
+  let cat = null;
+  let filtro = 'abertas'; let filtroAc = 'abertos'; let catAc = null;
+  let centrosCc = null;   // centros de custo (campo da conta)
   if (!podeFinanceiro) { document.querySelector('[data-cp-aba="contas"]').classList.add('oculto'); $('cpNova').classList.add('oculto'); }
   const abasMap = { contas: 'cpAbaContas', acertos: 'cpAbaAcertos' };
   function mostrarAba(nome) {
@@ -42,6 +44,7 @@
   nav.addEventListener('click', () => { mostrarAba(aba); carregar().catch(erro); });
   const carregar = async () => {
     if (!cat && podeFinanceiro) cat = await json('/api/contas-pagar/categorias');
+    if (!centrosCc && podeFinanceiro) centrosCc = (await json('/api/centros-custo').catch(() => ({ centros: [] }))).centros;
     if (!catAc) catAc = await json('/api/acertos/categorias');
     return aba === 'contas' ? telaContas() : telaAcertos();
   };
@@ -90,6 +93,7 @@
       <div class="cte-grade" style="margin-top:12px;">
         <div class="campo largo"><label for="cpDesc">Descrição</label><input id="cpDesc" maxlength="200" value="${v('descricao')}" placeholder="Ex.: Diesel posto Rodovia, aluguel do galpão" /></div>
         <div class="campo"><label for="cpCategoria">Categoria</label><select id="cpCategoria">${Object.entries(cat.categorias).map(([k, n]) => `<option value="${k}" ${c?.categoria === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
+        <div class="campo"><label for="cpCentro">Centro de custo</label><select id="cpCentro"><option value="">${c ? '— nenhum —' : '— automático (veículo/filial) —'}</option>${(centrosCc || []).map((x) => `<option value="${x.id}" ${Number(c?.centro_custo_id) === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></div>
         <div class="campo largo"><label for="cpForn">Fornecedor</label><input id="cpForn" maxlength="200" value="${v('fornecedor_nome')}" /></div>
         <div class="campo"><label for="cpFornDoc">CNPJ / CPF</label><input id="cpFornDoc" maxlength="18" value="${v('fornecedor_doc')}" /></div>
         <div class="campo"><label for="cpDoc">Documento (NF, boleto)</label><input id="cpDoc" maxlength="60" value="${v('documento')}" /></div>
@@ -106,7 +110,7 @@
       const b = ev.currentTarget; b.disabled = true;
       try {
         const corpo = { descricao: $('cpDesc').value, categoria: $('cpCategoria').value, fornecedor_nome: $('cpForn').value, fornecedor_doc: $('cpFornDoc').value, documento: $('cpDoc').value,
-          valor: $('cpValor').value, vencimento: $('cpVenc').value, observacao: $('cpObs').value, ...(c ? {} : { parcelas: $('cpParcelas').value, dividir: $('cpDividir').value }) };
+          valor: $('cpValor').value, vencimento: $('cpVenc').value, observacao: $('cpObs').value, centro_custo_id: $('cpCentro').value || null, ...(c ? {} : { parcelas: $('cpParcelas').value, dividir: $('cpDividir').value }) };
         if (c) await json(`/api/contas-pagar/${c.id}`, { method: 'PUT', body: JSON.stringify(corpo) });
         else { const r = await json('/api/contas-pagar', { method: 'POST', body: JSON.stringify(corpo) }); if (r.length > 1) mostrarAlerta(`${r.length} parcelas lançadas.`, { tipo: 'sucesso' }); }
         fecharModal(); telaContas().catch(erro);
@@ -122,6 +126,7 @@
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px 18px; margin-top:12px; font-size:13.5px;">
         <div><span style="color:var(--texto-fraco); font-size:12px;">Fornecedor</span><br>${esc(c.fornecedor_nome || '—')}${c.fornecedor_doc ? `<br><small>${esc(c.fornecedor_doc)}</small>` : ''}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Categoria</span><br>${esc(cat.categorias[c.categoria] || c.categoria)}</div>
+        <div><span style="color:var(--texto-fraco); font-size:12px;">Centro de custo</span><br>${esc((centrosCc || []).find((x) => x.id === Number(c.centro_custo_id))?.nome || '—')}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Vencimento</span><br><b>${dia(c.vencimento)}</b></div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Valor / pago / falta</span><br>${brl(c.valor)} · ${brl(c.valor_pago)} · <b>${brl(falta)}</b></div>
         ${c.documento ? `<div><span style="color:var(--texto-fraco); font-size:12px;">Documento</span><br>${esc(c.documento)}</div>` : ''}

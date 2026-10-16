@@ -40,7 +40,7 @@ const CONTAS_PADRAO = {
   despesa_combustivel: '4.1.1.01', despesa_pedagio: '4.1.1.02', despesa_manutencao: '4.1.1.03', despesa_pneus: '4.1.1.04', despesa_frete_terceiro: '4.1.1.05',
   despesa_adiantamento: '1.1.3.10', despesa_salarios: '4.2.1.01', despesa_impostos: '4.2.2.01', despesa_seguro: '4.2.3.01', despesa_aluguel: '4.2.4.01',
   despesa_administrativo: '4.2.5.01', despesa_outros: '4.2.9.01',
-  despesa_tarifas: '4.3.1.01', despesa_juros: '4.3.1.02', receita_financeira: '3.2.1.01', receita_outras: '3.2.9.01', socios: '2.4.1.01',
+  despesa_comissao: '4.2.6.01', despesa_tarifas: '4.3.1.01', despesa_juros: '4.3.1.02', receita_financeira: '3.2.1.01', receita_outras: '3.2.9.01', socios: '2.4.1.01',
 };
 const NOMES_CONTAS = {
   clientes: 'Clientes (duplicatas a receber)', caixa: 'Caixa', banco: 'Banco (conta movimento)', iss_retido: 'ISS retido pelo tomador (a compensar)',
@@ -49,7 +49,7 @@ const NOMES_CONTAS = {
   despesa_combustivel: 'Combustível', despesa_pedagio: 'Pedágio', despesa_manutencao: 'Manutenção de veículos', despesa_pneus: 'Pneus', despesa_frete_terceiro: 'Fretes de terceiros (agregados)',
   despesa_adiantamento: 'Adiantamentos de viagem', despesa_salarios: 'Salários e encargos', despesa_impostos: 'Impostos e taxas', despesa_seguro: 'Seguros',
   despesa_aluguel: 'Aluguel', despesa_administrativo: 'Despesas administrativas', despesa_outros: 'Outras despesas',
-  despesa_tarifas: 'Tarifas bancárias', despesa_juros: 'Juros e multas pagos', receita_financeira: 'Receitas financeiras (rendimentos)', receita_outras: 'Outras receitas',
+  despesa_comissao: 'Comissões de vendedores', despesa_tarifas: 'Tarifas bancárias', despesa_juros: 'Juros e multas pagos', receita_financeira: 'Receitas financeiras (rendimentos)', receita_outras: 'Outras receitas',
   socios: 'Sócios (aportes e retiradas)',
 };
 const CONFIG_PADRAO = { contador_nome: '', contador_email: '', contador_crc: '', regime: 'competencia', separador: ';', envio_ativo: false, envio_dia: 5, contas: CONTAS_PADRAO, ultimo_envio: null };

@@ -76,6 +76,7 @@
         <div class="nav-tsub" data-ir="faturamento" data-aba="regua">📣 Régua de cobrança</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="contas">💸 Contas a pagar</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="acertos">🧾 Acerto de viagem</div>
+        <div class="nav-tsub" data-ir="comissoes" data-aba="apuracao">🤝 Comissões</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="contas">🏦 Caixa e bancos</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="conciliacao">🔗 Conciliação bancária</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="fluxo">📅 Fluxo de caixa</div>
@@ -93,6 +94,7 @@
       <div class="nav-sub oculto" data-grupo="gestao">
         <div class="nav-tsub" data-ir="painel-transporte" data-aba="geral">📊 Painel gerencial</div>
         <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
+        <div class="nav-tsub" data-ir="centros" data-aba="resultado">🎯 Centros de custo</div>
       </div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="emissao-cte" id="navEmissaoCte">🚛 Emissão de CT-e</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cotacoes" id="navCotacoes">💲 Cotações</div>
@@ -103,6 +105,8 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="frota" id="navFrota">🔧 Frota</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="contabil" id="navContabil">🧮 Fiscal e contabilidade</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="bancos" id="navBancos">🏦 Caixa e bancos</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="comissoes" id="navComissoes">🤝 Comissões</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="centros" id="navCentros">🎯 Centros de custo</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias">📍 Ocorrências de entrega</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi">🔁 EDI</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="portal-cliente" id="navPortalCliente">🌐 Portal do cliente</div>
@@ -240,6 +244,40 @@
       </section>
       <div class="modal-overlay oculto" id="modalPagar">
         <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="cpModalConteudo"></div>
+      </div>
+
+      <section id="pagina-comissoes" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🤝 Comissões</h2>
+            <p>Vendedores, a carteira de clientes de cada um, a apuração do mês e o fechamento que vira conta a pagar</p>
+          </div>
+          <button class="btn btn-secundario" id="cmNovoVend" style="width:auto;">＋ Vendedor</button>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-cm-aba="apuracao">🧮 Apuração</div>
+          <div class="cte-aba" data-cm-aba="carteira">👥 Carteira de clientes</div>
+          <div class="cte-aba" data-cm-aba="vendedores">🤝 Vendedores</div>
+          <div class="cte-aba" data-cm-aba="fechamentos">📁 Fechamentos</div>
+        </div>
+        <div id="cmConteudo"></div>
+      </section>
+      <section id="pagina-centros" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🎯 Centros de custo</h2>
+            <p>Receita e despesas de cada filial, veículo, rota e área no período</p>
+          </div>
+          <button class="btn btn-secundario" id="ccuNovo" style="width:auto;">＋ Centro de custo</button>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-ccu-aba="resultado">📊 Resultado por centro</div>
+          <div class="cte-aba" data-ccu-aba="cadastro">🗂 Cadastro</div>
+        </div>
+        <div id="ccuConteudo"></div>
+      </section>
+      <div class="modal-overlay oculto" id="modalCm">
+        <div class="painel modal-card" style="max-width:860px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="cmModalConteudo"></div>
       </div>
 
       <section id="pagina-bancos" class="oculto">
@@ -3570,6 +3608,7 @@
   <script src="js/frota.js"></script>
   <script src="js/contabil.js"></script>
   <script src="js/bancos.js"></script>
+  <script src="js/comissoes.js"></script>
   <script src="js/resultado.js"></script>
   <script src="js/mdfe.js"></script>
   <script src="js/nfse.js"></script>

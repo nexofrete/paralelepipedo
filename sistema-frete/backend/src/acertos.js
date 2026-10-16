@@ -130,7 +130,7 @@ async function sincronizarAdiantamento(cliente, id, a, usuarioNome) {
   }
   if (a.adiantamento > 0) {
     await contas.criar({ descricao: `Adiantamento ${a.tipo === 'terceiro' ? 'de frete' : 'de viagem'} — acerto ${id} (${rotulo(a)})`, categoria: 'adiantamento', ...quemRecebe(a),
-      vencimento: a.data_saida, valor: a.adiantamento }, usuarioNome, { cliente, acertoId: id });
+      vencimento: a.data_saida, valor: a.adiantamento, placa: a.placa }, usuarioNome, { cliente, acertoId: id });
   }
 }
 
@@ -197,7 +197,7 @@ async function acertar(id, usuarioNome) {
       const vencimento = new Date(Date.parse(`${venc}T12:00:00Z`) + a.prazo_saldo_dias * 86400000).toISOString().slice(0, 10);
       [conta] = await contas.criar({
         descricao: a.tipo === 'terceiro' ? `Saldo de frete — acerto ${id} (${rotulo(a)})` : `Reembolso de despesas de viagem — acerto ${id} (${rotulo(a)})`,
-        categoria: a.tipo === 'terceiro' ? 'frete_terceiro' : 'outros', ...quemRecebe(a), vencimento, valor: t.saldo,
+        categoria: a.tipo === 'terceiro' ? 'frete_terceiro' : 'outros', ...quemRecebe(a), vencimento, valor: t.saldo, placa: a.placa,
         observacao: a.tipo === 'terceiro' && t.impostos ? `Retidos: INSS R$ ${Number(a.inss).toFixed(2)}, SEST/SENAT R$ ${Number(a.sest_senat).toFixed(2)}, IRRF R$ ${Number(a.irrf).toFixed(2)}.` : null,
       }, usuarioNome, { cliente, acertoId: id });
     }

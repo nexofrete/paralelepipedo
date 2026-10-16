@@ -6,7 +6,7 @@ const pool = require('./db');
 const CATEGORIAS = {
   combustivel: 'Combustível', pedagio: 'Pedágio', manutencao: 'Manutenção', pneus: 'Pneus', frete_terceiro: 'Frete de terceiro',
   adiantamento: 'Adiantamento de viagem', salarios: 'Salários e encargos', impostos: 'Impostos', seguro: 'Seguro', aluguel: 'Aluguel',
-  administrativo: 'Administrativo', outros: 'Outros',
+  administrativo: 'Administrativo', comissao: 'Comissão de vendedores', outros: 'Outros',
 };
 const FORMAS = ['pix', 'boleto', 'transferencia', 'dinheiro', 'cartao', 'cheque', 'outro'];
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -34,7 +34,7 @@ function lerConta(b = {}) {
   const c = {
     descricao: texto(b.descricao, 200), categoria: CATEGORIAS[b.categoria] ? b.categoria : 'outros', fornecedor_nome: texto(b.fornecedor_nome, 200),
     fornecedor_doc: String(b.fornecedor_doc || '').replace(/\D/g, '').slice(0, 14) || null, documento: texto(b.documento, 60),
-    vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null,
+    vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null, centro_custo_id: Number(b.centro_custo_id) || null,
     parcelas: Math.min(Math.max(parseInt(b.parcelas, 10) || 1, 1), 60), dividir: b.dividir !== false && b.dividir !== 'false',
   };
   if (!c.descricao) throw falha('Informe a descrição da conta.');
@@ -52,15 +52,32 @@ function parcelar(c) {
   return Array.from({ length: c.parcelas }, (_, i) => ({ vencimento: somarMeses(c.vencimento, i), valor: centavos(cada + (i === 0 ? resto : 0)), parcela: `${i + 1}/${c.parcelas}` }));
 }
 
+// Centro de custo da conta: o escolhido; sem ele, o do veículo (abastecimento, manutenção,
+// acerto com placa) ou o da filial.
+async function centroDaConta(c, b, cliente = pool) {
+  if (c.centro_custo_id) {
+    const { rows } = await cliente.query('SELECT id FROM centros_custo WHERE id = $1 AND ativo', [c.centro_custo_id]);
+    if (!rows[0]) throw falha('Centro de custo não encontrado ou inativo.');
+    return c.centro_custo_id;
+  }
+  const placa = String(b.placa || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const { rows } = await cliente.query(
+    `SELECT id FROM centros_custo WHERE ativo AND (
+       ($1::int IS NOT NULL AND veiculo_id = $1) OR ($2 <> '' AND veiculo_id = (SELECT id FROM veiculos WHERE upper(placa) = $2 LIMIT 1)) OR ($3::int IS NOT NULL AND unidade_id = $3))
+     ORDER BY (veiculo_id IS NOT NULL) DESC LIMIT 1`, [Number(b.veiculo_id) || null, placa, c.unidade_id]);
+  return rows[0]?.id || null;
+}
+
 async function criar(b, usuarioNome, { cliente = pool, acertoId = null } = {}) {
   const c = lerConta(b);
+  c.centro_custo_id = await centroDaConta(c, b, cliente);
   const grupo = c.parcelas > 1 ? crypto.randomBytes(6).toString('hex') : null;
   const criadas = [];
   for (const p of parcelar(c)) {
     const { rows } = await cliente.query(
-      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome]);
+      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome, centro_custo_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome, c.centro_custo_id]);
     criadas.push(rows[0]);
   }
   return criadas;
@@ -68,10 +85,11 @@ async function criar(b, usuarioNome, { cliente = pool, acertoId = null } = {}) {
 
 async function alterar(id, b) {
   const c = lerConta({ ...b, parcelas: 1 });
+  if (c.centro_custo_id) c.centro_custo_id = await centroDaConta(c, {});
   const { rows } = await pool.query(
-    `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10
+    `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10, centro_custo_id = $11
       WHERE id = $1 AND status = 'aberta' AND valor_pago <= $8 RETURNING *`,
-    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id]);
+    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id]);
   if (!rows[0]) throw falha('Só dá para alterar conta em aberto (e o valor não pode ficar menor que o já pago).', 409);
   return rows[0];
 }

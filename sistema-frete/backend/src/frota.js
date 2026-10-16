@@ -75,10 +75,10 @@ async function atualizarKm(cliente, veiculoId, km, data) {
 }
 
 // Lança o custo no financeiro. a_vista: conta já paga; a_prazo: conta em aberto (parcelada ou não).
-async function lancarConta(cliente, { pagamento, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, data, vencimento, valor, parcelas, forma, observacao }, usuarioNome) {
+async function lancarConta(cliente, { pagamento, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, data, vencimento, valor, parcelas, forma, observacao, veiculo_id }, usuarioNome) {
   if (!['a_vista', 'a_prazo'].includes(pagamento) || !(valor > 0)) return [];
   const criadas = await contas.criar({
-    descricao, categoria, fornecedor_nome, fornecedor_doc, documento, observacao, valor,
+    descricao, categoria, fornecedor_nome, fornecedor_doc, documento, observacao, valor, veiculo_id,
     vencimento: pagamento === 'a_vista' ? data : (iso(vencimento) || data), parcelas: pagamento === 'a_prazo' ? parcelas || 1 : 1,
   }, usuarioNome, { cliente });
   if (pagamento === 'a_vista') await contas.pagar(criadas[0].id, { data, forma: contas.FORMAS.includes(forma) ? forma : 'pix' }, usuarioNome, cliente);
@@ -132,7 +132,7 @@ async function criarAbastecimento(b, usuarioNome) {
       lancId = l[0].id;
     } else {
       const criadas = await lancarConta(cliente, { pagamento: a.pagamento, descricao: desc, categoria: 'combustivel', fornecedor_nome: a.posto_nome, fornecedor_doc: a.posto_doc,
-        documento: a.documento, data: a.data, vencimento: b.vencimento, valor: a.valor_total, forma: b.forma, observacao: a.motorista_nome ? `Motorista: ${a.motorista_nome}` : null }, usuarioNome);
+        documento: a.documento, data: a.data, vencimento: b.vencimento, valor: a.valor_total, forma: b.forma, observacao: a.motorista_nome ? `Motorista: ${a.motorista_nome}` : null, veiculo_id: a.veiculo_id }, usuarioNome);
       contaId = criadas[0]?.id || null;
     }
     const { rows } = await cliente.query(
@@ -243,7 +243,7 @@ async function aoConcluir(cliente, m, id, usuarioNome) {
   const data = m.data_saida || m.data;
   const criadas = await lancarConta(cliente, { pagamento: m.pagamento, descricao: `Manutenção ${v.placa}: ${m.descricao}`.slice(0, 200),
     categoria: /pneu/i.test(m.descricao) ? 'pneus' : 'manutencao', fornecedor_nome: m.oficina_nome, fornecedor_doc: m.oficina_doc, documento: m.documento,
-    data, vencimento: m.vencimento, valor: m.valor_total, parcelas: m.parcelas, forma: m.forma }, usuarioNome);
+    data, vencimento: m.vencimento, valor: m.valor_total, parcelas: m.parcelas, forma: m.forma, veiculo_id: m.veiculo_id }, usuarioNome);
   if (m.planos.length) {
     const { rows: antes } = await cliente.query('SELECT id, ultima_km, ultima_data FROM manutencao_planos WHERE id = ANY($1::int[]) AND veiculo_id = $2', [m.planos, m.veiculo_id]);
     await cliente.query('UPDATE manutencoes SET planos_antes = $2 WHERE id = $1', [id, JSON.stringify(antes.map((p) => ({ ...p, ultima_data: isoDe(p.ultima_data) })))]);

@@ -66,7 +66,7 @@ async function calcular({ de, ate }) {
   const janelaAte = new Date(Date.parse(`${ate}T12:00:00Z`) + 45 * 86400000).toISOString().slice(0, 10);
 
   const { rows: ctes } = await pool.query(
-    `SELECT id, serie, numero, chave, autorizado_em, valor_total, dados, demonstracao, cidade_fim, uf_fim, destinatario_nome
+    `SELECT id, serie, numero, chave, autorizado_em, valor_total, dados, demonstracao, cidade_fim, uf_fim, destinatario_nome, vendedor_id
        FROM ctes_emitidos WHERE status = 'autorizado' AND (autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date`, [janelaDe, janelaAte]);
   const noPeriodo = (d) => { const x = isoDe(d); return x >= de && x <= ate; };
   const docs = new Map();   // id → linha do CT-e com receita e custos
@@ -79,7 +79,7 @@ async function calcular({ de, ate }) {
       demonstracao: c.demonstracao, complementar: String(d.tpCTe ?? '0') === '1', tomador_doc: t.doc, tomador_nome: t.nome,
       origem: d.inicio ? `${d.inicio.xMun}/${d.inicio.UF}` : null, destino: d.fim ? `${d.fim.xMun}/${d.fim.UF}` : (c.cidade_fim ? `${c.cidade_fim}/${c.uf_fim}` : null),
       peso: String(d.tpCTe ?? '0') === '1' ? 0 : pesoKg(d), receita, icms: centavos(d.icms?.vICMS), valor_carga: Number(d.carga?.vCarga) || 0,
-      viagem: 0, frota: 0, viagens: [], placas: new Set(),
+      viagem: 0, frota: 0, viagens: [], placas: new Set(), vendedor_id: c.vendedor_id,
     });
   }
   const porChave = new Map([...docs.values()].filter((x) => x.chave).map((x) => [x.chave, x]));
@@ -139,25 +139,29 @@ async function calcular({ de, ate }) {
 
   // --- NFS-e do frete municipal (receita com ISS) ---
   const { rows: nfses } = await pool.query(
-    `SELECT id, numero_nfse, autorizada_em, valor, iss_valor, tomador_doc, tomador_nome, demonstracao FROM nfse_emitidas
+    `SELECT id, numero_nfse, autorizada_em, valor, iss_valor, tomador_doc, tomador_nome, demonstracao, vendedor_id FROM nfse_emitidas
       WHERE status = 'autorizada' AND (autorizada_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date`, [de, ate]);
 
+  const perc = await require('./comissoes').percentuais().catch(() => ({ porCliente: new Map(), porVendedor: new Map() }));
   // --- Linhas do período com a margem ---
   const linhas = [...docs.values()].filter((x) => x.no_periodo).map((x) => ({ ...x, iss: 0 }))
     .concat(nfses.map((n) => ({
       id: n.id, tipo: 'nfse', documento: `NFS-e ${n.numero_nfse}`, data: isoDe(n.autorizada_em), demonstracao: n.demonstracao, complementar: false,
       tomador_doc: docLimpo(n.tomador_doc), tomador_nome: n.tomador_nome, origem: null, destino: 'frete municipal', peso: 0, receita: centavos(n.valor),
-      icms: 0, iss: centavos(n.iss_valor), valor_carga: 0, viagem: 0, frota: 0, viagens: [], placas: new Set(),
+      icms: 0, iss: centavos(n.iss_valor), valor_carga: 0, viagem: 0, frota: 0, viagens: [], placas: new Set(), vendedor_id: n.vendedor_id,
     })))
     .map((x) => {
       const impostos = centavos(x.icms + x.iss + (x.receita * cfg.impostos_pct) / 100);
       const seguro = centavos((x.valor_carga * cfg.seguro_pct) / 100);
-      const custo = centavos(impostos + seguro + x.viagem + x.frota);
+      // Comissão do vendedor (o do documento, ou o do cliente), sobre a receita.
+      const pctCom = x.vendedor_id ? (perc.porVendedor.get(x.vendedor_id) || 0) : (perc.porCliente.get(x.tomador_doc) || 0);
+      const comissao = centavos((x.receita * pctCom) / 100);
+      const custo = centavos(impostos + seguro + comissao + x.viagem + x.frota);
       const margem = centavos(x.receita - custo);
       return {
         id: x.id, tipo: x.tipo, documento: x.documento, chave: x.chave || null, data: x.data, demonstracao: x.demonstracao, complementar: x.complementar,
         tomador_doc: x.tomador_doc, tomador_nome: x.tomador_nome, origem: x.origem, destino: x.destino, peso: Math.round(x.peso),
-        receita: x.receita, icms: x.icms, iss: x.iss, impostos, seguro, viagem: x.viagem, frota: x.frota, custo, margem, margem_pct: pct(margem, x.receita),
+        receita: x.receita, icms: x.icms, iss: x.iss, impostos, seguro, comissao, viagem: x.viagem, frota: x.frota, custo, margem, margem_pct: pct(margem, x.receita),
         sem_custo_operacional: !x.viagem && !x.frota && x.tipo === 'cte' && !x.complementar, viagens: x.viagens, placas: [...x.placas],
       };
     })
@@ -167,9 +171,9 @@ async function calcular({ de, ate }) {
   const mapa = new Map();
   for (const l of linhas) {
     const k = l.tomador_doc || '—';
-    const g = mapa.get(k) || { doc: l.tomador_doc, nome: l.tomador_nome, documentos: 0, peso: 0, receita: 0, impostos: 0, seguro: 0, viagem: 0, frota: 0, custo: 0, margem: 0, sem_custo: 0 };
+    const g = mapa.get(k) || { doc: l.tomador_doc, nome: l.tomador_nome, documentos: 0, peso: 0, receita: 0, impostos: 0, seguro: 0, comissao: 0, viagem: 0, frota: 0, custo: 0, margem: 0, sem_custo: 0 };
     g.documentos += 1; g.peso += l.peso;
-    ['receita', 'impostos', 'seguro', 'viagem', 'frota', 'custo', 'margem'].forEach((c) => { g[c] = centavos(g[c] + l[c]); });
+    ['receita', 'impostos', 'seguro', 'comissao', 'viagem', 'frota', 'custo', 'margem'].forEach((c) => { g[c] = centavos(g[c] + l[c]); });
     if (l.sem_custo_operacional) g.sem_custo += 1;
     mapa.set(k, g);
   }
@@ -187,7 +191,7 @@ async function calcular({ de, ate }) {
       WHERE status <> 'cancelada' AND acerto_id IS NULL AND categoria = ANY($3::text[]) AND vencimento BETWEEN $1::date AND $2::date GROUP BY 1`,
     [de, ate, DESPESAS_EMPRESA]);
   const despesas = centavos(desp.reduce((s, d) => s + d.v, 0));
-  const margemContribuicao = centavos(receita - soma('impostos') - soma('seguro') - soma('viagem') - soma('frota'));
+  const margemContribuicao = centavos(receita - soma('impostos') - soma('seguro') - soma('comissao') - soma('viagem') - soma('frota'));
   const naoRateado = centavos(viagemSemCte + frotaSemCte);
   const resultado = centavos(margemContribuicao - naoRateado - despesas);
   const comCusto = linhas.filter((l) => l.tipo === 'cte' && !l.complementar);
@@ -195,7 +199,7 @@ async function calcular({ de, ate }) {
     periodo: { de, ate }, config: cfg,
     demonstrativo: {
       receita, icms: soma('icms'), iss: soma('iss'), outros_impostos: centavos(soma('impostos') - soma('icms') - soma('iss')), impostos: soma('impostos'),
-      seguro: soma('seguro'), viagem: soma('viagem'), frota: soma('frota'), margem_contribuicao: margemContribuicao, margem_contribuicao_pct: pct(margemContribuicao, receita),
+      seguro: soma('seguro'), comissao: soma('comissao'), viagem: soma('viagem'), frota: soma('frota'), margem_contribuicao: margemContribuicao, margem_contribuicao_pct: pct(margemContribuicao, receita),
       nao_rateado: naoRateado, viagem_sem_cte: viagemSemCte, frota_sem_cte: frotaSemCte,
       despesas, despesas_detalhe: Object.fromEntries(desp.map((d) => [d.categoria, centavos(d.v)])), resultado, resultado_pct: pct(resultado, receita),
       documentos: linhas.length, sem_custo: comCusto.filter((l) => l.sem_custo_operacional).length, ctes_carga: comCusto.length,

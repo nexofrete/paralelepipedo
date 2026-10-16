@@ -27,7 +27,7 @@
   // Atributo das abas de cada tela.
   const ATRIBUTO_ABA = {
     'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba',
-    filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba',
+    filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba', comissoes: 'data-cm-aba', centros: 'data-ccu-aba',
   };
   const DATASET = Object.fromEntries(Object.entries(ATRIBUTO_ABA).map(([p, a]) => [p, a.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())]));   // data-cte-aba → cteAba
   const tsubs = [...document.querySelectorAll('.barra-lateral .nav-tsub')];

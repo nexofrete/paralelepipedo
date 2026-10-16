@@ -59,6 +59,7 @@
           ${linha('ICMS', d.icms, { menos: true })}${d.iss ? linha('ISS (NFS-e)', d.iss, { menos: true }) : ''}
           ${linha('Outros impostos', d.outros_impostos, { menos: true, sub: `${pct(r.config.impostos_pct)} sobre a receita` })}
           ${d.seguro ? linha('Seguro da carga', d.seguro, { menos: true, sub: `${pct(r.config.seguro_pct)} do valor da mercadoria` }) : ''}
+          ${d.comissao ? linha('Comissão de vendedores', d.comissao, { menos: true, sub: 'percentual de cada vendedor/cliente sobre a receita (Comissões)' }) : ''}
           ${linha('Custos das viagens', d.viagem, { menos: true, sub: 'MDF-e, romaneios e transferências, divididos pelo peso' })}
           ${linha('Frota própria', d.frota, { menos: true, sub: 'combustível e manutenção do período, pelo peso que cada caminhão levou' })}
           ${linha('= Margem de contribuição', d.margem_contribuicao, { forte: true })}
@@ -69,7 +70,7 @@
           <select id="rsOrdem" class="cte-entrada" style="width:auto;"><option value="margem">Maior margem em R$</option><option value="pct" ${estado.ordem === 'pct' ? 'selected' : ''}>Menor margem %</option><option value="receita" ${estado.ordem === 'receita' ? 'selected' : ''}>Maior receita</option></select></div>
           <div class="edi-rolagem" style="max-height:440px;"><table class="edi-tabela"><thead><tr><th>Cliente</th><th class="n">Docs</th><th class="n">Receita</th><th class="n" title="Impostos + seguro + viagem + frota">Custos</th><th class="n">Margem</th><th class="n">%</th><th class="n">Frete/kg</th></tr></thead><tbody>
           ${ordenar(r.clientes).map((c) => `<tr data-rs-cliente="${esc(c.doc)}" style="cursor:pointer;" title="Ver os CT-e deste cliente"><td style="white-space:normal; min-width:180px;"><b>${esc(c.nome)}</b><br><small style="color:var(--texto-fraco);">${esc(docFmt(c.doc))}${c.sem_custo ? ` · ${c.sem_custo} sem custo` : ''}</small></td>
-            <td class="n">${c.documentos}</td><td class="n">${brl(c.receita)}</td><td class="n" title="Impostos ${brl(c.impostos)} · viagem ${brl(c.viagem)} · frota ${brl(c.frota)}${c.seguro ? ` · seguro ${brl(c.seguro)}` : ''}">${brl(c.custo)}</td>
+            <td class="n">${c.documentos}</td><td class="n">${brl(c.receita)}</td><td class="n" title="Impostos ${brl(c.impostos)} · viagem ${brl(c.viagem)} · frota ${brl(c.frota)}${c.seguro ? ` · seguro ${brl(c.seguro)}` : ''}${c.comissao ? ` · comissão ${brl(c.comissao)}` : ''}">${brl(c.custo)}</td>
             <td class="n" style="${corMargem(c.margem_pct, meta)}">${brl(c.margem)}</td><td class="n" style="${corMargem(c.margem_pct, meta)}">${pct(c.margem_pct)}</td>
             <td class="n">${c.frete_kg != null ? `${brl(c.frete_kg)}` : '—'}${c.custo_kg != null ? `<br><small style="color:var(--texto-fraco);">custo ${brl(c.custo_kg)}</small>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--texto-fraco);">Nada no período.</td></tr>'}</tbody></table></div></div>
       </div>

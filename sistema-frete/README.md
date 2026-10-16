@@ -209,9 +209,9 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
-  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
+  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas
-  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 310 a 321 Relatórios · 330 Auditoria de frete
+  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
   - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 990 Modo compacto · 991 Tema · 999 Lista de códigos
@@ -309,6 +309,36 @@ Página própria para o cliente da transportadora: **`/portal.html`** (funciona 
 - o cliente recupera a senha sozinho ("Esqueci a senha", com link que vale 1 hora).
 
 CT-e de demonstração só aparecem no portal enquanto a empresa está no modo demonstração.
+
+## Comissão de vendedores
+
+**Financeiro → 🤝 Comissões** (código **125**).
+
+- **Vendedores:** cada um tem o percentual e a base de cálculo.
+  - **Sobre o recebido:** só entra quando a fatura do cliente é quitada. É o padrão.
+  - **Sobre o faturado:** entra quando o CT-e é autorizado.
+- **Carteira de clientes:** liga cada cliente (quem paga o frete) a um vendedor, com percentual próprio se quiser. Salva na hora.
+  - Na apuração dá para trocar o vendedor de um CT-e específico.
+- **Apuração do período:** documentos de cada vendedor, base, percentual e comissão. Avisa quando há recebimento de cliente sem vendedor.
+- **Fechamento:**
+  - Vira uma conta a pagar (categoria Comissão, no centro de custo Comercial) com o vencimento escolhido.
+  - Cada documento é comissionado uma vez só.
+  - CT-e cancelado ou substituído depois de comissionado volta como **estorno** no fechamento seguinte.
+  - **Cancelar o fechamento** devolve os documentos para a apuração. Só dá se a comissão ainda não foi paga.
+- A **Margem por CT-e e cliente** passa a descontar a comissão (estimada pelo percentual de cada cliente).
+
+## Centros de custo
+
+**Gestão → 🎯 Centros de custo** (código **302**).
+
+- **Tipos:** filial, veículo, rota, comercial, administrativo e outro.
+  - O botão **⚡ Criar automático** cria um centro para cada filial e cada veículo, mais Comercial e Administrativo.
+  - As contas a pagar antigas são classificadas pelo veículo (abastecimento, manutenção, acerto) ou pela filial.
+- **Nas contas a pagar:**
+  - Campo "Centro de custo". Em branco, a conta pega o centro do veículo ou da filial sozinha.
+  - Abastecimento, manutenção e acerto de viagem pegam o centro do veículo.
+- **Resultado por centro:** receita (CT-e e NFS-e pela filial de origem; sem filial, vai para a matriz) − despesas (contas a pagar pelo vencimento), com o detalhe por categoria.
+  - O botão "Contas" de cada centro abre as contas para conferir e mover de centro, inclusive as que estão sem centro.
 
 ## Régua de cobrança
 

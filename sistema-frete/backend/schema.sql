@@ -2199,3 +2199,56 @@ CREATE TABLE IF NOT EXISTS cobranca_envios (
 CREATE INDEX IF NOT EXISTS idx_cobranca_envios_fatura ON cobranca_envios (fatura_id, etapa);
 -- A régua não manda a mesma etapa duas vezes pelo mesmo canal.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cobranca_etapa_unica ON cobranca_envios (fatura_id, etapa, canal) WHERE automatico AND status IN ('enviado', 'sem_contato');
+
+-- ===== Centros de custo =====
+CREATE TABLE IF NOT EXISTS centros_custo (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL,
+  tipo VARCHAR(15) NOT NULL DEFAULT 'outro',          -- filial | veiculo | rota | comercial | administrativo | outro
+  unidade_id INTEGER REFERENCES unidades(id),         -- filial: a receita dos CT-e dela vem para cá
+  veiculo_id INTEGER REFERENCES veiculos(id),         -- veículo: abastecimento e manutenção vêm para cá
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_centro_unidade ON centros_custo (unidade_id) WHERE unidade_id IS NOT NULL AND ativo;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_centro_veiculo ON centros_custo (veiculo_id) WHERE veiculo_id IS NOT NULL AND ativo;
+ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS centro_custo_id INTEGER REFERENCES centros_custo(id);
+
+-- ===== Comissão de vendedores =====
+CREATE TABLE IF NOT EXISTS vendedores (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(120) NOT NULL,
+  documento VARCHAR(14),
+  email VARCHAR(160),
+  telefone VARCHAR(30),
+  comissao_pct NUMERIC(6,3) NOT NULL DEFAULT 0,
+  base VARCHAR(10) NOT NULL DEFAULT 'recebido',       -- recebido (fatura paga) | faturado (CT-e autorizado)
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS vendedor_id INTEGER REFERENCES vendedores(id);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS comissao_pct NUMERIC(6,3);           -- vazio = a do vendedor
+ALTER TABLE ctes_emitidos ADD COLUMN IF NOT EXISTS vendedor_id INTEGER REFERENCES vendedores(id);   -- vazio = o do cliente
+ALTER TABLE nfse_emitidas ADD COLUMN IF NOT EXISTS vendedor_id INTEGER REFERENCES vendedores(id);
+CREATE TABLE IF NOT EXISTS comissao_fechamentos (
+  id SERIAL PRIMARY KEY,
+  vendedor_id INTEGER NOT NULL REFERENCES vendedores(id),
+  de DATE NOT NULL, ate DATE NOT NULL,
+  base VARCHAR(10) NOT NULL,
+  total NUMERIC(14,2) NOT NULL,
+  conta_pagar_id INTEGER REFERENCES contas_pagar(id),
+  status VARCHAR(10) NOT NULL DEFAULT 'fechado',      -- fechado | cancelado
+  usuario_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS comissao_itens (
+  id SERIAL PRIMARY KEY,
+  fechamento_id INTEGER NOT NULL REFERENCES comissao_fechamentos(id) ON DELETE CASCADE,
+  doc_tipo VARCHAR(5) NOT NULL,                       -- cte | nfse
+  doc_id INTEGER NOT NULL,
+  tipo VARCHAR(8) NOT NULL DEFAULT 'comissao',        -- comissao | estorno
+  documento VARCHAR(40), cliente VARCHAR(200), data_ref DATE,
+  base_valor NUMERIC(14,2) NOT NULL, pct NUMERIC(6,3) NOT NULL, valor NUMERIC(14,2) NOT NULL
+);
+-- Cada documento é comissionado (e estornado) uma vez só.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_comissao_doc_unico ON comissao_itens (doc_tipo, doc_id, tipo);

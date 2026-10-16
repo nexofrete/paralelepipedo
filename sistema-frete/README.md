@@ -214,7 +214,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
-  - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 990 Modo compacto · 991 Tema · 999 Lista de códigos
+  - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos
 - **Modo compacto** (botão no menu lateral, ou código 990): menos espaço e letra menor, para ver mais linhas na tela. Fica salvo naquele computador.
 - **Nos formulários** (janelas de cadastro e lançamento):
   - **Enter** passa para o próximo campo, como o Tab;
@@ -503,6 +503,18 @@ Em **🚛 Operação de Transporte → 📍 Ocorrências de entrega** (quem emit
 - **App do motorista** em `/motorista.html` (celular, sem login): entra com o código do romaneio (ou pelo QR code da folha), vê as entregas na ordem com mapa e telefone, e dá baixa com nome de quem recebeu, assinatura na tela, foto do canhoto (reduzida no próprio celular) e a localização (GPS). Também lança "não entregue" com o motivo. O código para de funcionar quando o romaneio é fechado; dá para trocar o código a qualquer momento. O GPS e a câmera pedem HTTPS (ou o próprio servidor na rede).
 - **Avisos ao cliente** (Configuração fiscal → Avisos de entrega): a cada ocorrência escolhida (saiu para entrega, entregue, não entregue, devolvido...), manda e-mail e/ou WhatsApp ao destinatário e a quem paga o frete, com o link de rastreio (preencha o "Endereço público"). Usa o e-mail e o celular que vieram na NF-e; WhatsApp só para celular. Cada envio (ou erro) fica registrado.
 - **EDI:** em EDI → Com o cliente, "OCOREN das ocorrências lançadas" gera o arquivo com o que foi lançado e ainda não foi enviado.
+
+## Integração com ERP (API v1 e webhooks)
+
+Menu **⚙️ Configuração → 🔗 Integração (API e ERP)** (código **904**, só administrador):
+
+- **Chaves de API:** uma por sistema (ex.: "ERP Bapx"), com o que pode fazer: *Consultar* (CT-e, entregas, faturas) e/ou *Enviar NF-e*. A chave aparece uma vez só, ao criar (o banco guarda só o SHA-256); dá para revogar a qualquer momento. Mostra o último uso e o IP.
+- **API** (`/api/v1`, cabeçalho `Authorization: Bearer nxf_...`, 120 chamadas/min por chave):
+  - `GET /status` · `GET /ctes?alterado_desde=ISO&limite=100` (paginação por `proxima`) · `GET /ctes/<chave>` · `GET /ctes/<chave>/xml` · `GET /entregas?desde=&ate=` · `GET /faturas?alterado_desde=&status=` · `GET /faturas/<id>`
+  - `POST /nfe` `{"xml": "..."}` ou `{"xmls": [...]}`: cada NF-e destinada à transportadora vira **rascunho de CT-e** (mesmo caminho da importação por e-mail).
+- **Webhooks (avisos automáticos):** o Nexofrete faz POST no endereço do ERP quando o **CT-e é autorizado/cancelado/substituído**, a **entrega é registrada** e a **fatura é criada/paga/cancelada**. Os eventos vêm de gatilhos no banco (pegam a mudança venha de onde vier), saem com a assinatura `X-Nexofrete-Assinatura: t=<unix>,v1=<HMAC-SHA256>` e, sem resposta 2xx, são reenviados em 1 min, 5 min, 15 min, 1 h, 3 h, 6 h, 12 h e 24 h. Botões para testar, reenviar e gerar novo segredo.
+- **Segurança:** webhook só para `https://` e endereço público (localhost, rede interna e 169.254.x são recusados, também na hora da conexão). Para um ERP instalado na rede da empresa, ligue `WEBHOOK_REDE_INTERNA=1` no servidor.
+- A tela traz as instruções prontas para copiar e mandar ao fornecedor do ERP.
 
 ## EDI (PROCEDA 3.1)
 

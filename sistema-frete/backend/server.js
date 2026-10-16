@@ -173,6 +173,8 @@ app.use('/api/cte-emissao/ler-nfe', express.json({ limit: '5mb' }));
 app.use('/api/cte-emissao/importar-nfe', express.json({ limit: '40mb' }));
 // Arquivos EDI (NOTFIS/CONEMB/...) vêm como texto no corpo e podem passar de 1 MB.
 app.use('/api/edi', express.json({ limit: '10mb' }));
+// API para ERP: NF-e em XML no corpo.
+app.use('/api/v1/nfe', express.json({ limit: '10mb' }));
 app.use(express.json());
 
 // Licença: sem ativação (ou cópia em outro computador) o sistema não funciona;
@@ -242,6 +244,8 @@ app.use('/api/comissoes', require('./src/routes/comissoes'));
 app.use('/api/centros-custo', require('./src/routes/centrosCusto'));
 app.use('/api/frota', require('./src/routes/frota'));
 app.use('/api/faturamento', require('./src/routes/faturamento'));
+app.use('/api/integracao', require('./src/routes/integracao'));
+app.use('/api/v1', require('./src/routes/apiV1'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
 // Portal do cliente (login próprio) e a administração dos acessos.
 app.use('/api/portal', require('./src/routes/portal').api);
@@ -311,6 +315,7 @@ async function iniciar() {
     require('./src/caixaEmail').agendar();
     require('./src/contabil').agendar();
     require('./src/faturamento/regua').agendar();
+    require('./src/integracao/webhooks').agendar();
     require('./src/avisosSeguranca').iniciar();
     licenca.agendarConferencia();
     require('./src/unidades').garantirMatriz().catch((e) => console.error('[unidades]', e.message));

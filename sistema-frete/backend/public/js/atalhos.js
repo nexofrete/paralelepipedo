@@ -46,7 +46,7 @@
     'p:sinistros': ['410', 'sinistro avaria'],
     'p:mensagens': ['500', 'mensagem'], 'p:agenda': ['501', 'agenda compromisso'],
     'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:filiais:unidades': ['901', 'filial unidade'],
-    't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'],
+    't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'], 'p:integracao': ['904', 'integracao api erp webhook chave'],
   };
   // Ações diretas: abrem a tela e clicam no botão de "novo" (código = o da tela + 1).
   const ACOES = [

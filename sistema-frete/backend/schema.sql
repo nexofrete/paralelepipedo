@@ -2259,3 +2259,94 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_comissao_doc_ciclo ON comissao_itens (doc_
 -- Recebimento com origem conhecida (ex.: boleto pago no retorno do banco): a mesma origem não baixa duas vezes.
 ALTER TABLE faturas_transporte_pagamentos ADD COLUMN IF NOT EXISTS origem_chave VARCHAR(80);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_fatura_pagamento_origem ON faturas_transporte_pagamentos (origem_chave) WHERE origem_chave IS NOT NULL;
+
+-- ===================== Integração com ERP (API v1 e webhooks) =====================
+-- Chave de API: só o hash (SHA-256) fica guardado; a chave aparece uma vez, ao criar.
+CREATE TABLE IF NOT EXISTS api_chaves (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL,
+  prefixo VARCHAR(20) NOT NULL,                          -- início da chave, para reconhecer na lista
+  hash CHAR(64) NOT NULL UNIQUE,
+  escopos TEXT[] NOT NULL DEFAULT '{ler}',               -- ler | lancar
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_por_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ultimo_uso_em TIMESTAMPTZ,
+  ultimo_ip VARCHAR(60),
+  revogada_em TIMESTAMPTZ
+);
+-- Endereços do ERP que recebem os avisos. O segredo (para a assinatura) fica criptografado.
+CREATE TABLE IF NOT EXISTS webhooks (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  segredo TEXT NOT NULL,
+  eventos TEXT[] NOT NULL DEFAULT '{*}',
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  falhas_seguidas INTEGER NOT NULL DEFAULT 0,
+  ultimo_envio_em TIMESTAMPTZ,
+  ultimo_status INTEGER,
+  ultimo_erro VARCHAR(300),
+  criado_por_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Fila de eventos (preenchida pelos gatilhos abaixo, venha a mudança de onde vier).
+CREATE TABLE IF NOT EXISTS webhook_eventos (
+  id BIGSERIAL PRIMARY KEY,
+  evento VARCHAR(40) NOT NULL,
+  recurso VARCHAR(20) NOT NULL,
+  recurso_id INTEGER NOT NULL,
+  dados JSONB,
+  processado BOOLEAN NOT NULL DEFAULT FALSE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_webhook_eventos_pendentes ON webhook_eventos (id) WHERE NOT processado;
+CREATE TABLE IF NOT EXISTS webhook_entregas (
+  id BIGSERIAL PRIMARY KEY,
+  webhook_id INTEGER NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+  evento_id BIGINT NOT NULL REFERENCES webhook_eventos(id) ON DELETE CASCADE,
+  status VARCHAR(12) NOT NULL DEFAULT 'pendente',        -- pendente | enviado | falhou
+  tentativas INTEGER NOT NULL DEFAULT 0,
+  proxima_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  http_status INTEGER,
+  erro VARCHAR(300),
+  enviado_em TIMESTAMPTZ,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (webhook_id, evento_id)
+);
+CREATE INDEX IF NOT EXISTS idx_webhook_entregas_fila ON webhook_entregas (proxima_em) WHERE status = 'pendente';
+
+-- Faturas: quando mudaram (para o ERP buscar só o que mudou).
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW();
+CREATE OR REPLACE FUNCTION fn_fatura_atualizado_em() RETURNS trigger AS $$
+BEGIN NEW.atualizado_em := NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_fatura_atualizado_em ON faturas_transporte;
+CREATE TRIGGER trg_fatura_atualizado_em BEFORE UPDATE ON faturas_transporte FOR EACH ROW EXECUTE FUNCTION fn_fatura_atualizado_em();
+
+-- Eventos para os webhooks (só se houver algum webhook ativo).
+CREATE OR REPLACE FUNCTION fn_webhook_cte() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM webhooks WHERE ativo) THEN RETURN NEW; END IF;
+  IF NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('autorizado', 'cancelado', 'substituido') THEN
+    INSERT INTO webhook_eventos (evento, recurso, recurso_id) VALUES ('cte.' || NEW.status, 'cte', NEW.id);
+  END IF;
+  IF NEW.data_entrega IS NOT NULL AND OLD.data_entrega IS NULL AND NEW.status = 'autorizado' THEN
+    INSERT INTO webhook_eventos (evento, recurso, recurso_id) VALUES ('cte.entregue', 'cte', NEW.id);
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_webhook_cte ON ctes_emitidos;
+CREATE TRIGGER trg_webhook_cte AFTER UPDATE ON ctes_emitidos FOR EACH ROW EXECUTE FUNCTION fn_webhook_cte();
+
+CREATE OR REPLACE FUNCTION fn_webhook_fatura() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM webhooks WHERE ativo) THEN RETURN NEW; END IF;
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO webhook_eventos (evento, recurso, recurso_id) VALUES ('fatura.criada', 'fatura', NEW.id);
+  ELSIF NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('paga', 'cancelada') THEN
+    INSERT INTO webhook_eventos (evento, recurso, recurso_id) VALUES ('fatura.' || NEW.status, 'fatura', NEW.id);
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_webhook_fatura ON faturas_transporte;
+CREATE TRIGGER trg_webhook_fatura AFTER INSERT OR UPDATE ON faturas_transporte FOR EACH ROW EXECUTE FUNCTION fn_webhook_fatura();

@@ -206,7 +206,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
-  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
+  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
@@ -306,6 +306,30 @@ Página própria para o cliente da transportadora: **`/portal.html`** (funciona 
 - o cliente recupera a senha sozinho ("Esqueci a senha", com link que vale 1 hora).
 
 CT-e de demonstração só aparecem no portal enquanto a empresa está no modo demonstração.
+
+## Régua de cobrança
+
+**Faturamento → 📣 Régua de cobrança** (código **103**). Manda lembretes das faturas em aberto, sozinha, uma vez por dia a partir da hora escolhida.
+
+- **Etapas** em dias em relação ao vencimento. O padrão é 3 dias antes, no dia, 3 dias depois e 10 dias depois.
+  - Cada etapa tem assunto e mensagem editáveis, com as variáveis {cliente} {fatura} {valor} {vencimento} {quando} {dias} {empresa} {contato}.
+  - **{quando}** é calculado no dia do envio: "vence em 3 dias", "vence amanhã", "vence hoje", "venceu há 5 dias".
+- **Canais:**
+  - **E-mail:** a fatura com o boleto e o PIX, com a mensagem da etapa em cima. Dá para mandar cópia para o financeiro.
+  - **WhatsApp:** a mensagem com o PIX copia e cola e a linha digitável do boleto. Precisa do WhatsApp configurado em Manutenção.
+- **Regras:**
+  - Cada etapa vai uma vez por fatura e canal. O lembrete mandado à mão conta como enviado.
+  - A régua para quando a fatura é paga, seja pela baixa, pelo retorno do boleto ou pela conciliação do extrato.
+  - Lembrete de antes do vencimento não sai depois que a fatura venceu.
+  - Etapa que passou há mais de N dias (a "janela") não é mandada atrasada. Assim, ao ligar a régua, quem está 60 dias vencido não recebe "vence em 3 dias".
+  - Envio com erro tenta de novo no dia seguinte. Canal desligado ou sem contato é só pulado.
+- **Exceções:**
+  - **Cliente pausado:** acordo, ou paga por outro meio.
+  - **E-mail ou WhatsApp de cobrança próprio do cliente:** usado no lugar do e-mail da fatura.
+  - **Pagamento prometido:** pausa só aquela fatura até uma data, pela seção 📣 Cobrança da fatura.
+- **Hoje:** mostra o que sai no dia, quem está sem contato e o que está pausado. Também tem "✉ Lembrar" para mandar na hora e "Mandar os de hoje agora".
+- **Histórico:** cada envio, com o canal, o destinatário, a situação e quem mandou.
+- Na tela **Hoje**: lembretes do dia, faturas sem contato de cobrança e faturas vencidas há mais de 30 dias.
 
 ## Caixa e bancos (conciliação bancária e fluxo de caixa)
 

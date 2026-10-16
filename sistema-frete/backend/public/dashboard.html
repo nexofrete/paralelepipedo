@@ -73,6 +73,7 @@
         <div class="nav-tsub" data-ir="faturamento" data-aba="faturas">🧾 Faturamento</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="resumo">📈 Contas a receber</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="boletos">🏦 Boletos (CNAB)</div>
+        <div class="nav-tsub" data-ir="faturamento" data-aba="regua">📣 Régua de cobrança</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="contas">💸 Contas a pagar</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="acertos">🧾 Acerto de viagem</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="contas">🏦 Caixa e bancos</div>
@@ -540,12 +541,14 @@
           <div class="cte-aba" data-fat-aba="faturas">🧾 Faturas</div>
           <div class="cte-aba" data-fat-aba="afaturar">➕ A faturar</div>
           <div class="cte-aba" data-fat-aba="boletos">🏦 Boletos (remessa e retorno)</div>
+          <div class="cte-aba" data-fat-aba="regua">📣 Régua de cobrança</div>
           <div class="cte-aba" data-fat-aba="config">⚙️ Cobrança (PIX e banco)</div>
         </div>
         <div id="fat-aba-resumo"></div>
         <div id="fat-aba-faturas" class="oculto"></div>
         <div id="fat-aba-afaturar" class="oculto"></div>
         <div id="fat-aba-boletos" class="oculto"></div>
+        <div id="fat-aba-regua" class="oculto"></div>
         <div id="fat-aba-config" class="oculto"></div>
       </section>
       <!-- ===== Painel gerencial da transportadora ===== -->
@@ -3574,6 +3577,7 @@
   <script src="js/resultado.js"></script>
   <script src="js/mdfe.js"></script>
   <script src="js/nfse.js"></script>
+  <script src="js/regua.js"></script>
   <script src="js/faturamento.js"></script>
   <script src="js/painelTransporte.js"></script>
   <script src="js/hoje.js"></script>

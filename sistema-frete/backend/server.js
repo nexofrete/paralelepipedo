@@ -235,6 +235,7 @@ app.use('/api/nfse', require('./src/routes/nfse'));
 app.use('/api/contabil', require('./src/routes/contabil'));
 app.use('/api/bancos', require('./src/routes/bancos'));
 app.use('/api/hoje', require('./src/routes/hoje'));
+app.use('/api/regua', require('./src/routes/regua'));
 app.use('/api/frota', require('./src/routes/frota'));
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
@@ -305,6 +306,7 @@ async function iniciar() {
     require('./src/pastaXml').agendar();
     require('./src/caixaEmail').agendar();
     require('./src/contabil').agendar();
+    require('./src/faturamento/regua').agendar();
     require('./src/avisosSeguranca').iniciar();
     licenca.agendarConferencia();
     require('./src/unidades').garantirMatriz().catch((e) => console.error('[unidades]', e.message));

@@ -1588,3 +1588,6 @@ body.modo-compacto .modal-card { padding: 14px 16px !important; }
 .hj-det { font-size: 12px; color: var(--texto-fraco); line-height: 1.4; }
 .hj-ir { font-size: 12px; color: var(--azul); margin-top: auto; padding-top: 6px; }
 .hj-ok { font-size: 13px; color: var(--verde); padding: 10px 0; }
+.rg-link { color: var(--azul); font-weight: 700; text-decoration: none; }
+.rg-link:hover { text-decoration: underline; }
+@media (max-width: 1000px) { .rg-grade { grid-template-columns: 1fr !important; } }

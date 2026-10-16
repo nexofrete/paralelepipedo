@@ -59,6 +59,16 @@ async function montar(req) {
       FROM faturas_transporte WHERE status IN ('aberta', 'parcial')`, [h]);
     add('financeiro', { chave: 'faturas_vencidas', icone: '🚨', titulo: 'Faturas vencidas', qtd: f.vencidas, valor: centavos(f.vencidas_valor), nivel: 'perigo', detalhe: 'cobre o cliente',
       destino: { ir: 'faturamento', aba: 'faturas', selecionar: ['fatStatus', 'vencidas'] } });
+    try {
+      const pv = await require('./faturamento/regua').previa();
+      add('financeiro', { chave: 'regua_hoje', icone: '📣', titulo: pv.ativo ? 'Lembretes de cobrança de hoje' : 'Lembretes de cobrança para mandar', qtd: pv.resumo.enviar,
+        nivel: pv.ativo ? 'info' : 'atencao', detalhe: pv.ativo ? 'a régua manda sozinha' : 'a régua está desligada: mande à mão ou ligue', destino: { ir: 'faturamento', aba: 'regua' } });
+      add('financeiro', { chave: 'regua_sem_contato', icone: '📵', titulo: 'Faturas sem contato de cobrança', qtd: pv.resumo.sem_contato, nivel: 'atencao',
+        detalhe: 'cadastre o e-mail ou o celular do cliente', destino: { ir: 'faturamento', aba: 'regua' } });
+      const antigas = pv.faturas.filter((x) => x.atraso > 30);
+      add('financeiro', { chave: 'atraso_30', icone: '🧨', titulo: 'Faturas vencidas há mais de 30 dias', qtd: antigas.length, valor: centavos(antigas.reduce((t, x) => t + x.saldo, 0)), nivel: 'perigo',
+        detalhe: antigas.slice(0, 3).map((x) => x.cliente).filter((v, i, a) => a.indexOf(v) === i).join(', '), destino: { ir: 'faturamento', aba: 'faturas', selecionar: ['fatStatus', 'vencidas'] } });
+    } catch (e) { console.error('[hoje]', e.message); }
     add('financeiro', { chave: 'faturas_semana', icone: '📥', titulo: 'A receber nos próximos 7 dias', qtd: f.semana, valor: centavos(f.semana_valor), nivel: 'info',
       destino: { ir: 'faturamento', aba: 'faturas', selecionar: ['fatStatus', 'abertas'] } });
     add('financeiro', { chave: 'boletos_rejeitados', icone: '🏦', titulo: 'Boletos rejeitados pelo banco', qtd: f.boletos_rejeitados, nivel: 'perigo', detalhe: 'veja o motivo no retorno',

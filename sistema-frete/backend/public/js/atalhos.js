@@ -30,7 +30,7 @@
     't:filiais:estoque': ['060', 'estoque filial onde esta mercadoria armazem'], 't:filiais:transferencias': ['061', 'transferencia filial'],
     't:edi:': ['070', 'edi notfis conemb ocoren doccob'], 't:portal-cliente:': ['080', 'portal cliente embarcador acesso'],
     't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:resumo': ['101', 'contas receber receber'],
-    't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],
+    't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:faturamento:regua': ['103', 'regua cobranca lembrete vencimento atraso inadimplencia'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],
     't:pagar:acertos': ['120', 'acerto viagem motorista ciot vale pedagio agregado'], 'p:financeiro': ['130', 'financeiro'],
     't:contabil:livro': ['140', 'fiscal contabilidade contador livro saidas apuracao icms iss cfop sped lancamentos'], 't:contabil:pacote': ['141', 'pacote contador xml zip mensal enviar'],
     't:bancos:contas': ['150', 'caixa banco saldo conta bancaria tesouraria'], 't:bancos:conciliacao': ['151', 'conciliacao extrato ofx banco'], 't:bancos:fluxo': ['152', 'fluxo caixa previsao projecao'],

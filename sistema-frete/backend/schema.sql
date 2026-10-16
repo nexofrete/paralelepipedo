@@ -2174,3 +2174,28 @@ CREATE TABLE IF NOT EXISTS extrato_linhas (
 );
 CREATE INDEX IF NOT EXISTS idx_extrato_pendentes ON extrato_linhas (conta_id, data) WHERE conciliado_tipo IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_extrato_um_vinculo ON extrato_linhas (conciliado_tipo, conciliado_id) WHERE conciliado_id IS NOT NULL;
+
+-- ===== Régua de cobrança: lembretes automáticos antes e depois do vencimento =====
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS regua_config JSONB;
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS cobranca_pausada BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS cobranca_motivo VARCHAR(200);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS cobranca_email VARCHAR(250);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS cobranca_whatsapp VARCHAR(30);
+-- Pausa só desta fatura (ex.: o cliente prometeu pagar dia X).
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS cobranca_pausada_ate DATE;
+ALTER TABLE faturas_transporte ADD COLUMN IF NOT EXISTS cobranca_motivo VARCHAR(200);
+CREATE TABLE IF NOT EXISTS cobranca_envios (
+  id SERIAL PRIMARY KEY,
+  fatura_id INTEGER NOT NULL REFERENCES faturas_transporte(id) ON DELETE CASCADE,
+  etapa INTEGER,                                      -- dias em relação ao vencimento (−3, 0, 3...); NULL = envio avulso
+  canal VARCHAR(10) NOT NULL,                         -- email | whatsapp | nenhum
+  destino VARCHAR(250),
+  status VARCHAR(12) NOT NULL,                        -- enviado | erro | sem_contato
+  erro VARCHAR(300),
+  automatico BOOLEAN NOT NULL DEFAULT TRUE,
+  usuario_nome VARCHAR(120),
+  enviado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cobranca_envios_fatura ON cobranca_envios (fatura_id, etapa);
+-- A régua não manda a mesma etapa duas vezes pelo mesmo canal.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cobranca_etapa_unica ON cobranca_envios (fatura_id, etapa, canal) WHERE automatico AND status IN ('enviado', 'sem_contato');

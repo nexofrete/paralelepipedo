@@ -38,8 +38,10 @@
   function abrirAba(nome) {
     abaAtual = nome;
     document.querySelectorAll('[data-fat-aba]').forEach((a) => a.classList.toggle('ativo', a.dataset.fatAba === nome));
-    ['resumo', 'faturas', 'afaturar', 'boletos', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
-    ({ resumo: resumo, faturas: faturas, afaturar: aFaturar, boletos: boletos, config: configuracao })[nome]().catch(erro);
+    ['resumo', 'faturas', 'afaturar', 'boletos', 'regua', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
+    // Régua de cobrança: tela em js/regua.js.
+    const regua = () => (window.telaRegua ? window.telaRegua($('fat-aba-regua'), { abrirFatura }) : Promise.resolve());
+    ({ resumo: resumo, faturas: faturas, afaturar: aFaturar, boletos: boletos, regua, config: configuracao })[nome]().catch(erro);
   }
 
   // ---------------- Contas a receber ----------------
@@ -150,12 +152,15 @@
         <input type="email" id="fatEmail" class="cte-entrada" value="${esc(f.tomador_email || '')}" placeholder="e-mail do financeiro do cliente" style="flex:1; min-width:220px;" />
         <button class="btn btn-primario" id="fatEnviar" style="width:auto;">✉ Enviar fatura por e-mail</button></div>
         ${f.pix ? '<div style="font-size:12px; color:var(--texto-fraco);">A fatura vai com o QR Code e o PIX copia e cola do saldo.</div>' : '<div style="font-size:12px; color:var(--amarelo);">Cadastre a chave PIX em “⚙️ Cobrança” para a fatura sair com o QR Code de pagamento.</div>'}</div>` : ''}
+      <div id="fatRegua"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:12px;">
         ${aberta && !f.pagamentos.length ? '<button class="btn btn-secundario" id="fatCancelar" style="width:auto; color:var(--vermelho);">Cancelar fatura</button>' : ''}
         ${f.pix ? '<button class="btn btn-secundario" id="fatCopiarPix" style="width:auto;">📋 Copiar PIX copia e cola</button>' : ''}
         <a class="btn btn-secundario" href="/api/faturamento/${f.id}/doccob?token=${encodeURIComponent(token)}" style="width:auto; text-decoration:none;">⬇ DOCCOB (EDI)</a>
         <button class="btn btn-primario" id="fatImprimir" style="width:auto;">🖨 Imprimir fatura</button></div>`;
     modal.classList.remove('oculto');
+    // Régua de cobrança: lembretes enviados, lembrar agora e pagamento prometido (js/regua.js).
+    window.reguaNaFatura?.($('fatRegua'), f, () => abrirFatura(id));
     const recarregar = async () => { await abrirFatura(id); carregarFaturas().catch(() => {}); };
     $('fatImprimir').addEventListener('click', () => imprimir(id));
     $('fbGerar')?.addEventListener('click', async (e) => {

@@ -9,7 +9,6 @@ const fat = require('../faturamento/faturamento');
 const { gerarFaturaHtml, cobrancaPix } = require('../faturamento/faturaHtml');
 const edi = require('../edi/arquivos');
 const cobranca = require('../boleto/cobranca');
-const { fichaHtml } = require('../boleto/ficha');
 
 const router = express.Router();
 const pode = permitirAlguma('pode_emitir_cte', 'pode_ver_financeiro');
@@ -17,12 +16,7 @@ const log = (req, acao, detalhes) => registrar({ usuarioId: req.usuario.id, usua
 const erro = (res, err, padrao) => { if (!err.status) console.error('[faturamento]', err.message); res.status(err.status || 400).json({ erro: err.message || padrao }); };
 const empresa = async () => (await pool.query('SELECT * FROM empresa WHERE id = 1')).rows[0] || {};
 const rota = (fn, padrao) => async (req, res) => { try { await fn(req, res); } catch (err) { erro(res, err, padrao); } };
-// Boleto da fatura (ficha de compensação) para pôr junto da fatura impressa.
-async function boletoDaFatura(f, e) {
-  if (!f.boleto_codigo || !cobranca.ATIVO.includes(f.boleto_status) || !['aberta', 'parcial'].includes(f.status)) return '';
-  return fichaHtml(f, e, e.boleto_config || {}, await cobranca.pagador(f));
-}
-const comBoleto = (html, boleto) => (boleto ? html.replace('</body>', `<div style="page-break-before:always;"></div>${boleto}</body>`) : html);
+const { boletoDaFatura, comBoleto, enviarFaturaEmail } = require('../faturamento/envioFatura');
 
 // ---------------- Boleto registrado (CNAB 240) ----------------
 router.get('/boleto/config', autenticar, pode, rota(async (req, res) => res.json(await cobranca.config()), 'Erro ao carregar.'));
@@ -147,18 +141,7 @@ router.post('/:id(\\d+)/email', autenticar, pode, rota(async (req, res) => {
   const para = String(req.body?.para || f.tomador_email || '').trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para.split(/[;,]/)[0] || '')) return res.status(400).json({ erro: 'Informe o e-mail do cliente.' });
   if (f.status === 'cancelada') return res.status(409).json({ erro: 'Fatura cancelada não é enviada.' });
-  const e = await empresa();
-  const pix = await cobrancaPix(f, e).catch(() => null);
-  const boleto = await boletoDaFatura(f, e);
-  const anexos = [{ filename: `fatura-${f.numero}.html`, content: comBoleto(await gerarFaturaHtml(f, e, { pix }), boleto) }];
-  if (pix) anexos.push({ filename: 'pix.png', content: pix.qrPng.split(',')[1], encoding: 'base64', cid: 'qrpix' });
-  await require('../email').enviarFatura({
-    destinatarioEmail: para, copia: req.body?.copia, assunto: `Fatura ${f.numero} — ${e.razao_social} — vencimento ${new Date(`${String(f.vencimento instanceof Date ? f.vencimento.toISOString() : f.vencimento).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR')}`,
-    html: comBoleto(await gerarFaturaHtml(f, e, { paraEmail: true, pix }), boleto ? `<div style="font-family:Arial; border:1px solid #1F4E78; border-radius:8px; padding:10px 12px; margin:14px auto; max-width:186mm;">
-      <b>Boleto</b> (vencimento ${String(f.boleto_vencimento instanceof Date ? f.boleto_vencimento.toISOString() : f.boleto_vencimento).slice(0, 10).split('-').reverse().join('/')}) — linha digitável:<br>
-      <span style="font-family:monospace; font-size:14px;">${require('../boleto/boleto').formatarLinha(f.boleto_linha)}</span><br><small>O boleto para imprimir está no arquivo anexo.</small></div>` : ''), anexos,
-  });
-  await pool.query('UPDATE faturas_transporte SET enviada_em = NOW(), tomador_email = COALESCE(tomador_email, $2) WHERE id = $1', [f.id, para]);
+  await enviarFaturaEmail(f, { para, copia: req.body?.copia });
   log(req, 'fatura', `Enviou a fatura ${f.numero} por e-mail para ${para}`);
   res.json({ ok: true, para });
 }, 'Erro ao enviar a fatura.'));

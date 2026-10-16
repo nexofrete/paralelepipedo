@@ -135,26 +135,40 @@ async function atualizarSituacao(cliente, id) {
 }
 
 // Baixa (recebimento). Juros/multa entram como valor acima do saldo.
-async function receber(id, { data, valor, forma = 'pix', observacao, usuarioNome, conta_bancaria_id: contaId }) {
-  const f = await carregar(id);
+// Trava a fatura até o fim da transação: dois recebimentos/estornos/cancelamentos
+// ao mesmo tempo (clique duplo, baixa manual + conciliação + retorno do banco)
+// esperam um pelo outro e conferem a situação de novo.
+async function travar(cliente, id) {
+  const { rows: [f] } = await cliente.query('SELECT id, status, valor_bruto, desconto, valor_pago FROM faturas_transporte WHERE id = $1 FOR UPDATE', [id]);
   if (!f) throw erro('Fatura não encontrada.', 404);
-  if (f.status === 'cancelada') throw erro('Fatura cancelada não recebe pagamento.');
-  if (f.status === 'paga') throw erro('Essa fatura já está paga.');
-  const v = centavos(valor ?? f.saldo);
-  if (!(v > 0)) throw erro('Informe o valor recebido.');
+  return { ...f, saldo: centavos(f.valor_bruto - f.desconto - f.valor_pago) };
+}
+
+// Baixa (recebimento). Juros/multa entram como valor acima do saldo.
+// origem_chave: identifica um pagamento externo (boleto no retorno do banco) — o mesmo não baixa duas vezes.
+async function receber(id, { data, valor, forma = 'pix', observacao, usuarioNome, conta_bancaria_id: contaId, origem_chave: origemChave = null }) {
   const formas = ['pix', 'boleto', 'deposito', 'dinheiro', 'cheque', 'outro'];
   const cliente = await pool.connect();
   let pagamentoId = null;
   try {
     await cliente.query('BEGIN');
+    const f = await travar(cliente, id);
+    if (f.status === 'cancelada') throw erro('Fatura cancelada não recebe pagamento.');
+    if (f.status === 'paga') throw erro('Essa fatura já está paga.', 409);
+    const v = centavos(valor ?? f.saldo);
+    if (!(v > 0)) throw erro('Informe o valor recebido.');
     const f2 = formas.includes(forma) ? forma : 'outro';
     const banco = await require('../bancos/padrao').contaDoLancamento(contaId, f2, cliente);
-    const { rows: [pg] } = await cliente.query('INSERT INTO faturas_transporte_pagamentos (fatura_id, data, valor, forma, observacao, usuario_nome, conta_bancaria_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
-      [id, dataIso(data) || hoje(), v, f2, String(observacao || '').slice(0, 255) || null, usuarioNome || null, banco]);
+    const { rows: [pg] } = await cliente.query('INSERT INTO faturas_transporte_pagamentos (fatura_id, data, valor, forma, observacao, usuario_nome, conta_bancaria_id, origem_chave) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
+      [id, dataIso(data) || hoje(), v, f2, String(observacao || '').slice(0, 255) || null, usuarioNome || null, banco, origemChave]);
     pagamentoId = pg.id;
     await atualizarSituacao(cliente, id);
     await cliente.query('COMMIT');
-  } catch (e) { await cliente.query('ROLLBACK').catch(() => {}); throw e; } finally { cliente.release(); }
+  } catch (e) {
+    await cliente.query('ROLLBACK').catch(() => {});
+    if (e.code === '23505' && origemChave) throw erro('Este pagamento já foi baixado antes.', 409);
+    throw e;
+  } finally { cliente.release(); }
   return { ...(await carregar(id)), pagamento_id: pagamentoId };
 }
 
@@ -162,6 +176,7 @@ async function estornar(id, pagamentoId) {
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
+    await travar(cliente, id);
     const { rowCount } = await cliente.query('DELETE FROM faturas_transporte_pagamentos WHERE id = $1 AND fatura_id = $2', [pagamentoId, id]);
     if (!rowCount) throw erro('Recebimento não encontrado.', 404);
     // A linha do extrato que estava ligada a ele volta para "a conciliar".
@@ -175,13 +190,18 @@ async function estornar(id, pagamentoId) {
 
 // Cancela a fatura (sem recebimentos): os CT-e voltam para "a faturar".
 async function cancelar(id, motivo) {
-  const f = await carregar(id);
-  if (!f) throw erro('Fatura não encontrada.', 404);
-  if (f.status === 'cancelada') throw erro('Essa fatura já está cancelada.');
-  if (f.pagamentos.length) throw erro('A fatura tem recebimentos: estorne os recebimentos antes de cancelar.');
-  await pool.query(`UPDATE faturas_transporte SET status = 'cancelada', cancelada_em = NOW(), motivo_cancelamento = $2 WHERE id = $1`, [id, String(motivo || '').slice(0, 255) || null]);
-  await pool.query('UPDATE ctes_emitidos SET fatura_id = NULL WHERE fatura_id = $1', [id]);
-  await pool.query('UPDATE nfse_emitidas SET fatura_id = NULL WHERE fatura_id = $1', [id]);
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    const f = await travar(cliente, id);
+    if (f.status === 'cancelada') throw erro('Essa fatura já está cancelada.');
+    const { rows: [p] } = await cliente.query('SELECT COUNT(*)::int AS n FROM faturas_transporte_pagamentos WHERE fatura_id = $1', [id]);
+    if (p.n) throw erro('A fatura tem recebimentos: estorne os recebimentos antes de cancelar.');
+    await cliente.query(`UPDATE faturas_transporte SET status = 'cancelada', cancelada_em = NOW(), motivo_cancelamento = $2 WHERE id = $1`, [id, String(motivo || '').slice(0, 255) || null]);
+    await cliente.query('UPDATE ctes_emitidos SET fatura_id = NULL WHERE fatura_id = $1', [id]);
+    await cliente.query('UPDATE nfse_emitidas SET fatura_id = NULL WHERE fatura_id = $1', [id]);
+    await cliente.query('COMMIT');
+  } catch (e) { await cliente.query('ROLLBACK').catch(() => {}); throw e; } finally { cliente.release(); }
   return carregar(id);
 }
 

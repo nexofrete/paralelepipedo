@@ -86,10 +86,14 @@ async function criar(b, usuarioNome, { cliente = pool, acertoId = null } = {}) {
 async function alterar(id, b) {
   const c = lerConta({ ...b, parcelas: 1 });
   if (c.centro_custo_id) c.centro_custo_id = await centroDaConta(c, {});
+  // Centro de custo só muda quando vem no pedido (senão a edição apagaria o do veículo/filial).
+  const mudaCentro = Object.prototype.hasOwnProperty.call(b, 'centro_custo_id');
   const { rows } = await pool.query(
-    `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10, centro_custo_id = $11
+    `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10,
+            centro_custo_id = CASE WHEN $12 THEN $11 ELSE centro_custo_id END,
+            status = CASE WHEN valor_pago >= $8 - 0.001 THEN 'paga' ELSE status END, pago_em = CASE WHEN valor_pago >= $8 - 0.001 THEN COALESCE(pago_em, CURRENT_DATE) ELSE pago_em END
       WHERE id = $1 AND status = 'aberta' AND valor_pago <= $8 RETURNING *`,
-    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id]);
+    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id, mudaCentro]);
   if (!rows[0]) throw falha('Só dá para alterar conta em aberto (e o valor não pode ficar menor que o já pago).', 409);
   return rows[0];
 }

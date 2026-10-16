@@ -2252,3 +2252,7 @@ CREATE TABLE IF NOT EXISTS comissao_itens (
 );
 -- Cada documento é comissionado (e estornado) uma vez só.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_comissao_doc_unico ON comissao_itens (doc_tipo, doc_id, tipo);
+
+-- Recebimento com origem conhecida (ex.: boleto pago no retorno do banco): a mesma origem não baixa duas vezes.
+ALTER TABLE faturas_transporte_pagamentos ADD COLUMN IF NOT EXISTS origem_chave VARCHAR(80);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fatura_pagamento_origem ON faturas_transporte_pagamentos (origem_chave) WHERE origem_chave IS NOT NULL;

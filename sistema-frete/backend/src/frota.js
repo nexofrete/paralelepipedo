@@ -90,6 +90,11 @@ async function desfazerContas(cliente, ids, pagamento) {
   if (!ids.length) return;
   const { rows } = await cliente.query('SELECT id, valor_pago, status FROM contas_pagar WHERE id = ANY($1::int[]) FOR UPDATE', [ids]);
   if (pagamento !== 'a_vista' && rows.some((c) => Number(c.valor_pago) > 0)) throw falha('Já tem pagamento lançado na conta a pagar deste registro. Estorne o pagamento em Contas a pagar antes de excluir.', 409);
+  // À vista: só o pagamento automático do lançamento pode sair junto; outro pagamento lançado à mão não.
+  if (pagamento === 'a_vista') {
+    const { rows: pgs } = await cliente.query('SELECT conta_id, COUNT(*)::int AS n FROM contas_pagar_pagamentos WHERE conta_id = ANY($1::int[]) GROUP BY 1 HAVING COUNT(*) > 1', [ids]);
+    if (pgs[0]) throw falha('A conta deste registro tem outro pagamento além do automático. Estorne-o em Contas a pagar antes de excluir.', 409);
+  }
   // Pagamento já conferido com o extrato do banco não some junto: desfaça a conciliação primeiro.
   const { rows: conc } = await cliente.query(`SELECT 1 FROM contas_pagar_pagamentos p JOIN extrato_linhas e ON e.conciliado_tipo = 'pagamento' AND e.conciliado_id = p.id
     WHERE p.conta_id = ANY($1::int[]) LIMIT 1`, [ids]);

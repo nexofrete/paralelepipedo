@@ -363,9 +363,16 @@ async function conciliar(linhaId, b, usuarioNome) {
         if (!x) throw falha(`Fatura ${b.numero} não encontrada.`, 404);
         b.id = x.id;
       }
-      const f = await fat.receber(Number(b.id), { data: l.data, valor: a, forma: formaDoHistorico(l.descricao), conta_bancaria_id: l.conta_id, usuarioNome,
+      const forma = formaDoHistorico(l.descricao);
+      const f = await fat.receber(Number(b.id), { data: l.data, valor: a, forma, conta_bancaria_id: l.conta_id, usuarioNome,
         observacao: `Conciliação bancária: ${String(l.descricao || '').slice(0, 200)}` });
-      try { await transacao((cl) => marcar(cl, 'recebimento', f.pagamento_id, 'baixou')); } catch (e) { await fat.estornar(f.id, f.pagamento_id).catch(() => {}); throw e; }
+      try { await transacao((cl) => marcar(cl, 'recebimento', f.pagamento_id, 'baixou')); } catch (e) {
+        // Não marcou a linha: desfaz a baixa (e avisa no log se nem isso der certo).
+        await fat.estornar(f.id, f.pagamento_id).catch((e2) => console.error(`[conciliação] não consegui desfazer a baixa ${f.pagamento_id} da fatura ${f.numero}:`, e2.message));
+        throw e;
+      }
+      // Pago por PIX/TED com boleto no banco: pede a baixa do boleto (senão o cliente pode pagar de novo).
+      if (f.status === 'paga' && forma !== 'boleto') await require('../boleto/cobranca').pedirBaixa(f.id).catch((e) => console.error('[conciliação] baixa do boleto:', e.message));
       return { acao: 'baixar_fatura', fatura: f.numero, status: f.status, saldo: f.saldo };
     }
     if (b.acao === 'pagar_conta') {

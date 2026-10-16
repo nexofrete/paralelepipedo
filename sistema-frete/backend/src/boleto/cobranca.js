@@ -160,9 +160,24 @@ async function processarRetorno(texto, { nomeArquivo, usuarioNome }) {
       else if (['paga', 'cancelada'].includes(f.status)) item.acao = `Pago no banco, mas a fatura está ${f.status}: confira`;
       else {
         const valor = t.valorPago || t.valorTitulo;
-        await fat.receber(f.id, { data: t.dataCredito || t.dataOcorrencia, valor, forma: 'boleto', usuarioNome: usuarioNome || 'Retorno do banco',
-          observacao: `${marca}${t.juros ? ` juros/multa R$ ${t.juros.toFixed(2)}` : ''}${t.tarifa ? ` · tarifa R$ ${t.tarifa.toFixed(2)}` : ''}` });
-        item.acao = `Fatura ${f.numero} baixada: R$ ${valor.toFixed(2)}`;
+        const dataCredito = t.dataCredito || t.dataOcorrencia;
+        // O dinheiro cai na conta do banco do boleto (se cadastrada em Caixa e bancos).
+        const { rows: [cb] } = await pool.query('SELECT id FROM contas_bancarias WHERE ativo AND tipo = $2 AND banco_codigo = $1 ORDER BY padrao DESC, id LIMIT 1',
+          [String(f.boleto_banco || banco || '').replace(/\D/g, '').slice(-3) || '-', 'banco']).catch(() => ({ rows: [] }));
+        try {
+          await fat.receber(f.id, { data: dataCredito, valor, forma: 'boleto', usuarioNome: usuarioNome || 'Retorno do banco', conta_bancaria_id: cb?.id,
+            origem_chave: `boleto:${f.id}:${t.nossoNumero}:${t.dataOcorrencia || ''}`,
+            observacao: `${marca}${t.juros ? ` juros/multa R$ ${t.juros.toFixed(2)}` : ''}${t.tarifa ? ` · tarifa R$ ${t.tarifa.toFixed(2)}` : ''}` });
+          item.acao = `Fatura ${f.numero} baixada: R$ ${valor.toFixed(2)}`;
+          // Tarifa do boleto: sai da mesma conta (assim o saldo bate com o extrato).
+          if (t.tarifa > 0 && cb?.id) {
+            await require('../bancos/bancos').lancar({ conta_id: cb.id, data: dataCredito, valor: t.tarifa, sentido: 'saida', categoria: 'tarifa',
+              descricao: `Tarifa do boleto da fatura ${f.numero}` }, usuarioNome || 'Retorno do banco').catch((e) => console.error('[boleto] tarifa:', e.message));
+          }
+        } catch (e) {
+          if (e.status !== 409) throw e;
+          item.acao = /já foi baixado/.test(e.message) ? 'Pagamento já baixado antes (arquivo repetido)' : `Pago no banco, mas ${e.message.toLowerCase()} Confira.`;
+        }
       }
       await pool.query(`UPDATE faturas_transporte SET boleto_status = 'pago' WHERE id = $1`, [f.id]);
     } else if (['09', '25'].includes(t.ocorrencia)) {

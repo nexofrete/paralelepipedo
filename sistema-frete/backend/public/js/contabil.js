@@ -16,8 +16,6 @@
   const num = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dia = (v) => (v ? String(v).slice(0, 10).split('-').reverse().join('/') : '—');
   const docFmt = (d) => { const x = String(d || ''); return x.length === 14 ? x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : x.length === 11 ? x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : x; };
-  const p2 = (x) => String(x).padStart(2, '0');
-  const ymd = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
   const api = async (caminho, opcoes = {}) => {
     const r = await apiFetch(`/api/contabil${caminho}`, { ...opcoes, headers: { 'Content-Type': 'application/json' } });
@@ -34,10 +32,11 @@
   const per = { de: '', ate: '' };
   const qs = () => `de=${per.de}&ate=${per.ate}`;
   const link = (c) => `/api/contabil/${c}?${qs()}&token=${encodeURIComponent(token)}`;
-  const mesPassado = () => { const h = new Date(); per.de = ymd(new Date(h.getFullYear(), h.getMonth() - 1, 1)); per.ate = ymd(new Date(h.getFullYear(), h.getMonth(), 0)); };
-  const esteMes = () => { const h = new Date(); per.de = ymd(new Date(h.getFullYear(), h.getMonth(), 1)); per.ate = ymd(new Date(h.getFullYear(), h.getMonth() + 1, 0)); };
-  const mostrarPeriodo = () => { $('cblDe').value = per.de; $('cblAte').value = per.ate; $('cblBaixar').href = link('pacote.zip'); };
-  mesPassado(); mostrarPeriodo();
+  const mostrarPeriodo = () => { $('cblBaixar').href = link('pacote.zip'); };
+  // Período igual ao das outras telas (js/periodo.js); o contador fecha o mês passado.
+  Periodo.ligar({ select: $('cblPer'), de: $('cblDe'), ate: $('cblAte'), chave: 'contabil', padrao: 'mes_passado',
+    aoMudar: (de, ate) => { per.de = de; per.ate = ate; mostrarPeriodo(); carregar().catch(erro); } });
+  Object.assign(per, { de: $('cblDe').value, ate: $('cblAte').value }); mostrarPeriodo();
 
   function mostrarAba(nome) {
     aba = nome;
@@ -52,10 +51,6 @@
   }
   document.querySelectorAll('[data-cbl-aba]').forEach((a) => a.addEventListener('click', () => { mostrarAba(a.dataset.cblAba); carregar().catch(erro); }));
   nav.addEventListener('click', () => { mostrarAba(aba); carregar().catch(erro); });
-  $('cblFiltrar').addEventListener('click', () => { per.de = $('cblDe').value; per.ate = $('cblAte').value; carregar().catch(erro); });
-  $('cblMesPassado').addEventListener('click', () => { mesPassado(); carregar().catch(erro); });
-  $('cblEsteMes').addEventListener('click', () => { esteMes(); carregar().catch(erro); });
-  ['cblDe', 'cblAte'].forEach((id) => $(id).addEventListener('change', () => { per.de = $('cblDe').value; per.ate = $('cblAte').value; mostrarPeriodo(); }));
   $('cblEnviar').addEventListener('click', () => enviar().catch(erro));
 
   // ---------- Livro de saídas ----------

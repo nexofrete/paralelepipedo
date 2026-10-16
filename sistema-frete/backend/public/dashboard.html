@@ -199,7 +199,7 @@
             <div class="oc-filtros" id="ocFiltros"></div>
             <div class="oc-busca">
               <input type="text" id="ocBusca" class="cte-entrada" placeholder="CT-e, NF, chave, cliente ou cidade" />
-              <span id="ocPeriodo" class="oculto"><input type="date" id="ocDe" class="cte-entrada" /> a <input type="date" id="ocAte" class="cte-entrada" /></span>
+              <span id="ocPeriodo" class="periodo oculto"><select id="ocPer" class="cte-entrada" aria-label="Período"></select><input type="date" id="ocDe" class="cte-entrada" aria-label="De" /><span class="periodo-ate">até</span><input type="date" id="ocAte" class="cte-entrada" aria-label="Até" /></span>
             </div>
           </div>
           <div class="oc-lote oculto" id="ocLote">
@@ -285,11 +285,8 @@
           <div class="cte-aba" data-cbl-aba="config">⚙ Contador e plano de contas</div>
         </div>
         <div class="oc-barra" id="cblBarra" style="flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start;">
-          <label style="font-size:12.5px;">De <input type="date" id="cblDe" class="cte-entrada" style="width:auto;" /></label>
-          <label style="font-size:12.5px;">até <input type="date" id="cblAte" class="cte-entrada" style="width:auto;" /></label>
-          <button class="btn btn-secundario" id="cblMesPassado" style="width:auto;">Mês passado</button>
-          <button class="btn btn-secundario" id="cblEsteMes" style="width:auto;">Este mês</button>
-          <button class="btn btn-secundario" id="cblFiltrar" style="width:auto;">Atualizar</button>
+          <span class="periodo"><select id="cblPer" class="cte-entrada" aria-label="Período"></select>
+          <input type="date" id="cblDe" class="cte-entrada" aria-label="De" /><span class="periodo-ate">até</span><input type="date" id="cblAte" class="cte-entrada" aria-label="Até" /></span>
         </div>
         <div id="cblConteudo"></div>
       </section>
@@ -412,7 +409,7 @@
             <div class="oc-filtros" id="colFiltros"></div>
             <div class="oc-busca">
               <input type="text" id="colBusca" class="cte-entrada" placeholder="Nº, remetente, CNPJ, cidade, bairro ou NF" />
-              <span id="colPeriodo" class="oculto"><input type="date" id="colDe" class="cte-entrada" aria-label="De" /> a <input type="date" id="colAte" class="cte-entrada" aria-label="Até" /></span>
+              <span id="colPeriodo" class="periodo oculto"><select id="colPer" class="cte-entrada" aria-label="Período"></select><input type="date" id="colDe" class="cte-entrada" aria-label="De" /><span class="periodo-ate">até</span><input type="date" id="colAte" class="cte-entrada" aria-label="Até" /></span>
             </div>
           </div>
           <div class="oc-lote oculto" id="colLote">
@@ -560,10 +557,8 @@
           </div>
         </div>
         <div class="pt-filtros">
-          <select id="ptPeriodo" class="cte-entrada" aria-label="Período">
-            <option value="mes">Este mês</option><option value="mes_passado">Mês passado</option><option value="3m">Últimos 3 meses</option>
-            <option value="ano">Este ano</option><option value="12m">Últimos 12 meses</option><option value="custom">Escolher datas…</option></select>
-          <input type="date" id="ptDe" class="cte-entrada" aria-label="De" /><span style="color:var(--texto-fraco);">até</span><input type="date" id="ptAte" class="cte-entrada" aria-label="Até" />
+          <span class="periodo"><select id="ptPeriodo" class="cte-entrada" aria-label="Período"></select>
+          <input type="date" id="ptDe" class="cte-entrada" aria-label="De" /><span class="periodo-ate">até</span><input type="date" id="ptAte" class="cte-entrada" aria-label="Até" /></span>
           <span id="ptComparacao" style="font-size:12px; color:var(--texto-fraco);"></span>
         </div>
         <div class="cte-abas">
@@ -3562,6 +3557,7 @@
     </div>
   </div>
   <script src="js/dashboard.js"></script>
+  <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>
   <script src="js/ocorrencias.js"></script>

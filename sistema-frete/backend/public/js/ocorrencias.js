@@ -39,8 +39,6 @@
       const c = await api('/catalogo');
       catalogo = c.catalogo; situacoes = c.situacoes;
       $('ocLoteTipo').innerHTML = opcoesCatalogo();
-      const hoje = new Date(); $('ocAte').value = `${hoje.getFullYear()}-${p2(hoje.getMonth() + 1)}-${p2(hoje.getDate())}`;
-      $('ocDe').value = `${hoje.getFullYear()}-${p2(hoje.getMonth() + 1)}-01`;
     }
     await carregar();
   }
@@ -54,7 +52,8 @@
 
   let temporizador = null;
   $('ocBusca').addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(carregar, 350); });
-  ['ocDe', 'ocAte'].forEach((id) => $(id).addEventListener('change', carregar));
+  // Período (entregues/devolvidos/todos): igual às outras telas, lembra a escolha.
+  Periodo.ligar({ select: $('ocPer'), de: $('ocDe'), ate: $('ocAte'), chave: 'ocorrencias', padrao: 'mes', opcoes: ['hoje', '7d', '30d', 'mes', 'mes_passado', '3m', 'ano'], aoMudar: () => carregar() });
 
   async function carregar() {
     const q = new URLSearchParams({ filtro: estado.filtro, busca: $('ocBusca').value.trim(), de: $('ocDe').value, ate: $('ocAte').value });

@@ -44,6 +44,7 @@
     document.querySelectorAll('[data-fv-aba]').forEach((x) => x.classList.toggle('ativo', x.dataset.fvAba === nome));
   }
   async function carregar() {
+    Object.assign(estado, (({ de, ate }) => ({ de, ate }))(Periodo.atual('frota', 'mes')));
     if (!cat) await carregarCatalogo();
     if (!cat.veiculos.length) {
       $('fvConteudo').innerHTML = '<div class="kanban-vazio">Cadastre os veículos primeiro em Operação de Transporte → 🚛 Veículos e motoristas.</div>';
@@ -57,14 +58,13 @@
   $('fvNovaManut').addEventListener('click', () => (cat ? Promise.resolve() : carregarCatalogo()).then(() => formManutencao()).catch(erro));
   const recarregar = async () => { await carregarCatalogo(); await carregar(); };
 
-  const barraPeriodo = (extra = '') => `<div class="oc-barra" style="flex-wrap:wrap; gap:8px; align-items:center;">
-      <label style="font-size:12.5px;">De <input type="date" id="fvDe" class="cte-entrada" style="width:auto;" value="${esc(estado.de)}" /></label>
-      <label style="font-size:12.5px;">até <input type="date" id="fvAte" class="cte-entrada" style="width:auto;" value="${esc(estado.ate)}" /></label>${extra}
-      <button class="btn btn-secundario" id="fvFiltrar" style="width:auto;">Filtrar</button></div>`;
-  const ligarPeriodo = (fn) => $('fvFiltrar').addEventListener('click', () => {
-    estado.de = $('fvDe').value; estado.ate = $('fvAte').value; if ($('fvVeic')) estado.veiculo = $('fvVeic').value; if ($('fvStatus')) estado.status = $('fvStatus').value;
-    fn().catch(erro);
-  });
+  // Período igual ao das outras telas (js/periodo.js): aplica na hora e lembra a escolha.
+  const barraPeriodo = (extra = '') => `<div class="oc-barra" style="flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start;">${Periodo.html('fv')}${extra}</div>`;
+  const ligarPeriodo = (fn) => {
+    Periodo.ligar({ select: $('fvPer'), de: $('fvDe'), ate: $('fvAte'), chave: 'frota', padrao: 'mes', aoMudar: (de, ate) => { estado.de = de; estado.ate = ate; fn().catch(erro); } });
+    $('fvVeic')?.addEventListener('change', () => { estado.veiculo = $('fvVeic').value; fn().catch(erro); });
+    $('fvStatus')?.addEventListener('change', () => { estado.status = $('fvStatus').value; fn().catch(erro); });
+  };
 
   // ======================= Painel =======================
   async function telaPainel() {

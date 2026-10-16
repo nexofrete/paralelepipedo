@@ -194,14 +194,12 @@
   // ---------- Movimentação ----------
   const ORIGEM = { recebimento: ['Fatura', 'entregue'], pagamento: ['Conta a pagar', 'ocorrencia'], movimento: ['Avulso', 'pendente'] };
   async function telaMovimentacao() {
-    if (!estado.de) { const h = new Date(); estado.de = ymd(new Date(h.getFullYear(), h.getMonth(), 1)); estado.ate = hoje(); }
+    ({ de: estado.de, ate: estado.ate } = Periodo.atual('bancos-movimentacao', 'mes'));
     const m = await api(`/contas/${contaSel}/movimentos?de=${estado.de}&ate=${estado.ate}`);
     $('bxConteudo').innerHTML = `
       <div class="oc-barra" style="flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start;">
         <select id="bxMConta" class="cte-entrada" style="width:auto;">${opcoesConta(contaSel)}</select>
-        <label style="font-size:12.5px;">De <input type="date" id="bxMDe" class="cte-entrada" style="width:auto;" value="${estado.de}" /></label>
-        <label style="font-size:12.5px;">até <input type="date" id="bxMAte" class="cte-entrada" style="width:auto;" value="${estado.ate}" /></label>
-        <button class="btn btn-secundario" id="bxMFiltrar" style="width:auto;">Filtrar</button></div>
+        ${Periodo.html('bxM')}</div>
       <div class="oc-resumo">
         <div>Saldo anterior<b>${brl(m.saldo_anterior)}</b><span>no início de ${dia(m.de)}</span></div>
         <div>Entradas<b style="color:var(--verde);">${brl(m.entradas)}</b><span>${m.linhas.filter((l) => l.valor > 0).length} lançamento(s)</span></div>
@@ -215,8 +213,8 @@
           <td>${l.origem === 'movimento' ? `<button class="btn btn-secundario" data-bx-excluir="${l.id}" style="width:auto; padding:2px 8px; font-size:12px;" title="Excluir">✕</button>` : ''}</td></tr>`).join('')
           || '<tr><td colspan="7" style="color:var(--texto-fraco);">Nenhuma movimentação no período.</td></tr>'}
       </tbody></table></div></div>`;
-    const filtrar = () => { contaSel = Number($('bxMConta').value); estado.de = $('bxMDe').value; estado.ate = $('bxMAte').value; telaMovimentacao().catch(erro); };
-    $('bxMFiltrar').addEventListener('click', filtrar); $('bxMConta').addEventListener('change', filtrar);
+    Periodo.ligar({ select: $('bxMPer'), de: $('bxMDe'), ate: $('bxMAte'), chave: 'bancos-movimentacao', padrao: 'mes', aoMudar: () => telaMovimentacao().catch(erro) });
+    $('bxMConta').addEventListener('change', () => { contaSel = Number($('bxMConta').value); telaMovimentacao().catch(erro); });
     document.querySelectorAll('[data-bx-excluir]').forEach((b) => b.addEventListener('click', async () => {
       if (!await confirmar('Excluir este lançamento? Se for transferência, sai das duas contas. Se estava conciliado, a linha do extrato volta para conciliar.', { tipo: 'perigo', textoOk: 'Excluir' })) return;
       try { await api(`/movimentos/${b.dataset.bxExcluir}`, { method: 'DELETE' }); await carregar(); } catch (e) { erro(e); }

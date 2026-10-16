@@ -27,19 +27,8 @@
   let aba = 'geral';
   let ultimo = null;
 
-  // ---------- Período ----------
-  function aplicarPreset(p) {
-    const h = new Date(); let de; let ate = new Date(h);
-    if (p === 'mes') de = new Date(h.getFullYear(), h.getMonth(), 1);
-    if (p === 'mes_passado') { de = new Date(h.getFullYear(), h.getMonth() - 1, 1); ate = new Date(h.getFullYear(), h.getMonth(), 0); }
-    if (p === '3m') de = new Date(h.getFullYear(), h.getMonth() - 2, 1);
-    if (p === 'ano') de = new Date(h.getFullYear(), 0, 1);
-    if (p === '12m') de = new Date(h.getFullYear(), h.getMonth() - 11, 1);
-    if (de) { $('ptDe').value = iso(de); $('ptAte').value = iso(ate); }
-  }
-  aplicarPreset('mes');
-  $('ptPeriodo').addEventListener('change', () => { aplicarPreset($('ptPeriodo').value); if ($('ptPeriodo').value !== 'custom') carregar(); });
-  ['ptDe', 'ptAte'].forEach((id) => $(id).addEventListener('change', () => { $('ptPeriodo').value = 'custom'; carregar(); }));
+  // ---------- Período (js/periodo.js: igual em todas as telas, lembra a última escolha) ----------
+  Periodo.ligar({ select: $('ptPeriodo'), de: $('ptDe'), ate: $('ptAte'), chave: 'painel-transporte', padrao: 'mes', aoMudar: () => carregar() });
   const periodo = () => `?de=${$('ptDe').value}&ate=${$('ptAte').value}`;
 
   nav.addEventListener('click', () => carregar());

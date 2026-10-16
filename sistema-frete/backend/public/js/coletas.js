@@ -40,7 +40,6 @@
   async function iniciar() {
     if (!estado.motivos.length) {
       estado.motivos = (await api('/catalogo')).motivos;
-      const d = new Date(); $('colAte').value = hoje(); d.setDate(d.getDate() - 30); $('colDe').value = iso(d);
     }
     await carregar();
   }
@@ -48,7 +47,7 @@
 
   let temporizador = null;
   $('colBusca').addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(() => carregar().catch(erro), 350); });
-  ['colDe', 'colAte'].forEach((id) => $(id).addEventListener('change', () => carregar().catch(erro)));
+  Periodo.ligar({ select: $('colPer'), de: $('colDe'), ate: $('colAte'), chave: 'coletas', padrao: '30d', opcoes: ['hoje', '7d', '30d', 'mes', 'mes_passado', '3m', 'tudo'], aoMudar: () => carregar().catch(erro) });
 
   async function carregar() {
     const q = new URLSearchParams({ filtro: estado.filtro, busca: $('colBusca').value.trim(), de: $('colDe').value, ate: $('colAte').value });

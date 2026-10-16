@@ -196,6 +196,9 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - 🚛 Operação, 💰 Financeiro, 🔧 Frota, 📊 Gestão, 📥 Notas e fretes (a parte do embarcador) e ⚙️ Configuração.
   - O grupo da tela aberta abre sozinho. Os que você abrir à mão ficam abertos, e o navegador lembra.
 - **No celular**, o menu vira uma gaveta: o botão **☰ Menu** abre, e escolher a tela fecha.
+- **Filtro de período igual em todas as telas** (Painel gerencial e Margem, Frota, Fiscal e contabilidade, Movimentação do caixa, Ocorrências e Coletas):
+  - Tem um atalho (Este mês, Mês passado, Últimos 30 dias, Últimos 3 meses, Este ano…) e as datas "de" e "até". Aplica na hora, sem botão "Filtrar".
+  - Cada tela lembra a última escolha neste navegador. Os atalhos acompanham o calendário ("Este mês" vira o mês novo sozinho). Datas escolhidas à mão ficam como estão.
 
 ## Atalhos para trabalhar rápido (quem vem do SSW)
 

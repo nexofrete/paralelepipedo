@@ -1591,3 +1591,10 @@ body.modo-compacto .modal-card { padding: 14px 16px !important; }
 .rg-link { color: var(--azul); font-weight: 700; text-decoration: none; }
 .rg-link:hover { text-decoration: underline; }
 @media (max-width: 1000px) { .rg-grade { grid-template-columns: 1fr !important; } }
+
+/* Filtro de período (js/periodo.js): atalho + datas, igual em todas as telas. */
+.periodo { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.periodo select.cte-entrada { width: auto; min-width: 150px; }
+.periodo input[type="date"].cte-entrada { width: auto; }
+.periodo-ate { color: var(--texto-fraco); font-size: 12.5px; }
+.periodo.periodo-tudo input[type="date"], .periodo.periodo-tudo .periodo-ate { display: none; }

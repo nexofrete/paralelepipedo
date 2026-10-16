@@ -155,8 +155,9 @@ async function baixar(id, b, { foto, assinaturaPng, usuarioNome, romaneioId = nu
     };
     let nomeFoto = null; let nomeAss = null;
     if (foto) {
-      if (!/^image\//.test(foto.mimetype)) throw falha('A foto tem que ser uma imagem.');
-      nomeFoto = salvar(foto.buffer, '.jpg');
+      const tipo = require('./utils/arquivoSeguro').detectarTipo(foto.buffer, { pdf: false });
+      if (!tipo) throw falha('A foto tem que ser uma imagem (JPG, PNG, WEBP ou HEIC).');
+      nomeFoto = salvar(foto.buffer, tipo.ext);
     }
     if (assinaturaPng) nomeAss = salvar(assinaturaPng, '.png');
     const coord = (v, max) => { const n = Number(v); return v !== '' && v != null && Number.isFinite(n) && Math.abs(n) <= max ? n : null; };

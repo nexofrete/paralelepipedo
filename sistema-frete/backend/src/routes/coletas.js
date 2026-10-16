@@ -180,7 +180,7 @@ router.get('/:id(\\d+)/arquivo', autenticar, emitir, async (req, res) => {
     if (!nome) return res.status(404).send('Sem arquivo.');
     const arquivo = path.join(coletas.PASTA, path.basename(nome));
     if (!fs.existsSync(arquivo)) return res.status(404).send('Arquivo não encontrado.');
-    res.sendFile(arquivo);
+    require('../utils/arquivoSeguro').servir(res, arquivo);
   } catch (err) { res.status(500).send('Erro.'); }
 });
 

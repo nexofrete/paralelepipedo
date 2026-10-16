@@ -26,8 +26,10 @@ router.post('/:id/canhoto', autenticar, permitir('pode_editar_registros'), frete
 
     let nomeArquivoFoto = null;
     if (req.file) {
+      const tipo = require('../utils/arquivoSeguro').detectarTipo(req.file.buffer, { pdf: false });
+      if (!tipo) return res.status(400).json({ erro: 'A foto do canhoto tem que ser uma imagem (JPG, PNG, WEBP ou HEIC).' });
       fs.mkdirSync(PASTA_CANHOTOS, { recursive: true });
-      const extensao = path.extname(req.file.originalname) || '.jpg';
+      const extensao = tipo.ext;
       nomeArquivoFoto = `frete-${req.params.id}-${Date.now()}${extensao}`;
       fs.writeFileSync(path.join(PASTA_CANHOTOS, nomeArquivoFoto), req.file.buffer);
     }
@@ -66,7 +68,7 @@ router.get('/:id/canhoto/foto', autenticar, async (req, res) => {
     if (!rows[0]?.canhoto_foto_arquivo) return res.status(404).send('Sem foto.');
     const caminho = path.join(PASTA_CANHOTOS, rows[0].canhoto_foto_arquivo);
     if (!fs.existsSync(caminho)) return res.status(404).send('Arquivo não encontrado.');
-    res.sendFile(caminho);
+    require('../utils/arquivoSeguro').servir(res, caminho);
   } catch (err) {
     console.error(err);
     res.status(500).send('Erro ao buscar a foto.');

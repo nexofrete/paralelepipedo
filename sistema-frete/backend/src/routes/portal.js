@@ -94,7 +94,7 @@ api.get('/cargas/:id(\\d+)/comprovante/:oc(\\d+)', auth, pagina(async (req, res)
   if (!nome || nome.includes('/') || nome.includes('\\')) return res.status(404).send('Sem comprovante.');
   const caminho = path.join(oc.PASTA, nome);
   if (!fs.existsSync(caminho)) return res.status(404).send('Arquivo não encontrado.');
-  return res.sendFile(caminho);
+  return require('../utils/arquivoSeguro').servir(res, caminho);
 }));
 
 // Todos os XML do período num .zip (para o fiscal do cliente).

@@ -150,8 +150,10 @@ async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng,
   };
   let nomeArquivo = null; let nomeAssinatura = null;
   if (arquivo) {
-    if (!/^image\/|^application\/pdf$/.test(arquivo.mimetype)) throw falha('O comprovante deve ser uma foto ou um PDF.');
-    nomeArquivo = salvar(arquivo.buffer, (path.extname(arquivo.originalname) || '.jpg').toLowerCase().replace(/[^.a-z0-9]/g, '') || '.jpg');
+    // O tipo vem do conteúdo, não do nome nem do navegador (um .html disfarçado de foto rodaria no sistema).
+    const tipo = require('../utils/arquivoSeguro').detectarTipo(arquivo.buffer);
+    if (!tipo) throw falha('O comprovante deve ser uma foto (JPG, PNG, WEBP, HEIC) ou um PDF.');
+    nomeArquivo = salvar(arquivo.buffer, tipo.ext);
   }
   if (assinaturaPng) nomeAssinatura = salvar(assinaturaPng, '.png');
   const fim = cte.dados?.fim || {};

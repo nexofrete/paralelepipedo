@@ -201,7 +201,7 @@ router.get('/ocorrencia/:id(\\d+)/comprovante', autenticar, emitir, async (req, 
     if (!nome || nome.includes('/') || nome.includes('\\')) return res.status(404).send('Sem comprovante.');
     const caminho = path.join(PASTA, nome);
     if (!fs.existsSync(caminho)) return res.status(404).send('Arquivo não encontrado.');
-    res.sendFile(caminho);
+    require('../utils/arquivoSeguro').servir(res, caminho);
   } catch (err) { res.status(500).send('Erro ao buscar o comprovante.'); }
 });
 

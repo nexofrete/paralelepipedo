@@ -33,6 +33,9 @@ class EscritorZip {
 
   // nome: caminho dentro do zip (com "/"); conteudo: Buffer ou string.
   adicionar(nome, conteudo, { data = new Date() } = {}) {
+    // Nome de arquivo relativo e sem "..": quem abre o zip não grava fora da pasta.
+    nome = String(nome).replace(/\\/g, '/');
+    if (!nome || nome.startsWith('/') || /^[A-Za-z]:/.test(nome) || nome.split('/').some((p) => p === '..' || p === '.')) throw new Error(`Nome inválido no zip: ${nome}`);
     const dados = Buffer.isBuffer(conteudo) ? conteudo : Buffer.from(String(conteudo), 'utf8');
     const comprimido = zlib.deflateRawSync(dados, { level: 6 });
     const usarDeflate = comprimido.length < dados.length;

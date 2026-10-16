@@ -38,6 +38,7 @@
       <td class="n" style="color:var(--texto-fraco);">${d.receita ? pct((valor / d.receita) * 100) : ''}</td></tr>`;
     const avisos = [
       d.sem_custo ? `<b>${d.sem_custo} de ${d.ctes_carga} CT-e sem custo de viagem nem de frota.</b> A margem deles está maior do que a real: lance os custos no MDF-e (aba "Resultado por viagem"), feche o acerto do romaneio ou da transferência, ou registre os abastecimentos e manutenções do caminhão.` : '',
+      d.seguro_em_dobro ? `Seguro: a configuração já calcula o seguro da carga em cada documento (${String(r.config?.seguro_pct ?? '').replace('.', ',')}%) e há ${brl(d.seguro_em_dobro)} em contas "Seguro" no período. Se essas contas forem do seguro de carga (e não do veículo), o seguro está contado duas vezes.` : '',
       ...d.duplicidade.map((x) => `Possível custo em dobro: o ${esc(x.viagem)} (${esc(x.placa)}) tem ${brl(x.combustivel)} de combustível lançado à mão, e o caminhão também tem abastecimentos no período. Deixe o combustível em um lugar só.`),
       d.nao_rateado ? `${brl(d.nao_rateado)} de custo sem CT-e para dividir (viagem sem CT-e ou caminhão próprio sem viagem no período): entra no resultado, mas não na margem dos CT-e.` : '',
       !r.config.impostos_pct && admin ? 'Os impostos sobre o faturamento (PIS/COFINS/IR/CSLL) estão em 0%. Peça o percentual ao contador e informe em ⚙ Percentuais.' : '',

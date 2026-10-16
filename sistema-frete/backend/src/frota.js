@@ -25,7 +25,15 @@ const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const texto = (v, max) => { const t = String(v ?? '').trim(); return t ? t.slice(0, max) : null; };
 const iso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
 // Km e contagens: só os dígitos ("120.500" é 120500 km).
-const inteiro = (v) => { if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v) : null; const d = String(v ?? '').split(',')[0].replace(/\D/g, ''); return d ? Number(d) : null; };
+// Km/inteiro digitado: "123.456" (milhar) = 123456; "123,5" e "123.5" (decimal) = 124.
+const inteiro = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v) : null;
+  const t = String(v ?? '').trim();
+  if (/^\d+\.\d{1,2}$/.test(t)) return Math.round(Number(t));
+  const [int, dec] = t.split(',');
+  const d = int.replace(/\D/g, '');
+  return d ? Number(d) + (/^\d/.test(dec || '') && Number(dec[0]) >= 5 ? 1 : 0) : null;
+};
 const decimal = (v, casas = 3) => {
   if (v === '' || v == null) return null;
   const n = typeof v === 'number' ? v : Number(String(v).includes(',') ? String(v).replace(/\./g, '').replace(',', '.') : v);
@@ -307,7 +315,9 @@ async function excluirManutencao(id) {
     if (m.status === 'concluida') {
       for (const p of m.planos || []) {
         const { rows: ant } = await cliente.query(
-          `SELECT km, COALESCE(data_saida, data) AS data FROM manutencoes WHERE status = 'concluida' AND $1 = ANY(planos) ORDER BY COALESCE(data_saida, data) DESC, id DESC LIMIT 1`, [p]);
+          // (a anterior sem km fica com o km da última que tinha, como no "concluir")
+          `SELECT COALESCE(km, (SELECT x.km FROM manutencoes x WHERE x.status = 'concluida' AND $1 = ANY(x.planos) AND x.km IS NOT NULL ORDER BY COALESCE(x.data_saida, x.data) DESC, x.id DESC LIMIT 1)) AS km,
+                  COALESCE(data_saida, data) AS data FROM manutencoes WHERE status = 'concluida' AND $1 = ANY(planos) ORDER BY COALESCE(data_saida, data) DESC, id DESC LIMIT 1`, [p]);
         const antes = (m.planos_antes || []).find((x) => x.id === p);
         if (ant[0]) await cliente.query('UPDATE manutencao_planos SET ultima_km = $2, ultima_data = $3 WHERE id = $1', [p, ant[0].km, ant[0].data]);
         else if (antes) await cliente.query('UPDATE manutencao_planos SET ultima_km = $2, ultima_data = $3 WHERE id = $1', [p, antes.ultima_km, antes.ultima_data]);

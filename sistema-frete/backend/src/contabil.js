@@ -83,7 +83,9 @@ async function salvarConfig(b = {}) {
 // homologação nem demonstração). Em homologação/demonstração, os dela (com aviso).
 async function filtroFiscal() {
   const { rows: [e] } = await pool.query('SELECT cte_ambiente, cte_demonstracao, nfse_ambiente, crt FROM empresa WHERE id = 1');
-  return { demo: !!e?.cte_demonstracao, ambCte: Number(e?.cte_ambiente) || 2, ambNfse: Number(e?.nfse_ambiente) || 2, simples: Number(e?.crt) === 1 };
+  const demo = !!e?.cte_demonstracao;
+  // No modo demonstração vale qualquer ambiente (os documentos simulados não têm valor fiscal de qualquer jeito).
+  return { demo, ambCte: demo ? null : Number(e?.cte_ambiente) || 2, ambNfse: demo ? null : Number(e?.nfse_ambiente) || 2, simples: Number(e?.crt) === 1 };
 }
 const competenciaNfse = `COALESCE(NULLIF(dados->>'competencia', '')::date, (autorizada_em AT TIME ZONE 'America/Sao_Paulo')::date)`;
 // Data do cancelamento do CT-e: o evento 110111 aceito (o "em" já vem no horário de Brasília).
@@ -122,7 +124,7 @@ async function livroSaidas(p) {
   const ff = await filtroFiscal();
   const { rows } = await pool.query(
     `SELECT id, serie, numero, chave, status, autorizado_em, valor_total, dados, demonstracao, cidade_fim, uf_fim, tomador_nome, eventos, atualizado_em
-       FROM ctes_emitidos WHERE status IN ('autorizado', 'cancelado', 'substituido') AND chave IS NOT NULL AND demonstracao = $3 AND ambiente = $4
+       FROM ctes_emitidos WHERE status IN ('autorizado', 'cancelado', 'substituido') AND chave IS NOT NULL AND demonstracao = $3 AND ($4::smallint IS NULL OR ambiente = $4)
         AND (autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date ORDER BY serie, numero`, [de, ate, ff.demo, ff.ambCte]);
   const docs = rows.map(linhaCte);
   const validos = docs.filter((d) => d.situacao === 'autorizado');
@@ -141,7 +143,7 @@ async function livroSaidas(p) {
   const { rows: nf } = await pool.query(
     `SELECT id, numero_nfse, chave, status, autorizada_em, cancelada_em, valor, iss_aliquota, iss_valor, iss_retido, tomador_doc, tomador_nome, demonstracao,
             ${competenciaNfse}::text AS competencia
-       FROM nfse_emitidas WHERE status IN ('autorizada', 'cancelada') AND demonstracao = $3 AND ambiente = $4 AND ${competenciaNfse} BETWEEN $1::date AND $2::date
+       FROM nfse_emitidas WHERE status IN ('autorizada', 'cancelada') AND demonstracao = $3 AND ($4::smallint IS NULL OR ambiente = $4) AND ${competenciaNfse} BETWEEN $1::date AND $2::date
       ORDER BY numero_nfse`, [de, ate, ff.demo, ff.ambNfse]);
   const nfse = nf.map((n) => ({ ...n, data: n.competencia, cancelada: n.status === 'cancelada' }));
   const nfValidas = nfse.filter((n) => !n.cancelada);
@@ -151,7 +153,7 @@ async function livroSaidas(p) {
     `SELECT c.id, c.serie, c.numero, c.chave, c.status, c.autorizado_em, c.valor_total, c.dados, c.demonstracao, c.cidade_fim, c.uf_fim, c.tomador_nome, c.eventos, c.atualizado_em,
             (s.autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS data_substituto, s.serie AS sub_serie, s.numero AS sub_numero
        FROM ctes_emitidos c LEFT JOIN ctes_emitidos s ON s.id = c.substituido_por
-      WHERE c.status IN ('cancelado', 'substituido') AND c.chave IS NOT NULL AND c.demonstracao = $2 AND c.ambiente = $3
+      WHERE c.status IN ('cancelado', 'substituido') AND c.chave IS NOT NULL AND c.demonstracao = $2 AND ($3::smallint IS NULL OR c.ambiente = $3)
         AND (c.autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date < $1::date AND c.atualizado_em >= $1::date - INTERVAL '2 days'`, [de, ff.demo, ff.ambCte]);
   const ajustes = antigos.map((c) => {
     const quando = c.status === 'cancelado' ? dataCancelamento(c) : c.data_substituto;
@@ -162,7 +164,7 @@ async function livroSaidas(p) {
   }).filter(Boolean);
   const { rows: nfAntigas } = await pool.query(
     `SELECT numero_nfse, chave, valor, iss_valor, iss_retido, tomador_doc, tomador_nome, ${competenciaNfse}::text AS competencia, (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS cancelada
-       FROM nfse_emitidas WHERE status = 'cancelada' AND demonstracao = $3 AND ambiente = $4 AND ${competenciaNfse} < $1::date
+       FROM nfse_emitidas WHERE status = 'cancelada' AND demonstracao = $3 AND ($4::smallint IS NULL OR ambiente = $4) AND ${competenciaNfse} < $1::date
         AND (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date`, [de, ate, ff.demo, ff.ambNfse]);
   nfAntigas.forEach((n) => ajustes.push({ tipo: 'nfse', documento: `NFS-e ${n.numero_nfse}`, chave: n.chave, data_original: n.competencia, data: n.cancelada, motivo: 'cancelada',
     tomador_doc: n.tomador_doc, tomador_nome: n.tomador_nome, valor: centavos(n.valor), iss: centavos(n.iss_valor), iss_retido: n.iss_retido }));
@@ -360,7 +362,7 @@ async function montarPacote(p) {
     zip.adicionar(`CT-e/eventos/${c.chave}-${tipo}-${i + 1}-procEventoCTe.xml`, Buffer.from(ev.xml, 'utf8')); cont.eventos += 1;
   });
   const { rows: ctes } = await pool.query(
-    `SELECT chave, status, xml_autorizado, eventos, autorizado_em FROM ctes_emitidos WHERE chave IS NOT NULL AND xml_autorizado IS NOT NULL AND demonstracao = $3 AND ambiente = $4
+    `SELECT chave, status, xml_autorizado, eventos, autorizado_em FROM ctes_emitidos WHERE chave IS NOT NULL AND xml_autorizado IS NOT NULL AND demonstracao = $3 AND ($4::smallint IS NULL OR ambiente = $4)
       AND (autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date ORDER BY autorizado_em`, [de, ate, ff.demo, ff.ambCte]);
   for (const c of ctes) {
     zip.adicionar(`CT-e/${c.status === 'autorizado' ? 'autorizados' : c.status}/${c.chave}-procCTe.xml`, Buffer.from(c.xml_autorizado, 'utf8'), { data: new Date(c.autorizado_em) });
@@ -374,7 +376,7 @@ async function montarPacote(p) {
     antigos.forEach(eventosDo);
   }
   const { rows: mdfes } = await pool.query(
-    `SELECT chave, status, xml_autorizado, autorizado_em FROM mdfes WHERE chave IS NOT NULL AND xml_autorizado IS NOT NULL AND demonstracao = $3 AND ambiente = $4
+    `SELECT chave, status, xml_autorizado, autorizado_em FROM mdfes WHERE chave IS NOT NULL AND xml_autorizado IS NOT NULL AND demonstracao = $3 AND ($4::smallint IS NULL OR ambiente = $4)
       AND (autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date`, [de, ate, ff.demo, ff.ambCte]);
   mdfes.forEach((m) => { zip.adicionar(`MDF-e/${m.chave}-procMDFe.xml`, Buffer.from(m.xml_autorizado, 'utf8'), { data: new Date(m.autorizado_em) }); cont.mdfe += 1; });
   // NFS-e pela competência; o cancelamento vai no mês em que aconteceu.
@@ -382,7 +384,7 @@ async function montarPacote(p) {
     `SELECT chave, numero_nfse, status, xml_nfse, xml_cancelamento,
             ${competenciaNfse} BETWEEN $1::date AND $2::date AS no_periodo,
             (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date AS cancelada_no_periodo
-       FROM nfse_emitidas WHERE xml_nfse IS NOT NULL AND demonstracao = $3 AND ambiente = $4
+       FROM nfse_emitidas WHERE xml_nfse IS NOT NULL AND demonstracao = $3 AND ($4::smallint IS NULL OR ambiente = $4)
         AND (${competenciaNfse} BETWEEN $1::date AND $2::date OR (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date)`, [de, ate, ff.demo, ff.ambNfse]);
   nf.forEach((n) => {
     const nome = String(n.chave || n.numero_nfse).replace(/[^A-Za-z0-9-]/g, '');

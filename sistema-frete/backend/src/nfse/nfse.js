@@ -108,8 +108,10 @@ async function alterar(id, b) {
 }
 
 async function excluir(id) {
-  const { rowCount } = await pool.query(`DELETE FROM nfse_emitidas WHERE id = $1 AND status = 'rascunho' AND numero_dps IS NULL`, [id]);
-  if (!rowCount) throw falha('Só dá para excluir rascunho que nunca foi transmitido.', 409);
+  // Rascunho nunca transmitido; ou, na demonstração, a recusada (o número é só de teste).
+  const { rowCount } = await pool.query(`DELETE FROM nfse_emitidas WHERE id = $1 AND chave IS NULL
+      AND ((status = 'rascunho' AND numero_dps IS NULL) OR (demonstracao AND status IN ('rascunho', 'erro', 'rejeitada')))`, [id]);
+  if (!rowCount) throw falha('Só dá para excluir rascunho que nunca foi transmitido (ou, na demonstração, a NFS-e recusada).', 409);
 }
 
 // Rascunho de NFS-e a partir do rascunho de CT-e (frete que começa e termina no mesmo município).
@@ -145,14 +147,15 @@ async function reservarNumero(id) {
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
-    const { rows: [r] } = await cliente.query('SELECT numero_dps FROM nfse_emitidas WHERE id = $1 FOR UPDATE', [id]);
+    const { rows: [r] } = await cliente.query('SELECT numero_dps, demonstracao FROM nfse_emitidas WHERE id = $1 FOR UPDATE', [id]);
     if (!r.numero_dps) {
       const { rows: [e] } = await cliente.query('SELECT nfse_serie, nfse_proximo_dps, nfse_ambiente FROM empresa WHERE id = 1 FOR UPDATE');
-      const serie = Number(e.nfse_serie) || 1; const amb = Number(e.nfse_ambiente) || 2;
+      // Demonstração numera à parte (ambiente de testes), sem gastar a numeração de produção.
+      const serie = Number(e.nfse_serie) || 1; const amb = r.demonstracao ? 2 : Number(e.nfse_ambiente) || 2;
       const { rows: [m] } = await cliente.query('SELECT COALESCE(MAX(numero_dps), 0) AS n FROM nfse_emitidas WHERE serie = $1 AND ambiente = $2', [serie, amb]);
-      const n = Math.max(Number(e.nfse_proximo_dps) || 1, Number(m.n) + 1);
+      const n = r.demonstracao ? Number(m.n) + 1 : Math.max(Number(e.nfse_proximo_dps) || 1, Number(m.n) + 1);
       await cliente.query('UPDATE nfse_emitidas SET serie = $2, numero_dps = $3, ambiente = $4 WHERE id = $1', [id, serie, n, amb]);
-      await cliente.query('UPDATE empresa SET nfse_proximo_dps = $1 WHERE id = 1', [n + 1]);
+      if (!r.demonstracao) await cliente.query('UPDATE empresa SET nfse_proximo_dps = $1 WHERE id = 1', [n + 1]);
     }
     await cliente.query('COMMIT');
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); throw err; } finally { cliente.release(); }
@@ -174,7 +177,8 @@ async function registrarAutorizada(id, xmlDps, chave, xmlNfse) {
     `UPDATE nfse_emitidas SET status = 'autorizada', chave = $2, numero_nfse = $3, xml_dps = $4, xml_nfse = $5, iss_aliquota = COALESCE($6, iss_aliquota),
             iss_valor = COALESCE($7, iss_valor), valor_liquido = $8, erros = NULL, motivo = NULL, autorizada_em = COALESCE($9::timestamptz, NOW()), atualizado_em = NOW()
       WHERE id = $1`,
-    [id, chave || n.chave, n.numero, xmlDps, xmlNfse, n.pAliq, n.vISS, liquido, n.dhProc]);
+    // A chave do XML da NFS-e (assinado pelo Sistema Nacional) vale mais que a do JSON da resposta.
+    [id, sefin.chaveOk(n.chave) || sefin.chaveOk(chave), n.numero, xmlDps, xmlNfse, n.pAliq, n.vISS, liquido, n.dhProc]);
   // O rascunho de CT-e que originou a NFS-e não serve mais (frete municipal não tem CT-e).
   const { rows: [x] } = await pool.query('SELECT dados FROM nfse_emitidas WHERE id = $1', [id]);
   const cteId = Number(x?.dados?.cte_origem) || null;
@@ -209,7 +213,7 @@ async function transmitir(id) {
   montarDps(reg.dados, e, e.cfg, { serie: reg.serie || 1, numero: reg.numero_dps || 1, tpAmb: reg.ambiente });
   await reservarNumero(id);
   reg = await carregar(id);
-  if (Number(reg.ambiente) !== (Number(e.nfse_ambiente) || 2)) throw falha('O ambiente da NFS-e mudou depois que ela recebeu número. Faça uma nova.');
+  if (!demo && Number(reg.ambiente) !== (Number(e.nfse_ambiente) || 2)) throw falha('O ambiente da NFS-e mudou depois que ela recebeu número. Faça uma nova.');
   const { xml, id: idd } = montarDps(reg.dados, e, e.cfg, { serie: reg.serie, numero: reg.numero_dps, tpAmb: reg.ambiente });
   const assinado = assinar(xml, 'infDPS', cert, { algoritmo: 'sha256' });
   await pool.query(`UPDATE nfse_emitidas SET status = 'enviando', id_dps = $2, xml_dps = $3, erros = NULL, motivo = NULL, atualizado_em = NOW() WHERE id = $1`, [id, idd, assinado]);

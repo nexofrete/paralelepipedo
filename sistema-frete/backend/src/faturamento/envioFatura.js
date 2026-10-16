@@ -10,9 +10,17 @@ const empresa = async () => (await pool.query('SELECT * FROM empresa WHERE id = 
 const isoDe = (v) => String(v instanceof Date ? v.toISOString() : v || '').slice(0, 10);
 const diaBr = (v) => isoDe(v).split('-').reverse().join('/');
 
+// Boleto de valor maior que o saldo (a fatura recebeu um pagamento parcial depois de gerado):
+// não vai junto, para o cliente não pagar a mais. O PIX já sai com o saldo.
+function boletoValeOSaldo(f) {
+  const saldo = f.saldo != null ? Number(f.saldo) : Number(f.valor_bruto || 0) - Number(f.desconto || 0) - Number(f.valor_pago || 0);
+  return !(f.boleto_valor != null && Number(f.boleto_valor) > saldo + 0.01);
+}
+
 // Boleto da fatura (ficha de compensação) para pôr junto da fatura impressa.
 async function boletoDaFatura(f, e) {
   if (!f.boleto_codigo || !cobranca.ATIVO.includes(f.boleto_status) || !['aberta', 'parcial'].includes(f.status)) return '';
+  if (!boletoValeOSaldo(f)) return '';
   return fichaHtml(f, e, e.boleto_config || {}, await cobranca.pagador(f));
 }
 const comBoleto = (html, boleto) => (boleto ? html.replace('</body>', `<div style="page-break-before:always;"></div>${boleto}</body>`) : html);
@@ -40,4 +48,4 @@ async function enviarFaturaEmail(f, { para, copia, assunto, mensagem } = {}) {
   return { pix: pix?.copiaECola || pix?.brCode || null, linha: f.boleto_linha || null };
 }
 
-module.exports = { boletoDaFatura, comBoleto, enviarFaturaEmail, empresa };
+module.exports = { boletoValeOSaldo, boletoDaFatura, comBoleto, enviarFaturaEmail, empresa };

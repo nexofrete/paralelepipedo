@@ -64,9 +64,10 @@ router.get('/:id(\\d+)/danfse', autenticar, emitir, async (req, res) => {
 router.get('/:id(\\d+)/xml', autenticar, emitir, async (req, res) => {
   try {
     const n = await nfse.carregar(req.params.id);
-    const xml = req.query.tipo === 'cancelamento' ? n?.xml_cancelamento : req.query.tipo === 'dps' ? n?.xml_dps : n?.xml_nfse;
+    const tipo = ['cancelamento', 'dps'].includes(req.query.tipo) ? req.query.tipo : '';
+    const xml = tipo === 'cancelamento' ? n?.xml_cancelamento : tipo === 'dps' ? n?.xml_dps : n?.xml_nfse;
     if (!xml) return res.status(404).send('XML não disponível.');
-    res.set({ 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="nfse-${n.chave || n.id}${req.query.tipo ? `-${req.query.tipo}` : ''}.xml"` });
+    res.set({ 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="nfse-${String(n.chave || n.id).replace(/\D/g, '')}${tipo ? `-${tipo}` : ''}.xml"` });
     return res.send(xml);
   } catch (err) { return res.status(400).send('Erro ao baixar o XML.'); }
 });

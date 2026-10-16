@@ -15,7 +15,11 @@ const BASE = {
   2: 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional',
 };
 const gz = (xml) => zlib.gzipSync(Buffer.from(xml, 'utf8')).toString('base64');
-const gunz = (b64) => zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8');
+// Limites: resposta e XML descompactado de no máximo 20 MB (resposta maliciosa ou com defeito não derruba o servidor).
+const LIMITE = 20 * 1024 * 1024;
+const gunz = (b64) => zlib.gunzipSync(Buffer.from(String(b64), 'base64'), { maxOutputLength: LIMITE }).toString('utf8');
+// Chave de acesso da NFS-e: 50 dígitos (vai no endereço da API).
+const chaveOk = (c) => (/^\d{50}$/.test(String(c || '')) ? String(c) : null);
 
 function pedir(metodo, url, corpo, cert, { verificarServidor = true, timeout = 60000 } = {}) {
   return new Promise((resolve, reject) => {
@@ -26,8 +30,8 @@ function pedir(metodo, url, corpo, cert, { verificarServidor = true, timeout = 6
       headers: { Accept: 'application/json', ...(dados ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(dados) } : {}) },
       timeout,
     }, (res) => {
-      const partes = [];
-      res.on('data', (p) => partes.push(p));
+      const partes = []; let tam = 0;
+      res.on('data', (p) => { tam += p.length; if (tam > LIMITE) { req.destroy(new Error('resposta grande demais')); return; } partes.push(p); });
       res.on('end', () => {
         const texto = Buffer.concat(partes).toString('utf8');
         let json = null;
@@ -52,7 +56,7 @@ const errosDe = (j) => (j?.erros || j?.Erros || []).map((e) => ({ codigo: e.Codi
 async function enviarDps({ tpAmb, cert, xmlAssinado, verificarServidor, simulado }) {
   if (simulado) return require('./simuladorNfse').enviarDps(xmlAssinado, simulado);
   const { status, json } = await pedir('POST', `${BASE[tpAmb]}/nfse`, { dpsXmlGZipB64: gz(xmlAssinado) }, cert, { verificarServidor });
-  if (status < 300 && json.nfseXmlGZipB64) return { ok: true, chave: json.chaveAcesso, xmlNfse: gunz(json.nfseXmlGZipB64), alertas: errosDe({ erros: json.alertas }) };
+  if (status < 300 && json.nfseXmlGZipB64) return { ok: true, chave: chaveOk(json.chaveAcesso), xmlNfse: gunz(json.nfseXmlGZipB64), alertas: errosDe({ erros: json.alertas }) };
   return { ok: false, erros: errosDe(json).length ? errosDe(json) : [{ codigo: String(status), descricao: json.message || json.mensagem || 'Recusada pelo Sistema Nacional.' }] };
 }
 
@@ -60,20 +64,22 @@ async function enviarDps({ tpAmb, cert, xmlAssinado, verificarServidor, simulado
 async function consultarDps({ tpAmb, cert, idDps, verificarServidor, simulado }) {
   if (simulado) return require('./simuladorNfse').consultarDps(idDps);
   const { status, json } = await pedir('GET', `${BASE[tpAmb]}/dps/${idDps}`, null, cert, { verificarServidor });
-  return status < 300 && json.chaveAcesso ? json.chaveAcesso : null;
+  return status < 300 ? chaveOk(json.chaveAcesso) : null;
 }
 
 async function baixarNfse({ tpAmb, cert, chave, verificarServidor, simulado }) {
+  if (!chaveOk(chave)) throw new Error('Chave da NFS-e inválida.');
   if (simulado) return require('./simuladorNfse').baixarNfse(chave);
   const { status, json } = await pedir('GET', `${BASE[tpAmb]}/nfse/${chave}`, null, cert, { verificarServidor });
   return status < 300 && json.nfseXmlGZipB64 ? gunz(json.nfseXmlGZipB64) : null;
 }
 
 async function enviarEvento({ tpAmb, cert, chave, xmlAssinado, verificarServidor, simulado }) {
+  if (!chaveOk(chave)) throw new Error('Chave da NFS-e inválida.');
   if (simulado) return require('./simuladorNfse').enviarEvento(chave, xmlAssinado);
   const { status, json } = await pedir('POST', `${BASE[tpAmb]}/nfse/${chave}/eventos`, { pedidoRegistroEventoXmlGZipB64: gz(xmlAssinado) }, cert, { verificarServidor });
   if (status < 300 && json.eventoXmlGZipB64) return { ok: true, xmlEvento: gunz(json.eventoXmlGZipB64) };
   return { ok: false, erros: errosDe(json).length ? errosDe(json) : [{ codigo: String(status), descricao: 'Cancelamento recusado pelo Sistema Nacional.' }] };
 }
 
-module.exports = { BASE, enviarDps, consultarDps, baixarNfse, enviarEvento, gz, gunz, errosDe, lerNfse, dvChave, tag, so, NS, VERSAO, dataHoraBr };
+module.exports = { BASE, chaveOk, enviarDps, consultarDps, baixarNfse, enviarEvento, gz, gunz, errosDe, lerNfse, dvChave, tag, so, NS, VERSAO, dataHoraBr };

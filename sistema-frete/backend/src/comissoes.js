@@ -5,7 +5,10 @@
 //    comissão de quem não pagou). Base "faturado": quando o CT-e é autorizado.
 //  • O fechamento do mês vira uma conta a pagar (categoria Comissão) e guarda
 //    cada documento: nenhum é comissionado duas vezes, e o CT-e cancelado depois
-//    de comissionado volta como estorno no fechamento seguinte.
+//    de comissionado volta como estorno no fechamento seguinte. Na base "recebido",
+//    o recebimento estornado (fatura que deixou de estar paga) também estorna; se
+//    for pago de novo, comissiona outra vez (próximo "ciclo" do documento).
+//  • Na base "recebido", o desconto dado na fatura reduz a base na proporção.
 const pool = require('./db');
 
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -88,23 +91,25 @@ async function documentosDoPeriodo(base, { de, ate }) {
   const demo = !!emp?.cte_demonstracao;
   const { tomadorDe } = require('./faturamento/faturamento');
   const quitacao = `(SELECT MAX(p.data) FROM faturas_transporte_pagamentos p WHERE p.fatura_id = f.id)`;
+  // Desconto da fatura rateado entre os documentos dela.
+  const fator = `(CASE WHEN f.valor_bruto > 0 THEN GREATEST(f.valor_bruto - f.desconto, 0) / f.valor_bruto ELSE 1 END)::float`;
   const ctes = base === 'faturado'
     ? (await pool.query(`SELECT c.id, c.serie, c.numero, c.dados, c.valor_total, c.vendedor_id, (c.autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS data_ref
         FROM ctes_emitidos c WHERE c.status = 'autorizado' AND c.demonstracao = $3 AND (c.autorizado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1 AND $2`, [de, ate, demo])).rows
-    : (await pool.query(`SELECT c.id, c.serie, c.numero, c.dados, c.valor_total, c.vendedor_id, ${quitacao}::text AS data_ref
+    : (await pool.query(`SELECT c.id, c.serie, c.numero, c.dados, c.valor_total, c.vendedor_id, ${quitacao}::text AS data_ref, ${fator} AS fator
         FROM ctes_emitidos c JOIN faturas_transporte f ON f.id = c.fatura_id WHERE c.status = 'autorizado' AND c.demonstracao = $3 AND f.status = 'paga'
          AND ${quitacao} BETWEEN $1 AND $2`, [de, ate, demo])).rows;
   const nfse = base === 'faturado'
     ? (await pool.query(`SELECT n.id, n.numero_nfse, n.valor, n.tomador_doc, n.tomador_nome, n.vendedor_id, (n.autorizada_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS data_ref
         FROM nfse_emitidas n WHERE n.status = 'autorizada' AND n.demonstracao = $3 AND (n.autorizada_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1 AND $2`, [de, ate, demo])).rows
-    : (await pool.query(`SELECT n.id, n.numero_nfse, n.valor, n.tomador_doc, n.tomador_nome, n.vendedor_id, ${quitacao}::text AS data_ref
+    : (await pool.query(`SELECT n.id, n.numero_nfse, n.valor, n.tomador_doc, n.tomador_nome, n.vendedor_id, ${quitacao}::text AS data_ref, ${fator} AS fator
         FROM nfse_emitidas n JOIN faturas_transporte f ON f.id = n.fatura_id WHERE n.status = 'autorizada' AND n.demonstracao = $3 AND f.status = 'paga'
          AND ${quitacao} BETWEEN $1 AND $2`, [de, ate, demo])).rows;
   return [
     ...ctes.map((c) => { const t = tomadorDe(c.dados || {}); const d = c.dados || {};
       return { doc_tipo: 'cte', doc_id: c.id, documento: `CT-e ${c.serie}/${c.numero}${String(d.tpCTe ?? '0') === '1' ? ' (compl.)' : ''}`, cliente_doc: t.doc, cliente: t.nome,
-        valor: centavos(d.valores?.vTPrest ?? c.valor_total), vendedor_id: c.vendedor_id, data_ref: c.data_ref }; }),
-    ...nfse.map((n) => ({ doc_tipo: 'nfse', doc_id: n.id, documento: `NFS-e ${n.numero_nfse}`, cliente_doc: soDigitos(n.tomador_doc), cliente: n.tomador_nome, valor: centavos(n.valor), vendedor_id: n.vendedor_id, data_ref: n.data_ref })),
+        valor: centavos(Number(d.valores?.vTPrest ?? c.valor_total) * (c.fator ?? 1)), vendedor_id: c.vendedor_id, data_ref: c.data_ref }; }),
+    ...nfse.map((n) => ({ doc_tipo: 'nfse', doc_id: n.id, documento: `NFS-e ${n.numero_nfse}`, cliente_doc: soDigitos(n.tomador_doc), cliente: n.tomador_nome, valor: centavos(Number(n.valor) * (n.fator ?? 1)), vendedor_id: n.vendedor_id, data_ref: n.data_ref })),
   ];
 }
 
@@ -114,8 +119,12 @@ async function apurar({ de, ate, vendedorId = null } = {}) {
   const porId = new Map(vendedores.map((v) => [v.id, v]));
   const { rows: cli } = await pool.query('SELECT documento, vendedor_id, comissao_pct::float FROM clientes WHERE vendedor_id IS NOT NULL OR comissao_pct IS NOT NULL');
   const cliente = new Map(cli.map((c) => [c.documento, c]));
-  const { rows: feitos } = await pool.query(`SELECT i.doc_tipo, i.doc_id FROM comissao_itens i JOIN comissao_fechamentos f ON f.id = i.fechamento_id WHERE f.status = 'fechado' AND i.tipo = 'comissao'`);
-  const jaPago = new Set(feitos.map((x) => `${x.doc_tipo}:${x.doc_id}`));
+  // Em aberto = comissionado mais vezes do que estornado. O próximo ciclo é o nº de estornos.
+  const { rows: feitos } = await pool.query(
+    `SELECT i.doc_tipo, i.doc_id, COUNT(*) FILTER (WHERE i.tipo = 'comissao')::int AS c, COUNT(*) FILTER (WHERE i.tipo = 'estorno')::int AS e
+       FROM comissao_itens i JOIN comissao_fechamentos f ON f.id = i.fechamento_id WHERE f.status = 'fechado' GROUP BY 1, 2`);
+  const ciclos = new Map(feitos.map((x) => [`${x.doc_tipo}:${x.doc_id}`, x]));
+  const jaPago = new Set(feitos.filter((x) => x.c > x.e).map((x) => `${x.doc_tipo}:${x.doc_id}`));
   const resultado = new Map(vendedores.map((v) => [v.id, { vendedor: v, itens: [], estornos: [], total: 0 }]));
   const semVendedor = { qtd: 0, valor: 0, clientes: new Map() };
   for (const base of ['recebido', 'faturado']) {
@@ -127,21 +136,24 @@ async function apurar({ de, ate, vendedorId = null } = {}) {
       const v = porId.get(vid);
       if (!v || v.base !== base || jaPago.has(`${d.doc_tipo}:${d.doc_id}`)) continue;
       const pct = c?.comissao_pct != null && c.vendedor_id === vid ? c.comissao_pct : v.comissao_pct;
-      resultado.get(vid).itens.push({ ...d, tipo: 'comissao', pct, comissao: centavos((d.valor * pct) / 100) });
+      resultado.get(vid).itens.push({ ...d, tipo: 'comissao', pct, comissao: centavos((d.valor * pct) / 100), ciclo: ciclos.get(`${d.doc_tipo}:${d.doc_id}`)?.e || 0 });
     }
   }
-  // Estornos: comissionado e depois cancelado/substituído.
+  // Estornos: comissionado (no ciclo atual) e depois cancelado/substituído — ou, na base "recebido",
+  // a fatura deixou de estar paga (recebimento estornado, documento tirado da fatura).
   const { rows: est } = await pool.query(
-    `SELECT i.doc_tipo, i.doc_id, i.documento, i.cliente, i.base_valor::float, i.pct::float, i.valor::float, f.vendedor_id
+    `SELECT i.doc_tipo, i.doc_id, i.documento, i.cliente, i.base_valor::float, i.pct::float, i.valor::float, i.ciclo, f.vendedor_id
        FROM comissao_itens i JOIN comissao_fechamentos f ON f.id = i.fechamento_id
       WHERE f.status = 'fechado' AND i.tipo = 'comissao'
-        AND ((i.doc_tipo = 'cte' AND EXISTS (SELECT 1 FROM ctes_emitidos c WHERE c.id = i.doc_id AND c.status IN ('cancelado', 'substituido')))
-          OR (i.doc_tipo = 'nfse' AND EXISTS (SELECT 1 FROM nfse_emitidas n WHERE n.id = i.doc_id AND n.status = 'cancelada')))
         AND NOT EXISTS (SELECT 1 FROM comissao_itens e JOIN comissao_fechamentos fe ON fe.id = e.fechamento_id
-                         WHERE fe.status = 'fechado' AND e.tipo = 'estorno' AND e.doc_tipo = i.doc_tipo AND e.doc_id = i.doc_id)`);
+                         WHERE fe.status = 'fechado' AND e.tipo = 'estorno' AND e.doc_tipo = i.doc_tipo AND e.doc_id = i.doc_id AND e.ciclo = i.ciclo)
+        AND ((i.doc_tipo = 'cte' AND EXISTS (SELECT 1 FROM ctes_emitidos c LEFT JOIN faturas_transporte ft ON ft.id = c.fatura_id WHERE c.id = i.doc_id
+                AND (c.status IN ('cancelado', 'substituido') OR (f.base = 'recebido' AND ft.status IS DISTINCT FROM 'paga'))))
+          OR (i.doc_tipo = 'nfse' AND EXISTS (SELECT 1 FROM nfse_emitidas n LEFT JOIN faturas_transporte ft ON ft.id = n.fatura_id WHERE n.id = i.doc_id
+                AND (n.status = 'cancelada' OR (f.base = 'recebido' AND ft.status IS DISTINCT FROM 'paga')))))`);
   est.forEach((e) => {
     const r = resultado.get(e.vendedor_id); if (!r) return;
-    r.estornos.push({ doc_tipo: e.doc_tipo, doc_id: e.doc_id, documento: e.documento, cliente: e.cliente, valor: -e.base_valor, pct: e.pct, comissao: -e.valor, tipo: 'estorno', data_ref: null });
+    r.estornos.push({ doc_tipo: e.doc_tipo, doc_id: e.doc_id, documento: e.documento, cliente: e.cliente, valor: -e.base_valor, pct: e.pct, comissao: -e.valor, tipo: 'estorno', data_ref: null, ciclo: e.ciclo });
   });
   const lista = [...resultado.values()].map((r) => {
     r.itens.sort((a, b) => String(a.data_ref).localeCompare(String(b.data_ref)));
@@ -169,8 +181,8 @@ async function fechar(vendedorId, { de, ate, vencimento, centro_custo_id } = {},
     const { rows: [f] } = await cliente.query(
       'INSERT INTO comissao_fechamentos (vendedor_id, de, ate, base, total, usuario_nome) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [r.vendedor.id, de, ate, r.vendedor.base, r.total, usuarioNome]);
     for (const x of [...r.itens, ...r.estornos]) {
-      await cliente.query(`INSERT INTO comissao_itens (fechamento_id, doc_tipo, doc_id, tipo, documento, cliente, data_ref, base_valor, pct, valor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [f.id, x.doc_tipo, x.doc_id, x.tipo, x.documento.slice(0, 40), String(x.cliente || '').slice(0, 200), x.data_ref, Math.abs(x.valor), x.pct, x.tipo === 'estorno' ? Math.abs(x.comissao) * -1 : x.comissao]);
+      await cliente.query(`INSERT INTO comissao_itens (fechamento_id, doc_tipo, doc_id, tipo, documento, cliente, data_ref, base_valor, pct, valor, ciclo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [f.id, x.doc_tipo, x.doc_id, x.tipo, x.documento.slice(0, 40), String(x.cliente || '').slice(0, 200), x.data_ref, Math.abs(x.valor), x.pct, x.tipo === 'estorno' ? Math.abs(x.comissao) * -1 : x.comissao, x.ciclo || 0]);
     }
     let centro = Number(centro_custo_id) || null;
     if (!centro) centro = (await cliente.query(`SELECT id FROM centros_custo WHERE tipo = 'comercial' AND ativo ORDER BY id LIMIT 1`)).rows[0]?.id || null;
@@ -213,6 +225,14 @@ async function cancelarFechamento(id) {
     const { rows: [f] } = await cliente.query('SELECT * FROM comissao_fechamentos WHERE id = $1 FOR UPDATE', [id]);
     if (!f) throw falha('Fechamento não encontrado.', 404);
     if (f.status !== 'fechado') throw falha('Este fechamento já foi cancelado.', 409);
+    // Documento deste fechamento que já tem continuação em outro (o estorno dele, ou a comissão do ciclo seguinte):
+    // desfazer este deixaria o outro sem par. Cancele primeiro o fechamento mais novo.
+    const { rows: depois } = await cliente.query(
+      `SELECT DISTINCT o.fechamento_id, i.documento FROM comissao_itens i
+         JOIN comissao_itens o ON o.doc_tipo = i.doc_tipo AND o.doc_id = i.doc_id AND o.fechamento_id <> i.fechamento_id
+         JOIN comissao_fechamentos fo ON fo.id = o.fechamento_id AND fo.status = 'fechado'
+        WHERE i.fechamento_id = $1 AND (o.ciclo > i.ciclo OR (o.ciclo = i.ciclo AND i.tipo = 'comissao' AND o.tipo = 'estorno'))`, [id]);
+    if (depois.length) throw falha(`O fechamento ${depois[0].fechamento_id} já estornou ou recomissionou documentos deste (${[...new Set(depois.map((d) => d.documento))].slice(0, 3).join(', ')}). Cancele aquele primeiro.`, 409);
     if (f.conta_pagar_id) {
       const { rows: [cp] } = await cliente.query('SELECT valor_pago FROM contas_pagar WHERE id = $1 FOR UPDATE', [f.conta_pagar_id]);
       if (cp && Number(cp.valor_pago) > 0) throw falha('A comissão já foi paga (total ou em parte). Estorne o pagamento em Contas a pagar antes de cancelar o fechamento.', 409);
@@ -241,7 +261,7 @@ async function percentuais() {
   const { rows } = await pool.query(`SELECT c.documento, v.id AS vendedor_id, COALESCE(c.comissao_pct, v.comissao_pct)::float AS pct
     FROM clientes c JOIN vendedores v ON v.id = c.vendedor_id WHERE v.ativo`);
   const { rows: vs } = await pool.query('SELECT id, comissao_pct::float AS pct FROM vendedores WHERE ativo');
-  return { porCliente: new Map(rows.map((r) => [r.documento, r.pct])), porVendedor: new Map(vs.map((v) => [v.id, v.pct])) };
+  return { porCliente: new Map(rows.map((r) => [r.documento, r.pct])), vendedorDoCliente: new Map(rows.map((r) => [r.documento, r.vendedor_id])), porVendedor: new Map(vs.map((v) => [v.id, v.pct])) };
 }
 
 module.exports = {

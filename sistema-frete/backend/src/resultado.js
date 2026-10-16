@@ -60,6 +60,8 @@ function ratear(total, itens) {
 
 // Monta o resultado do período (de/ate em AAAA-MM-DD).
 async function calcular({ de, ate }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(de)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(ate)) || de > ate) throw Object.assign(new Error('Período inválido.'), { status: 400 });
+  if ((Date.parse(ate) - Date.parse(de)) / 86400000 > 366) throw Object.assign(new Error('Escolha um período de até 1 ano.'), { status: 400 });
   const cfg = await config();
   // Viagens começam antes e terminam depois: pega uma janela maior para achar a viagem de cada CT-e.
   const janelaDe = new Date(Date.parse(`${de}T12:00:00Z`) - 45 * 86400000).toISOString().slice(0, 10);
@@ -115,7 +117,8 @@ async function calcular({ de, ate }) {
   }
   let viagemSemCte = 0;
   for (const v of viagens) {
-    if (!v.itens.length) { viagemSemCte = centavos(viagemSemCte + v.custo); continue; }
+    // Viagem sem CT-e: só a do período (as da janela de ±45 dias são de outros meses).
+    if (!v.itens.length) { if (v.no_periodo !== false) viagemSemCte = centavos(viagemSemCte + v.custo); continue; }
     ratear(v.custo, v.itens).forEach((parte, i) => { v.itens[i].viagem = centavos(v.itens[i].viagem + parte); if (v.custo > 0) v.itens[i].viagens.push(v.rotulo); });
   }
 
@@ -154,7 +157,9 @@ async function calcular({ de, ate }) {
       const impostos = centavos(x.icms + x.iss + (x.receita * cfg.impostos_pct) / 100);
       const seguro = centavos((x.valor_carga * cfg.seguro_pct) / 100);
       // Comissão do vendedor (o do documento, ou o do cliente), sobre a receita.
-      const pctCom = x.vendedor_id ? (perc.porVendedor.get(x.vendedor_id) || 0) : (perc.porCliente.get(x.tomador_doc) || 0);
+      // O % próprio do cliente vale quando o vendedor do documento é o do cliente (igual ao fechamento).
+      const doCliente = perc.vendedorDoCliente?.get(x.tomador_doc);
+      const pctCom = x.vendedor_id && x.vendedor_id !== doCliente ? (perc.porVendedor.get(x.vendedor_id) || 0) : (perc.porCliente.get(x.tomador_doc) || 0);
       const comissao = centavos((x.receita * pctCom) / 100);
       const custo = centavos(impostos + seguro + comissao + x.viagem + x.frota);
       const margem = centavos(x.receita - custo);
@@ -204,6 +209,8 @@ async function calcular({ de, ate }) {
       despesas, despesas_detalhe: Object.fromEntries(desp.map((d) => [d.categoria, centavos(d.v)])), resultado, resultado_pct: pct(resultado, receita),
       documentos: linhas.length, sem_custo: comCusto.filter((l) => l.sem_custo_operacional).length, ctes_carga: comCusto.length,
       demonstracao: linhas.some((l) => l.demonstracao), duplicidade,
+      // Seguro da carga pelo % e também contas "Seguro" no período: se forem do seguro de carga, está contado duas vezes.
+      seguro_em_dobro: cfg.seguro_pct > 0 && desp.some((d) => d.categoria === 'seguro' && d.v > 0) ? centavos(desp.find((d) => d.categoria === 'seguro').v) : 0,
     },
     clientes, documentos: linhas,
   };

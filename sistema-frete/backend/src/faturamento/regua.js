@@ -146,6 +146,12 @@ async function previa({ hoje = hojeBr() } = {}) {
   return { hoje, ativo: cfg.ativo, whatsapp_desligado: cfg.whatsapp && !whatsappOk, resumo: { enviar: conta('enviar'), sem_contato: conta('sem_contato'), pausadas: conta('pausada'), ja_enviadas: conta('ja_enviada') }, faturas: lista };
 }
 
+// Dado do cadastro dentro da mensagem de WhatsApp: uma linha só, sem marcação (* _ ~ `) e curto,
+// para o nome do cliente não virar formatação nem texto falso no meio da cobrança.
+function textoWhatsapp(x) {
+  return String(x ?? '').replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+
 // Monta e manda a mensagem de uma etapa por um canal.
 async function mandar(fatura, etapa, canal, destino, cfg) {
   const fat = require('./faturamento');
@@ -156,6 +162,7 @@ async function mandar(fatura, etapa, canal, destino, cfg) {
     cliente: f.tomador_nome || 'cliente', fatura: f.numero, valor: brl(f.saldo), vencimento: diaBr(f.vencimento), dias: Math.abs(atraso), quando: quando(atraso),
     empresa: e.nome_fantasia || e.razao_social || '', contato: [e.telefone, e.email].filter(Boolean).join(' · ') || (e.nome_fantasia || e.razao_social || ''),
   };
+  if (canal === 'whatsapp') Object.keys(v).forEach((k) => { v[k] = textoWhatsapp(v[k]); });
   const titulo = preencher(etapa.titulo, v); const texto = preencher(etapa.texto, v);
   if (canal === 'email') {
     await require('./envioFatura').enviarFaturaEmail(f, { para: destino, copia: cfg.copia || undefined, assunto: `${titulo} — fatura ${f.numero} — ${v.empresa}`, mensagem: { titulo, paragrafos: [texto] } });
@@ -166,7 +173,7 @@ async function mandar(fatura, etapa, canal, destino, cfg) {
   const pix = await cobrancaPix(f, emp).catch(() => null);
   const linhas = [`*${titulo}*`, texto, `Fatura ${f.numero} · ${v.valor} · vencimento ${v.vencimento}`];
   if (pix) linhas.push('', 'PIX copia e cola:', pix.copiaECola);
-  if (f.boleto_linha && ['gerado', 'remetido', 'registrado'].includes(f.boleto_status)) linhas.push('', `Boleto: ${require('../boleto/boleto').formatarLinha(f.boleto_linha)}`);
+  if (f.boleto_linha && ['gerado', 'remetido', 'registrado'].includes(f.boleto_status) && require('./envioFatura').boletoValeOSaldo(f)) linhas.push('', `Boleto: ${require('../boleto/boleto').formatarLinha(f.boleto_linha)}`);
   linhas.push('', `${v.empresa}${v.contato && v.contato !== v.empresa ? ` · ${v.contato}` : ''}`);
   await require('../whatsapp').enviarMensagem(linhas.join('\n'), destino);
 }
@@ -280,12 +287,30 @@ function agendar() {
       if (!cfg.ativo) return;
       const agora = new Date(Date.now() - 3 * 3600000);
       const hoje = agora.toISOString().slice(0, 10);
-      if (agora.getUTCHours() < cfg.hora || cfg.ultima_execucao === hoje) return;
-      // Marca antes de rodar: um reinício no meio não manda de novo (os envios também são únicos por etapa).
-      await pool.query(`UPDATE empresa SET regua_config = jsonb_set(COALESCE(regua_config, '{}'::jsonb), '{ultima_execucao}', to_jsonb($1::text)) WHERE id = 1`, [hoje]);
+      if (agora.getUTCHours() < cfg.hora) return;
+      let repeticao = false;
+      if (cfg.ultima_execucao === hoje) {
+        // Deu erro em algum envio (SMTP/WhatsApp fora do ar): tenta de novo no mesmo dia, até 2 vezes, de 2 em 2 horas.
+        const rp = cfg.repetir_erros;
+        if (!(rp?.dia === hoje && rp.n < 2 && Date.now() - Date.parse(rp.em) >= 2 * 3600000)) return;
+        const { rowCount } = await pool.query(`UPDATE empresa SET regua_config = jsonb_set(regua_config, '{repetir_erros}', $1::jsonb)
+          WHERE id = 1 AND regua_config->'repetir_erros'->>'em' = $2`, [JSON.stringify({ dia: hoje, n: rp.n + 1, em: new Date().toISOString() }), rp.em]);
+        if (!rowCount) return;
+        repeticao = true;
+      } else {
+        // Marca antes de rodar: um reinício no meio não manda de novo (os envios também são únicos por etapa).
+        const { rowCount } = await pool.query(`UPDATE empresa SET regua_config = jsonb_set(jsonb_set(COALESCE(regua_config, '{}'::jsonb), '{ultima_execucao}', to_jsonb($1::text)), '{repetir_erros}', 'null'::jsonb)
+          WHERE id = 1 AND COALESCE(regua_config->>'ultima_execucao', '') <> $1`, [hoje]);
+        if (!rowCount) return;
+      }
       const r = await processar({ hoje });
+      if (r.erros && !repeticao) {
+        await pool.query(`UPDATE empresa SET regua_config = jsonb_set(regua_config, '{repetir_erros}', $1::jsonb) WHERE id = 1`, [JSON.stringify({ dia: hoje, n: 0, em: new Date().toISOString() })]);
+      }
+      if (!r.erros && repeticao) await pool.query(`UPDATE empresa SET regua_config = jsonb_set(regua_config, '{repetir_erros}', 'null'::jsonb) WHERE id = 1`);
+      if (repeticao && !r.enviados && !r.erros) return;
       await pool.query(`UPDATE empresa SET regua_config = jsonb_set(regua_config, '{ultimo_resumo}', $1::jsonb) WHERE id = 1`,
-        [JSON.stringify({ em: new Date().toISOString(), enviados: r.enviados, erros: r.erros, sem_contato: r.sem_contato })]);
+        [JSON.stringify({ em: new Date().toISOString(), enviados: r.enviados, erros: r.erros, sem_contato: r.sem_contato, repeticao })]);
       if (r.enviados || r.erros) console.log(`[régua] ${r.enviados} lembrete(s) enviado(s), ${r.erros} erro(s), ${r.sem_contato} sem contato`);
     } catch (err) { console.error('[régua]', err.message); }
   };
@@ -295,5 +320,5 @@ function agendar() {
 
 module.exports = {
   ETAPAS_PADRAO, config, salvarConfig, previa, processar, enviarAgora, historico, pausarFatura, clienteCobranca, clientesComExcecao, agendar,
-  decidir, preencher, celular, lerEtapas, quando,
+  decidir, preencher, celular, lerEtapas, quando, textoWhatsapp,
 };

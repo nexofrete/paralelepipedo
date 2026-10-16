@@ -2250,8 +2250,11 @@ CREATE TABLE IF NOT EXISTS comissao_itens (
   documento VARCHAR(40), cliente VARCHAR(200), data_ref DATE,
   base_valor NUMERIC(14,2) NOT NULL, pct NUMERIC(6,3) NOT NULL, valor NUMERIC(14,2) NOT NULL
 );
--- Cada documento é comissionado (e estornado) uma vez só.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_comissao_doc_unico ON comissao_itens (doc_tipo, doc_id, tipo);
+-- Cada documento é comissionado (e estornado) uma vez por ciclo: o ciclo sobe quando há estorno
+-- (ex.: recebimento estornado e pago de novo comissiona outra vez, no ciclo seguinte).
+ALTER TABLE comissao_itens ADD COLUMN IF NOT EXISTS ciclo SMALLINT NOT NULL DEFAULT 0;
+DROP INDEX IF EXISTS idx_comissao_doc_unico;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_comissao_doc_ciclo ON comissao_itens (doc_tipo, doc_id, tipo, ciclo);
 
 -- Recebimento com origem conhecida (ex.: boleto pago no retorno do banco): a mesma origem não baixa duas vezes.
 ALTER TABLE faturas_transporte_pagamentos ADD COLUMN IF NOT EXISTS origem_chave VARCHAR(80);

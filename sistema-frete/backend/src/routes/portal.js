@@ -185,7 +185,8 @@ admin.get('/', autenticar, apenasAdmin, rota(async (req, res) => {
 
 admin.put('/config', autenticar, apenasAdmin, rota(async (req, res) => {
   let end = String(req.body?.endereco || '').trim().replace(/\/+$/, '').replace(/\/portal\.html$/i, '');
-  if (end && !/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(end)) throw Object.assign(new Error('Endereço inválido. Ex.: https://portal.suatransportadora.com.br'), { status: 400 });
+  // (vai nos e-mails e na página: sem aspas, < > nem crase)
+  if (end && (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(end) || /["'<>`\\]/.test(end))) throw Object.assign(new Error('Endereço inválido. Ex.: https://portal.suatransportadora.com.br'), { status: 400 });
   end = end.slice(0, 250) || null;
   await pool.query('UPDATE empresa SET portal_endereco = $1, portal_cotacao_automatica = $2 WHERE id = 1', [end, !!req.body?.cotacao_automatica]);
   registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'portal', detalhes: `Configurou o portal do cliente (endereço ${end || '—'}, cotação automática ${req.body?.cotacao_automatica ? 'ligada' : 'desligada'})` });

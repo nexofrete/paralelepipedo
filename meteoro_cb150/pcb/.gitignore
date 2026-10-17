@@ -1,0 +1,7 @@
+__pycache__/
+*.pkl
+*.kicad_prl
+log*.txt
+tmp_*.kicad_pcb
+posicao_*.json
+!posicao_43.json

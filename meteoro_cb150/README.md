@@ -8,6 +8,8 @@ de potência classe AB discreto (±55 V, par 2SC5200/2SA1943).
 |---|---|
 | `meteoro_cb150.cir` | Netlist SPICE completa (pré + potência), com modelos, pronta para o ngspice |
 | `fonte.cir` | Fonte de alimentação (trafo, ponte KBPC606, filtros, reguladores ±12 V) |
+| `pcb/meteoro_cb150_pcb.pdf` | **Placa de circuito impresso em PDF** (trilhas 1:1 para transferência, montagem, jumpers) |
+| `pcb/meteoro_cb150.kicad_pcb` | A mesma placa em KiCad (abre no KiCad 7+, permite gerar Gerber) |
 
 ```sh
 ngspice -b meteoro_cb150.cir   # ponto de operação, resposta AC e transiente 1 kHz
@@ -103,6 +105,40 @@ ngspice -b fonte.cir           # tensões da fonte
 - TR: transformador 127/220 V → **2 × 39 VAC** com center tap, ≥ 250 VA, fusível no primário.
 - J1: jaque P10 mono; CH1: chave 1 polo (ganho); bornes SPEAKER e LINE OUT.
 - Dissipador ≥ 0,5 °C/W para Q6/Q7, isoladores, pasta térmica.
+
+## Placa de circuito impresso (`pcb/`)
+
+Placa **face simples** de 210 × 135 mm, para confecção caseira (transferência
+térmica ou fotolito), com 81 itens: os componentes do esquema, conectores para
+as peças de painel, 2 capacitores de desacoplamento de 100 nF nos op-amps
+(CD1/CD2, que não estão no esquema original) e a ponte de terra JGND.
+
+- **Página 2 do PDF**: lado do cobre em escala 1:1 para imprimir (a 100%, sem
+  "ajustar à página") e transferir para a placa. O contorno impresso deve medir
+  exatamente 210 × 135 mm.
+- **Página 3**: o cobre visto por baixo, para conferir e soldar.
+- **Página 4**: lado dos componentes (referência e valor de cada peça).
+- **Página 5**: componentes e trilhas sobrepostos.
+- O GND de sinal é um plano de cobre (área preenchida). O GND de potência
+  (capacitores de filtro, Zobel, alto-falante) só se une a ele pela ponte
+  **JGND**, que é o aterramento em estrela.
+- **15 jumpers** (W1…W15): fios no lado dos componentes, listados com o
+  comprimento na página 1. São necessários porque a placa tem só uma face.
+- Q4/Q5/Q6/Q7 ficam na borda superior para um único dissipador; Q8 deve ficar
+  encostado nele (com fios, se preciso) para o bias acompanhar a temperatura.
+- Potenciômetros (JRV1…JRV4), jaque (J1), chave CH1, ponte KBPC606 e
+  transformador ficam fora da placa, ligados por fios.
+- Trilhas: 0,75 mm (sinal), 1,2 mm (bases), 2,0 mm (±55 V, saída, emissores);
+  isolação mínima de 0,5 mm, verificada com o DRC do KiCad (`verificar.py`).
+
+Para regenerar (precisa de KiCad 7, numpy, scipy, Pillow, reportlab):
+
+```sh
+cd pcb
+POUR=GND JUMP_COST=100 python3 gerar_pcb.py 43   # posição em posicao_43.json + roteamento (~15 min)
+python3 verificar.py                               # DRC
+python3 gerar_pdf.py                               # meteoro_cb150_pcb.pdf
+```
 
 ## Como ligar (por blocos)
 

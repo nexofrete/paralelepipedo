@@ -283,6 +283,13 @@ async function importarBuffer(buffer, usuarioId) {
   return resultado;
 }
 
+// Linhas já no formato do sistema (vindas de um modelo de planilha de outro ERP).
+async function importarLinhasMapeadas(linhas, usuarioId) {
+  const resultado = await importarLinhas(linhas, usuarioId);
+  await require('./ctesVinculados').reconciliarCtesSoltos().catch(() => {});
+  return resultado;
+}
+
 async function buscarConfiguracao() {
   const { rows } = await pool.query('SELECT * FROM configuracao_importacao_erp WHERE id = 1');
   if (rows[0]) return rows[0];
@@ -291,7 +298,8 @@ async function buscarConfiguracao() {
 }
 
 async function salvarConfiguracao(dados) {
-  const campos = ['ativo', 'caminho_arquivo', 'intervalo_minutos'];
+  const campos = ['ativo', 'caminho_arquivo', 'intervalo_minutos', 'modelo_id'];
+  if (dados.modelo_id !== undefined) dados.modelo_id = Number(dados.modelo_id) || null;
   const presentes = campos.filter((c) => dados[c] !== undefined);
   if (presentes.length === 0) return buscarConfiguracao();
 
@@ -343,7 +351,8 @@ async function verificarEImportarSeMudou(forcarManual = false) {
     }
 
     const buffer = fs.readFileSync(config.caminho_arquivo);
-    const resultado = await importarBuffer(buffer, null);
+    // Com modelo de planilha escolhido (outro ERP), lê pelas colunas do modelo.
+    const resultado = await require('./integracao/planilhas').importarComModelo(buffer, config.caminho_arquivo, config.modelo_id, null);
 
     await pool.query(
       `UPDATE configuracao_importacao_erp SET
@@ -380,6 +389,7 @@ async function reagendarMonitor() {
 module.exports = {
   aplicarPendenteDaNota, devolverParaAguardandoXml,
   importarBuffer,
+  importarLinhasMapeadas,
   buscarConfiguracao,
   salvarConfiguracao,
   verificarEImportarSeMudou,

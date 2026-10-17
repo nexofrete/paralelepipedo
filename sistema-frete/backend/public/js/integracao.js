@@ -78,6 +78,7 @@
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">🔑 Chaves de API</h4>${chavesHtml}</div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">📣 Webhooks (avisos automáticos para o ERP)</h4>${whHtml}</div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">📬 Últimos avisos</h4>${entHtml}</div>
+      <div class="painel" style="padding:14px 16px; margin-bottom:14px;" id="itgModelos"></div>
       <div class="painel" style="padding:14px 16px;"><div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><h4 style="margin:0;">📘 Como o ERP usa (mande para o fornecedor do ERP)</h4>
         <button class="btn btn-secundario" id="itgCopiarDoc" style="width:auto;">📋 Copiar instruções</button></div>
         <pre id="itgDoc" style="white-space:pre-wrap; font-size:12.5px; line-height:1.5; background:var(--fundo-sutil, rgba(127,127,127,.08)); padding:12px; border-radius:8px; margin:10px 0 0;">${esc(documentacao(base))}</pre></div>`;
@@ -86,6 +87,170 @@
     document.querySelectorAll('[data-itg-editar]').forEach((b) => b.addEventListener('click', () => formWebhook(dados.webhooks.find((w) => w.id === Number(b.dataset.itgEditar)))));
     document.querySelectorAll('[data-itg-reenviar]').forEach((b) => b.addEventListener('click', () => enviar(`/api/integracao/entregas/${b.dataset.itgReenviar}/reenviar`, 'POST').then(() => { mostrarAlerta('Vai de novo em até 20 segundos.', { tipo: 'sucesso' }); recarregar(); }).catch(erro)));
     $('itgCopiarDoc').addEventListener('click', (e) => copiar($('itgDoc').textContent, e.currentTarget));
+    carregarModelos().catch(erro);
+  }
+
+  // ---------------- Modelos de planilha (ERP que só troca planilha) ----------------
+  let mod = null;
+  const hojeBr = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+  async function carregarModelos() {
+    mod = await api('/api/integracao/modelos');
+    const imp = mod.modelos.filter((m) => m.tipo === 'importacao');
+    const exp = mod.modelos.filter((m) => m.tipo === 'exportacao');
+    const rotCampo = Object.fromEntries(mod.campos_importacao.map((c) => [c.campo, c.rotulo]));
+    const hoje = hojeBr();
+    $('itgModelos').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <h4 style="margin:0;">📄 Modelos de planilha (para o ERP que só troca planilha)</h4>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-secundario" id="itgNovoImp" style="width:auto;">📥 Modelo de importação</button>
+          <button class="btn btn-secundario" id="itgNovoExp" style="width:auto;">📤 Modelo de exportação</button></div></div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 10px;">Cada empresa usa um ERP: aqui você diz quais são as colunas da planilha <b>que o ERP gera</b> (para importar as notas e pedidos) e monta a planilha <b>que o ERP lê</b> (custo do frete, CT-e, faturas).</p>
+      <div style="font-size:12.5px; font-weight:600; margin:8px 0 4px;">Importação — planilha do ERP → Nexofrete</div>
+      ${imp.length ? `<div class="tabela-container"><table><thead><tr><th>Modelo</th><th>Colunas usadas</th><th>Situação</th><th></th></tr></thead><tbody>
+        ${imp.map((m) => { const em = mod.modelo_importacao_id === m.id; const cols = Object.entries(m.config.colunas || {});
+          return `<tr><td><b>${esc(m.nome)}</b><br><small style="color:var(--texto-fraco);">criado ${quando(m.criado_em)}</small></td>
+          <td style="white-space:normal; max-width:420px; font-size:12px;">${cols.map(([c, col]) => `${esc(rotCampo[c] || c)} ← <code>${esc(col)}</code>`).join(' · ')}</td>
+          <td>${em ? '<span class="oc-sit entregue">Em uso na importação</span>' : '—'}</td>
+          <td style="white-space:nowrap;"><button class="btn btn-secundario" data-itg-usar="${em ? '' : m.id}" style="width:auto; padding:4px 10px;">${em ? 'Voltar ao padrão' : 'Usar na importação'}</button>
+            <button class="btn btn-secundario" data-itg-mod-editar="${m.id}" style="width:auto; padding:4px 10px;">✏️</button></td></tr>`; }).join('')}</tbody></table></div>`
+        : '<p style="color:var(--texto-fraco); margin:0; font-size:12.5px;">Nenhum modelo: a importação usa o formato padrão (colunas NR_PEDIDO, NR_NF, NM_CLIENTE…).</p>'}
+      <div style="font-size:12.5px; font-weight:600; margin:14px 0 4px;">Exportação — Nexofrete → planilha para o ERP</div>
+      ${exp.length ? `<div class="tabela-container"><table><thead><tr><th>Modelo</th><th>O quê</th><th>Formato</th><th>Período</th><th></th></tr></thead><tbody>
+        ${exp.map((m) => `<tr><td><b>${esc(m.nome)}</b><br><small style="color:var(--texto-fraco);">${m.config.colunas.length} coluna(s)</small></td>
+          <td>${esc(mod.recursos[m.config.recurso]?.rotulo || m.config.recurso)}</td>
+          <td>${m.config.formato === 'xlsx' ? 'Excel (.xlsx)' : `CSV (${m.config.separador === 'tab' ? 'tab' : m.config.separador}, decimal ${m.config.decimal})`}</td>
+          <td style="white-space:nowrap;"><input type="date" data-itg-de="${m.id}" value="${hoje.slice(0, 8)}01" style="width:132px; padding:4px 6px;" /> a <input type="date" data-itg-ate="${m.id}" value="${hoje}" style="width:132px; padding:4px 6px;" /></td>
+          <td style="white-space:nowrap;"><button class="btn btn-primario" data-itg-exportar="${m.id}" style="width:auto; padding:4px 10px;">⬇ Exportar</button>
+            <button class="btn btn-secundario" data-itg-mod-editar="${m.id}" style="width:auto; padding:4px 10px;">✏️</button></td></tr>`).join('')}</tbody></table></div>`
+        : '<p style="color:var(--texto-fraco); margin:0; font-size:12.5px;">Nenhum modelo de exportação.</p>'}`;
+    $('itgNovoImp').addEventListener('click', () => formImportacao());
+    $('itgNovoExp').addEventListener('click', () => formExportacao());
+    document.querySelectorAll('[data-itg-usar]').forEach((b) => b.addEventListener('click', () => enviar('/api/integracao/modelo-importacao', 'PUT', { modelo_id: Number(b.dataset.itgUsar) || null })
+      .then(() => carregarModelos()).catch(erro)));
+    document.querySelectorAll('[data-itg-mod-editar]').forEach((b) => b.addEventListener('click', () => {
+      const m = mod.modelos.find((x) => x.id === Number(b.dataset.itgModEditar));
+      (m.tipo === 'importacao' ? formImportacao : formExportacao)(m);
+    }));
+    document.querySelectorAll('[data-itg-exportar]').forEach((b) => b.addEventListener('click', () => exportar(Number(b.dataset.itgExportar), b)));
+  }
+
+  async function exportar(id, botao) {
+    const de = document.querySelector(`[data-itg-de="${id}"]`).value; const ate = document.querySelector(`[data-itg-ate="${id}"]`).value;
+    botao.disabled = true;
+    try {
+      const r = await apiFetch(`/api/integracao/modelos/${id}/exportar?de=${de}&ate=${ate}`);
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || 'Erro ao exportar.');
+      const nome = (/filename="([^"]+)"/.exec(r.headers.get('Content-Disposition') || '') || [])[1] || 'exportacao';
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { erro(e); } finally { botao.disabled = false; }
+  }
+
+  async function excluirModelo(m) {
+    if (!(await confirmar(`Excluir o modelo "${m.nome}"?`, { tipo: 'perigo', titulo: 'Excluir modelo', textoOk: 'Excluir' }))) return;
+    enviar(`/api/integracao/modelos/${m.id}`, 'DELETE').then(() => { fechar(); carregarModelos(); }).catch(erro);
+  }
+
+  // Importação: sobe a planilha de exemplo → o sistema sugere qual coluna é qual → confere e salva.
+  function formImportacao(m = null) {
+    let cabecalhos = m ? [...new Set(Object.values(m.config.colunas || {}))] : [];
+    let amostra = [];
+    let colunas = { ...(m?.config.colunas || {}) };
+    abrirModal(m ? '✏️ Modelo de importação' : '📥 Novo modelo de importação', `
+      <div class="campo"><label for="itgMNome">Nome do modelo</label><input id="itgMNome" class="cte-entrada" value="${esc(m?.nome || '')}" placeholder="Ex.: ERP Alterdata — pedidos" maxlength="80" /></div>
+      <div style="margin:10px 0;"><label style="display:block; margin-bottom:4px;">Planilha de exemplo do ERP (.xlsx, .xls ou .csv)</label>
+        <input type="file" id="itgMArquivo" accept=".xlsx,.xls,.csv" />
+        <small style="display:block; color:var(--texto-fraco); margin-top:4px;">A 1ª linha precisa ter os nomes das colunas. O Nexofrete sugere qual é qual pelo nome; confira abaixo.</small></div>
+      <div id="itgMMapa"></div>
+      <div style="display:flex; justify-content:space-between; gap:8px; margin-top:14px; flex-wrap:wrap;">
+        <div>${m ? '<button class="btn btn-secundario" id="itgMExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : ''}</div>
+        <div style="display:flex; gap:8px;"><button class="btn btn-secundario" data-itg-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="itgMOk" style="width:auto;">Salvar modelo</button></div></div>`);
+    const exemplo = (col) => { const v = amostra.find((l) => l[col] != null && String(l[col]).trim() !== '')?.[col]; return v == null ? '' : String(v).slice(0, 40); };
+    const desenharMapa = (resumo = '') => {
+      if (!cabecalhos.length) { $('itgMMapa').innerHTML = ''; return; }
+      $('itgMMapa').innerHTML = `${resumo}<div class="tabela-container" style="max-height:46vh; overflow:auto;"><table><thead><tr><th>No Nexofrete</th><th>Coluna da planilha</th><th>Exemplo</th></tr></thead><tbody>
+        ${mod.campos_importacao.map((c) => `<tr><td>${esc(c.rotulo)}${['numero_pedido', 'numero_nf', 'chave_nfe'].includes(c.campo) ? ' <small style="color:var(--texto-fraco);">(identifica a linha)</small>' : ''}</td>
+          <td><select data-itg-col="${c.campo}" style="width:100%;"><option value="">— não tem —</option>${cabecalhos.map((h) => `<option value="${esc(h)}" ${colunas[c.campo] === h ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></td>
+          <td style="color:var(--texto-fraco); font-size:12px;" data-itg-ex="${c.campo}">${esc(colunas[c.campo] ? exemplo(colunas[c.campo]) : '')}</td></tr>`).join('')}</tbody></table></div>
+        <small style="color:var(--texto-fraco); display:block; margin-top:6px;">Sem nº de pedido, a nota fiscal identifica a linha. As colunas "cancelado" entendem S/SIM/X/1/C como sim.</small>`;
+      document.querySelectorAll('[data-itg-col]').forEach((sel) => sel.addEventListener('change', () => {
+        colunas[sel.dataset.itgCol] = sel.value || undefined;
+        document.querySelector(`[data-itg-ex="${sel.dataset.itgCol}"]`).textContent = sel.value ? exemplo(sel.value) : '';
+      }));
+    };
+    desenharMapa(m ? '<p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 8px;">Para ver exemplos e trocar colunas novas, escolha de novo uma planilha do ERP.</p>' : '');
+    $('itgMArquivo').addEventListener('change', async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const fd = new FormData(); fd.append('arquivo', f);
+      if (m) fd.append('config', JSON.stringify({ colunas }));
+      try {
+        const r = await apiFetch('/api/integracao/modelos/previa', { method: 'POST', body: fd });
+        const j = await r.json(); if (!r.ok) throw new Error(j.erro || 'Não consegui ler a planilha.');
+        cabecalhos = j.cabecalhos; amostra = j.amostra;
+        colunas = m ? Object.fromEntries(Object.entries(colunas).filter(([, v]) => cabecalhos.includes(v))) : { ...j.sugestao.colunas };
+        desenharMapa(`<p style="font-size:12.5px; margin:0 0 8px;">${j.total} linha(s) na planilha, ${cabecalhos.length} coluna(s). ${m ? '' : `Sugeri ${Object.keys(colunas).length} coluna(s) pelo nome — confira.`}</p>`);
+      } catch (err) { erro(err); }
+    });
+    $('itgMOk').addEventListener('click', async () => {
+      try {
+        const corpo = { nome: $('itgMNome').value, tipo: 'importacao', config: { colunas: Object.fromEntries(Object.entries(colunas).filter(([, v]) => v)) } };
+        if (m) await enviar(`/api/integracao/modelos/${m.id}`, 'PUT', corpo); else await enviar('/api/integracao/modelos', 'POST', corpo);
+        fechar(); carregarModelos();
+        if (!m) mostrarAlerta('Modelo salvo. Para a importação passar a usá-lo, clique em "Usar na importação".', { tipo: 'sucesso' });
+      } catch (err) { erro(err); }
+    });
+    $('itgMExcluir')?.addEventListener('click', () => excluirModelo(m));
+  }
+
+  // Exportação: o quê, quais colunas (com o título e a ordem que o ERP quer) e o formato.
+  function formExportacao(m = null) {
+    const c = m?.config || { recurso: 'fretes', formato: 'csv', separador: ';', decimal: ',', data: 'br', cabecalho: true, colunas: [] };
+    let recurso = c.recurso;
+    let escolhidas = c.colunas.map((x) => ({ ...x }));
+    abrirModal(m ? '✏️ Modelo de exportação' : '📤 Novo modelo de exportação', `
+      <div class="campo"><label for="itgENome">Nome do modelo</label><input id="itgENome" class="cte-entrada" value="${esc(m?.nome || '')}" placeholder="Ex.: Custo de frete para o ERP" maxlength="80" /></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px; margin:10px 0;">
+        <div class="campo"><label for="itgERec">O que exportar</label><select id="itgERec" ${m ? 'disabled' : ''}>${Object.entries(mod.recursos).map(([k, r]) => `<option value="${k}" ${k === recurso ? 'selected' : ''}>${esc(r.rotulo)}</option>`).join('')}</select></div>
+        <div class="campo"><label for="itgEFmt">Formato</label><select id="itgEFmt"><option value="csv" ${c.formato === 'csv' ? 'selected' : ''}>CSV</option><option value="xlsx" ${c.formato === 'xlsx' ? 'selected' : ''}>Excel (.xlsx)</option></select></div>
+        <div class="campo"><label for="itgESep">Separador (CSV)</label><select id="itgESep">${[[';', 'Ponto e vírgula ;'], [',', 'Vírgula ,'], ['tab', 'Tabulação']].map(([v, t]) => `<option value="${v}" ${c.separador === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="campo"><label for="itgEDec">Decimal</label><select id="itgEDec"><option value="," ${c.decimal === ',' ? 'selected' : ''}>Vírgula (1234,56)</option><option value="." ${c.decimal === '.' ? 'selected' : ''}>Ponto (1234.56)</option></select></div>
+        <div class="campo"><label for="itgEData">Datas</label><select id="itgEData"><option value="br" ${c.data === 'br' ? 'selected' : ''}>dd/mm/aaaa</option><option value="iso" ${c.data === 'iso' ? 'selected' : ''}>aaaa-mm-dd</option></select></div>
+      </div>
+      <label style="display:flex; gap:8px; align-items:center; margin-bottom:8px;"><input type="checkbox" id="itgECab" ${c.cabecalho !== false ? 'checked' : ''} /> 1ª linha com os títulos das colunas</label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div><div style="font-size:12.5px; font-weight:600; margin-bottom:4px;">Colunas disponíveis</div><div id="itgEDisp" style="max-height:40vh; overflow:auto;"></div></div>
+        <div><div style="font-size:12.5px; font-weight:600; margin-bottom:4px;">Na planilha (nesta ordem) — título editável</div><div id="itgEEsc" style="max-height:40vh; overflow:auto;"></div></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; gap:8px; margin-top:14px; flex-wrap:wrap;">
+        <div>${m ? '<button class="btn btn-secundario" id="itgEExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : ''}</div>
+        <div style="display:flex; gap:8px;"><button class="btn btn-secundario" data-itg-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="itgEOk" style="width:auto;">Salvar modelo</button></div></div>`);
+    const desenharCols = () => {
+      const campos = mod.recursos[recurso].campos;
+      const usados = new Set(escolhidas.map((x) => x.campo));
+      $('itgEDisp').innerHTML = campos.filter((f) => !usados.has(f.campo)).map((f) => `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; padding:3px 0; border-bottom:1px solid var(--borda);">
+        <span style="font-size:12.5px;">${esc(f.titulo)}</span><button class="btn btn-secundario" data-itg-add="${f.campo}" style="width:auto; padding:2px 8px;">＋</button></div>`).join('') || '<small style="color:var(--texto-fraco);">Todas já estão na planilha.</small>';
+      $('itgEEsc').innerHTML = escolhidas.map((x, i) => `<div style="display:flex; gap:4px; align-items:center; padding:3px 0;">
+        <input class="cte-entrada" data-itg-tit="${i}" value="${esc(x.titulo || campos.find((f) => f.campo === x.campo)?.titulo || x.campo)}" style="flex:1; padding:4px 6px; font-size:12.5px;" title="${esc(campos.find((f) => f.campo === x.campo)?.titulo || '')}" />
+        <button class="btn btn-secundario" data-itg-sobe="${i}" style="width:auto; padding:2px 7px;" ${i ? '' : 'disabled'}>↑</button>
+        <button class="btn btn-secundario" data-itg-desce="${i}" style="width:auto; padding:2px 7px;" ${i < escolhidas.length - 1 ? '' : 'disabled'}>↓</button>
+        <button class="btn btn-secundario" data-itg-tira="${i}" style="width:auto; padding:2px 7px;">✕</button></div>`).join('') || '<small style="color:var(--texto-fraco);">Escolha as colunas à esquerda.</small>';
+      document.querySelectorAll('[data-itg-add]').forEach((b) => b.addEventListener('click', () => { const f = campos.find((x) => x.campo === b.dataset.itgAdd); escolhidas.push({ campo: f.campo, titulo: f.titulo }); desenharCols(); }));
+      document.querySelectorAll('[data-itg-tit]').forEach((inp) => inp.addEventListener('input', () => { escolhidas[Number(inp.dataset.itgTit)].titulo = inp.value; }));
+      const mover = (i, d) => { const [x] = escolhidas.splice(i, 1); escolhidas.splice(i + d, 0, x); desenharCols(); };
+      document.querySelectorAll('[data-itg-sobe]').forEach((b) => b.addEventListener('click', () => mover(Number(b.dataset.itgSobe), -1)));
+      document.querySelectorAll('[data-itg-desce]').forEach((b) => b.addEventListener('click', () => mover(Number(b.dataset.itgDesce), 1)));
+      document.querySelectorAll('[data-itg-tira]').forEach((b) => b.addEventListener('click', () => { escolhidas.splice(Number(b.dataset.itgTira), 1); desenharCols(); }));
+    };
+    desenharCols();
+    $('itgERec').addEventListener('change', (e) => { recurso = e.target.value; escolhidas = []; desenharCols(); });
+    $('itgEOk').addEventListener('click', async () => {
+      try {
+        const corpo = { nome: $('itgENome').value, tipo: 'exportacao', config: { recurso, formato: $('itgEFmt').value, separador: $('itgESep').value, decimal: $('itgEDec').value, data: $('itgEData').value, cabecalho: $('itgECab').checked, colunas: escolhidas } };
+        if (m) await enviar(`/api/integracao/modelos/${m.id}`, 'PUT', corpo); else await enviar('/api/integracao/modelos', 'POST', corpo);
+        fechar(); carregarModelos();
+      } catch (err) { erro(err); }
+    });
+    $('itgEExcluir')?.addEventListener('click', () => excluirModelo(m));
   }
 
   function documentacao(base) {

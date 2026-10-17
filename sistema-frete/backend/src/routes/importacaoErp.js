@@ -13,7 +13,10 @@ router.post('/upload', autenticar, permitir('pode_editar_registros'), upload.sin
   if (!req.file) return res.status(400).json({ erro: 'Nenhum arquivo enviado.' });
 
   try {
-    const resultado = await importacaoErp.importarBuffer(req.file.buffer, req.usuario.id);
+    // Modelo escolhido na tela (ou o da configuração); sem modelo = o formato de sempre.
+    const cfg = await importacaoErp.buscarConfiguracao();
+    const modeloId = req.body?.modelo_id !== undefined ? Number(req.body.modelo_id) || null : cfg.modelo_id;
+    const resultado = await require('../integracao/planilhas').importarComModelo(req.file.buffer, req.file.originalname, modeloId, req.usuario.id);
     registrar({
       usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'importar_erp',
       detalhes: `Importou planilha do ERP: ${resultado.criados} registros criados, ${resultado.atualizados} atualizados${resultado.erros.length ? `, ${resultado.erros.length} erro(s)` : ''}`,
@@ -23,6 +26,16 @@ router.post('/upload', autenticar, permitir('pode_editar_registros'), upload.sin
     console.error(err);
     res.status(400).json({ erro: err.message || 'Erro ao ler a planilha. Confira se é um arquivo .xlsx válido, exportado do ERP.' });
   }
+});
+
+// GET /api/importacao-erp/modelos — modelos de planilha de importação (para escolher na hora de subir).
+router.get('/modelos', autenticar, permitir('pode_editar_registros'), async (req, res) => {
+  try {
+    const pool = require('../db');
+    const { rows } = await pool.query(`SELECT id, nome FROM erp_modelos WHERE tipo = 'importacao' AND ativo ORDER BY nome`);
+    const cfg = await importacaoErp.buscarConfiguracao();
+    res.json({ modelos: rows, padrao: cfg.modelo_id || null });
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao listar os modelos.' }); }
 });
 
 // POST /api/importacao-erp/mapa-carregamento  (.xls ou .xlsx)

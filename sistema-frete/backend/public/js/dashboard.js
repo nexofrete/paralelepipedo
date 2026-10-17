@@ -250,7 +250,7 @@ document.querySelectorAll('.nav-item').forEach((item) => {
 
     if (item.dataset.pagina === 'cadastros') { carregarUsuarios(); carregarAuditoria(); carregarTransportadoras(); carregarEmpresa(); carregarTabelasPreco(); }
     if (item.dataset.pagina === 'visao-geral') carregarResumo();
-    if (item.dataset.pagina === 'upload') carregarAguardandoXml();
+    if (item.dataset.pagina === 'upload') { carregarAguardandoXml(); carregarModelosUpload(); }
     if (item.dataset.pagina === 'registros') carregarRegistros();
     if (item.dataset.pagina === 'auditoria-frete') carregarAuditoriaFrete();
     if (item.dataset.pagina === 'financeiro') { carregarFinanceiro(); carregarMetaFrete(); }
@@ -1150,6 +1150,19 @@ inputPasta.addEventListener('change', () => {
 });
 
 // ---------- Upload manual da planilha do ERP ----------
+// Modelos de planilha (cada ERP com as suas colunas): aparece a escolha só quando há modelo.
+async function carregarModelosUpload() {
+  const sel = document.getElementById('erpModeloUpload');
+  if (!sel) return;
+  try {
+    const r = await apiFetch('/api/importacao-erp/modelos');
+    if (!r.ok) return;
+    const { modelos, padrao } = await r.json();
+    sel.innerHTML = `<option value="">Formato padrão (NR_PEDIDO, NR_NF…)</option>${modelos.map((m) => `<option value="${m.id}">${String(m.nome).replace(/[<>&"]/g, '')}</option>`).join('')}`;
+    sel.value = padrao ? String(padrao) : '';
+    sel.classList.toggle('oculto', !modelos.length);
+  } catch { /* sem modelos */ }
+}
 const inputPlanilhaErp = document.getElementById('inputPlanilhaErp');
 document.getElementById('btnEnviarPlanilhaErp').addEventListener('click', () => inputPlanilhaErp.click());
 
@@ -1160,6 +1173,8 @@ inputPlanilhaErp.addEventListener('change', async () => {
   resultadoEl.textContent = 'Importando planilha, aguarde...';
 
   const formData = new FormData();
+  const modeloSel = document.getElementById('erpModeloUpload');
+  if (modeloSel && !modeloSel.classList.contains('oculto')) formData.append('modelo_id', modeloSel.value);
   formData.append('arquivo', arquivo);
 
   try {
@@ -1172,7 +1187,8 @@ inputPlanilhaErp.addEventListener('change', async () => {
     resultadoEl.innerHTML = `<span style="color:var(--verde);">✓</span> ${dados.total} linha(s) lida(s): ${dados.atualizados} registro(s) completado(s)` +
       (dados.aguardando ? `, <b>${dados.aguardando} aguardando o XML da nota</b> (entram sozinhos quando a NF-e chegar)` : '') +
       (dados.pulados ? `, ${dados.pulados} pulado(s) (pedidos cancelados ou de exportação)` : '') +
-      (dados.erros.length ? `. ${dados.erros.length} erro(s): ${dados.erros.slice(0, 3).join('; ')}` : '.');
+      (dados.erros.length ? `. ${dados.erros.length} erro(s): ${dados.erros.slice(0, 3).join('; ')}` : '.') +
+      (dados.aviso ? `<br><span style="color:var(--laranja, #e8890c);">⚠ ${dados.aviso}</span>` : '');
     carregarResumo();
     carregarAguardandoXml();
   } catch (err) {

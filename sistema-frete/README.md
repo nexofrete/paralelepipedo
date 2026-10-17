@@ -515,6 +515,9 @@ Menu **⚙️ Configuração → 🔗 Integração (API e ERP)** (código **904*
 - **Webhooks (avisos automáticos):** o Nexofrete faz POST no endereço do ERP quando o **CT-e é autorizado/cancelado/substituído**, a **entrega é registrada** e a **fatura é criada/paga/cancelada**. Os eventos vêm de gatilhos no banco (pegam a mudança venha de onde vier), saem com a assinatura `X-Nexofrete-Assinatura: t=<unix>,v1=<HMAC-SHA256>` e, sem resposta 2xx, são reenviados em 1 min, 5 min, 15 min, 1 h, 3 h, 6 h, 12 h e 24 h. Botões para testar, reenviar e gerar novo segredo.
 - **Segurança:** webhook só para `https://` e endereço público (localhost, rede interna e 169.254.x são recusados, também na hora da conexão). Para um ERP instalado na rede da empresa, ligue `WEBHOOK_REDE_INTERNA=1` no servidor.
 - A tela traz as instruções prontas para copiar e mandar ao fornecedor do ERP.
+- **Modelos de planilha (ERP que só troca planilha)** — cada empresa com o seu ERP:
+  - *Importação:* sobe uma planilha de exemplo do ERP (.xlsx, .xls ou .csv com `;` ou `,`, UTF-8 ou ANSI), o Nexofrete sugere qual coluna é qual pelo nome (pedido, NF, chave, cliente, CNPJ, cidade, peso, volumes, valor, CIF/FOB, cancelado…) e a pessoa confere. "Usar na importação" faz a importação manual e a automática (pela pasta) lerem por esse modelo; sem nº de pedido, a NF identifica a linha. Na tela de upload dá para escolher o modelo na hora. Planilha de outro ERP no formato padrão avisa que falta um modelo.
+  - *Exportação:* CT-e emitidos, notas e fretes (custo do frete por nota) ou faturas do período, com as colunas, títulos e ordem que o ERP espera; CSV (separador e decimal à escolha) ou Excel. Célula que parece fórmula vira texto.
 
 ## EDI (PROCEDA 3.1)
 

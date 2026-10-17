@@ -2350,3 +2350,17 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_webhook_fatura ON faturas_transporte;
 CREATE TRIGGER trg_webhook_fatura AFTER INSERT OR UPDATE ON faturas_transporte FOR EACH ROW EXECUTE FUNCTION fn_webhook_fatura();
+
+-- Modelos de planilha por ERP: importação (de-para das colunas) e exportação (colunas, formato).
+CREATE TABLE IF NOT EXISTS erp_modelos (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL,
+  tipo VARCHAR(12) NOT NULL,                             -- importacao | exportacao
+  config JSONB NOT NULL,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_por_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Modelo usado na importação (manual e automática); vazio = o formato de sempre.
+ALTER TABLE configuracao_importacao_erp ADD COLUMN IF NOT EXISTS modelo_id INTEGER REFERENCES erp_modelos(id) ON DELETE SET NULL;

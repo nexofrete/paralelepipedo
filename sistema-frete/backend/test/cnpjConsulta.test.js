@@ -64,5 +64,5 @@ test('cnpj: não encontrado em nenhum × falha de rede', async () => {
   assert.ok((await consultarServicos(CNPJ)).naoEncontrado);
   simular({ b: new Error('demorou demais'), w: new Error('demorou demais'), r: new Error('demorou demais') });
   const r = await consultarServicos(CNPJ);
-  assert.ok(r.falhou); assert.match(r.erro, /demorou demais/);
+  assert.ok(r.falhou); assert.match(r.detalhe, /demorou demais/); assert.match(r.erro, /não responderam/);
 });

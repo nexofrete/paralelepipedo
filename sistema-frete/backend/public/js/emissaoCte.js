@@ -444,7 +444,7 @@
     try {
       const c = await api('/ler-cte', { method: 'POST', body: JSON.stringify({ xml: await arq.text() }) });
       const em = c.emitente || {};
-      $('ant_doc').value = em.cnpj || em.cpf || ''; $('ant_ie').value = em.ie || ''; $('ant_uf').value = em.uf || ''; $('ant_nome').value = em.xNome || '';
+      $('ant_doc').value = Doc.formatar(em.cnpj || em.cpf || ''); $('ant_ie').value = em.ie || ''; $('ant_uf').value = em.uf || ''; $('ant_nome').value = em.xNome || '';
       const chaves = $('ant_chaves').value.split(/\s+/).filter(Boolean);
       if (!chaves.includes(c.chave)) chaves.push(c.chave);
       $('ant_chaves').value = chaves.join('\n');
@@ -563,7 +563,7 @@
   function preencherPessoa(pre, p, sobrescrever) {
     if (!p) return;
     const e = p.endereco || {};
-    const val = { doc: p.cnpj || p.cpf, ie: p.ie, nome: p.xNome, lgr: e.xLgr, nro: e.nro, cpl: e.xCpl, bairro: e.xBairro, mun: e.xMun, cmun: e.cMun, uf: e.UF, cep: e.CEP, fone: p.fone || e.fone, email: p.email };
+    const val = { doc: Doc.formatar(p.cnpj || p.cpf || ''), ie: p.ie, nome: p.xNome, lgr: e.xLgr, nro: e.nro, cpl: e.xCpl, bairro: e.xBairro, mun: e.xMun, cmun: e.cMun, uf: e.UF, cep: e.CEP, fone: p.fone || e.fone, email: p.email };
     const vazio = !$(`${pre}_doc`).value;
     if (!vazio && !sobrescrever) return;
     Object.entries(val).forEach(([k, v]) => { const el = $(`${pre}_${k}`); if (el) el.value = v ?? ''; });
@@ -695,7 +695,7 @@
     preencherPessoa('exp', d.expedidor, true); preencherPessoa('rec', d.recebedor, true);
     $('cteAlteraToma').checked = !!d.substituido?.indAlteraToma;
     const ant = (d.docAnt || [])[0];
-    if (ant) { $('ant_doc').value = ant.cnpj || ant.cpf || ''; $('ant_ie').value = ant.ie || ''; $('ant_uf').value = ant.uf || ''; $('ant_nome').value = ant.xNome || ''; $('ant_chaves').value = (ant.chaves || []).join('\n'); }
+    if (ant) { $('ant_doc').value = Doc.formatar(ant.cnpj || ant.cpf || ''); $('ant_ie').value = ant.ie || ''; $('ant_uf').value = ant.uf || ''; $('ant_nome').value = ant.xNome || ''; $('ant_chaves').value = (ant.chaves || []).join('\n'); }
     preencherPessoa('rem', d.remetente, true); preencherPessoa('dest', d.destinatario, true);
     $('cteTomador').value = String(d.tomador ?? '0');
     if (d.outroTomador) preencherPessoa('toma', d.outroTomador, true);
@@ -807,7 +807,7 @@
     $('cte-aba-config').innerHTML = `
       <div class="painel" style="padding:20px;">
         <div class="cte-secao"><h4>Empresa emitente <button type="button" class="btn btn-secundario" id="cfgBuscarCnpj" style="width:auto; font-size:11.5px; padding:3px 8px;">🔎 Preencher pelo CNPJ</button></h4><div class="cte-grade">
-          ${campo('cfg_cnpj', 'CNPJ', { valor: c.cnpj || '' })}${campo('cfg_ie', 'Inscrição estadual', { valor: c.ie || '' })}
+          ${campo('cfg_cnpj', 'CNPJ', { valor: Doc.formatar(c.cnpj || '') })}${campo('cfg_ie', 'Inscrição estadual', { valor: c.ie || '' })}
           ${campo('cfg_razao', 'Razão social', { classe: 'largo', valor: c.razao_social || '' })}${campo('cfg_fantasia', 'Nome fantasia', { classe: 'largo', valor: c.nome_fantasia || '' })}
           ${campo('cfg_lgr', 'Logradouro', { classe: 'largo', valor: c.endereco || '' })}${campo('cfg_nro', 'Número', { valor: c.numero || '' })}${campo('cfg_cpl', 'Complemento', { valor: c.complemento || '' })}
           ${campo('cfg_bairro', 'Bairro', { valor: c.bairro || '' })}${campo('cfg_mun', 'Município', { valor: c.municipio || '' })}
@@ -843,7 +843,7 @@
           ${campo('cfg_av_codigo', 'Código AT&amp;M (codatm)', { valor: c.averbacao_codigo || '' })}
           <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_av_auto" ${c.averbacao_automatica !== false ? 'checked' : ''} style="width:auto;" />
             Averbar automaticamente ao autorizar (desligue se o seguro da carga é do embarcador e não da transportadora)</label></div>
-          ${campo('cfg_seg_nome', 'Seguradora (vai no MDF-e)', { classe: 'largo', valor: c.seguro_seguradora || '' })}${campo('cfg_seg_cnpj', 'CNPJ da seguradora', { valor: c.seguro_cnpj || '' })}${campo('cfg_seg_apolice', 'Nº da apólice (RCTR-C)', { valor: c.seguro_apolice || '' })}
+          ${campo('cfg_seg_nome', 'Seguradora (vai no MDF-e)', { classe: 'largo', valor: c.seguro_seguradora || '' })}${campo('cfg_seg_cnpj', 'CNPJ da seguradora', { valor: Doc.formatar(c.seguro_cnpj || '') })}${campo('cfg_seg_apolice', 'Nº da apólice (RCTR-C)', { valor: c.seguro_apolice || '' })}
         </div></div>
         <div class="cte-secao"><h4>IBS / CBS (Reforma Tributária)</h4><div class="cte-grade">
           <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_ibs" ${c.cte_ibscbs_ativo ? 'checked' : ''} style="width:auto;" /> Informar IBS/CBS no CT-e</label></div>
@@ -863,13 +863,13 @@
           <div class="campo inteiro" style="font-size:12px; color:var(--texto-fraco);">O e-mail usa a configuração de SMTP e o WhatsApp a do Twilio (Cadastros → Configurações). Sem o endereço público, a mensagem vai sem o link.</div>
         </div></div>
         <div class="cte-secao"><h4>Responsável técnico (quem fornece o sistema — exigido por algumas UFs)</h4><div class="cte-grade">
-          ${campo('cfg_rt_cnpj', 'CNPJ', { valor: c.resp_tec_cnpj || '' })}${campo('cfg_rt_contato', 'Contato', { valor: c.resp_tec_contato || '' })}
+          ${campo('cfg_rt_cnpj', 'CNPJ', { valor: Doc.formatar(c.resp_tec_cnpj || '') })}${campo('cfg_rt_contato', 'Contato', { valor: c.resp_tec_contato || '' })}
           ${campo('cfg_rt_email', 'E-mail', { valor: c.resp_tec_email || '' })}${campo('cfg_rt_fone', 'Telefone', { valor: c.resp_tec_fone || '' })}
         </div></div>
         <div style="display:flex; justify-content:flex-end; margin-bottom:18px;"><button type="button" class="btn btn-primario" id="cfgSalvar" style="width:auto;">💾 Salvar configuração</button></div>
         <div class="cte-secao"><h4>Certificado digital A1</h4>
           <div style="margin-bottom:10px; font-size:13px;">${c.tem_certificado
-    ? `${c.certificado_demonstracao ? '🧪 <b>Certificado de DEMONSTRAÇÃO</b> (só funciona no modo demonstração) — ' : '✅ '}<b>${esc(c.certificado_titular)}</b>${c.certificado_cnpj ? ` — CNPJ ${esc(c.certificado_cnpj)}` : ''} — válido até <b>${venc ? venc.toLocaleDateString('pt-BR') : '?'}</b>`
+    ? `${c.certificado_demonstracao ? '🧪 <b>Certificado de DEMONSTRAÇÃO</b> (só funciona no modo demonstração) — ' : '✅ '}<b>${esc(c.certificado_titular)}</b>${c.certificado_cnpj ? ` — CNPJ ${esc(Doc.formatar(c.certificado_cnpj))}` : ''} — válido até <b>${venc ? venc.toLocaleDateString('pt-BR') : '?'}</b>`
     : '⚠️ Nenhum certificado enviado.'}</div>
           ${c.cte_demonstracao ? `<div class="cte-aviso" style="margin-bottom:10px;">🧪 <b>Modo demonstração ligado.</b> A SEFAZ é simulada aqui no servidor: dá para emitir, imprimir o DACTE, cancelar e fazer carta de correção sem internet e sem certificado verdadeiro. A assinatura digital e a chave de acesso são conferidas de verdade. <b>Nada é enviado e nada tem valor fiscal</b> — o DACTE sai com a tarja "DEMONSTRAÇÃO".
             ${!c.tem_certificado || c.certificado_demonstracao ? '' : '<br>Já tem um certificado verdadeiro: ele é usado para assinar (e continua sem enviar nada).'}</div>` : ''}
@@ -895,7 +895,7 @@
     $('cfgGerarDemo')?.addEventListener('click', (e) => comBotaoCfg(e.currentTarget, async () => {
       const r = await api('/certificado/demonstracao', { method: 'POST' });
       await carregarConfig(); renderConfig();
-      mostrarAlerta(`Certificado de demonstração gerado para ${r.titular} (${r.cnpj}). Ele não vale na SEFAZ — serve só para o modo demonstração.`, { tipo: 'sucesso' });
+      mostrarAlerta(`Certificado de demonstração gerado para ${r.titular} (${Doc.formatar(r.cnpj)}). Ele não vale na SEFAZ — serve só para o modo demonstração.`, { tipo: 'sucesso' });
     }));
     $('cfgTestar').addEventListener('click', (e) => comBotaoCfg(e.currentTarget, async () => {
       const r = await api('/testar-conexao', { method: 'POST' });
@@ -948,15 +948,16 @@
     await carregarConfig(); renderConfig();
     mostrarAlerta(`Certificado de ${r.titular} enviado. Válido até ${new Date(r.validade).toLocaleDateString('pt-BR')}.`, { tipo: 'sucesso' });
   }
+  // Botão "buscar pelo CNPJ": dados da Receita (consulta do servidor) por cima do que está na tela.
   async function preencherPeloCnpj() {
     const cnpj = $('cfg_cnpj').value.replace(/\D/g, '');
     if (cnpj.length !== 14) throw new Error('Digite o CNPJ (14 dígitos) primeiro.');
-    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-    if (!r.ok) throw new Error('Não achei esse CNPJ na consulta pública (BrasilAPI).');
-    const d = await r.json();
+    const r = await apiFetch(`/api/cnpj/${cnpj}`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.erro || 'Não achei esse CNPJ na Receita.');
     const set = (id, v) => { if (v) $(id).value = v; };
-    set('cfg_razao', d.razao_social); set('cfg_fantasia', d.nome_fantasia); set('cfg_lgr', [d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' '));
+    set('cfg_razao', d.razao_social); set('cfg_fantasia', d.nome_fantasia); set('cfg_ie', d.ie); set('cfg_lgr', d.logradouro);
     set('cfg_nro', d.numero); set('cfg_cpl', d.complemento); set('cfg_bairro', d.bairro); set('cfg_mun', d.municipio); set('cfg_uf', d.uf);
-    set('cfg_cep', d.cep); set('cfg_cmun', d.codigo_municipio_ibge ? String(d.codigo_municipio_ibge) : ''); set('cfg_fone', d.ddd_telefone_1); set('cfg_email', d.email);
+    set('cfg_cep', d.cep); set('cfg_cmun', d.codigo_municipio); set('cfg_fone', d.telefone); set('cfg_email', d.email);
   }
 })();

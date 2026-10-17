@@ -253,7 +253,7 @@
         ${campo('mnSaida', 'Saída da oficina', m?.data_saida ? String(m.data_saida).slice(0, 10) : (m?.status === 'em_andamento' ? hoje() : ''), 'type="date"')}
         ${campo('mnKm', 'Km', m?.km ?? '', 'inputmode="numeric"')}
         ${campo('mnOficina', 'Oficina / fornecedor', m?.oficina_nome || '', 'maxlength="150"')}
-        ${campo('mnOficinaDoc', 'CNPJ/CPF', m?.oficina_doc || '', 'maxlength="18"')}
+        ${campo('mnOficinaDoc', 'CNPJ/CPF', Doc.formatar(m?.oficina_doc || ''), 'maxlength="18"')}
         ${campo('mnDocto', 'NF / OS', m?.documento || '', 'maxlength="60"')}
       </div>
       <div class="cte-secao"><h4 style="display:flex; justify-content:space-between; align-items:center;">Peças e serviços <button class="btn btn-secundario" id="mnLinha" style="width:auto; padding:5px 10px;">＋ Linha</button></h4>

@@ -8,7 +8,7 @@
   const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dia = (v) => (v ? String(v).slice(0, 10).split('-').reverse().join('/') : '—');
   const quando = (d) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const docFmt = (v) => { const d = String(v || ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : d; };
+  const docFmt = (v) => Doc.formatar(v);
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
   const api = async (c, o = {}) => {
     const r = await apiFetch(`/api/regua${c}`, { ...o, headers: { 'Content-Type': 'application/json' } });

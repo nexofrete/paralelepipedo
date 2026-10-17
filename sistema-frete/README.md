@@ -504,6 +504,13 @@ Em **🚛 Operação de Transporte → 📍 Ocorrências de entrega** (quem emit
 - **Avisos ao cliente** (Configuração fiscal → Avisos de entrega): a cada ocorrência escolhida (saiu para entrega, entregue, não entregue, devolvido...), manda e-mail e/ou WhatsApp ao destinatário e a quem paga o frete, com o link de rastreio (preencha o "Endereço público"). Usa o e-mail e o celular que vieram na NF-e; WhatsApp só para celular. Cada envio (ou erro) fica registrado.
 - **EDI:** em EDI → Com o cliente, "OCOREN das ocorrências lançadas" gera o arquivo com o que foi lançado e ainda não foi enviado.
 
+## CNPJ/CPF em todos os cadastros
+
+- **Ao digitar o CNPJ**, o cadastro se preenche com os dados da Receita: razão social, nome fantasia, IE (quando o serviço informa), logradouro, número, complemento, bairro, cidade com o **código IBGE**, UF, CEP, telefone e e-mail — só nos campos vazios (o que já foi digitado fica). Vale em: transportadora, empresa, configuração fiscal (emitente, seguradora, responsável técnico), CT-e (remetente, destinatário, expedidor, recebedor, tomador, CT-e anterior), NFS-e, coleta, cotação, vendedor, contas a pagar, acerto de viagem, MDF-e (seguradora, contratante, proprietário do veículo), posto e oficina, régua, tabela de preço e licença.
+- A consulta é do servidor (`GET /api/cnpj/:cnpj`, `src/cnpjConsulta.js`): BrasilAPI, depois CNPJ.ws, depois ReceitaWS, guardada 30 dias. CNPJ com dígito verificador errado é avisado na hora (e a consulta sugere o certo).
+- **Máscara** enquanto digita (`00.000.000/0000-00` e `000.000.000-00`), aviso de CPF/CNPJ inválido e suporte ao **CNPJ alfanumérico** (a partir de 07/2026, ex.: `12.ABC.345/01DE-35`; os serviços públicos ainda não o consultam, então os dados vão à mão). O servidor grava só os caracteres do documento.
+- Os documentos aparecem formatados nas telas (`Doc.formatar` em `public/js/documento.js`).
+
 ## Integração com ERP (API v1 e webhooks)
 
 Menu **⚙️ Configuração → 🔗 Integração (API e ERP)** (código **904**, só administrador):

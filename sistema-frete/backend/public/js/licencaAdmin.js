@@ -18,7 +18,7 @@
     painel.innerHTML = `<h3 style="margin-top:0; font-size:15px;">🔑 Licença do sistema</h3>
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px 18px; font-size:13px;">
         <div><span style="color:var(--texto-fraco);">Situação</span><br><b>${SIT[e.situacao] || esc(e.situacao)}</b></div>
-        <div><span style="color:var(--texto-fraco);">Empresa</span><br><b>${esc(e.cliente || (e.licenciador ? 'você' : '—'))}</b>${e.cnpj ? `<br><small>${esc(e.cnpj)}</small>` : ''}</div>
+        <div><span style="color:var(--texto-fraco);">Empresa</span><br><b>${esc(e.cliente || (e.licenciador ? 'você' : '—'))}</b>${e.cnpj ? `<br><small>${esc(Doc.formatar(e.cnpj))}</small>` : ''}</div>
         <div><span style="color:var(--texto-fraco);">Validade</span><br><b>${e.licenciador ? '—' : dia(e.validade)}</b></div>
         <div><span style="color:var(--texto-fraco);">Código deste computador</span><br><b style="font-family:ui-monospace,monospace;">${esc(e.codigo)}</b></div>
       </div>
@@ -75,7 +75,7 @@
           online: $('licOnline').checked, servidor: $('licServidor').value }) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.erro);
-        $('licResultado').innerHTML = `<div class="cte-aviso ok">Chave gerada para <b>${esc(j.cliente)}</b> (${esc(j.cnpj)}) — ${j.validade ? `válida até ${dia(j.validade)}` : 'sem vencimento'}${j.online ? ', conferida pela internet' : ''}. Envie ao cliente:</div>
+        $('licResultado').innerHTML = `<div class="cte-aviso ok">Chave gerada para <b>${esc(j.cliente)}</b> (${esc(Doc.formatar(j.cnpj))}) — ${j.validade ? `válida até ${dia(j.validade)}` : 'sem vencimento'}${j.online ? ', conferida pela internet' : ''}. Envie ao cliente:</div>
           <textarea readonly style="width:100%; min-height:80px; font-family:ui-monospace,monospace; font-size:12px;" id="licChave">${esc(j.chave)}</textarea>
           <button class="btn btn-secundario" id="licCopiar" style="width:auto;">📋 Copiar chave</button>`;
         $('licCopiar').addEventListener('click', async () => { try { await navigator.clipboard.writeText(j.chave); mostrarAlerta('Chave copiada.', { tipo: 'sucesso' }); } catch { $('licChave').select(); } });
@@ -89,7 +89,7 @@
     const r = await apiFetch('/api/licenca/emitidas');
     const lista = r.ok ? await r.json() : [];
     $('licEmitidas').innerHTML = lista.length ? `<table class="edi-tabela"><thead><tr><th>Cliente</th><th>CNPJ</th><th>Computador</th><th>Emitida</th><th>Validade</th><th>Obs.</th><th></th></tr></thead><tbody>
-      ${lista.map((l, i) => `<tr><td>${esc(l.cliente)}</td><td>${esc(l.cnpj)}</td><td style="font-family:ui-monospace,monospace;">${esc(l.maquina)}</td><td>${dia(l.emitida)}</td><td>${dia(l.validade)}${l.online ? ' 🌐' : ''}</td><td>${esc(l.observacao || '')}</td>
+      ${lista.map((l, i) => `<tr><td>${esc(l.cliente)}</td><td>${esc(Doc.formatar(l.cnpj))}</td><td style="font-family:ui-monospace,monospace;">${esc(l.maquina)}</td><td>${dia(l.emitida)}</td><td>${dia(l.validade)}${l.online ? ' 🌐' : ''}</td><td>${esc(l.observacao || '')}</td>
         <td><button class="btn btn-secundario" data-lic-copiar="${i}" style="width:auto; font-size:11.5px; padding:3px 8px;">Copiar chave</button></td></tr>`).join('')}</tbody></table>`
       : '<span style="color:var(--texto-fraco);">Nenhuma chave emitida ainda.</span>';
     document.querySelectorAll('[data-lic-copiar]').forEach((b) => b.addEventListener('click', async () => {

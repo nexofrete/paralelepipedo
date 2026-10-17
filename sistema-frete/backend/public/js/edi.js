@@ -96,7 +96,7 @@
   });
 
   const cabecalhoLeitura = (r, titulo) => `<h3 style="margin:0 0 4px;">${titulo}</h3>
-    <p class="edi-dica">${esc(r.arquivo)} · ${esc(r.transportadora?.razao || r.transportadora?.nomeCadastro || '')} ${r.transportadora?.cnpj ? `(${esc(r.transportadora.cnpj)})` : ''} · gerado em ${dataBr(r.cabecalho?.data)}</p>
+    <p class="edi-dica">${esc(r.arquivo)} · ${esc(r.transportadora?.razao || r.transportadora?.nomeCadastro || '')} ${r.transportadora?.cnpj ? `(${esc(Doc.formatar(r.transportadora.cnpj))})` : ''} · gerado em ${dataBr(r.cabecalho?.data)}</p>
     ${r.avisos?.length ? `<div class="cte-aviso">${r.avisos.slice(0, 5).map(esc).join('<br>')}${r.avisos.length > 5 ? `<br>… e mais ${r.avisos.length - 5}` : ''}</div>` : ''}`;
 
   const SITUACAO_CONEMB = {
@@ -189,7 +189,7 @@
     $('cfColarCtes').value = f.ctes.map((c) => c.numero).join('\n');
     if (typeof cfMarcarColados === 'function') cfMarcarColados();
     if (typeof cfAtualizarResumo === 'function') cfAtualizarResumo();
-    if (!opcao) mostrarAlerta(`Escolha a transportadora "${r.transportadora.razao || r.transportadora.cnpj}" na conferência — não achei pelo nome.`, { tipo: 'aviso' });
+    if (!opcao) mostrarAlerta(`Escolha a transportadora "${r.transportadora.razao || Doc.formatar(r.transportadora.cnpj)}" na conferência — não achei pelo nome.`, { tipo: 'aviso' });
   }
 
   // =================================================================
@@ -200,7 +200,7 @@
     try {
       const lista = await api('/transportadora/tomadores');
       $('ediCliente').innerHTML = lista.length
-        ? `<option value="">Selecione...</option>${lista.map((t) => `<option value="${esc(t.cnpj)}" data-nome="${esc(t.nome)}">${esc(t.nome)} — ${esc(t.cnpj)} (${t.ctes} CT-e)</option>`).join('')}`
+        ? `<option value="">Selecione...</option>${lista.map((t) => `<option value="${esc(t.cnpj)}" data-nome="${esc(t.nome)}">${esc(t.nome)} — ${esc(Doc.formatar(t.cnpj))} (${t.ctes} CT-e)</option>`).join('')}`
         : '<option value="">Nenhum CT-e autorizado nos últimos 180 dias</option>';
     } catch (err) { $('ediCliente').innerHTML = `<option value="">${esc(err.message)}</option>`; }
   }
@@ -222,7 +222,7 @@
           <div><b style="color:${semChave ? 'var(--vermelho)' : 'inherit'};">${semChave}</b>notas sem a chave da NF-e</div></div>
         ${semChave ? '<div class="cte-aviso">O layout 3.1 não traz a chave da NF-e. Sem ela o CT-e não transmite: importe o XML das notas (Enviar XML) antes, ou cole a chave no rascunho.</div>' : ''}
         <div class="edi-rolagem"><table class="edi-tabela"><thead><tr><th>Destinatário</th><th>Cidade</th><th>NF</th><th class="n">Volumes</th><th class="n">Peso (kg)</th><th class="n">Valor</th><th>Frete</th><th>Chave NF-e</th></tr></thead><tbody>
-        ${dests.map((d) => d.notas.map((n, k) => `<tr>${k === 0 ? `<td rowspan="${d.notas.length}"><b>${esc(d.razao)}</b><br><small style="color:var(--texto-fraco);">${esc(d.cnpj)}</small></td><td rowspan="${d.notas.length}">${esc(d.cidade)}/${esc(d.uf)}</td>` : ''}
+        ${dests.map((d) => d.notas.map((n, k) => `<tr>${k === 0 ? `<td rowspan="${d.notas.length}"><b>${esc(d.razao)}</b><br><small style="color:var(--texto-fraco);">${esc(Doc.formatar(d.cnpj))}</small></td><td rowspan="${d.notas.length}">${esc(d.cidade)}/${esc(d.uf)}</td>` : ''}
           <td>${esc(n.numero)}${n.serie ? `/${esc(n.serie)}` : ''}</td><td class="n">${esc(n.volumes)}</td><td class="n">${Number(n.peso || 0).toLocaleString('pt-BR')}</td><td class="n">${moeda(n.valor)}</td>
           <td>${n.condicaoFrete === 'F' ? 'FOB' : 'CIF'}</td><td>${n.chave ? `<span style="color:var(--verde);" title="${esc(n.chave)}">✓ ${esc(n.chaveOrigem)}</span>` : '<span style="color:var(--vermelho);">falta</span>'}</td></tr>`).join('')).join('')}
         </tbody></table></div>

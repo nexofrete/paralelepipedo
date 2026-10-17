@@ -2104,7 +2104,7 @@ document.getElementById('btnDescobrirSsw')?.addEventListener('click', async (e) 
 });
 document.getElementById('btnCancelarTransportadora').addEventListener('click', () => painelFormTransportadora.classList.add('oculto'));
 
-// ---------- CNPJ: máscara automática + busca de dados (BrasilAPI) ----------
+// ---------- CNPJ: máscara automática + busca de dados (consulta do servidor: /api/cnpj) ----------
 function formatarCnpjExibicao(valor) {
   const d = (valor || '').replace(/\D/g, '').slice(0, 14);
   let partes = [];
@@ -2142,27 +2142,29 @@ document.getElementById('tCnpj').addEventListener('input', async (e) => {
     }
   } catch (err) { /* se a checagem falhar, segue o fluxo normal */ }
 
-  statusEl.textContent = 'Buscando dados desse CNPJ...';
+  if (!Doc.cnpjValido(digitos)) {
+    statusEl.innerHTML = '<span style="color:var(--vermelho);">⚠ CNPJ inválido: o dígito verificador não confere.</span>';
+    return;
+  }
+  statusEl.textContent = 'Buscando os dados do CNPJ na Receita...';
   try {
-    const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`);
+    const resposta = await apiFetch(`/api/cnpj/${digitos}`);
+    const dados = await resposta.json().catch(() => ({}));
+    if (digitos !== e.target.value.replace(/\D/g, '')) return;
     if (!resposta.ok) {
-      statusEl.textContent = 'CNPJ não encontrado na Receita Federal — confira os dados digitados ou preencha manualmente.';
+      statusEl.textContent = `${dados.erro || 'CNPJ não encontrado na Receita.'} Preencha manualmente.`;
       return;
     }
-    const dados = await resposta.json();
-
-    document.getElementById('tRazaoSocial').value = dados.razao_social || document.getElementById('tRazaoSocial').value;
-    if (dados.nome_fantasia) document.getElementById('tNomeFantasia').value = dados.nome_fantasia;
-    document.getElementById('tEndereco').value = [dados.logradouro, dados.numero].filter(Boolean).join(', ') || document.getElementById('tEndereco').value;
-    document.getElementById('tBairro').value = dados.bairro || document.getElementById('tBairro').value;
-    document.getElementById('tMunicipio').value = dados.municipio || document.getElementById('tMunicipio').value;
-    document.getElementById('tUf').value = dados.uf || document.getElementById('tUf').value;
-    document.getElementById('tCep').value = dados.cep || document.getElementById('tCep').value;
-    if (dados.ddd_telefone_1) document.getElementById('tTelefone').value = dados.ddd_telefone_1;
-
-    statusEl.innerHTML = '<span style="color:var(--verde);">✓ Dados preenchidos automaticamente</span> a partir do CNPJ.';
+    // Preenche o que está vazio (o que já foi digitado fica).
+    const pos = (id, v) => { const el = document.getElementById(id); if (v && !String(el.value || '').trim()) el.value = v; };
+    pos('tRazaoSocial', dados.razao_social); pos('tNomeFantasia', dados.nome_fantasia); pos('tIe', dados.ie);
+    pos('tEndereco', [dados.logradouro, dados.numero].filter(Boolean).join(', ') + (dados.complemento ? ` - ${dados.complemento}` : ''));
+    pos('tBairro', dados.bairro); pos('tMunicipio', dados.municipio); pos('tUf', dados.uf); pos('tCep', dados.cep);
+    pos('tTelefone', dados.telefone); pos('tEmail', dados.email);
+    const situacao = dados.situacao && !/ATIVA/i.test(dados.situacao) ? ` <span style="color:var(--laranja, #e8890c);">⚠ Situação na Receita: ${cfEsc(dados.situacao)}</span>` : '';
+    statusEl.innerHTML = `<span style="color:var(--verde);">✓ ${cfEsc(dados.razao_social)}</span> — dados da Receita preenchidos nos campos vazios.${situacao}`;
   } catch (err) {
-    statusEl.textContent = 'Não consegui buscar os dados (precisa de internet). Preencha manualmente.';
+    statusEl.textContent = 'Não consegui buscar os dados agora. Preencha manualmente.';
   }
 });
 
@@ -2289,7 +2291,7 @@ async function carregarEmpresa() {
     if (!resposta.ok) return;
     const empresa = await resposta.json();
     CAMPOS_EMPRESA.forEach(([elId, campo]) => {
-      document.getElementById(elId).value = (empresa && empresa[campo]) || '';
+      document.getElementById(elId).value = elId === 'eCnpj' ? Doc.formatar((empresa && empresa[campo]) || '') : (empresa && empresa[campo]) || '';
     });
     logoEmpresa = empresa?.logo || null;
     mostrarPreviaLogo();
@@ -2516,7 +2518,7 @@ function abrirFormularioTabelaPreco(tabela = null) {
     const el = document.getElementById(elId);
     const padrao = { descarga_modo: 'fixo', descarga_aplicar: 'lista', icms_incluir: 'false', icms_modo: 'dentro' }[campo] ?? '';
     const valorBruto = tabela ? (tabela[campo] ?? padrao) : padrao;
-    el.value = el.classList.contains('campo-moeda') ? formatarMoedaExibicao(valorBruto) : String(valorBruto);
+    el.value = el.classList.contains('campo-moeda') ? formatarMoedaExibicao(valorBruto) : el.id === 'pClienteDoc' ? Doc.formatar(valorBruto) : String(valorBruto);
   });
   atualizarUfTransportadoraSelecionada();
   document.getElementById('pAtiva').checked = tabela ? !!tabela.ativa : true;
@@ -2708,7 +2710,7 @@ async function carregarTabelasPreco() {
         <td><a class="link-registro" onclick="abrirTabelaPrecoParaEdicao(${t.id})">${t.nome}</a>
           <a class="link-registro" title="Imprimir / salvar em PDF só esta tabela" style="margin-left:8px; text-decoration:none;" onclick="imprimirTabelasPreco({ tabela_id: ${t.id} })">🖨</a>
           <a class="link-registro" title="Exportar a tabela completa (dados + trechos) em Excel, para usar em outra empresa" style="margin-left:6px; text-decoration:none;" onclick="exportarTabelaCompleta(${t.id})">⬇</a>
-          ${t.cliente_doc ? `<br><span class="badge badge-pendente" title="Vale só quando este cliente paga o frete">⭐ ${escaparHtmlTabelaCliente(t.cliente_nome || t.cliente_doc)}${t.cliente_por_raiz ? ' (todas as filiais)' : ''}</span>` : ''}</td>
+          ${t.cliente_doc ? `<br><span class="badge badge-pendente" title="Vale só quando este cliente paga o frete">⭐ ${escaparHtmlTabelaCliente(t.cliente_nome || Doc.formatar(t.cliente_doc))}${t.cliente_por_raiz ? ' (todas as filiais)' : ''}</span>` : ''}</td>
         <td>${t.transportadora_nome}</td>
         <td>${t.cidade_destino ? `${t.cidade_destino}/${t.uf_destino || ''}` : (t.uf_destino || 'Todos')}</td>
         <td>${formatoMoeda(t.valor_minimo)}</td>
@@ -9860,7 +9862,7 @@ async function carregarConsolidacao() {
       const nfs = g.notas.map((n) => n.numero_nf).join(', ');
       return `<div style="border:1px solid var(--borda); border-radius:var(--raio); padding:12px 14px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start;">
-          <div><b>${cfEsc(g.cliente || '—')}</b> <small style="color:var(--texto-fraco);">${cfEsc(g.cliente_documento || '')}</small><br>
+          <div><b>${cfEsc(g.cliente || '—')}</b> <small style="color:var(--texto-fraco);">${cfEsc(Doc.formatar(g.cliente_documento || ''))}</small><br>
             <span style="font-size:12.5px;">Entrega até ${ondeTxt} · ${cfEsc(g.transportadora)}${g.transportadora_definida ? '' : ' <small style="color:var(--texto-fraco);">(sem transportadora na nota: a mais barata para o grupo)</small>'}</span>${linhaCargaCs(g)}</div>
           <div style="text-align:right;"><div style="font-size:12px; color:var(--texto-fraco);">${d.embarcadas ? 'Pago em CT-e separados' : 'Em CT-e separados'}: ${formatoMoeda(g.separado)}<br>Num CT-e só: ${formatoMoeda(g.junto)}</div>
             <div style="font-size:16px; font-weight:800; color:var(--verde);">${d.embarcadas ? 'Teria economizado' : 'Economia'} ${formatoMoeda(g.economia)}</div></div>

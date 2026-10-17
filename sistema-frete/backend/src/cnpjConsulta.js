@@ -101,7 +101,8 @@ async function consultarServicos(cnpj) {
   }
   if (base) return base;
   if (naoAchou === FONTES.length) return { naoEncontrado: true, erro: 'CNPJ não encontrado na Receita (em nenhum dos serviços de consulta).' };
-  return { falhou: true, erro: `Não consegui consultar o CNPJ agora (${erros.join(' · ')}). Preencha à mão ou tente de novo em alguns minutos.` };
+  console.error('[cnpj] consulta falhou:', erros.join(' · '));
+  return { falhou: true, erro: 'Os serviços de consulta da Receita não responderam agora. Preencha à mão ou tente de novo em alguns minutos.', detalhe: erros.join(' · ') };
 }
 
 // Cidade sem código IBGE (ReceitaWS): procura nas cidades que o sistema já conhece (clientes e CT-e).

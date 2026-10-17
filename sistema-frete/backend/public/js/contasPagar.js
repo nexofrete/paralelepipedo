@@ -95,7 +95,7 @@
         <div class="campo"><label for="cpCategoria">Categoria</label><select id="cpCategoria">${Object.entries(cat.categorias).map(([k, n]) => `<option value="${k}" ${c?.categoria === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
         <div class="campo"><label for="cpCentro">Centro de custo</label><select id="cpCentro"><option value="">${c ? '— nenhum —' : '— automático (veículo/filial) —'}</option>${(centrosCc || []).map((x) => `<option value="${x.id}" ${Number(c?.centro_custo_id) === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></div>
         <div class="campo largo"><label for="cpForn">Fornecedor</label><input id="cpForn" maxlength="200" value="${v('fornecedor_nome')}" /></div>
-        <div class="campo"><label for="cpFornDoc">CNPJ / CPF</label><input id="cpFornDoc" maxlength="18" value="${v('fornecedor_doc')}" /></div>
+        <div class="campo"><label for="cpFornDoc">CNPJ / CPF</label><input id="cpFornDoc" maxlength="18" value="${esc(Doc.formatar(c?.fornecedor_doc ?? ''))}" /></div>
         <div class="campo"><label for="cpDoc">Documento (NF, boleto)</label><input id="cpDoc" maxlength="60" value="${v('documento')}" /></div>
         <div class="campo"><label for="cpValor">${c ? 'Valor' : 'Valor (total)'}</label><input id="cpValor" inputmode="decimal" value="${c ? esc(num2(c.valor)) : ''}" /></div>
         <div class="campo"><label for="cpVenc">${c ? 'Vencimento' : '1º vencimento'}</label><input id="cpVenc" type="date" value="${c ? esc(String(c.vencimento).slice(0, 10)) : hoje()}" /></div>
@@ -124,7 +124,7 @@
     const falta = Number(c.valor) - Number(c.valor_pago);
     $('cpModalConteudo').innerHTML = `${titulo(`💸 ${esc(c.descricao)}${c.parcela ? ` <small>(${esc(c.parcela)})</small>` : ''}`)}
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px 18px; margin-top:12px; font-size:13.5px;">
-        <div><span style="color:var(--texto-fraco); font-size:12px;">Fornecedor</span><br>${esc(c.fornecedor_nome || '—')}${c.fornecedor_doc ? `<br><small>${esc(c.fornecedor_doc)}</small>` : ''}</div>
+        <div><span style="color:var(--texto-fraco); font-size:12px;">Fornecedor</span><br>${esc(c.fornecedor_nome || '—')}${c.fornecedor_doc ? `<br><small>${esc(Doc.formatar(c.fornecedor_doc))}</small>` : ''}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Categoria</span><br>${esc(cat.categorias[c.categoria] || c.categoria)}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Centro de custo</span><br>${esc((centrosCc || []).find((x) => x.id === Number(c.centro_custo_id))?.nome || '—')}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Vencimento</span><br><b>${dia(c.vencimento)}</b></div>
@@ -198,13 +198,13 @@
         <div class="campo"><label for="axData">Saída</label><input id="axData" type="date" value="${a ? esc(String(a.data_saida).slice(0, 10)) : hoje()}" /></div>
         <div class="campo largo"><label for="axDesc">Rota / descrição</label><input id="axDesc" maxlength="200" value="${v('descricao')}" placeholder="Campinas → Curitiba" /></div>
         <div class="campo"><label for="axMot">Motorista</label><input id="axMot" list="axMotLista" maxlength="120" value="${v('motorista_nome')}" /><datalist id="axMotLista">${(Array.isArray(motoristas) ? motoristas : []).map((m) => `<option value="${esc(m.nome)}"></option>`).join('')}</datalist></div>
-        <div class="campo"><label for="axCpf">CPF do motorista</label><input id="axCpf" maxlength="14" value="${v('motorista_cpf')}" /></div>
+        <div class="campo"><label for="axCpf">CPF do motorista</label><input id="axCpf" maxlength="14" value="${esc(Doc.formatar(a?.motorista_cpf ?? ''))}" /></div>
         <div class="campo"><label for="axPlaca">Placa</label><input id="axPlaca" maxlength="8" style="text-transform:uppercase;" value="${v('placa')}" /></div>
         <div class="campo"><label for="axAdiant">Adiantamento (R$)</label><input id="axAdiant" inputmode="decimal" value="${a ? esc(num2(a.adiantamento)) : ''}" /></div>
       </div></div>
       <div class="cte-secao" id="axTerceiro"><h4>Contratação do terceiro</h4><div class="cte-grade">
         <div class="campo largo"><label for="axProp">Contratado (quem recebe o frete)</label><input id="axProp" maxlength="200" value="${v('proprietario_nome')}" placeholder="o próprio motorista, se for autônomo" /></div>
-        <div class="campo"><label for="axPropDoc">CPF / CNPJ</label><input id="axPropDoc" maxlength="18" value="${v('proprietario_doc')}" /></div>
+        <div class="campo"><label for="axPropDoc">CPF / CNPJ</label><input id="axPropDoc" maxlength="18" value="${esc(Doc.formatar(a?.proprietario_doc ?? ''))}" /></div>
         <div class="campo"><label for="axRntrc">RNTRC</label><input id="axRntrc" maxlength="20" value="${v('rntrc')}" /></div>
         <div class="campo"><label for="axFrete">Frete contratado (R$)</label><input id="axFrete" inputmode="decimal" value="${a ? esc(num2(a.valor_frete)) : ''}" /></div>
         <div class="campo"><label for="axPrazo">Saldo pago em (dias após o acerto)</label><input id="axPrazo" type="number" min="0" max="120" value="${a?.prazo_saldo_dias ?? 0}" /></div>
@@ -216,7 +216,7 @@
       </div></div>
       <div class="cte-secao"><h4>Vale-pedágio (pago pelo contratante)</h4><div class="cte-grade">
         <div class="campo"><label for="axVpValor">Valor</label><input id="axVpValor" inputmode="decimal" value="${a && Number(a.vale_pedagio_valor) ? esc(num2(a.vale_pedagio_valor)) : ''}" /></div>
-        <div class="campo"><label for="axVpCnpj">CNPJ da fornecedora</label><input id="axVpCnpj" maxlength="18" value="${v('vale_pedagio_cnpj')}" /></div>
+        <div class="campo"><label for="axVpCnpj">CNPJ da fornecedora</label><input id="axVpCnpj" maxlength="18" value="${esc(Doc.formatar(a?.vale_pedagio_cnpj ?? ''))}" /></div>
         <div class="campo"><label for="axVpCompra">Nº do comprovante</label><input id="axVpCompra" maxlength="30" value="${v('vale_pedagio_compra')}" /></div>
       </div><p class="edi-dica" style="margin:0;">Com MDF-e ainda não transmitido, o CIOT e o vale-pedágio já vão para ele.</p></div>
       <div class="campo"><label for="axObs">Observação</label><input id="axObs" maxlength="2000" value="${v('observacao')}" /></div>
@@ -230,10 +230,10 @@
       const m = mdfes.find((x) => x.id === Number($('axMdfe').value)); if (!m) return;
       if (!$('axPlaca').value && m.placa) $('axPlaca').value = m.placa;
       const cond = (m.condutores || [])[0];
-      if (cond && !$('axMot').value) { $('axMot').value = cond.xNome || cond.nome || ''; $('axCpf').value = cond.cpf || cond.CPF || ''; }
+      if (cond && !$('axMot').value) { $('axMot').value = cond.xNome || cond.nome || ''; $('axCpf').value = Doc.formatar(cond.cpf || cond.CPF || ''); }
       if (!$('axDesc').value) $('axDesc').value = `${m.uf_ini || ''} → ${m.uf_fim || ''}`;
     });
-    $('axMot').addEventListener('change', () => { const m = (Array.isArray(motoristas) ? motoristas : []).find((x) => x.nome === $('axMot').value); if (m && !$('axCpf').value) $('axCpf').value = m.cpf || ''; });
+    $('axMot').addEventListener('change', () => { const m = (Array.isArray(motoristas) ? motoristas : []).find((x) => x.nome === $('axMot').value); if (m && !$('axCpf').value) $('axCpf').value = Doc.formatar(m.cpf || ''); });
     // Retenção do TAC: calcula ao marcar ou mudar o frete (dá para corrigir à mão).
     const calcImpostos = async () => {
       if (!$('axReter').checked) return;

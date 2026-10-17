@@ -298,12 +298,12 @@
         ${campo('mfPeso', 'Peso bruto total', fmt(d.tot?.qCarga, 4))}${campo('mfLacres', 'Lacres (separe por espaço)', (d.lacres || []).join(' '), { classe: 'largo' })}</div>`)}
       ${sec('Seguro da carga', `<div class="cte-grade">
         <div class="campo"><label for="mfRespSeg">Responsável</label><select id="mfRespSeg" class="cte-entrada"><option value="1" ${String(seg.respSeg || '1') === '1' ? 'selected' : ''}>Emitente (transportadora)</option><option value="2" ${String(seg.respSeg) === '2' ? 'selected' : ''}>Contratante</option></select></div>
-        ${campo('mfSegNome', 'Seguradora', seg.xSeg || '', { classe: 'largo' })}${campo('mfSegCnpj', 'CNPJ da seguradora', seg.cnpjSeg || '')}${campo('mfApolice', 'Nº da apólice', seg.nApol || '')}
-        ${campo('mfAverb', 'Nº(s) de averbação (separe por espaço)', (seg.nAver || []).join(' '), { classe: 'largo' })}${campo('mfRespDoc', 'CNPJ/CPF do contratante (se ele contratou)', seg.respDoc || '')}</div>`)}
+        ${campo('mfSegNome', 'Seguradora', seg.xSeg || '', { classe: 'largo' })}${campo('mfSegCnpj', 'CNPJ da seguradora', Doc.formatar(seg.cnpjSeg || ''))}${campo('mfApolice', 'Nº da apólice', seg.nApol || '')}
+        ${campo('mfAverb', 'Nº(s) de averbação (separe por espaço)', (seg.nAver || []).join(' '), { classe: 'largo' })}${campo('mfRespDoc', 'CNPJ/CPF do contratante (se ele contratou)', Doc.formatar(seg.respDoc || ''))}</div>`)}
       ${sec('CIOT, vale-pedágio e contratante (quando houver)', `<div class="cte-grade">
-        ${campo('mfCiot', 'CIOT', ciot.ciot || '', { extra: 'maxlength="12"' })}${campo('mfCiotDoc', 'CPF/CNPJ do contratado (CIOT)', ciot.doc || '')}
-        ${campo('mfVpForn', 'CNPJ fornecedora vale-pedágio', vp.cnpjForn || '')}${campo('mfVpDoc', 'CPF/CNPJ do pagador', vp.docPg || '')}${campo('mfVpCompra', 'Nº do comprovante', vp.nCompra || '')}${campo('mfVpValor', 'Valor do vale-pedágio', fmt(vp.vValePed))}
-        ${campo('mfContrNome', 'Contratante do frete (nome)', d.contratantes?.[0]?.xNome || '', { classe: 'largo' })}${campo('mfContrDoc', 'CNPJ/CPF do contratante', d.contratantes?.[0]?.doc || '')}</div>`)}
+        ${campo('mfCiot', 'CIOT', ciot.ciot || '', { extra: 'maxlength="12"' })}${campo('mfCiotDoc', 'CPF/CNPJ do contratado (CIOT)', Doc.formatar(ciot.doc || ''))}
+        ${campo('mfVpForn', 'CNPJ fornecedora vale-pedágio', Doc.formatar(vp.cnpjForn || ''))}${campo('mfVpDoc', 'CPF/CNPJ do pagador', Doc.formatar(vp.docPg || ''))}${campo('mfVpCompra', 'Nº do comprovante', vp.nCompra || '')}${campo('mfVpValor', 'Valor do vale-pedágio', fmt(vp.vValePed))}
+        ${campo('mfContrNome', 'Contratante do frete (nome)', d.contratantes?.[0]?.xNome || '', { classe: 'largo' })}${campo('mfContrDoc', 'CNPJ/CPF do contratante', Doc.formatar(d.contratantes?.[0]?.doc || ''))}</div>`)}
       ${sec('Observações', `<textarea id="mfObs" class="cte-entrada" rows="2" style="width:100%;">${esc(d.infCpl || '')}</textarea>`)}
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
         <button class="btn btn-secundario" data-mdfe-fechar style="width:auto;">Fechar</button>
@@ -397,7 +397,7 @@
         <div class="campo"><label for="veRod">Tipo de rodado</label><select id="veRod" class="cte-entrada">${opcoes(tabelas.tiposRodado, x.tp_rod || '01')}</select></div>
         <div class="campo"><label for="veCar">Carroceria</label><select id="veCar" class="cte-entrada">${opcoes(tabelas.tiposCarroceria, x.tp_car || '02')}</select></div></div></div>
       <details ${p.doc ? 'open' : ''}><summary style="cursor:pointer;">Veículo de terceiro (agregado / TAC)</summary><div class="cte-grade" style="margin-top:8px;">
-        ${campo('vePropDoc', 'CPF/CNPJ do proprietário', p.doc || '')}${campo('vePropNome', 'Nome do proprietário', p.xNome || '', { classe: 'largo' })}${campo('vePropRntrc', 'RNTRC', p.rntrc || '', { extra: 'maxlength="8"' })}
+        ${campo('vePropDoc', 'CPF/CNPJ do proprietário', Doc.formatar(p.doc || ''))}${campo('vePropNome', 'Nome do proprietário', p.xNome || '', { classe: 'largo' })}${campo('vePropRntrc', 'RNTRC', p.rntrc || '', { extra: 'maxlength="8"' })}
         ${campo('vePropIe', 'IE (ou ISENTO)', p.ie || '')}${selUf('vePropUf', 'UF', p.uf)}
         <div class="campo"><label for="vePropTp">Tipo</label><select id="vePropTp" class="cte-entrada"><option value="0">TAC agregado</option><option value="1" ${String(p.tpProp) === '1' ? 'selected' : ''}>TAC independente</option><option value="2" ${String(p.tpProp) === '2' ? 'selected' : ''}>Outros</option></select></div></div></details>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;"><button class="btn btn-secundario" data-mdfe-fechar style="width:auto;">Voltar</button><button class="btn btn-primario" id="veSalvar" style="width:auto;">Salvar</button></div>`;

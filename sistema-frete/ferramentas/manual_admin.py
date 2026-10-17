@@ -254,7 +254,12 @@ def parte_admin(g):
         s += h3(titulo)
         s.append(P(texto))
 
-    # Glossário
+    return s
+
+
+def parte_glossario(g):
+    P, h1, tabela = g['P'], g['h1'], g['tabela']
+    s = []
     s += h1('Glossário')
     s += tabela(['Termo', 'Significado'], [
         ['NF-e', 'Nota fiscal eletrônica da venda.'],
@@ -272,5 +277,13 @@ def parte_admin(g):
         ['Tolerância', 'Diferença pequena aceita sem travar o pagamento.'],
         ['SLA', 'Prazo de entrega combinado; no prazo × atrasado.'],
         ['Canhoto', 'Comprovante de entrega assinado por quem recebeu.'],
+        ['MDF-e', 'Manifesto eletrônico da viagem: lista os CT-e que vão no caminhão.'],
+        ['NFS-e', 'Nota fiscal de serviço: usada no frete dentro do mesmo município (ISS).'],
+        ['Romaneio', 'Lista de entregas (e coletas) de um caminhão, com a ordem e o motorista.'],
+        ['CNAB 240', 'Padrão dos arquivos de remessa e retorno de boletos com o banco.'],
+        ['OFX', 'Arquivo do extrato bancário, para a conciliação.'],
+        ['Webhook', 'Aviso automático que o Nexofrete manda ao ERP quando algo muda.'],
+        ['Chave de API', 'Senha de acesso que o ERP usa para consultar o Nexofrete.'],
+        ['OUTRAUF', 'ICMS devido a outra UF, recolhido por GNRE, fora da apuração própria.'],
     ], [0.25, 0.75])
     return s

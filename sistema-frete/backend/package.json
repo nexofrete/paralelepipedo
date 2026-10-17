@@ -1,6 +1,6 @@
 {
   "name": "sistema-frete-backend",
-  "version": "1.72.0",
+  "version": "1.73.0",
   "description": "Servidor do sistema de acompanhamento de fretes (login, upload de XML de CT-e/NF-e, PostgreSQL, páginas web)",
   "main": "server.js",
   "scripts": {

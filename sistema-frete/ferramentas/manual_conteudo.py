@@ -2,13 +2,16 @@
 """
 Conteúdo do Manual do Nexofrete.
 
-A cada versão nova: atualize o texto das seções que mudaram e rode
-ferramentas/gerar-manual.py. Use só caracteres do Latin-1 (acentos,
+A cada função nova (não só a cada versão): atualize o texto das seções que
+mudaram — Partes 1 a 3 aqui, em manual_uso.py e manual_admin.py; Partes 4 a 6
+(transportadora, financeiro e gestão, integrações) em manual_transportadora.py —
+e rode ferramentas/gerar-manual.py. Use só caracteres do Latin-1 (acentos,
 travessão, «», ×, ³ estão ok; setas, emojis e ✓ não).
 Negrito: <b>...</b>  |  "&" precisa ser escrito como &amp;
 """
 from manual_uso import parte_uso
-from manual_admin import parte_admin
+from manual_admin import parte_admin, parte_glossario
+from manual_transportadora import parte_operacao, parte_financeiro, parte_integracoes
 
 
 def parte_instalacao(g):
@@ -218,4 +221,8 @@ def montar(g):
     s += parte_instalacao(g)
     s += parte_uso(g)
     s += parte_admin(g)
+    s += parte_operacao(g)
+    s += parte_financeiro(g)
+    s += parte_integracoes(g)
+    s += parte_glossario(g)
     return s

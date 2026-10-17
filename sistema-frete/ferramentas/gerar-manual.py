@@ -28,6 +28,24 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (BaseDocTemplate, CondPageBreak, Frame, KeepTogether, NextPageTemplate,
                                 PageBreak, PageTemplate, Paragraph, Spacer, Table, TableStyle)
 from reportlab.platypus.tableofcontents import TableOfContents
+import re as _re
+
+# A fonte padrão do PDF (Helvetica, WinAnsi) não tem emojis nem setas: troca o que tem
+# equivalente e tira o resto, para não sair quadradinho no lugar.
+_TROCAS = {'−': '-', '→': '»', '←': '«', '⇒': '»', '↑': '', '↓': '', '✓': '', '✔': '', '✕': 'x', '✗': 'x', '…': '...'}
+def _limpar(texto):
+    t = ''.join(_TROCAS.get(c, c) for c in str(texto))
+    t = ''.join(c for c in t if _cabe(c))
+    t = _re.sub(r'(<b>|<i>)\s+', r'\1', t)
+    return _re.sub(r'[ \t]{2,}', ' ', t)
+def _cabe(c):
+    try:
+        c.encode('cp1252'); return True
+    except UnicodeEncodeError:
+        return False
+_ParagraphOriginal = Paragraph
+def Paragraph(texto, *a, **k):  # noqa: N802 — mesmo nome do reportlab, usado em todo o arquivo
+    return _ParagraphOriginal(_limpar(texto), *a, **k)
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
@@ -200,14 +218,16 @@ def desenhar_capa(canv, doc):
     canv.setFont('Helvetica', 17)
     canv.drawString(MARGEM, ALTURA * 0.72 - 30, 'Manual completo do sistema')
     canv.setFont('Helvetica', 11.5)
-    canv.drawString(MARGEM, ALTURA * 0.72 - 54, 'Instalação, uso no dia a dia, administração e segurança')
+    canv.drawString(MARGEM, ALTURA * 0.72 - 54, 'Instalação, uso, administração, transportadora, financeiro e integrações')
     canv.setFont('Helvetica-Bold', 12)
     canv.drawString(MARGEM, ALTURA * 0.50, 'Versão do sistema: %s' % VERSAO)
     canv.setFillColor(CINZA_TEXTO)
     canv.setFont('Helvetica', 10.5)
     y = ALTURA * 0.34
     for linha in ['Acompanhamento de NF-e e CT-e, tabelas de preço,', 'auditoria de frete, aprovação de pagamento,',
-                  'conferência de faturas, relatórios e sinistros.']:
+                  'conferência de faturas, relatórios e sinistros.',
+                  'Para a transportadora: CT-e, MDF-e, NFS-e, entregas, frota,',
+                  'faturamento, cobrança, caixa, contabilidade e integração com ERP.']:
         canv.drawString(MARGEM, y, linha)
         y -= 15
     canv.setFillColor(CINZA_FRACO)

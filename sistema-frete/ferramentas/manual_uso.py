@@ -157,6 +157,9 @@ def parte_uso(g):
                              '"Tirar da lista os registros que vieram só da planilha" limpa registros criados assim por '
                              'versões antigas.')
     s.append(P('A planilha também pode ser importada sozinha: veja "Importação automática da planilha do ERP" na seção 24.'))
+    s += aviso('novo', 'A tabela acima é o <b>formato padrão</b>. A planilha de outro ERP, com outras colunas (ex.: "Nota '
+                       'Fiscal", "Peso Bruto"), é lida por um <b>modelo de planilha</b>: veja a seção 54. Quando houver '
+                       'modelos, a tela de envio mostra a escolha do modelo ao lado do botão. Aceita .xlsx, .xls e .csv.')
     s += h2('Devolução / troca de nota (e-mail)')
     s.append(P('Em <b>Enviar XML » Devolução / troca de nota</b>, cole o e-mail padrão de devolução. O sistema lê a NF original, '
                'a NF substituta, a nota de retorno, o pedido, o cliente, o motivo e onde está a mercadoria, mostra para conferir e, '
@@ -632,6 +635,11 @@ def parte_uso(g):
         'clique em <b>Testar conexão</b>. O botão <b>Buscar entregas</b> e a busca das 6h30 passam a ler o portal: '
         'preenchem a data da entrega ("Entrega realizada"), a data da coleta (se estiver vazia) e o histórico. A senha '
         'fica criptografada no servidor e não aparece de novo na tela.',
+        '<b>Central de Canhotos da LD Rio Pizzo</b>: no cadastro da transportadora, em <b>Portal de rastreamento</b>, '
+        'escolha "Central de Canhotos (LD Rio Pizzo)" e informe o mesmo e-mail e senha usados no site da LD Rio. Salve e '
+        'clique em <b>Testar conexão</b>: aparece quantas notas vieram do portal. A busca das 6h30 e o botão de rastreamento '
+        'passam a preencher a Data da Entrega (origem "portal"), com quem recebeu e a situação da nota. Se o portal '
+        'mudar o formato, o teste mostra as colunas que vieram, para o suporte ajustar.',
         '<b>EDI (OCOREN)</b>: arquivo de ocorrências de entrega no padrão PROCEDA — veja o documento de solicitação de '
         'integração EDI para enviar à transportadora.',
         '<b>Link de rastreamento</b>: no cadastro da transportadora, o endereço com {NF}, {CTE} ou {CHAVE_NFE} coloca o botão '

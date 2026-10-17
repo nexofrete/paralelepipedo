@@ -2,6 +2,64 @@
   "proposta": "O Nexofrete acompanha cada frete da empresa, da emissão da nota fiscal até o pagamento da transportadora. Ele lê os XML de NF-e e CT-e, liga cada CT-e à nota que ele transporta, calcula pela tabela de preço negociada quanto aquele frete deveria custar e compara com o que a transportadora cobrou: o que bate é liberado para pagamento sozinho; o que diverge fica retido até alguém decidir. Também acompanha as entregas (inclusive buscando sozinho nas transportadoras), as notas paradas no estoque, as faturas, os sinistros e os custos de frete por cliente e por transportadora.",
   "versoes": [
     {
+      "versao": "1.73.0",
+      "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
+      "itens": [
+        {
+          "area": "Menu",
+          "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
+        },
+        {
+          "area": "Menu",
+          "texto": "Filtro de período igual em todas as telas (Este mês, Mês passado, Últimos 30 dias...), lembrado em cada tela."
+        },
+        {
+          "area": "Financeiro",
+          "texto": "Régua de cobrança: lembretes automáticos por e-mail e WhatsApp antes e depois do vencimento, com pausa por cliente e pagamento prometido."
+        },
+        {
+          "area": "Financeiro",
+          "texto": "Caixa e bancos: saldos, conciliação do extrato OFX com sugestões, lançamentos avulsos, transferências e fluxo de caixa de 30/60/90 dias."
+        },
+        {
+          "area": "Financeiro",
+          "texto": "Comissão de vendedores (sobre o recebido ou o faturado), com carteira de clientes, fechamento em contas a pagar e estornos."
+        },
+        {
+          "area": "Gestão",
+          "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
+        },
+        {
+          "area": "Fiscal",
+          "texto": "Fiscal e contabilidade: livro de saídas, lançamentos contábeis, pacote do contador com envio automático; ajustes de meses anteriores, ICMS de outra UF e só documentos de produção."
+        },
+        {
+          "area": "Rastreamento",
+          "texto": "Rastreamento pela Central de Canhotos da LD Rio Pizzo, preenchendo a Data da Entrega como já era feito com a Andrade e Abreu."
+        },
+        {
+          "area": "Integração",
+          "texto": "Integração com ERP: chaves de API, consulta de CT-e, entregas e faturas, envio de NF-e que vira rascunho de CT-e e avisos automáticos (webhooks) assinados."
+        },
+        {
+          "area": "Integração",
+          "texto": "Modelos de planilha por ERP: importar a planilha de qualquer ERP indicando as colunas, e exportar CT-e, fretes ou faturas no formato que o ERP lê."
+        },
+        {
+          "area": "Cadastros",
+          "texto": "CNPJ automático em todos os cadastros: ao digitar, preenche os dados da Receita (endereço, cidade com código IBGE, IE, contato), com máscara, validação e CNPJ alfanumérico."
+        },
+        {
+          "area": "Segurança",
+          "texto": "Revisão de segurança e de cálculos: comprovantes enviados não executam como página, portal do cliente só aceita os campos permitidos, baixa de fatura sem duplicar, boleto e conciliação ajustados, datas no horário de Brasília."
+        },
+        {
+          "area": "Manual",
+          "texto": "Manual do sistema atualizado com as Partes 4 a 6: operação da transportadora, financeiro e gestão, e integrações."
+        }
+      ]
+    },
+    {
       "versao": "1.72.0",
       "titulo": "Auditoria, rastreamento automático e muito mais",
       "itens": [

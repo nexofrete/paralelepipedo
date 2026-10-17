@@ -504,6 +504,15 @@ Em **🚛 Operação de Transporte → 📍 Ocorrências de entrega** (quem emit
 - **Avisos ao cliente** (Configuração fiscal → Avisos de entrega): a cada ocorrência escolhida (saiu para entrega, entregue, não entregue, devolvido...), manda e-mail e/ou WhatsApp ao destinatário e a quem paga o frete, com o link de rastreio (preencha o "Endereço público"). Usa o e-mail e o celular que vieram na NF-e; WhatsApp só para celular. Cada envio (ou erro) fica registrado.
 - **EDI:** em EDI → Com o cliente, "OCOREN das ocorrências lançadas" gera o arquivo com o que foi lançado e ainda não foi enviado.
 
+## Rastreamento pelas transportadoras (embarcador)
+
+A Data da Entrega das notas é preenchida sozinha todo dia às 6h30 e pelo botão em **Entregas previstas**, sem mexer na data lançada à mão:
+- **SSW** (pela chave da NF-e), para as transportadoras marcadas "Rastreamento pela SSW".
+- **Portais próprios**, no cadastro da transportadora em **Portal de rastreamento** (senha criptografada, botão **Testar conexão**):
+  - **Lonngren** (Andrade e Abreu / ATA): link de login, empresa, usuário e senha.
+  - **Central de Canhotos (LD Rio Pizzo)**: só o e-mail e a senha do site. Lê as notas do portal e casa pela chave da NF-e ou pelo nº da NF + data (`src/rastreioLdrio.js`). Se o formato do portal mudar, o teste mostra as colunas que vieram.
+- **EDI OCOREN** e **Comprovante de Entrega da SEFAZ**.
+
 ## CNPJ/CPF em todos os cadastros
 
 - **Ao digitar o CNPJ**, o cadastro se preenche com os dados da Receita: razão social, nome fantasia, IE (quando o serviço informa), logradouro, número, complemento, bairro, cidade com o **código IBGE**, UF, CEP, telefone e e-mail — só nos campos vazios (o que já foi digitado fica). Vale em: transportadora, empresa, configuração fiscal (emitente, seguradora, responsável técnico), CT-e (remetente, destinatário, expedidor, recebedor, tomador, CT-e anterior), NFS-e, coleta, cotação, vendedor, contas a pagar, acerto de viagem, MDF-e (seguradora, contratante, proprietário do veículo), posto e oficina, régua, tabela de preço e licença.
@@ -664,7 +673,7 @@ Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a rec
    - cancelar a fatura (só sem recebimentos), e os CT-e voltam para "A faturar".
 4. **📈 Contas a receber:** mostra o total a receber, o vencido, o que vence em 7 dias, o recebido no mês e o que falta faturar. Também separa por tempo de atraso e lista os clientes que mais devem.
 
-O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento é conferido no extrato e baixado aqui. O boleto registrado precisa de convênio com o banco e ainda não faz parte.
+O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento pelo PIX é conferido no extrato (Caixa e bancos → Conciliação) ou baixado aqui. Para boleto registrado, veja "Boleto registrado (CNAB 240)".
 
 ## Roteirizar entregas
 

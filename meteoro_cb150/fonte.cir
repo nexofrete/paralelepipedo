@@ -1,0 +1,31 @@
+* Meteoro CB150 - fonte de alimentacao (TR + KBPC606 + C19/C20 + reguladores 12V)
+* Secundario simetrico 2 x 39 VAC (center tap no terra), 60 Hz.
+* Uso:  ngspice -b fonte.cir
+VA A 0 SIN(0 55.2 60)
+VB 0 B SIN(0 55.2 60)
+* ponte KBPC606
+DB1 A  VP55 DPONTE
+DB2 B  VP55 DPONTE
+DB3 VN55 A DPONTE
+DB4 VN55 B DPONTE
+C20 VP55 0 4700u
+C19 0 VN55 4700u
+* reguladores zener +/-12V
+R88 VP55 VP12 2.2k
+D1  0 VP12 DZ12
+R20 VN12 VN55 2.2k
+D2  VN12 0 DZ12
+C18 0 VN12 10u
+* carga equivalente: amplificador em repouso (~50 mA por trilho)
+RLP VP55 0 1.1k
+RLN 0 VN55 1.1k
+.model DPONTE D(Is=1e-9 Rs=0.02 N=1.8)
+.model DZ12   D(Is=1n Rs=5 BV=12 IBV=5m)
+.control
+tran 100u 2
+meas tran vpos avg v(vp55) from=1.5 to=2
+meas tran vneg avg v(vn55) from=1.5 to=2
+meas tran v12p avg v(vp12) from=1.5 to=2
+meas tran v12n avg v(vn12) from=1.5 to=2
+.endc
+.end

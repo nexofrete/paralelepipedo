@@ -1,0 +1,155 @@
+* Meteoro Amplifier - Pre Power CB150 (Poi 20.60.40.012, rev 0.0, 18/06/2007)
+* Netlist SPICE (ngspice) transcrita do esquema original.
+* Potenciometros na posicao de 50% indicada no esquema.
+* Uso:  ngspice -b meteoro_cb150.cir
+
+*======================== FONTES ========================
+* Fonte simetrica +/-55V (C19/C20 4700uF apos ponte KBPC606) - ideal aqui;
+* a fonte completa com trafo/ponte esta em fonte.cir
+VP55 VP55 0 DC 55
+VN55 VN55 0 DC -55
+
+* +/-12V para os op-amps: R88/R20 2K2 2W + zener 1N4742A (12V)
+R88 VP55 VP12 2.2k
+D1  0 VP12 DZ12
+R20 VN12 VN55 2.2k
+D2  VN12 0 DZ12
+C18 0 VN12 10u
+
+*======================== ENTRADA (J1) ========================
+VIN IN 0 DC 0 AC 0.1 SIN(0 0.1 1k)
+R1  IN N1 1.5k
+C1  N1 IN1P 22n
+R2  IN1P 0 220k
+
+*======== CI1A (TL082) - pre com ganho chaveado (CH1) ========
+XU1A IN1P IN1N OUT1 VP12 VN12 OPAMP
+R4  OUT1 IN1N 22k
+C3  OUT1 IN1N 330p
+R50 OUT1 N50 47k
+C11 N50 IN1N 22n
+C2  IN1N N2 10u
+R3  N2 N3 2.7k
+R13 N3 0 10k
+* CH1 fechado curto-circuita R13 (mais ganho). Para CH1 aberto troque por 1G.
+RCH1 N3 0 1G
+
+*======================== EQUALIZACAO ========================
+* RV2 100KB (agudos)  - extremos A=TONEM / B=TREB, cursor -> C6
+C4  OUT1 TREB 2.2n
+R6  OUT1 TONEM 12k
+RV2a TONEM RV2W 50k
+RV2b RV2W TREB 50k
+* RV4 50KA (reostato, cursor ligado ao extremo) em paralelo com C5
+C5  TONEN TONEM 100n
+RV4 TONEN TONEM 7.5k
+* R5 2K7 em paralelo com RV3 10KB (reostato) para terra
+R5  TONEN 0 2.7k
+RV3 TONEN 0 5k
+* acoplamento para CI1B
+C6  RV2W IN1BP 47n
+R7  IN1BP 0 270k
+
+*======== CI1B (TL082) - ganho 1+22k/2k2 = 11 ========
+XU1B IN1BP IN1BN OUT2 VP12 VN12 OPAMP
+R9  0 N9 2.2k
+C8  IN1BN N9 22u
+R8  OUT2 IN1BN 22k
+C7  OUT2 IN1BN 120p
+* rede de presenca: R10 47K || (R12 4K7 + C10 2n2)
+R10 OUT2 N10 47k
+R12 OUT2 N12 4.7k
+C10 N12 N10 2.2n
+C9  N10 IN2N 1u
+
+*======== CI2 (TL071) - inversor, RV1 20KB = ganho/master ========
+XU2 0 IN2N OUT3 VP12 VN12 OPAMP
+RV1 OUT3 IN2N 10k
+C13 OUT3 IN2N 330p
+
+*======================== POTENCIA ========================
+* entrada do power
+R14  OUT3 N14 4.7k
+C100 N14 QB1 2.2u
+R102 QB1 0 27k
+R101 QB1 N101 1k
+C101 N101 FB 4.7u
+* referencia da fonte de corrente da cauda: zener 9V1 + R100 5K6
+R100 VP55 VZ 5.6k
+D3   0 VZ DZ9V1
+C16  VZ 0 10u
+R15  VZ EDIF 3.3k
+* par diferencial PNP (MPSA92)
+Q1 VAS_B QB1 EDIF MPSA92
+Q2 VN55  FB  EDIF MPSA92
+* realimentacao: ganho = 1 + 3k3/120 = 28,5x (29 dB)
+R17 OUT FB 3.3k
+R16 FB N16 120
+C12 N16 0 220u
+* VAS (BD139) com compensacao Miller C14
+R19 VAS_B VN55 560
+Q3  VAS VAS_B VN55 BD139
+C14 VAS VAS_B 470p
+* multiplicador de Vbe (bias) Q8 + RV5 1K
+Q8  BIAS_T Q8B VAS MPSA42
+R21 BIAS_T RV5T 1.5k
+RV5a RV5T Q8B 500
+RV5b Q8B RV5B 500
+R22 RV5B VAS 680
+* bootstrap
+R23 BIAS_T NBOOT 2.7k
+R24 NBOOT VP55 2.7k
+C15 OUT NBOOT 47u
+* saida Darlington complementar
+Q5 VP55 BIAS_T Q7B BD139
+Q7 VP55 Q7B Q7E Q2SC5200
+R28 Q7E OUT 0.33
+Q4 VN55 VAS Q6B BD140
+Q6 VN55 Q6B Q6E Q2SA1943
+R27 Q6E OUT 0.33
+* Zobel
+R26 OUT N26 4.7
+C17 N26 0 100n
+* line out
+R29 OUT LINE 12k
+R30 LINE 0 470
+C21 LINE LINEOUT 1u
+RLINE LINEOUT 0 10k
+* alto-falante
+RSPK OUT 0 8
+
+*======================== MODELOS ========================
+.subckt OPAMP inp inn out vcc vee
+* op-amp JFET generico (TL07x): A0=100dB, GBW ~3MHz, saida limitada aos trilhos
+Rin inp inn 1T
+G1 0 n1 inp inn 1m
+R1 n1 0 100Meg
+C1 n1 0 53p
+B1 n2 0 V = (V(vcc)+V(vee))/2 + ((V(vcc)-V(vee))/2-1.5)*tanh((V(n1)-(V(vcc)+V(vee))/2)/((V(vcc)-V(vee))/2-1.5+1m))
+Ro n2 out 50
+.ends
+.model DZ12  D(Is=1n Rs=5 BV=12  IBV=5m)
+.model DZ9V1 D(Is=1n Rs=5 BV=9.1 IBV=5m)
+.model MPSA92 PNP(Is=650f Bf=150 Vaf=100 Ikf=0.1 Rb=10 Rc=1 Cjc=10p Cje=50p Tf=500p Tr=10n)
+.model MPSA42 NPN(Is=650f Bf=150 Vaf=100 Ikf=0.1 Rb=10 Rc=1 Cjc=6p Cje=50p Tf=500p Tr=10n)
+.model BD139 NPN(Is=1e-13 Bf=120 Vaf=100 Ikf=1 Rb=1 Rc=0.1 Re=0.05 Cjc=30p Cje=100p Tf=1n)
+.model BD140 PNP(Is=1e-13 Bf=120 Vaf=100 Ikf=1 Rb=1 Rc=0.1 Re=0.05 Cjc=40p Cje=100p Tf=1n)
+.model Q2SC5200 NPN(Is=5e-12 Bf=80 Vaf=200 Ikf=6 Rb=2 Rc=0.02 Re=0.01 Cjc=200p Cje=1n Tf=10n)
+.model Q2SA1943 PNP(Is=5e-12 Bf=80 Vaf=200 Ikf=6 Rb=2 Rc=0.02 Re=0.01 Cjc=300p Cje=1n Tf=10n)
+
+.options reltol=1e-4
+.control
+op
+echo "=== PONTO DE OPERACAO ==="
+print v(vp12) v(vn12) v(vz) v(edif) v(out) v(bias_t)-v(vas)
+print (v(q7e)-v(q6e))/0.66 
+ac dec 20 10 100k
+let g = vdb(out)-vdb(in)
+meas ac g1k find g at=1k
+wrdata ac_resp.txt vdb(out) vdb(in)
+tran 10u 20m
+fourier 1k v(out)
+meas tran vpk max v(out) from=10m to=20m
+wrdata tran_resp.txt v(out) v(in)
+.endc
+.end

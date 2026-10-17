@@ -29,10 +29,12 @@ H2 = ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical")
 H3 = ("Connector_PinHeader_2.54mm", "PinHeader_1x03_P2.54mm_Vertical")
 TB2 = ("TerminalBlock_Phoenix", "TerminalBlock_Phoenix_MKDS-1,5-2_1x02_P5.00mm_Horizontal")
 TB3 = ("TerminalBlock_Phoenix", "TerminalBlock_Phoenix_MKDS-1,5-3_1x03_P5.00mm_Horizontal")
+FUSE = ("Fuse", "Fuseholder_Clip-5x20mm_Littelfuse_100_Inline_P20.50x4.60mm_D1.30mm_Horizontal")
 
 # ref: (footprint, valor, {pad: net}, grupo)
 # eletroliticos: pad 1 = +   | diodos: pad 1 = catodo
-# TO-92 MPSA: 1=E 2=B 3=C | TO-126 BD: 1=E 2=C 3=B | TO-264: 1=B 2=C 3=E
+# TO-92 MPSA: 1=E 2=B 3=C | TO-92 BC546/BC556: 1=C 2=B 3=E
+# TO-126 BD: 1=E 2=C 3=B | TO-264: 1=B 2=C 3=E
 # TL082: 1 OUT1 2 IN1- 3 IN1+ 4 V- 5 IN2+ 6 IN2- 7 OUT2 8 V+
 P = {}
 
@@ -87,14 +89,23 @@ part("C101", CP5, "4u7/50V", ["N101", "FB"], "drv")
 part("R100", R12W, "5k6", ["VP55", "VZ"], "drv")
 part("D3", DZ, "1N4739", ["VZ", "GND"], "drv")
 part("C16", CP5, "10u/63V", ["VZ", "GND"], "drv")
-part("R15", R14W, "3k3", ["VZ", "EDIF"], "drv")
-part("Q1", TO92, "MPSA92", ["EDIF", "QB1", "VASB"], "drv")
-part("Q2", TO92, "MPSA92", ["EDIF", "FB", "VN55"], "drv")
-part("R17", R14W, "3k3", ["OUT", "FB"], "drv")
-part("R16", R14W, "120R", ["FB", "N16"], "drv")
+part("R15", R14W, "1k6", ["VZ", "EDIF"], "drv")
+part("Q1", TO92, "MPSA92", ["E1", "QB1", "VASB"], "drv")
+part("Q2", TO92, "MPSA92", ["E2", "FB", "NM"], "drv")
+# melhorias: degeneracao de emissor e espelho de corrente no par diferencial
+part("R37", R14W, "47R", ["E1", "EDIF"], "drv")
+part("R38", R14W, "47R", ["E2", "EDIF"], "drv")
+part("QM1", TO92, "MPSA42", ["EM1", "NM", "VASB"], "drv")
+part("QM2", TO92, "MPSA42", ["EM2", "NM", "NM"], "drv")
+part("RM1", R14W, "100R", ["EM1", "VN55"], "drv")
+part("RM2", R14W, "100R", ["EM2", "VN55"], "drv")
+part("R17", R14W, "27k", ["OUT", "FB"], "drv")
+part("R16", R14W, "1k", ["FB", "N16"], "drv")
 part("C12", CP10, "220u/63V", ["N16", "GND"], "drv")
-part("R19", R14W, "560R", ["VASB", "VN55"], "drv")
-part("Q3", TO126, "BD139", ["VN55", "VAS", "VASB"], "drv")
+part("R19", R14W, "33R", ["E3", "VN55"], "drv")
+part("Q3", TO126, "BD139", ["E3", "VAS", "VASB"], "drv")
+# melhoria: limitador de corrente do VAS
+part("Q9", TO92, "BC546", ["VASB", "E3", "VN55"], "drv")
 part("C14", C_CER, "470p", ["VAS", "VASB"], "drv")
 
 # ---- bias / drivers / saida ----
@@ -117,12 +128,24 @@ part("R29", R14W, "12k", ["OUT", "LINE"], "out")
 part("R30", R14W, "470R", ["LINE", "GND"], "out")
 part("C21", C_FILM10, "1u", ["LINE", "LINEOUT"], "out")
 part("JLINE", H2, "LINE OUT", ["LINEOUT", "GND"], "out")
-part("JSPK", TB2, "SPEAKER", ["OUT", "GNDP"], "out")
+# melhorias: resistor entre drivers, limitadores de corrente da saida, bobina de saida
+part("R31", R14W, "220R", ["Q7B", "Q6B"], "out")
+part("R32", R14W, "3k3", ["Q7E", "QL1B"], "out")
+part("R33", R14W, "1k", ["QL1B", "OUT"], "out")
+part("QL1", TO92, "BC546", ["BIAST", "QL1B", "OUT"], "out")
+part("R34", R14W, "3k3", ["Q6E", "QL2B"], "out")
+part("R35", R14W, "1k", ["QL2B", "OUT"], "out")
+part("QL2", TO92, "BC556", ["VAS", "QL2B", "OUT"], "out")
+part("L1", R2W, "10R 2W + 1uH", ["OUT", "SPK"], "out")
+part("JSPK", TB2, "SPEAKER", ["SPK", "GNDP"], "out")
 
 # ---- fonte ----
-part("JPWR", TB3, "+55 GND -55", ["VP55", "GNDP", "VN55"], "psu")
-part("C20", CP35, "4700u/63V", ["VP55", "GNDP"], "psu")
-part("C19", CP35, "4700u/63V", ["GNDP", "VN55"], "psu")
+part("JPWR", TB3, "+55 GND -55", ["VP55R", "GNDP", "VN55R"], "psu")
+part("C20", CP35, "10000u/63V", ["VP55R", "GNDP"], "psu")
+part("C19", CP35, "10000u/63V", ["GNDP", "VN55R"], "psu")
+# melhoria: fusiveis 5 A rapidos entre os capacitores e o amplificador
+part("F1", FUSE, "5A rapido", {"1": "VP55R", "2": "VP55"}, "psu")
+part("F2", FUSE, "5A rapido", {"1": "VN55", "2": "VN55R"}, "psu")
 part("R88", R2W, "2k2 2W", ["VP55", "VP12"], "psu")
 part("D1", DZ, "1N4742A", ["VP12", "GND"], "psu")
 part("R20", R2W, "2k2 2W", ["VN12", "VN55"], "psu")
@@ -133,7 +156,7 @@ part("JGND", R14W, "PONTE FIO", ["GND", "GNDP"], "psu")
 
 # largura de trilha (mm) por net
 # (grade de roteamento de 1,27 mm: trilhas <= 0,8 mm podem ficar em celulas vizinhas)
-WIDTH = {"VP55": 2.0, "VN55": 2.0, "OUT": 2.0, "Q7E": 2.0, "Q6E": 2.0, "GNDP": 2.0,
+WIDTH = {"VP55": 2.0, "VN55": 2.0, "VP55R": 2.0, "VN55R": 2.0, "SPK": 2.0, "OUT": 2.0, "Q7E": 2.0, "Q6E": 2.0, "GNDP": 2.0,
          "GND": 1.2, "Q7B": 1.2, "Q6B": 1.2}
 DEFAULT_WIDTH = 0.75
 CLEARANCE = 0.5

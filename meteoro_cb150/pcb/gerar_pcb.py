@@ -1,15 +1,15 @@
-"""Gera a placa (face simples, cobre no lado da solda) do Pre Power CB150.
+"""Gera a placa do Pre Power CB150 (dupla face, ou face simples com jumpers).
 
 Etapas: carrega os footprints do KiCad, posiciona os componentes (posicao_<semente>.json;
 se nao existir, recozimento simulado que minimiza comprimento e cruzamentos), roteia as
-trilhas com o roteador de negociacao de congestionamento (roteador.py), faz o GND de
-sinal como plano de cobre e liga ilhas isoladas com jumpers.
+trilhas com o roteador de negociacao de congestionamento (roteador.py) e faz o GND de
+sinal tambem como plano de cobre. Em face simples, ilhas isoladas do plano recebem jumpers.
 Saida: meteoro_cb150.kicad_pcb (o PDF e gerado por gerar_pdf.py).
 
-Placa publicada:  POUR=GND JUMP_COST=100 python3 gerar_pcb.py 43
-Variaveis: POUR (nets em plano), JUMP_COST, JUMP_START, ITERS, MANUAL/T0/ANCHOR
-(posicionamento a partir de posicao_manual.py), REUSE_ROUTE (reaproveita rota_*.pkl),
-SAIDA (arquivo de saida).
+Placa publicada (dupla face):  LAYERS=2 POUR=GND python3 gerar_pcb.py 62
+Variaveis: LAYERS (1 ou 2), POUR (nets em plano), JUMP_COST/JUMP_START (face simples),
+ITERS, INIT/FIXAS/T0/ANCHOR ou MANUAL (posicionamento a partir de um arquivo),
+REUSE_ROUTE (reaproveita rota_*.pkl), SAIDA (arquivo de saida).
 """
 import math
 import os
@@ -24,7 +24,7 @@ from scipy.ndimage import distance_transform_edt
 import circuito as C
 
 MM = 1e6
-BW, BH = 210.0, 135.0           # placa (mm)
+BW, BH = 230.0, 145.0           # placa (mm)
 OX, OY = 20.0, 20.0              # origem da placa na folha
 SEED = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 random.seed(SEED)
@@ -59,16 +59,16 @@ for ref, (fpn, val, nets, grp) in C.P.items():
 # ---------------------------------------------------------------- posicionamento
 # (x, y, rotacao/90) fixos: borda superior = dissipador, conectores nas bordas
 FIXED = {
-    # emissores frente a frente: Q7 (B C E) ... (E C B) Q6
-    "Q7": (128.0, 6.0, 0), "Q6": (185.0, 6.0, 2),
-    "C20": (150.0, 112.0, 0), "C19": (186.0, 112.0, 0),
-    "JPWR": (199.0, 66.0, 1), "JSPK": (199.0, 38.0, 1),
+    # borda superior = dissipador: Q5 Q7 (B C E) ... (E C B) Q6 Q4
+    "Q5": (130.65, 6.0, 2), "Q7": (138.0, 6.0, 0), "Q6": (195.0, 6.0, 2), "Q4": (202.0, 6.0, 0),
+    "C20": (160.0, 120.0, 0), "C19": (196.0, 120.0, 0),
+    "JPWR": (219.0, 72.0, 1), "JSPK": (219.0, 42.0, 1),
     "J1": (4.0, 10.0, 0), "JCH1": (4.0, 32.0, 0), "JRV2": (4.0, 52.0, 0),
     "JRV3": (4.0, 72.0, 0), "JRV4": (4.0, 88.0, 0), "JRV1": (4.0, 108.0, 0),
-    "JLINE": (201.0, 20.0, 0),
+    "JLINE": (221.0, 20.0, 0),
 }
-REGION = {"pre": (3, 3, 95, 132), "drv": (75, 18, 140, 132),
-          "out": (95, 12, 207, 88), "psu": (100, 60, 207, 132)}
+REGION = {"pre": (3, 3, 100, 142), "drv": (80, 18, 155, 142),
+          "out": (100, 12, 227, 95), "psu": (105, 65, 227, 142)}
 MARGIN = 3.0   # folga entre courtyards
 
 
@@ -279,10 +279,16 @@ def place(init=None, fixed=FIXED, T0=40.0):
 
 
 # ---------------------------------------------------------------- placa KiCad
+LAYERS = int(os.environ.get("LAYERS", "1"))   # 1 = face simples, 2 = dupla face
+
+
 def CU_LAYERS():
     ls = pcbnew.LSET()
     ls.AddLayer(pcbnew.B_Cu)
     ls.AddLayer(pcbnew.B_Mask)
+    if LAYERS == 2:
+        ls.AddLayer(pcbnew.F_Cu)
+        ls.AddLayer(pcbnew.F_Mask)
     return ls
 
 
@@ -333,9 +339,9 @@ def build_board(st):
     nc.SetClearance(int(C.CLEARANCE * MM))
     nc.SetTrackWidth(int(C.DEFAULT_WIDTH * MM))
     tb = board.GetTitleBlock()
-    tb.SetTitle("Meteoro Pre Power CB150 - placa face simples")
+    tb.SetTitle("Meteoro Pre Power CB150 - placa " + ("dupla face" if LAYERS == 2 else "face simples"))
     tb.SetCompany("Meteoro Amplifier (esquema Poi 20.60.40.012)")
-    tb.SetRevision("1.0")
+    tb.SetRevision("2.0" if LAYERS == 2 else "1.0")
     tb.SetComment(0, "Escala 1:1 - imprimir a 100%")
     # contorno
     pts = [(0, 0), (BW, 0), (BW, BH), (0, BH)]
@@ -349,7 +355,7 @@ def build_board(st):
         s.SetWidth(int(0.15 * MM))
         board.Add(s)
     # furos de fixacao
-    for (hx, hy) in [(4, 128), (104, 128), (206, 128), (88, 4)]:
+    for (hx, hy) in [(4, BH - 4), (104, BH - 4), (BW - 4, BH - 4), (88, 4)]:
         fp = load_fp("MountingHole", "MountingHole_3.2mm_M3")
         fp.SetPosition(pcbnew.VECTOR2I(int((OX + hx) * MM), int((OY + hy) * MM)))
         fp.SetReference("")
@@ -375,7 +381,7 @@ def route_pf(board, iters=int(os.environ.get("ITERS", "120"))):
             poly = [(o.CPoint(i).x / MM - OX, o.CPoint(i).y / MM - OY) for i in range(o.PointCount())]
             pads.append((p.GetNetname(), fp.GetReference(), p.GetNumber(),
                          p.GetPosition().x / MM - OX, p.GetPosition().y / MM - OY, poly))
-    pf = PathFinder(BW, BH, pads, holes, lambda n: C.WIDTH.get(n, C.DEFAULT_WIDTH), C.CLEARANCE)
+    pf = PathFinder(BW, BH, pads, holes, lambda n: C.WIDTH.get(n, C.DEFAULT_WIDTH), C.CLEARANCE, layers=LAYERS)
 
     def span(n):
         t = pf.terms[n]
@@ -383,24 +389,49 @@ def route_pf(board, iters=int(os.environ.get("ITERS", "120"))):
     nets = [n for n in pf.terms if len(pf.terms[n]) > 1]
     power = [n for n in ["GNDP", "OUT", "Q7E", "Q6E", "VP55", "VN55"] if n in nets]
     order = power + sorted([n for n in nets if n not in power], key=span)
-    if POUR:
+    if POUR and not os.environ.get("ROUTE_POUR") and LAYERS == 1:
         order = [n for n in order if n not in POUR]
     failed, nov = pf.run(order, iters)
 
     r = RouteResult()
-    r.segs, r.jumpers = pf.segments()
+    r.segs, r.jumpers, r.vias = pf.segments()
     return r, [(n, [(t[0], t[1]) for t in f]) for n, f in failed.items()], nov
 
 
 def write_tracks(board, netinfo, r):
-    for (net, a, b, w) in r.segs:
+    # rede de seguranca: afina trechos que passariam perto demais de pads de outras nets
+    padc = []
+    for fp in board.GetFootprints():
+        for p in fp.Pads():
+            c = p.GetPosition()
+            padc.append((p.GetNetname(), c.x / MM - OX, c.y / MM - OY, max(p.GetSize().x, p.GetSize().y) / MM / 2))
+
+    def seg_dist(px, py, a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = dx * dx + dy * dy
+        t = 0 if L == 0 else max(0, min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / L))
+        return ((a[0] + t * dx - px) ** 2 + (a[1] + t * dy - py) ** 2) ** 0.5
+    for (net, a, b, w, lay) in r.segs:
+        for (pn, px, py, pr) in padc:
+            if pn != net and abs(px - a[0]) + abs(py - a[1]) < 30:
+                room = seg_dist(px, py, a, b) - pr - C.CLEARANCE - 0.02
+                if room < w / 2:
+                    w = max(0.4, math.floor(2 * room * 100) / 100)
         t = pcbnew.PCB_TRACK(board)
         t.SetStart(pcbnew.VECTOR2I(int((OX + a[0]) * MM), int((OY + a[1]) * MM)))
         t.SetEnd(pcbnew.VECTOR2I(int((OX + b[0]) * MM), int((OY + b[1]) * MM)))
         t.SetWidth(int(w * MM))
-        t.SetLayer(pcbnew.B_Cu)
+        t.SetLayer(pcbnew.B_Cu if lay == 0 else pcbnew.F_Cu)
         t.SetNet(netinfo[net])
         board.Add(t)
+    from roteador import VIA_PAD
+    for (net, a) in getattr(r, "vias", []):
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(pcbnew.VECTOR2I(int((OX + a[0]) * MM), int((OY + a[1]) * MM)))
+        v.SetWidth(int(VIA_PAD * MM))
+        v.SetDrill(int(0.8 * MM))
+        v.SetNet(netinfo[net])
+        board.Add(v)
     # jumpers: footprint com 2 pads + linha na serigrafia
     for i, (net, a, b) in enumerate(r.jumpers):
         fp = pcbnew.FOOTPRINT(board)
@@ -526,6 +557,26 @@ def pour(board, netinfo, net, start_idx):
         _, a, b = best
         jumpers.append(add_jumper(board, netinfo, net, a, b, start_idx + len(jumpers)))
     return jumpers
+
+
+def pour_simple(board, netinfo, net):
+    """dupla face: a net ja esta roteada; planos nas duas faces so somam cobre"""
+    for layer in (pcbnew.B_Cu, pcbnew.F_Cu):
+        z = pcbnew.ZONE(board)
+        z.SetLayer(layer)
+        z.SetNetCode(netinfo[net].GetNetCode())
+        z.SetLocalClearance(int(0.6 * MM))
+        z.SetMinThickness(int(0.6 * MM))
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
+        z.SetThermalReliefGap(int(0.6 * MM))
+        z.SetThermalReliefSpokeWidth(int(1.0 * MM))
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+        o = z.Outline()
+        o.NewOutline()
+        for (x, y) in [(1, 1), (BW - 1, 1), (BW - 1, BH - 1), (1, BH - 1)]:
+            o.Append(v2(x, y))
+        board.Add(z)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 
 
 def net_clusters(board, polys, net):
@@ -696,7 +747,13 @@ if __name__ == "__main__":
     if os.path.exists(cache):
         st = {k: tuple(v) for k, v in json.load(open(cache)).items()}
     else:
-        if os.environ.get("MANUAL"):
+        if os.environ.get("INIT"):
+            # parte de uma posicao existente (ancorada); pecas novas ficam livres
+            init = {k: tuple(v) for k, v in json.load(open(os.environ["INIT"])).items()}
+            fixed = {k: init[k] for k in os.environ.get("FIXAS", "").split(",") if k in init}
+            ANCHOR.update({k: v for k, v in init.items() if k in C.P})
+            st = place(init, fixed, T0=float(os.environ.get("T0", "3")))
+        elif os.environ.get("MANUAL"):
             from posicao_manual import POS
             fixed = {k: POS[k] for k in ("Q5", "Q7", "Q6", "Q4", "R28", "R27", "C20", "C19", "JPWR",
                                          "J1", "JCH1", "JRV1", "JRV2", "JRV3", "JRV4")}
@@ -707,7 +764,7 @@ if __name__ == "__main__":
         json.dump(st, open(cache, "w"), indent=0)
     board, netinfo = build_board(st)
     import pickle
-    rcache = f"rota_{SEED}_{'-'.join(POUR) or 'x'}.pkl"
+    rcache = f"rota_{SEED}_{'-'.join(POUR) or 'x'}{'_r' if os.environ.get('ROUTE_POUR') else ''}_L{LAYERS}.pkl"
     if os.environ.get("REUSE_ROUTE") and os.path.exists(rcache):
         r, still, nov = pickle.load(open(rcache, "rb"))
     else:
@@ -717,12 +774,20 @@ if __name__ == "__main__":
     write_tracks(board, netinfo, r)
     t = pcbnew.PCB_TEXT(board)
     t.SetText("METEORO PRE POWER CB150 - lado cobre")
-    t.SetPosition(pcbnew.VECTOR2I(int((OX + 60) * MM), int((OY + 131.5) * MM)))
+    t.SetPosition(pcbnew.VECTOR2I(int((OX + 60) * MM), int((OY + BH - 3.5) * MM)))
     t.SetLayer(pcbnew.B_Cu)
     t.SetMirrored(True)
     t.SetTextSize(pcbnew.VECTOR2I(int(1.8 * MM), int(1.8 * MM)))
     t.SetTextThickness(int(0.35 * MM))
     board.Add(t)
+    if LAYERS == 2:
+        t = pcbnew.PCB_TEXT(board)
+        t.SetText("METEORO PRE POWER CB150 - lado componentes")
+        t.SetPosition(pcbnew.VECTOR2I(int((OX + 150) * MM), int((OY + BH - 3.5) * MM)))
+        t.SetLayer(pcbnew.F_Cu)
+        t.SetTextSize(pcbnew.VECTOR2I(int(1.8 * MM), int(1.8 * MM)))
+        t.SetTextThickness(int(0.35 * MM))
+        board.Add(t)
     extra = []
     if POUR:
         # o preenchimento de zonas e mais estavel numa placa carregada do disco
@@ -735,7 +800,10 @@ if __name__ == "__main__":
                 os.remove(f)
         netinfo = {n: board.FindNet(n) for n in NETS}
         for n in POUR:
-            extra += pour(board, netinfo, n, len(r.jumpers) + len(extra) + 1)
+            if LAYERS == 2:
+                pour_simple(board, netinfo, n)
+            else:
+                extra += pour(board, netinfo, n, len(r.jumpers) + len(extra) + 1)
     pcbnew.SaveBoard(os.environ.get("SAIDA", "meteoro_cb150.kicad_pcb"), board)
-    print("jumpers:", len(r.jumpers) + len(extra), "trilhas:", len(r.segs))
+    print("jumpers:", len(r.jumpers) + len(extra), "vias:", len(getattr(r, "vias", [])), "trilhas:", len(r.segs))
     print("sem rota:", [(n, [(p[0], p[1]) for p in f]) for n, f in still])

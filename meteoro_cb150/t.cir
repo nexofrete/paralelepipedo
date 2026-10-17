@@ -1,0 +1,101 @@
+* a
+.param RA=840 RB=160
+VP55 VP55 0 55
+VN55 VN55 0 -55
+VIN OUT3 0 SIN(0 1.9907847843048223 1k)
+R14  OUT3 N14 4.7k
+C100 N14 QB1 2.2u
+R102 QB1 0 27k
+R101 QB1 N101 1k
+C101 N101 FB 4.7u
+* referencia da fonte de corrente da cauda: zener 9V1 + R100 5K6
+R100 VP55 VZ 5.6k
+D3   0 VZ DZ9V1
+C16  VZ 0 10u
+* [melhoria] cauda com 5,2 mA (era 2,6 mA): dobra o slew rate
+R15  VZ EDIF 1.6k
+* par diferencial PNP (MPSA92)
+* [melhoria] degeneracao de emissor R37/R38 (estabilidade com carga capacitiva)
+Q1 VAS_B QB1 E1 MPSA92
+R37 E1 EDIF 47
+Q2 NM    FB  E2 MPSA92
+R38 E2 EDIF 47
+* [melhoria] espelho de corrente como carga do par diferencial
+QM2 NM NM EM2 MPSA42
+RM2 EM2 VN55 100
+QM1 VAS_B NM EM1 MPSA42
+RM1 EM1 VN55 100
+* realimentacao: ganho = 1 + 27k/1k = 28x (29 dB) [melhoria: R17 = R102 = 27k, offset ~0]
+R17 OUT FB 27k
+R16 FB N16 1k
+C12 N16 0 220u
+* VAS (BD139) com compensacao Miller C14
+* [melhoria] R19 passa a ser o resistor de emissor do VAS (33R)
+Q3  VAS VAS_B E3 BD139
+R19 E3 VN55 33
+* [melhoria] limitador de corrente do VAS (~18 mA), para o limitador da saida funcionar
+Q9  VAS_B E3 VN55 BC546
+C14 VAS VAS_B 470p
+* multiplicador de Vbe (bias) Q8 + RV5 1K
+Q8  BIAS_T Q8B VAS MPSA42
+R21 BIAS_T RV5T 1.5k
+RV5a RV5T Q8B {RA}
+RV5b Q8B RV5B {RB}
+R22 RV5B VAS 680
+* bootstrap
+R23 BIAS_T NBOOT 2.7k
+R24 NBOOT VP55 2.7k
+C15 OUT NBOOT 47u
+* saida Darlington complementar
+Q5 VP55 BIAS_T Q7B BD139
+Q7 VP55 Q7B Q7E Q2SC5200
+R28 Q7E OUT 0.33
+Q4 VN55 VAS Q6B BD140
+Q6 VN55 Q6B Q6E Q2SA1943
+R27 Q6E OUT 0.33
+* [melhoria] resistor entre os emissores dos drivers (desliga a saida mais rapido)
+R31 Q7B Q6B 220
+* [melhoria] limitador de corrente (protecao contra curto), atua em ~8 A de pico
+R32 Q7E QL1B 3.3k
+R33 QL1B OUT 1k
+QL1 BIAS_T QL1B OUT BC546
+R34 Q6E QL2B 3.3k
+R35 QL2B OUT 1k
+QL2 VAS QL2B OUT BC556
+* Zobel
+R26 OUT N26 4.7
+C17 N26 0 100n
+* [melhoria] bobina de saida 1uH em paralelo com 10R/2W (enrolada sobre o resistor)
+L1  OUT SPK 1u
+R36 OUT SPK 10
+* line out
+R29 OUT LINE 12k
+R30 LINE 0 470
+C21 LINE LINEOUT 1u
+RLINE LINEOUT 0 10k
+* alto-falante
+
+RSPK SPK 0 1e6
+RSC SPK ns 0.1
+VSENSE ns 0 0
+.model DZ12  D(Is=1n Rs=5 BV=12  IBV=5m)
+.model DZ9V1 D(Is=1n Rs=5 BV=9.1 IBV=5m)
+.model MPSA92 PNP(Is=650f Bf=150 Vaf=100 Ikf=0.1 Rb=10 Rc=1 Cjc=10p Cje=50p Tf=500p Tr=10n)
+.model MPSA42 NPN(Is=650f Bf=150 Vaf=100 Ikf=0.1 Rb=10 Rc=1 Cjc=6p Cje=50p Tf=500p Tr=10n)
+.model BD139 NPN(Is=1e-13 Bf=120 Vaf=100 Ikf=1 Rb=1 Rc=0.1 Re=0.05 Cjc=30p Cje=100p Tf=1n)
+.model BD140 PNP(Is=1e-13 Bf=120 Vaf=100 Ikf=1 Rb=1 Rc=0.1 Re=0.05 Cjc=40p Cje=100p Tf=1n)
+.model BC546 NPN(Is=7e-14 Bf=300 Vaf=80 Ikf=0.1 Rb=10 Cjc=4p Cje=10p Tf=400p)
+.model BC556 PNP(Is=7e-14 Bf=250 Vaf=60 Ikf=0.1 Rb=10 Cjc=6p Cje=12p Tf=500p)
+.model Q2SC5200 NPN(Is=5e-12 Bf=80 Vaf=200 Ikf=6 Rb=2 Rc=0.02 Re=0.01 Cjc=200p Cje=1n Tf=10n)
+.model Q2SA1943 PNP(Is=5e-12 Bf=80 Vaf=200 Ikf=6 Rb=2 Rc=0.02 Re=0.01 Cjc=300p Cje=1n Tf=10n)
+
+
+.options reltol=1e-4 itl4=100
+.control
+op
+print v(out) (v(q7e)-v(out))/0.33
+tran 2u 4m 1m
+meas tran imax max i(vsense)
+meas tran imin min i(vsense)
+.endc
+.end

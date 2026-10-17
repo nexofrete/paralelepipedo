@@ -4,4 +4,4 @@ __pycache__/
 log*.txt
 tmp_*.kicad_pcb
 posicao_*.json
-!posicao_43.json
+!posicao_62.json

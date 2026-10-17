@@ -2364,3 +2364,10 @@ CREATE TABLE IF NOT EXISTS erp_modelos (
 );
 -- Modelo usado na importação (manual e automática); vazio = o formato de sempre.
 ALTER TABLE configuracao_importacao_erp ADD COLUMN IF NOT EXISTS modelo_id INTEGER REFERENCES erp_modelos(id) ON DELETE SET NULL;
+
+-- Consultas de CNPJ (dados da Receita) guardadas: 30 dias (não encontrado: 1 dia).
+CREATE TABLE IF NOT EXISTS cnpj_consultas (
+  cnpj CHAR(14) PRIMARY KEY,
+  dados JSONB NOT NULL,
+  consultado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

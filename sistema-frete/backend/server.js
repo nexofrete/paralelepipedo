@@ -245,6 +245,7 @@ app.use('/api/centros-custo', require('./src/routes/centrosCusto'));
 app.use('/api/frota', require('./src/routes/frota'));
 app.use('/api/faturamento', require('./src/routes/faturamento'));
 app.use('/api/integracao', require('./src/routes/integracao'));
+app.use('/api/cnpj', require('./src/routes/cnpj'));
 app.use('/api/v1', require('./src/routes/apiV1'));
 app.use('/api/painel-transporte', require('./src/routes/painelTransporte'));
 // Portal do cliente (login próprio) e a administração dos acessos.

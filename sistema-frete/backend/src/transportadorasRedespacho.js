@@ -30,52 +30,18 @@ const fila = [];
 const naFila = new Set();
 let processando = false;
 
-const CABECALHOS = { 'User-Agent': 'Nexofrete (cadastro de transportadora pelo CNPJ)', Accept: 'application/json' };
-async function buscarJson(url) {
-  const controle = new AbortController();
-  const timer = setTimeout(() => controle.abort(), 15000);
-  try {
-    const resp = await fetch(url, { headers: CABECALHOS, signal: controle.signal });
-    if (resp.status === 404) return { naoEncontrado: true };
-    if (resp.status === 429) throw new Error('limite de consultas atingido (429)');
-    if (!resp.ok) throw new Error(`respondeu ${resp.status}`);
-    return await resp.json();
-  } catch (err) {
-    throw new Error(err.name === 'AbortError' ? 'demorou demais' : err.message);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-// Consulta o CNPJ em até 3 serviços públicos gratuitos, nessa ordem, e devolve
-// sempre no mesmo formato: { razao_social, endereco, bairro, municipio, uf, cep, telefone, email }.
+// Consulta o CNPJ (src/cnpjConsulta.js: 3 serviços, resultado guardado) e devolve
+// no formato de sempre: { razao_social, endereco, bairro, municipio, uf, cep, telefone, email }.
 async function consultarCnpj(cnpj) {
-  const erros = [];
-  const fontes = [
-    ['BrasilAPI', `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, (a) => ({
-      razao_social: a.razao_social, nome_fantasia: a.nome_fantasia, endereco: [[a.descricao_tipo_de_logradouro, a.logradouro].filter(Boolean).join(' '), a.numero].filter(Boolean).join(', ') + (a.complemento ? ` - ${a.complemento}` : ''),
-      bairro: a.bairro, municipio: a.municipio, uf: a.uf, cep: a.cep, telefone: a.ddd_telefone_1, email: a.email })],
-    ['CNPJ.ws', `https://publica.cnpj.ws/cnpj/${cnpj}`, (a) => { const e = a.estabelecimento || {}; return {
-      razao_social: a.razao_social, nome_fantasia: e.nome_fantasia, endereco: [[e.tipo_logradouro, e.logradouro].filter(Boolean).join(' '), e.numero].filter(Boolean).join(', ') + (e.complemento ? ` - ${e.complemento}` : ''),
-      bairro: e.bairro, municipio: e.cidade?.nome, uf: e.estado?.sigla, cep: e.cep, telefone: e.ddd1 && e.telefone1 ? `${e.ddd1}${e.telefone1}` : null, email: e.email }; }],
-    ['ReceitaWS', `https://receitaws.com.br/v1/cnpj/${cnpj}`, (a) => (a.status === 'ERROR' ? { naoEncontrado: true } : {
-      razao_social: a.nome, nome_fantasia: a.fantasia, endereco: [a.logradouro, a.numero].filter(Boolean).join(', ') + (a.complemento ? ` - ${a.complemento}` : ''),
-      bairro: a.bairro, municipio: a.municipio, uf: a.uf, cep: a.cep, telefone: a.telefone, email: a.email })],
-  ];
-  let naoEncontradoEm = 0;
-  for (const [nome, url, converter] of fontes) {
-    try {
-      const bruto = await buscarJson(url);
-      if (bruto.naoEncontrado) { naoEncontradoEm += 1; erros.push(`${nome}: CNPJ não encontrado`); continue; }
-      const r = converter(bruto);
-      if (r.naoEncontrado) { naoEncontradoEm += 1; erros.push(`${nome}: CNPJ não encontrado`); continue; }
-      if (r.municipio) return { ...r, fonte: nome };
-      erros.push(`${nome}: veio sem cidade`);
-    } catch (err) {
-      erros.push(`${nome}: ${err.message}`);
-    }
+  try {
+    const r = await require('./cnpjConsulta').consultar(cnpj);
+    if (r.naoEncontrado || r.falhou) return r;
+    if (!r.municipio) return { falhou: true, erro: 'veio sem cidade' };
+    const endereco = [r.logradouro, r.numero].filter(Boolean).join(', ') + (r.complemento ? ` - ${r.complemento}` : '');
+    return { ...r, endereco };
+  } catch (err) {
+    return { naoEncontrado: true, erro: err.message };
   }
-  if (naoEncontradoEm === fontes.length) return { naoEncontrado: true, erro: 'CNPJ não encontrado em nenhum serviço de consulta' };
-  return { falhou: true, erro: erros.join(' · ') };
 }
 
 

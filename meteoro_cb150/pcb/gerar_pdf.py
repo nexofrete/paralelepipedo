@@ -63,21 +63,19 @@ tipo = f"Dupla face - {nvias} vias" if dupla else f"Face simples - {len(jumpers)
 c.drawString(40, y, f"{tipo} - placa {bw:.0f} x {bh:.0f} mm - {nparts} componentes - {ntr} segmentos de trilha")
 if dupla:
     bloco("Paginas", [
-        "2 - Cobre do LADO DA SOLDA (B.Cu, em azul na pagina 5).  Imprima a 100% e transfira para a face de baixo.",
-        "3 - Cobre do LADO DOS COMPONENTES (F.Cu, vermelho).  Ja sai espelhado: imprima a 100% e transfira para a face de cima.",
+        "Cobre do LADO DA SOLDA (B.Cu, azul na sobreposicao): imprima a 100% e transfira para a face de baixo.",
+        "Cobre do LADO DOS COMPONENTES (F.Cu, vermelho): ja sai espelhado; imprima a 100% e transfira para a face de cima.",
         "     Alinhe as duas faces pelos 4 furos de fixacao e pelo contorno: fure primeiro os furos de fixacao numa face,",
         "     use-os para posicionar a segunda folha. Imprima a 100%, sem 'ajustar a pagina'.",
-        "4 - Lado dos componentes: posicao, referencia e valor de cada peca.",
-        "5 - As duas faces sobrepostas (vista por cima).",
+        "Ordem das paginas: esta capa; relacao de componentes (lista de compras); cobre do lado da solda;",
+        "     cobre do lado dos componentes; montagem (posicao, referencia e valor); as duas faces sobrepostas.",
         "Vias: furo de 0,8 mm; passe um pedaco de fio e solde dos dois lados. Pads de componentes que tem trilha",
         "     na face de cima precisam ser soldados tambem por cima (ou use placa com furos metalizados).",
         "Mandar fabricar: o arquivo meteoro_cb150.kicad_pcb gera Gerber no KiCad (Arquivo > Fabricacao)."])
 else:
     bloco("Paginas", [
-        "2 - Lado do cobre para transferencia termica / fotolito (imprimir a 100%, sem 'ajustar a pagina').",
-        "3 - Lado do cobre visto por baixo da placa (referencia para conferir e soldar).",
-        "4 - Lado dos componentes: posicao, referencia e valor de cada peca + jumpers (fios).",
-        "5 - Componentes e trilhas sobrepostos."])
+        "Ordem das paginas: esta capa; relacao de componentes; cobre para transferencia (100%, sem 'ajustar');",
+        "     cobre visto por baixo; montagem (posicao, referencia, valor e jumpers); componentes e trilhas sobrepostos."])
 bloco("Regras usadas", [
     "Trilhas: 0,75 mm (sinal e +/-12 V), 1,2 mm (GND, bases dos transistores de saida), 2,0 mm (+/-55 V, saida,",
     "     emissores e GND de potencia; afinam so entre pinos vizinhos).  GND de sinal tambem em plano de cobre.",
@@ -94,6 +92,51 @@ bloco("Regras usadas", [
 if jumpers:
     bloco(f"Jumpers (fios no lado dos componentes): {len(jumpers)}",
           [f"{r}: {L:5.1f} mm  ({net})" for _, r, net, L in jumpers][:20])
+c.showPage()
+
+# relacao de componentes (tirada da propria placa)
+import lista  # noqa: E402
+
+
+def tabela(titulo, linhas):
+    global y
+    def cab():
+        global y
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(40, y, titulo)
+        y -= 20
+        c.setFont("Helvetica-Bold", 9)
+        for x, t in ((40, "Qtd"), (70, "Valor"), (170, "Descricao"), (480, "Referencias")):
+            c.drawString(x, y, t)
+        y -= 4
+        c.line(40, y, W - 40, y)
+        y -= 11
+    cab()
+    c.setFont("Helvetica", 8.5)
+    for q, v, d, r in linhas:
+        partes = [r[i:i + 70] for i in range(0, len(r), 70)] if len(r) > 70 else [r]
+        if y - 11 * len(partes) < 40:
+            c.showPage()
+            y = H - 50
+            cab()
+            c.setFont("Helvetica", 8.5)
+        c.drawString(40, y, str(q))
+        c.drawString(70, y, v[:18])
+        c.drawString(170, y, d[:58])
+        for k, pt in enumerate(partes):
+            c.drawString(480, y, pt)
+            y -= 11
+        y -= 1
+
+
+y = H - 50
+linhas = lista.agrupada(PCB)
+tabela(f"Relacao de componentes da placa ({sum(q for q, *_ in linhas)} pecas)", linhas)
+y -= 14
+if y < 160:
+    c.showPage()
+    y = H - 50
+tabela("Fora da placa (ligados por fios aos conectores)", lista.FORA_DA_PLACA)
 c.showPage()
 c.save()
 

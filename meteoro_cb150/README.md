@@ -13,6 +13,7 @@ componentes novos ou alterados estão marcados com ★ nas listas.
 | `meteoro_cb150.cir` | Netlist SPICE completa (pré + potência), com modelos, pronta para o ngspice |
 | `fonte.cir` | Fonte de alimentação (trafo, ponte KBPC606, filtros, reguladores ±12 V) |
 | `pcb/meteoro_cb150_pcb.pdf` | **Placa de circuito impresso em PDF** (dupla face: as duas faces em 1:1 para transferência, montagem) |
+| `pcb/relacao_componentes.csv` | Relação de componentes da placa (lista de compras), abre no Excel/LibreOffice |
 | `pcb/meteoro_cb150.kicad_pcb` | A mesma placa em KiCad (abre no KiCad 7+, permite gerar Gerber) |
 
 ```sh
@@ -154,11 +155,13 @@ a ponte de terra JGND. As melhorias acrescentam ligações que cruzam o estágio
 de saída; em face simples isso exigiria cerca de 30 jumpers, por isso a placa
 passou a ser dupla face.
 
-- **Página 2 do PDF**: cobre do lado da solda (B.Cu), em escala 1:1.
-- **Página 3**: cobre do lado dos componentes (F.Cu), já espelhado para a
+- **Relação de componentes** (páginas 2–4 do PDF e `relacao_componentes.csv`):
+  tirada da própria placa, agrupada por valor, com as peças de painel à parte.
+- **Cobre do lado da solda** (B.Cu), em escala 1:1.
+- **Cobre do lado dos componentes** (F.Cu), já espelhado para a
   transferência. Alinhe as duas faces pelos 4 furos de fixação.
-- **Página 4**: lado dos componentes (referência e valor de cada peça).
-- **Página 5**: as duas faces sobrepostas.
+- **Montagem**: lado dos componentes (referência e valor de cada peça).
+- **Sobreposição**: as duas faces juntas.
 - Imprima a 100% (sem "ajustar à página"); o contorno deve medir exatamente
   230 × 145 mm.
 - Em placa caseira (sem furos metalizados): passe um fio nas 4 vias e solde
@@ -179,6 +182,7 @@ Para regenerar (precisa de KiCad 7, numpy, scipy, Pillow, reportlab):
 cd pcb
 LAYERS=2 POUR=GND python3 gerar_pcb.py 62   # posição em posicao_62.json + roteamento (~5 min)
 python3 verificar.py                          # DRC
+python3 lista.py                              # relacao_componentes.csv
 python3 gerar_pdf.py                          # meteoro_cb150_pcb.pdf
 ```
 

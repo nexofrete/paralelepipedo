@@ -1,0 +1,78 @@
+Qtd;Valor;Descricao;Referencias;Local
+2;2k7;Resistor 1/2 W;R23, R24;placa
+1;5k6;Resistor 1/2 W;R100;placa
+2;1k5;Resistor 1/4 W;R1, R21;placa
+1;220k;Resistor 1/4 W;R2;placa
+2;2k7;Resistor 1/4 W;R3, R5;placa
+2;22k;Resistor 1/4 W;R4, R8;placa
+2;12k;Resistor 1/4 W;R6, R29;placa
+1;270k;Resistor 1/4 W;R7;placa
+1;2k2;Resistor 1/4 W;R9;placa
+2;47k;Resistor 1/4 W;R10, R50;placa
+2;4k7;Resistor 1/4 W;R12, R14;placa
+1;10k;Resistor 1/4 W;R13;placa
+1;1k6;Resistor 1/4 W;R15;placa
+4;1k;Resistor 1/4 W;R16, R33, R35, R101;placa
+2;27k;Resistor 1/4 W;R17, R102;placa
+1;33R;Resistor 1/4 W;R19;placa
+1;680R;Resistor 1/4 W;R22;placa
+1;470R;Resistor 1/4 W;R30;placa
+1;220R;Resistor 1/4 W;R31;placa
+2;3k3;Resistor 1/4 W;R32, R34;placa
+2;47R;Resistor 1/4 W;R37, R38;placa
+2;100R;Resistor 1/4 W;RM1, RM2;placa
+1;10R 2W + 1uH;Resistor 10 R 2 W + bobina 1 uH (12 voltas, fio 1 mm);L1;placa
+2;2k2 2W;Resistor 2 W;R20, R88;placa
+1;4R7 2W;Resistor 2 W;R26;placa
+2;0R33 5W;Resistor 5 W (fio);R27, R28;placa
+2;330p;Capacitor ceramico 100 V;C3, C13;placa
+1;120p;Capacitor ceramico 100 V;C7;placa
+1;470p;Capacitor ceramico 100 V;C14;placa
+2;100n;Capacitor ceramico 100 V;CD1, CD2;placa
+2;22n;Capacitor de poliester 100 V;C1, C11;placa
+2;2n2;Capacitor de poliester 100 V;C4, C10;placa
+2;100n;Capacitor de poliester 100 V;C5, C17;placa
+1;47n;Capacitor de poliester 100 V;C6;placa
+2;1u;Capacitor de poliester 100 V;C9, C21;placa
+3;10u/63V;Capacitor eletrolitico;C2, C16, C18;placa
+1;22u/63V;Capacitor eletrolitico;C8;placa
+1;220u/63V;Capacitor eletrolitico;C12;placa
+1;47u/63V;Capacitor eletrolitico;C15;placa
+1;2u2/63V;Capacitor eletrolitico;C100;placa
+1;4u7/50V;Capacitor eletrolitico;C101;placa
+2;10000u/63V;Capacitor eletrolitico snap-in 35 mm;C19, C20;placa
+2;1N4742A;Diodo zener 1 W;D1, D2;placa
+1;1N4739;Diodo zener 1 W;D3;placa
+2;BD139;Transistor TO-126;Q3, Q5;placa
+1;BD140;Transistor TO-126;Q4;placa
+1;2SA1943;Transistor TO-264 (no dissipador);Q6;placa
+1;2SC5200;Transistor TO-264 (no dissipador);Q7;placa
+2;MPSA92;Transistor TO-92;Q1, Q2;placa
+3;MPSA42;Transistor TO-92;Q8, QM1, QM2;placa
+2;BC546;Transistor TO-92;Q9, QL1;placa
+1;BC556;Transistor TO-92;QL2;placa
+1;TL082;Circuito integrado DIP-8;CI1;placa
+1;TL071;Circuito integrado DIP-8;CI2;placa
+1;1k;Trimpot multivoltas 3296W;RV5;placa
+2;5A rapido;Porta-fusivel de placa 5x20 mm;F1, F2;placa
+1;+55 GND -55;Borne parafuso 5 mm;JPWR;placa
+1;SPEAKER;Borne parafuso 5 mm;JSPK;placa
+1;ENTRADA;Conector / pontos para fio do painel;J1;placa
+1;CH1;Conector / pontos para fio do painel;JCH1;placa
+1;LINE OUT;Conector / pontos para fio do painel;JLINE;placa
+1;RV1 20KB;Conector / pontos para fio do painel;JRV1;placa
+1;RV2 100KB;Conector / pontos para fio do painel;JRV2;placa
+1;RV3 10KB;Conector / pontos para fio do painel;JRV3;placa
+1;RV4 50KA;Conector / pontos para fio do painel;JRV4;placa
+1;PONTE FIO;Ponte de fio (terra em estrela);JGND;placa
+1;20k linear (B);Potenciometro (ganho/master) - liga em JRV1;RV1;fora da placa
+1;100k linear (B);Potenciometro (agudos) - liga em JRV2;RV2;fora da placa
+1;10k linear (B);Potenciometro (equalizacao) - liga em JRV3;RV3;fora da placa
+1;50k log (A);Potenciometro (equalizacao) - liga em JRV4;RV4;fora da placa
+1;P10 mono;Jaque de entrada - liga em J1;J1 (painel);fora da placa
+1;1 polo;Chave de ganho - liga em JCH1;CH1;fora da placa
+1;KBPC606;Ponte retificadora 6 A (no chassi) - liga em JPWR;PT1;fora da placa
+1;2 x 39 VAC, >= 250 VA;Transformador com center tap + fusivel no primario;TR;fora da placa
+1;>= 0,5 C/W;Dissipador para Q4, Q5, Q6, Q7 (+ isoladores e pasta termica);-;fora da placa
+2;5 A rapido;Fusivel 5x20 mm (vai nos porta-fusiveis F1/F2);F1, F2;fora da placa
+2;DIP-8;Soquete para CI1 e CI2;CI1, CI2;fora da placa

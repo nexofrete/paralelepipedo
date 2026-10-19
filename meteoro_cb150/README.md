@@ -13,6 +13,8 @@ componentes novos ou alterados estão marcados com ★ nas listas.
 | `meteoro_cb150.cir` | Netlist SPICE completa (pré + potência), com modelos, pronta para o ngspice |
 | `fonte.cir` | Fonte de alimentação (trafo, ponte KBPC606, filtros, reguladores ±12 V) |
 | `pcb/meteoro_cb150_pcb.pdf` | **Placa de circuito impresso em PDF** (dupla face: as duas faces em 1:1 para transferência, montagem) |
+| `pcb/meteoro_cb150_gerber.zip` | Gerber (RS-274X) + furação Excellon — para Proteus, fabricantes e qualquer CAM |
+| `pcb/fabricacao/` | Os mesmos Gerbers soltos, DXF de cada face e posição dos componentes (CSV) |
 | `pcb/relacao_componentes.csv` | Relação de componentes da placa (lista de compras), abre no Excel/LibreOffice |
 | `pcb/meteoro_cb150.kicad_pcb` | A mesma placa em KiCad (abre no KiCad 7+, permite gerar Gerber) |
 
@@ -176,6 +178,25 @@ passou a ser dupla face.
   emissores); isolação mínima de 0,5 mm, verificada com o DRC do KiCad
   (`verificar.py`).
 
+### Abrir no Proteus
+
+O formato de projeto do Proteus (`.pdsprj`) é fechado, então não há como
+gerá-lo diretamente. Use os arquivos de fabricação:
+
+- **Gerber**: no Proteus 8, *File → Import → Gerber* (ou o *Gerber Viewer*),
+  apontando para os arquivos de `meteoro_cb150_gerber.zip`
+  (`.gtl` = cobre de cima, `.gbl` = cobre de baixo, `.gto` = serigrafia,
+  `.gts/.gbs` = máscara, `.gm1` = contorno, `.drl` = furos). Serve para ver,
+  conferir e gerar a placa, mas vem como desenho, sem netlist editável.
+- **DXF** (`fabricacao/dxf/`): cada face como desenho, para importar como
+  gráfico.
+- Para **simular** no Proteus, o esquema precisa ser desenhado no ISIS; use
+  `meteoro_cb150.cir` e a lista de componentes como referência das ligações.
+
+Os mesmos Gerbers servem para mandar fabricar (JLCPCB, PCBWay etc.): placa
+de 2 camadas, 230 × 145 mm, 1,6 mm, cobre 1 oz (2 oz se possível, pelas
+correntes da saída).
+
 Para regenerar (precisa de KiCad 7, numpy, scipy, Pillow, reportlab):
 
 ```sh
@@ -184,6 +205,9 @@ LAYERS=2 POUR=GND python3 gerar_pcb.py 62   # posição em posicao_62.json + rot
 python3 verificar.py                          # DRC
 python3 lista.py                              # relacao_componentes.csv
 python3 gerar_pdf.py                          # meteoro_cb150_pcb.pdf
+mkdir -p fabricacao/gerber && kicad-cli pcb export gerbers --no-x2 \
+  -l F.Cu,B.Cu,F.Mask,B.Mask,F.SilkS,Edge.Cuts -o fabricacao/gerber/ meteoro_cb150.kicad_pcb
+kicad-cli pcb export drill -o fabricacao/gerber/ meteoro_cb150.kicad_pcb
 ```
 
 ## Como ligar (por blocos)

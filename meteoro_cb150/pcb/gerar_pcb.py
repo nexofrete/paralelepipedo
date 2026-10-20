@@ -491,6 +491,7 @@ def add_jumper(board, netinfo, net, a, b, idx):
         p.SetPos0(v)
         p.SetPosition(v)
         p.SetNet(netinfo[net])
+        p.SetZoneConnection(pcbnew.ZONE_CONNECTION_FULL)   # ligacao solida ao plano (sem termico "faminto")
         fp.Add(p)
     s = pcbnew.FP_SHAPE(fp)
     s.SetShape(pcbnew.SHAPE_T_SEGMENT)
@@ -534,6 +535,11 @@ def pour(board, netinfo, net, start_idx):
         if len(cl) <= 1:
             break
         pts = island_points(polys)
+        # nao poe pad de jumper perto de nenhum furo existente
+        furos = [(p.GetPosition().x / MM - OX, p.GetPosition().y / MM - OY)
+                 for fp in board.GetFootprints() for p in fp.Pads()]
+        pts = {k: [q for q in v if all((q[0] - fx) ** 2 + (q[1] - fy) ** 2 > 2.6 ** 2 for fx, fy in furos)]
+               for k, v in pts.items()}
         main = cl[0]
         mainpts = [q for k in main[1] for q in pts.get(k, [])]
         best = None

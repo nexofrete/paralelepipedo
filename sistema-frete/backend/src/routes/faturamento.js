@@ -2,7 +2,7 @@
 // recebimentos, impressão/e-mail com PIX, DOCCOB e o resumo do contas a receber.
 const express = require('express');
 const pool = require('../db');
-const { autenticar } = require('../middlewareAuth');
+const { autenticar, apenasAdmin } = require('../middlewareAuth');
 const { permitirAlguma } = require('../permissoes');
 const { registrar } = require('../auditoria');
 const fat = require('../faturamento/faturamento');
@@ -185,6 +185,31 @@ router.put('/config', autenticar, pode, rota(async (req, res) => {
   const e = await empresa();
   return res.json(Object.fromEntries([...CAMPOS, 'razao_social', 'municipio'].map((c) => [c, e[c] ?? null])));
 }, 'Erro ao salvar.'));
+
+// ---- PIX com baixa automática (API Pix do banco) ----
+const pixApi = require('../faturamento/pixApi');
+router.get('/pix-api', autenticar, pode, rota(async (req, res) => res.json(await pixApi.config()), 'Erro ao carregar.'));
+router.put('/pix-api', autenticar, apenasAdmin, rota(async (req, res) => {
+  const c = await pixApi.salvarConfig(req.body || {});
+  log(req, 'fatura', `Configurou o PIX pela API (${c.ativo ? `ligado, ${c.provedor}` : 'desligado'})`);
+  res.json(c);
+}, 'Erro ao salvar.'));
+router.post('/pix-api/certificado', autenticar, apenasAdmin, express.json({ limit: '400kb' }), rota(async (req, res) => {
+  res.json(await pixApi.salvarCertificado(req.body?.arquivo));
+  log(req, 'fatura', 'Enviou o certificado do banco para a API Pix');
+}, 'Erro ao salvar o certificado.'));
+router.post('/pix-api/testar', autenticar, apenasAdmin, rota(async (req, res) => res.json(await pixApi.testar()), 'Erro ao testar.'));
+router.post('/pix-api/conferir', autenticar, pode, rota(async (req, res) => {
+  const r = await pixApi.conferirRecebidos();
+  if (r.baixados) log(req, 'fatura', `Conferiu os PIX recebidos: ${r.baixados} fatura(s) baixada(s)`);
+  res.json(r);
+}, 'Erro ao conferir os PIX.'));
+router.get('/:id(\\d+)/pix', autenticar, pode, rota(async (req, res) => res.json(await pixApi.situacaoDaFatura(Number(req.params.id))), 'Erro.'));
+router.post('/:id(\\d+)/pix/simular-pagamento', autenticar, apenasAdmin, rota(async (req, res) => {
+  const s = await pixApi.simularPagamento(Number(req.params.id), req.body?.valor);
+  const r = await pixApi.conferirRecebidos();
+  res.json({ ...s, ...r });
+}, 'Erro ao simular.'));
 
 router.ajudantes = { boletoDaFatura, comBoleto };
 module.exports = router;

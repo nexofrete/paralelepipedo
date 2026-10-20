@@ -2449,3 +2449,24 @@ CREATE TABLE IF NOT EXISTS gr_sm (
   criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_gr_sm_mdfe ON gr_sm (mdfe_id);
+
+-- PIX com baixa automática pela API Pix do banco (padrão Bacen): cobrança dinâmica por fatura.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS pix_api_config JSONB;
+CREATE TABLE IF NOT EXISTS pix_cobrancas (
+  id SERIAL PRIMARY KEY,
+  fatura_id INTEGER NOT NULL REFERENCES faturas_transporte(id),
+  txid VARCHAR(35) NOT NULL UNIQUE,
+  tipo VARCHAR(4) NOT NULL,                    -- cobv (com vencimento) | cob (imediata)
+  provedor VARCHAR(12) NOT NULL,               -- api | simulador
+  valor NUMERIC(14,2) NOT NULL,
+  vencimento DATE,
+  status VARCHAR(12) NOT NULL,                 -- ativa | concluida | removida
+  copia_e_cola TEXT, location VARCHAR(300),
+  e2e VARCHAR(40), valor_pago NUMERIC(14,2), erro VARCHAR(300),
+  criada_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), concluida_em TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_pix_cobrancas_fatura ON pix_cobrancas (fatura_id, status);
+-- Pagamentos de mentira do simulador (aparecem como PIX recebidos).
+CREATE TABLE IF NOT EXISTS pix_sim_pagamentos (
+  id SERIAL PRIMARY KEY, txid VARCHAR(35) NOT NULL, valor NUMERIC(14,2) NOT NULL, e2e VARCHAR(40) NOT NULL, horario TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -42,6 +42,10 @@
           "texto": "Gerenciamento de risco: liberação de motorista e veículo na gerenciadora (Buonny, Telerisco, Opentech, Tecnorisk, simulador ou registro à mão), regras da apólice (limite, rastreador, escolta, SM) conferidas no MDF-e e envio da SM."
         },
         {
+          "area": "Financeiro",
+          "texto": "PIX com baixa automática pela API Pix do banco (padrão do Banco Central): cobrança dinâmica com vencimento, multa e juros na fatura, baixa sozinha pela conferência de 5 em 5 minutos ou pelo webhook do banco; com simulador."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

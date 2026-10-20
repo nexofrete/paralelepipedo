@@ -181,7 +181,7 @@ app.use(express.json());
 // licença vencida deixa só consultar (GET), sem emitir nem alterar nada.
 const licenca = require('./src/licenca');
 // Entrar e trocar a senha no portal do cliente continuam valendo com a licença vencida.
-const PORTAL_LIVRE = ['/portal/entrar', '/portal/esqueci', '/portal/redefinir', '/portal/senha'];
+const PORTAL_LIVRE = ['/portal/entrar', '/portal/esqueci', '/portal/redefinir', '/portal/senha', '/pix/webhook', '/pix/webhook/pix'];
 app.use('/api/licenca', require('./src/routes/licenca'));
 app.use('/api', (req, res, next) => {
   if (req.path === '/status') return next();
@@ -236,6 +236,12 @@ app.use('/api/contas-pagar', contasPagarRoutes.contasPagar);
 app.use('/api/acertos', contasPagarRoutes.acertos);
 app.use('/api/pef', require('./src/routes/pef'));
 app.use('/api/gr', require('./src/routes/gr'));
+// Aviso de PIX recebido do banco (webhook da API Pix). Não precisa de login: o aviso só dispara a
+// conferência na API do banco, que é o que vale para dar baixa.
+app.post(['/api/pix/webhook', '/api/pix/webhook/pix'], express.json({ limit: '200kb' }), require('express-rate-limit')({ windowMs: 60 * 1000, max: 60 }), async (req, res) => {
+  try { await require('./src/faturamento/pixApi').aviso(req.body || {}); } catch (err) { console.error('[pix webhook]', err.message); }
+  res.status(200).json({ ok: true });
+});
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
 app.use('/api/contabil', require('./src/routes/contabil'));
@@ -319,6 +325,7 @@ async function iniciar() {
     require('./src/contabil').agendar();
     require('./src/faturamento/regua').agendar();
     require('./src/integracao/webhooks').agendar();
+    require('./src/faturamento/pixApi').agendar();
     require('./src/avisosSeguranca').iniciar();
     require('./src/fusoBanco').verificarAoLigar();
     licenca.agendarConferencia();

@@ -291,6 +291,22 @@ def parte_financeiro(g):
     ])
     s += aviso('nota', 'Dois cliques na baixa, ou a baixa manual junto com o retorno do banco ou a conciliação, não '
                        'geram dois recebimentos: a fatura fica travada enquanto um recebimento é gravado.')
+    s += h2('PIX com baixa automática (API Pix do banco)')
+    s.append(P('Em <b>Cobrança (PIX e banco) » PIX com baixa automática</b>, ligue a cobrança pela API Pix do banco. A API é '
+               'o padrão do Banco Central, igual em todos os bancos: no portal do desenvolvedor do seu banco pegue a URL da '
+               'API, a URL do token, o client_id, o client_secret, o certificado (.pfx/.p12) e, se o banco pedir, um '
+               'parâmetro extra (ex.: gw-dev-app-key). "Testar conexão" confere se o banco aceitou as credenciais.'))
+    s += lista([
+        'Cada fatura sai com um PIX <b>dinâmico</b> (cobrança registrada no banco) no QR Code e no copia e cola da fatura, do '
+        'e-mail, da régua e do portal: com vencimento (multa e juros) ou imediata. Cliente sem CPF/CNPJ válido vai como imediata.',
+        'Mudou o saldo (pagamento parcial, desconto) ou o vencimento: a cobrança antiga sai do banco e outra é criada.',
+        '<b>Baixa sozinha</b>: o sistema confere os PIX recebidos a cada 5 minutos ("Conferir PIX recebidos agora" força). '
+        'Com o sistema publicado em HTTPS, cadastre no banco o webhook /api/pix/webhook para a baixa sair na hora; o aviso '
+        'do banco só dispara a conferência, e o valor é o que o banco confirma.',
+        'Cada PIX dá baixa uma vez só. PIX de fatura já paga ou cancelada fica marcado na fatura para devolução ou crédito.',
+        'Se o banco não responder, a fatura sai com o PIX estático, como antes.',
+        'O <b>Simulador</b> faz o fluxo sem banco: na fatura, "Simular pagamento do PIX" (administrador) mostra a baixa automática.',
+    ])
 
     # 42
     s += h1('42. Boleto registrado (CNAB 240)')

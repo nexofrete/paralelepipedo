@@ -151,7 +151,8 @@
       ${f.status !== 'cancelada' ? `<div class="cte-secao"><h4>Enviar ao cliente</h4><div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
         <input type="email" id="fatEmail" class="cte-entrada" value="${esc(f.tomador_email || '')}" placeholder="e-mail do financeiro do cliente" style="flex:1; min-width:220px;" />
         <button class="btn btn-primario" id="fatEnviar" style="width:auto;">✉ Enviar fatura por e-mail</button></div>
-        ${f.pix ? '<div style="font-size:12px; color:var(--texto-fraco);">A fatura vai com o QR Code e o PIX copia e cola do saldo.</div>' : '<div style="font-size:12px; color:var(--amarelo);">Cadastre a chave PIX em “⚙️ Cobrança” para a fatura sair com o QR Code de pagamento.</div>'}</div>` : ''}
+        ${f.pix ? '<div style="font-size:12px; color:var(--texto-fraco);">A fatura vai com o QR Code e o PIX copia e cola do saldo.</div>' : aberta ? '<div style="font-size:12px; color:var(--amarelo);">Cadastre a chave PIX em “⚙️ Cobrança” para a fatura sair com o QR Code de pagamento.</div>' : ''}</div>` : ''}
+      <div id="fatPixApi"></div>
       <div id="fatRegua"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:12px;">
         ${aberta && !f.pagamentos.length ? '<button class="btn btn-secundario" id="fatCancelar" style="width:auto; color:var(--vermelho);">Cancelar fatura</button>' : ''}
@@ -161,6 +162,19 @@
     modal.classList.remove('oculto');
     // Régua de cobrança: lembretes enviados, lembrar agora e pagamento prometido (js/regua.js).
     window.reguaNaFatura?.($('fatRegua'), f, () => abrirFatura(id));
+    // Cobrança PIX dinâmica (API do banco): situação e, no simulador, o pagamento de teste.
+    api(`/${id}/pix`).then((lista) => {
+      if (!lista.length || !$('fatPixApi')) return;
+      const c = lista[0];
+      const sit = { ativa: 'aguardando pagamento', concluida: 'paga', removida: 'substituída/retirada' }[c.status] || c.status;
+      $('fatPixApi').innerHTML = `<div class="cte-secao"><h4>PIX com baixa automática</h4><div style="font-size:13px;">Cobrança ${c.tipo === 'cobv' ? 'com vencimento' : 'imediata'} de <b>${moeda(c.valor)}</b> · ${esc(sit)}${c.provedor === 'simulador' ? ' · <i>simulador</i>' : ''}
+        <br><small style="color:var(--texto-fraco);">txid ${esc(c.txid)}${c.e2e ? ` · PIX ${esc(c.e2e)}` : ''}</small>${c.erro ? `<div style="color:var(--vermelho); margin-top:4px;">⚠ ${esc(c.erro)}</div>` : ''}</div>
+        ${c.status === 'ativa' && c.provedor === 'simulador' && usuario?.perfil === 'admin' ? '<button class="btn btn-secundario" id="fatPixSimular" style="width:auto; margin-top:6px;">🧪 Simular pagamento do PIX</button>' : ''}</div>`;
+      $('fatPixSimular')?.addEventListener('click', async (e) => {
+        e.currentTarget.disabled = true;
+        try { const r = await post(`/${id}/pix/simular-pagamento`); mostrarAlerta(r.baixados ? 'PIX recebido e fatura baixada automaticamente.' : 'PIX simulado, mas a baixa não saiu (veja o aviso).', { tipo: r.baixados ? 'sucesso' : 'aviso' }); await recarregar(); } catch (err) { erro(err); }
+      });
+    }).catch(() => {});
     const recarregar = async () => { await abrirFatura(id); carregarFaturas().catch(() => {}); };
     $('fatImprimir').addEventListener('click', () => imprimir(id));
     $('fbGerar')?.addEventListener('click', async (e) => {
@@ -351,6 +365,59 @@
   }
 
   // ---------------- Configuração da cobrança ----------------
+  // PIX com baixa automática pela API Pix do banco (padrão do Banco Central).
+  async function montarPixApi() {
+    const c = await api('/pix-api');
+    const admin = usuario?.perfil === 'admin';
+    const n = (v) => String(v ?? '').replace('.', ',');
+    const u = c.ultima_conferencia;
+    $('fcPixApi').innerHTML = `<h4>PIX com baixa automática (API Pix do banco)</h4>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 8px;">Com a API ligada, cada fatura sai com um PIX <b>dinâmico</b> (cobrança registrada no banco, com vencimento, multa e juros) e é <b>baixada sozinha</b> quando o cliente paga: o sistema confere os PIX recebidos a cada 5 minutos e, se o banco avisar pelo webhook, na hora. A API é o padrão do Banco Central, igual em todos os bancos: os dados (URLs, client_id, client_secret e o certificado) vêm do portal do desenvolvedor do seu banco. Sem a API, a fatura continua com o PIX estático acima.</p>
+      <div class="cte-grade">
+        <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="paAtivo" ${c.ativo ? 'checked' : ''} style="width:auto;" ${admin ? '' : 'disabled'} /> Ligar a cobrança PIX pela API (baixa automática)</label></div>
+        <div class="campo"><label for="paProv">Banco</label><select id="paProv"><option value="simulador" ${c.provedor !== 'api' ? 'selected' : ''}>Simulador (sem banco)</option><option value="api" ${c.provedor === 'api' ? 'selected' : ''}>API Pix do banco (padrão Bacen)</option></select></div>
+        <div class="campo"><label for="paTipo">Cobrança</label><select id="paTipo"><option value="cobv" ${c.tipo !== 'cob' ? 'selected' : ''}>Com vencimento (multa e juros)</option><option value="cob" ${c.tipo === 'cob' ? 'selected' : ''}>Imediata (sem vencimento)</option></select></div>
+        <div class="campo"><label for="paMulta">Multa (%)</label><input id="paMulta" value="${n(c.multa_pct)}" inputmode="decimal" /></div>
+        <div class="campo"><label for="paJuros">Juros (% ao mês)</label><input id="paJuros" value="${n(c.juros_pct_mes)}" inputmode="decimal" /></div>
+        <div class="campo"><label for="paValid">Paga até quantos dias depois do vencimento</label><input id="paValid" value="${esc(c.validade_apos_vencimento)}" inputmode="numeric" /></div>
+        <div class="campo"><label for="paExp">Validade da cobrança imediata (dias)</label><input id="paExp" value="${esc(c.expiracao_dias)}" inputmode="numeric" /></div>
+        <div id="paCamposApi" class="campo inteiro" style="display:contents;">
+          <div class="campo largo"><label for="paUrl">URL da API Pix</label><input id="paUrl" value="${esc(c.url_api)}" placeholder="https://… (do portal do desenvolvedor do banco)" /></div>
+          <div class="campo largo"><label for="paToken">URL do token (OAuth)</label><input id="paToken" value="${esc(c.url_token)}" placeholder="https://…/oauth/token" /></div>
+          <div class="campo"><label for="paCid">client_id</label><input id="paCid" value="${esc(c.client_id)}" /></div>
+          <div class="campo"><label for="paSec">client_secret</label><input id="paSec" type="password" autocomplete="new-password" value="${esc(c.client_secret)}" /></div>
+          <div class="campo"><label for="paExtra">Parâmetro extra (se o banco pedir)</label><input id="paExtra" value="${esc(c.parametro_extra)}" placeholder="ex.: gw-dev-app-key=…" /></div>
+          <div class="campo largo"><label for="paEscopo">Escopos</label><input id="paEscopo" value="${esc(c.escopo)}" /></div>
+          <div class="campo"><label for="paCert">Certificado do banco (.pfx/.p12)</label><input id="paCert" type="file" accept=".pfx,.p12" />${c.tem.certificado ? '<small style="color:var(--verde);">✓ certificado enviado</small>' : '<small>ainda não enviado</small>'}</div>
+          <div class="campo"><label for="paCertSenha">Senha do certificado</label><input id="paCertSenha" type="password" autocomplete="new-password" value="${esc(c.cert_senha)}" /></div>
+          <div class="campo inteiro" style="font-size:12px; color:var(--texto-fraco);">Webhook (opcional, precisa do sistema publicado com HTTPS): cadastre no banco o endereço <code>${esc(location.origin)}/api/pix/webhook</code>. Sem webhook, a baixa sai na conferência de 5 em 5 minutos.</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        ${admin ? '<button class="btn btn-primario" id="paSalvar" style="width:auto;">💾 Salvar API Pix</button><button class="btn btn-secundario" id="paTestar" style="width:auto;">🔌 Testar conexão</button>' : ''}
+        <button class="btn btn-secundario" id="paConferir" style="width:auto;" ${c.ativo ? '' : 'disabled'}>🔄 Conferir PIX recebidos agora</button>
+        ${u ? `<small style="color:var(--texto-fraco);">Última conferência: ${new Date(u.em).toLocaleString('pt-BR')} · ${u.recebidos} PIX recebido(s), ${u.baixados} baixa(s)${u.erros ? `, <b style="color:var(--vermelho);">${u.erros} com problema</b>` : ''}</small>` : ''}
+      </div>`;
+    const mostrarApi = () => { $('paCamposApi').style.display = $('paProv').value === 'api' ? 'contents' : 'none'; };
+    mostrarApi(); $('paProv').addEventListener('change', mostrarApi);
+    $('paSalvar')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        const arq = $('paCert').files[0];
+        if (arq) { const base = await new Promise((ok, erroL) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = erroL; r.readAsDataURL(arq); }); await post('/pix-api/certificado', { arquivo: base }); }
+        await api('/pix-api', { method: 'PUT', body: JSON.stringify({ ativo: $('paAtivo').checked, provedor: $('paProv').value, tipo: $('paTipo').value, multa_pct: $('paMulta').value, juros_pct_mes: $('paJuros').value,
+          validade_apos_vencimento: $('paValid').value, expiracao_dias: $('paExp').value, url_api: $('paUrl').value, url_token: $('paToken').value, client_id: $('paCid').value, client_secret: $('paSec').value,
+          parametro_extra: $('paExtra').value, escopo: $('paEscopo').value, cert_senha: $('paCertSenha').value }) });
+        mostrarAlerta('API Pix salva.', { tipo: 'sucesso' }); await montarPixApi();
+      } catch (err) { erro(err); b.disabled = false; }
+    });
+    $('paTestar')?.addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true; try { const r = await post('/pix-api/testar'); mostrarAlerta(r.simulado ? 'Simulador pronto (não fala com banco).' : 'Conectou no banco: token de acesso recebido.', { tipo: 'sucesso' }); } catch (err) { erro(err); } b.disabled = false; });
+    $('paConferir').addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try { const r = await post('/pix-api/conferir'); mostrarAlerta(`${r.recebidos} PIX recebido(s) no período; ${r.baixados} fatura(s) baixada(s)${r.erros ? `; ${r.erros} com problema (veja na fatura)` : ''}.`, { tipo: r.erros ? 'aviso' : 'sucesso' }); await montarPixApi(); } catch (err) { erro(err); b.disabled = false; }
+    });
+  }
+
   async function configuracao() {
     const c = await api('/config');
     const campo = (id, rotulo, valor, extra = '', classe = '') => `<div class="campo ${classe}"><label for="${id}">${rotulo}</label><input type="text" id="${id}" value="${esc(valor ?? '')}" ${extra} /></div>`;
@@ -360,6 +427,7 @@
         ${campo('fcPixCidade', 'Cidade do recebedor', c.pix_cidade || c.municipio)}
         <div class="campo inteiro" style="font-size:12px; color:var(--texto-fraco);">O QR Code é o PIX estático do Banco Central, já com o valor e a identificação da fatura (FAT + número): funciona em qualquer banco e não precisa de contrato. O nome do recebedor é a razão social (${esc(c.razao_social || '')}). Celular: digite com +55.</div>
       </div></div>
+      <div class="cte-secao" id="fcPixApi"><small>Carregando a API Pix…</small></div>
       <div class="cte-secao"><h4>Depósito / TED (aparece na fatura e no DOCCOB)</h4><div class="cte-grade">
         ${campo('fcBanco', 'Banco', c.banco_nome)}${campo('fcBancoCod', 'Código do banco', c.banco_codigo, 'maxlength="3" placeholder="ex.: 341"')}${campo('fcAgencia', 'Agência', c.banco_agencia)}${campo('fcConta', 'Conta', c.banco_conta)}
       </div></div>
@@ -368,6 +436,7 @@
         <div class="campo inteiro"><label for="fcInstr">Instruções (rodapé da fatura)</label><textarea id="fcInstr" rows="2" style="width:100%;">${esc(c.fatura_instrucoes || '')}</textarea></div>
       </div></div>
       <div style="display:flex; justify-content:flex-end;"><button class="btn btn-primario" id="fcSalvar" style="width:auto;">💾 Salvar</button></div></div>`;
+    montarPixApi().catch((err) => { $('fcPixApi').innerHTML = `<small style="color:var(--vermelho);">${esc(err.message)}</small>`; });
     $('fcSalvar').addEventListener('click', async (e) => {
       const btn = e.currentTarget; btn.disabled = true;
       try {

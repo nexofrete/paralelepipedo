@@ -18,8 +18,12 @@ const docFmt = (v) => {
 const FORMAS = { pix: 'PIX', boleto: 'Boleto', deposito: 'Depósito/TED', dinheiro: 'Dinheiro', cheque: 'Cheque', outro: 'Outro' };
 
 // Dados de cobrança da fatura (PIX copia e cola + imagem do QR em data URI), ou null sem chave PIX.
+// Com a API Pix do banco ligada, é a cobrança dinâmica (baixa automática); se o banco falhar, cai no estático.
 async function cobrancaPix(f, e) {
   if (!e.pix_chave || f.status === 'cancelada' || !(Number(f.saldo) > 0)) return null;
+  let dinamico = null;
+  try { dinamico = await require('./pixApi').cobrancaDaFatura(f, e); } catch (err) { console.error('[pix api] fatura', f.numero, err.message); }
+  if (dinamico) return { copiaECola: dinamico.copiaECola, txid: dinamico.txid, dinamico: true, qrPng: await QRCode.toDataURL(dinamico.copiaECola, { margin: 1, width: 220, errorCorrectionLevel: 'M' }) };
   const copiaECola = brCode({ chave: e.pix_chave, nome: e.razao_social, cidade: e.pix_cidade || e.municipio, valor: f.saldo, txid: `FAT${f.numero}`, descricao: `Fatura ${f.numero}` });
   return { copiaECola, qrPng: await QRCode.toDataURL(copiaECola, { margin: 1, width: 220, errorCorrectionLevel: 'M' }) };
 }

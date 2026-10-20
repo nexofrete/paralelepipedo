@@ -41,3 +41,12 @@ test('acerto do motorista próprio: despesas − adiantamento (negativo = devolv
   assert.deepStrictEqual(ac.custosDoMdfe(a, l), { combustivel: 1180.4, pedagio: 210, motorista: 280, terceiro: 0, outros: 50 });
   assert.strictEqual(ac.calcular({ ...a, adiantamento: 2000 }, l).saldo, -279.6);
 });
+
+test('competência: compra parcelada fica toda no mês dela; conta que se repete vai mês a mês', () => {
+  const base = { descricao: 'x', valor: 300, vencimento: '2026-10-10', competencia: '2026-09-25', parcelas: 3 };
+  const compra = cp.parcelar(cp.lerConta({ ...base, dividir: true }));
+  assert.deepStrictEqual(compra.map((p) => p.competencia), ['2026-09-25', '2026-09-25', '2026-09-25']);
+  const aluguel = cp.parcelar(cp.lerConta({ ...base, dividir: false }));
+  assert.deepStrictEqual(aluguel.map((p) => p.competencia), ['2026-09-25', '2026-10-25', '2026-11-25']);
+  assert.strictEqual(cp.parcelar(cp.lerConta({ ...base, competencia: '', parcelas: 1 }))[0].competencia, null);   // vazio = hoje (no banco)
+});

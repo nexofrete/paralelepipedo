@@ -87,7 +87,7 @@ async function atualizarKm(cliente, veiculoId, km, data) {
 async function lancarConta(cliente, { pagamento, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, data, vencimento, valor, parcelas, forma, observacao, veiculo_id }, usuarioNome) {
   if (!['a_vista', 'a_prazo'].includes(pagamento) || !(valor > 0)) return [];
   const criadas = await contas.criar({
-    descricao, categoria, fornecedor_nome, fornecedor_doc, documento, observacao, valor, veiculo_id,
+    descricao, categoria, fornecedor_nome, fornecedor_doc, documento, observacao, valor, veiculo_id, competencia: data,
     vencimento: pagamento === 'a_vista' ? data : (iso(vencimento) || data), parcelas: pagamento === 'a_prazo' ? parcelas || 1 : 1,
   }, usuarioNome, { cliente });
   if (pagamento === 'a_vista') await contas.pagar(criadas[0].id, { data, forma: contas.FORMAS.includes(forma) ? forma : 'pix' }, usuarioNome, cliente);

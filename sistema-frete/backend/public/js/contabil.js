@@ -107,6 +107,7 @@
     $('cblConteudo').innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
         <span style="font-size:12.5px; color:var(--texto-fraco);">Regime de <b>${r.regime === 'caixa' ? 'caixa' : 'competência'}</b> · ${r.totais.linhas} lançamento(s) · contas do plano em ⚙ Contador e plano de contas</span>
+        ${r.totais.receita_recebida ? `<span style="font-size:12.5px;">Receita recebida no período: <b>R$ ${num(r.totais.receita_recebida.total)}</b> (CT-e ${num(r.totais.receita_recebida.frete)} · NFS-e ${num(r.totais.receita_recebida.municipal)})</span>` : ''}
         <a class="btn btn-primario" href="${link('lancamentos.csv')}" style="width:auto; text-decoration:none;">⬇ Planilha para importar</a></div>
       <div class="painel" style="padding:12px 14px; margin-bottom:14px;"><h4 style="margin:0 0 8px;">Resumo por conta</h4>${tabela(
         '<th>Conta</th><th>Nome</th><th class="n">Débitos</th><th class="n">Créditos</th><th class="n">Saldo do período</th>',
@@ -173,8 +174,8 @@
           ${campo('cblEmail', 'E-mail (vários: separe com ;)', c.contador_email, 'type="text" placeholder="contador@escritorio.com.br"')}
           ${campo('cblCrc', 'CRC', c.contador_crc)}
           <div class="campo"><label for="cblRegime">Regime dos lançamentos</label><select id="cblRegime" class="cte-entrada">
-            <option value="competencia" ${c.regime !== 'caixa' ? 'selected' : ''}>Competência — despesa quando lança, receita na emissão</option>
-            <option value="caixa" ${c.regime === 'caixa' ? 'selected' : ''}>Caixa — despesa quando paga</option></select></div>
+            <option value="competencia" ${c.regime !== 'caixa' ? 'selected' : ''}>Competência — despesa no mês da competência, receita na emissão</option>
+            <option value="caixa" ${c.regime === 'caixa' ? 'selected' : ''}>Caixa — despesa quando paga, receita quando recebe</option></select></div>
           <div class="campo"><label for="cblSep">Separador da planilha</label><select id="cblSep" class="cte-entrada">
             <option value=";" ${c.separador === ';' ? 'selected' : ''}>Ponto e vírgula (Excel brasileiro, Domínio, Alterdata)</option>
             <option value="," ${c.separador === ',' ? 'selected' : ''}>Vírgula (valor com ponto)</option>

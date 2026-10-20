@@ -38,6 +38,10 @@
           "texto": "Fiscal e contabilidade: livro de saídas, lançamentos contábeis, pacote do contador com envio automático; ajustes de meses anteriores, ICMS de outra UF e só documentos de produção."
         },
         {
+          "area": "Fiscal",
+          "texto": "Contabilidade: despesa entra pelo mês da competência (campo novo na conta a pagar), conta cancelada depois do mês fechado vira estorno, e no regime de caixa a receita entra no recebimento da fatura."
+        },
+        {
           "area": "Rastreamento",
           "texto": "Rastreamento pela Central de Canhotos da LD Rio Pizzo, preenchendo a Data da Entrega como já era feito com a Andrade e Abreu."
         },

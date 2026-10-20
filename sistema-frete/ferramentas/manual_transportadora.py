@@ -287,6 +287,10 @@ def parte_financeiro(g):
     s += lista([
         '<b>Contas a pagar</b> (110): qualquer saída, em parcelas, com centro de custo. Pagar total ou parcial; o '
         'pagamento pode ser estornado. Ao editar uma conta, o centro de custo só muda se você mexer nele.',
+        '<b>Competência</b>: o dia da despesa (data da nota ou do serviço), que define o mês em que ela entra na '
+        'contabilidade. Vem com o dia de hoje; corrija quando a nota for de outro mês. Compra parcelada fica toda no mês '
+        'da compra; conta que se repete ("o valor é de cada parcela", ex.: aluguel) vai um mês para cada parcela. '
+        'Abastecimento e manutenção usam a data do registro; comissão, o último dia do período fechado.',
         '<b>Acerto de viagem</b> (120): motorista próprio (adiantamento e despesas) ou terceiro/agregado (frete, '
         'adiantamento, CIOT, vale-pedágio; retenções do TAC calculadas). Gera as contas a pagar e o demonstrativo para assinar.',
     ])
@@ -330,6 +334,13 @@ def parte_financeiro(g):
         'Simples, o ISS não retido não é lançado.',
         '<b>Lançamentos contábeis</b>: receita, impostos, recebimentos (juros à parte), descontos concedidos, contas a '
         'pagar e o adiantamento do acerto.',
+        '<b>Regime de competência</b>: receita e impostos na emissão do CT-e/NFS-e; despesa no mês da <b>competência</b> '
+        'da conta a pagar (não no dia em que foi cadastrada); o pagamento baixa o fornecedor. Conta cancelada depois '
+        'do mês fechado continua no mês dela e sai como estorno no mês do cancelamento.',
+        '<b>Regime de caixa</b>: só o que passa pelo caixa. A receita entra no recebimento da fatura (dividida entre '
+        'CT-e e NFS-e na proporção dos documentos da fatura), a despesa no pagamento. Emissão, estornos de documentos e '
+        'descontos não geram lançamento; ICMS e ISS entram quando pagos (conta a pagar, categoria Impostos). A tela e o '
+        'LEIA-ME mostram a receita recebida no período. O livro de saídas é o mesmo nos dois regimes.',
         '<b>Pacote do contador</b> (141): XML de CT-e, MDF-e e NFS-e, livro, lançamentos e LEIA-ME, por download ou '
         'e-mail; o envio automático manda o mês anterior no dia escolhido (o envio à mão do mês inteiro conta).',
     ])

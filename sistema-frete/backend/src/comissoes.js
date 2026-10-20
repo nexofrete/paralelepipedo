@@ -189,7 +189,7 @@ async function fechar(vendedorId, { de, ate, vencimento, centro_custo_id } = {},
     if (!centro) centro = (await cliente.query(`SELECT id FROM centros_custo WHERE tipo = 'comercial' AND ativo ORDER BY id LIMIT 1`)).rows[0]?.id || null;
     const [conta] = await contas.criar({
       descricao: `Comissão ${r.vendedor.nome} — ${dia(de)} a ${dia(ate)} (${r.itens.length} doc.${r.estornos.length ? `, ${r.estornos.length} estorno(s)` : ''})`, categoria: 'comissao',
-      fornecedor_nome: r.vendedor.nome, fornecedor_doc: r.vendedor.documento, documento: `COM ${f.id}`, vencimento: venc, valor: r.total, centro_custo_id: centro,
+      fornecedor_nome: r.vendedor.nome, fornecedor_doc: r.vendedor.documento, documento: `COM ${f.id}`, competencia: ate, vencimento: venc, valor: r.total, centro_custo_id: centro,
       observacao: `Fechamento de comissão ${f.id} — ${BASES[r.vendedor.base]}.`,
     }, usuarioNome, { cliente });
     await cliente.query('UPDATE comissao_fechamentos SET conta_pagar_id = $2 WHERE id = $1', [f.id, conta.id]);

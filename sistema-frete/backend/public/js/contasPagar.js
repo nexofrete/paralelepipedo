@@ -98,6 +98,7 @@
         <div class="campo"><label for="cpFornDoc">CNPJ / CPF</label><input id="cpFornDoc" maxlength="18" value="${esc(Doc.formatar(c?.fornecedor_doc ?? ''))}" /></div>
         <div class="campo"><label for="cpDoc">Documento (NF, boleto)</label><input id="cpDoc" maxlength="60" value="${v('documento')}" /></div>
         <div class="campo"><label for="cpValor">${c ? 'Valor' : 'Valor (total)'}</label><input id="cpValor" inputmode="decimal" value="${c ? esc(num2(c.valor)) : ''}" /></div>
+        <div class="campo"><label for="cpComp" title="Dia da despesa (data da nota ou do serviço): é o mês em que ela entra na contabilidade (regime de competência).">Competência</label><input id="cpComp" type="date" value="${c?.competencia ? esc(String(c.competencia).slice(0, 10)) : hoje()}" /></div>
         <div class="campo"><label for="cpVenc">${c ? 'Vencimento' : '1º vencimento'}</label><input id="cpVenc" type="date" value="${c ? esc(String(c.vencimento).slice(0, 10)) : hoje()}" /></div>
         ${c ? '' : `<div class="campo"><label for="cpParcelas">Parcelas (mensais)</label><input id="cpParcelas" type="number" min="1" max="60" value="1" /></div>
           <div class="campo"><label for="cpDividir">O valor é</label><select id="cpDividir"><option value="true">o total (divide nas parcelas)</option><option value="false">de cada parcela (ex.: aluguel)</option></select></div>`}
@@ -110,7 +111,7 @@
       const b = ev.currentTarget; b.disabled = true;
       try {
         const corpo = { descricao: $('cpDesc').value, categoria: $('cpCategoria').value, fornecedor_nome: $('cpForn').value, fornecedor_doc: $('cpFornDoc').value, documento: $('cpDoc').value,
-          valor: $('cpValor').value, vencimento: $('cpVenc').value, observacao: $('cpObs').value, centro_custo_id: $('cpCentro').value || null, ...(c ? {} : { parcelas: $('cpParcelas').value, dividir: $('cpDividir').value }) };
+          valor: $('cpValor').value, competencia: $('cpComp').value, vencimento: $('cpVenc').value, observacao: $('cpObs').value, centro_custo_id: $('cpCentro').value || null, ...(c ? {} : { parcelas: $('cpParcelas').value, dividir: $('cpDividir').value }) };
         if (c) await json(`/api/contas-pagar/${c.id}`, { method: 'PUT', body: JSON.stringify(corpo) });
         else { const r = await json('/api/contas-pagar', { method: 'POST', body: JSON.stringify(corpo) }); if (r.length > 1) mostrarAlerta(`${r.length} parcelas lançadas.`, { tipo: 'sucesso' }); }
         fecharModal(); telaContas().catch(erro);
@@ -128,6 +129,7 @@
         <div><span style="color:var(--texto-fraco); font-size:12px;">Categoria</span><br>${esc(cat.categorias[c.categoria] || c.categoria)}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Centro de custo</span><br>${esc((centrosCc || []).find((x) => x.id === Number(c.centro_custo_id))?.nome || '—')}</div>
         <div><span style="color:var(--texto-fraco); font-size:12px;">Vencimento</span><br><b>${dia(c.vencimento)}</b></div>
+        ${c.competencia ? `<div><span style="color:var(--texto-fraco); font-size:12px;">Competência</span><br>${dia(c.competencia)}</div>` : ''}
         <div><span style="color:var(--texto-fraco); font-size:12px;">Valor / pago / falta</span><br>${brl(c.valor)} · ${brl(c.valor_pago)} · <b>${brl(falta)}</b></div>
         ${c.documento ? `<div><span style="color:var(--texto-fraco); font-size:12px;">Documento</span><br>${esc(c.documento)}</div>` : ''}
         ${c.acerto_id ? `<div><span style="color:var(--texto-fraco); font-size:12px;">Origem</span><br><a href="#" id="cpVerAcerto">acerto de viagem ${c.acerto_id}</a></div>` : ''}

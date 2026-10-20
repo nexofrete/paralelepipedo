@@ -29,13 +29,15 @@ function somarMeses(dataIso, meses) {
   return alvo.toISOString().slice(0, 10);
 }
 
-// { descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcelas, dividir, observacao }
+// { descricao, categoria, fornecedor_nome, fornecedor_doc, documento, competencia, vencimento, valor, parcelas, dividir, observacao }
 // parcelas > 1: mensais a partir do vencimento; dividir = o valor é o total (senão, cada parcela tem o valor).
+// competencia: dia da despesa para a contabilidade (vazio = hoje). Compra parcelada: todas as parcelas na
+// mesma competência; conta que se repete (sem dividir): cada parcela no seu mês.
 function lerConta(b = {}) {
   const c = {
     descricao: texto(b.descricao, 200), categoria: CATEGORIAS[b.categoria] ? b.categoria : 'outros', fornecedor_nome: texto(b.fornecedor_nome, 200),
     fornecedor_doc: Doc.limpar(b.fornecedor_doc), documento: texto(b.documento, 60),
-    vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null, centro_custo_id: Number(b.centro_custo_id) || null,
+    competencia: iso(b.competencia), vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null, centro_custo_id: Number(b.centro_custo_id) || null,
     parcelas: Math.min(Math.max(parseInt(b.parcelas, 10) || 1, 1), 60), dividir: b.dividir !== false && b.dividir !== 'false',
   };
   if (!c.descricao) throw falha('Informe a descrição da conta.');
@@ -47,10 +49,11 @@ function lerConta(b = {}) {
 
 // Divide em parcelas sem perder centavos (a diferença vai na primeira).
 function parcelar(c) {
-  if (c.parcelas === 1) return [{ vencimento: c.vencimento, valor: c.valor, parcela: null }];
+  if (c.parcelas === 1) return [{ vencimento: c.vencimento, valor: c.valor, parcela: null, competencia: c.competencia }];
   const cada = c.dividir ? Math.floor((c.valor / c.parcelas) * 100) / 100 : c.valor;
   const resto = c.dividir ? centavos(c.valor - cada * c.parcelas) : 0;
-  return Array.from({ length: c.parcelas }, (_, i) => ({ vencimento: somarMeses(c.vencimento, i), valor: centavos(cada + (i === 0 ? resto : 0)), parcela: `${i + 1}/${c.parcelas}` }));
+  const competencia = (i) => (c.dividir || !c.competencia ? c.competencia : somarMeses(c.competencia, i));
+  return Array.from({ length: c.parcelas }, (_, i) => ({ vencimento: somarMeses(c.vencimento, i), valor: centavos(cada + (i === 0 ? resto : 0)), parcela: `${i + 1}/${c.parcelas}`, competencia: competencia(i) }));
 }
 
 // Centro de custo da conta: o escolhido; sem ele, o do veículo (abastecimento, manutenção,
@@ -76,9 +79,9 @@ async function criar(b, usuarioNome, { cliente = pool, acertoId = null } = {}) {
   const criadas = [];
   for (const p of parcelar(c)) {
     const { rows } = await cliente.query(
-      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome, centro_custo_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome, c.centro_custo_id]);
+      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome, centro_custo_id, competencia)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome, c.centro_custo_id, p.competencia]);
     criadas.push(rows[0]);
   }
   return criadas;
@@ -91,10 +94,10 @@ async function alterar(id, b) {
   const mudaCentro = Object.prototype.hasOwnProperty.call(b, 'centro_custo_id');
   const { rows } = await pool.query(
     `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10,
-            centro_custo_id = CASE WHEN $12 THEN $11 ELSE centro_custo_id END,
+            centro_custo_id = CASE WHEN $12 THEN $11 ELSE centro_custo_id END, competencia = COALESCE($13::date, competencia),
             status = CASE WHEN valor_pago >= $8 - 0.001 THEN 'paga' ELSE status END, pago_em = CASE WHEN valor_pago >= $8 - 0.001 THEN COALESCE(pago_em, CURRENT_DATE) ELSE pago_em END
       WHERE id = $1 AND status = 'aberta' AND valor_pago <= $8 RETURNING *`,
-    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id, mudaCentro]);
+    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id, mudaCentro, c.competencia]);
   if (!rows[0]) throw falha('Só dá para alterar conta em aberto (e o valor não pode ficar menor que o já pago).', 409);
   return rows[0];
 }

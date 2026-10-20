@@ -2371,3 +2371,19 @@ CREATE TABLE IF NOT EXISTS cnpj_consultas (
   dados JSONB NOT NULL,
   consultado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Contas a pagar: competência (mês da despesa, para a contabilidade no regime de competência)
+-- e data do cancelamento (cancelada depois do mês fechado vira estorno no mês do cancelamento).
+ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS competencia DATE;
+ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS cancelada_em TIMESTAMPTZ;
+UPDATE contas_pagar SET competencia = (criado_em AT TIME ZONE 'America/Sao_Paulo')::date WHERE competencia IS NULL;
+CREATE OR REPLACE FUNCTION fn_contas_pagar_datas() RETURNS trigger AS $$
+BEGIN
+  IF NEW.competencia IS NULL THEN NEW.competencia := (COALESCE(NEW.criado_em, NOW()) AT TIME ZONE 'America/Sao_Paulo')::date; END IF;
+  IF NEW.status = 'cancelada' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'cancelada') THEN NEW.cancelada_em := NOW();
+  ELSIF NEW.status <> 'cancelada' THEN NEW.cancelada_em := NULL; END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_contas_pagar_datas ON contas_pagar;
+CREATE TRIGGER trg_contas_pagar_datas BEFORE INSERT OR UPDATE ON contas_pagar FOR EACH ROW EXECUTE FUNCTION fn_contas_pagar_datas();
+CREATE INDEX IF NOT EXISTS idx_contas_pagar_competencia ON contas_pagar (competencia);

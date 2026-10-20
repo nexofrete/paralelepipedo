@@ -409,6 +409,8 @@ Menu **Operação de Transporte → 🧮 Fiscal e contabilidade** (código **140
   - receita dos CT-e e NFS-e, com o ICMS e o ISS;
   - recebimentos das faturas;
   - contas a pagar, no regime de competência ou de caixa.
+  - **Competência:** receita e impostos na emissão; despesa no mês da **competência** da conta a pagar (campo novo, não o dia do cadastro). Conta cancelada depois do mês fechado continua no mês dela e sai como estorno no mês do cancelamento.
+  - **Caixa:** receita no **recebimento** da fatura (dividida entre CT-e e NFS-e na proporção dos documentos da fatura) e despesa no pagamento; emissão, estornos e descontos não geram lançamento (ICMS e ISS entram quando pagos). A tela e o LEIA-ME mostram a receita recebida no período.
   - Traz o resumo por conta (débitos = créditos) e a planilha para importar (separador `;`, `,` ou tabulação).
 - **Pacote do contador (.zip):** XML dos CT-e (autorizados, cancelados e substituídos em pastas separadas, mais os eventos), dos MDF-e e das NFS-e, junto com o livro, os lançamentos e um LEIA-ME.
   - Baixa na tela ou vai por e-mail para o contador.
@@ -423,6 +425,7 @@ Em **Operação de Transporte → Contas a pagar / Acerto de viagem**:
 
 **Contas a pagar** (quem tem permissão de financeiro):
 - Lance qualquer saída: combustível, pedágio, manutenção, pneus, salários, impostos, aluguel...
+- **Competência**: o dia da despesa (data da nota/serviço) — define o mês na contabilidade. Compra parcelada fica toda no mês dela; conta que se repete (valor de cada parcela) vai mês a mês. Abastecimento e manutenção usam a data do registro; comissão, o fim do período.
 - **Parcelas mensais:** o valor pode ser o total (dividido entre as parcelas) ou o de cada parcela (ex.: aluguel).
 - **Pagar:** total ou parcial, com forma de pagamento. O pagamento pode ser estornado.
 - **Topo da tela:** vencidas, vence hoje, próximos 7 dias, pago no mês e o **saldo dos próximos 30 dias** (faturas a receber − contas a pagar).

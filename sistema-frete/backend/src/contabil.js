@@ -194,13 +194,17 @@ async function lancamentos(p) {
     if (v > 0) linhas.push({ data, debito, credito, valor: v, historico: String(historico).slice(0, 200), documento, participante });
   };
   const livro = await livroSaidas({ de, ate });
+  // Regime de caixa: receita (e as deduções da receita) só quando o dinheiro entra — nos recebimentos,
+  // mais abaixo. A emissão de CT-e/NFS-e, os estornos e os descontos não geram lançamento; o ICMS e o
+  // ISS entram quando são pagos (contas a pagar, categoria Impostos). O livro de saídas é o mesmo.
+  const caixa = cfg.regime === 'caixa';
   // Receita: CT-e autorizados (o substituído sai; o substituto entra).
-  livro.ctes.filter((d) => d.situacao === 'autorizado').forEach((d) => {
+  if (!caixa) livro.ctes.filter((d) => d.situacao === 'autorizado').forEach((d) => {
     const doc = `CT-e ${d.serie}/${d.numero}`;
     lanc(d.data, c.clientes, c.receita_frete, d.valor, `Prestação de serviço de transporte ${doc}${d.tipo !== 'normal' ? ` (${d.tipo})` : ''} — ${d.tomador_nome}`, doc, d.tomador_doc);
     lanc(d.data, c.icms_sobre_frete, d.outra_uf ? c.icms_outra_uf : c.icms_recolher, d.icms, `ICMS s/ frete ${doc} (${d.aliquota}%)${d.outra_uf ? ' — outra UF' : ''}`, doc, d.tomador_doc);
   });
-  livro.nfse.filter((n) => !n.cancelada).forEach((n) => {
+  if (!caixa) livro.nfse.filter((n) => !n.cancelada).forEach((n) => {
     const doc = `NFS-e ${n.numero_nfse}`;
     lanc(n.data, c.clientes, c.receita_frete_municipal, n.valor, `Frete municipal ${doc} — ${n.tomador_nome}`, doc, n.tomador_doc);
     // Simples Nacional: o ISS (não retido) vai dentro do DAS, não é "ISS a recolher" à parte.
@@ -209,7 +213,7 @@ async function lancamentos(p) {
     if (n.iss_retido) lanc(n.data, c.iss_recolher, c.clientes, n.iss_valor, `ISS retido pelo tomador ${doc}`, doc, n.tomador_doc);
   });
   // Estornos de documentos de meses anteriores cancelados/substituídos neste período.
-  livro.ajustes.forEach((a) => {
+  if (!caixa) livro.ajustes.forEach((a) => {
     const hist = `Estorno: ${a.documento} de ${diaBr(a.data_original)} ${a.motivo}`;
     if (a.tipo === 'cte') {
       lanc(a.data, c.receita_frete, c.clientes, a.valor, `${hist} — ${a.tomador_nome}`, a.documento, a.tomador_doc);
@@ -225,20 +229,32 @@ async function lancamentos(p) {
   const { rows: desc } = await pool.query(
     `SELECT numero, emissao::text AS data, desconto::float, tomador_doc, tomador_nome FROM faturas_transporte
       WHERE status <> 'cancelada' AND desconto > 0 AND demonstracao = $3 AND emissao BETWEEN $1::date AND $2::date`, [de, ate, ff.demo]);
-  desc.forEach((f) => lanc(f.data, c.descontos_concedidos, c.clientes, f.desconto, `Desconto na fatura ${f.numero} — ${f.tomador_nome}`, `FAT ${f.numero}`, f.tomador_doc));
+  if (!caixa) desc.forEach((f) => lanc(f.data, c.descontos_concedidos, c.clientes, f.desconto, `Desconto na fatura ${f.numero} — ${f.tomador_nome}`, `FAT ${f.numero}`, f.tomador_doc));
   // Recebimentos das faturas: até o saldo baixa o a receber; o que passar é juros/multa (receita financeira).
   const { rows: rec } = await pool.query(
     `SELECT * FROM (
        SELECT p.id, p.data::text AS data, p.valor::float, p.forma, f.numero, f.tomador_doc, f.tomador_nome, f.demonstracao, b.tipo AS conta_tipo, b.conta_contabil,
               (f.valor_bruto - f.desconto)::float AS liquido,
+              COALESCE((SELECT SUM(COALESCE((c.dados->'valores'->>'vTPrest')::numeric, c.valor_total)) FROM ctes_emitidos c WHERE c.fatura_id = f.id AND c.status = 'autorizado'), 0)::float AS docs_cte,
+              COALESCE((SELECT SUM(n.valor) FROM nfse_emitidas n WHERE n.fatura_id = f.id AND n.status = 'autorizada'), 0)::float AS docs_nfse,
               COALESCE(SUM(p.valor) OVER (PARTITION BY p.fatura_id ORDER BY p.data, p.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0)::float AS anterior
          FROM faturas_transporte_pagamentos p JOIN faturas_transporte f ON f.id = p.fatura_id LEFT JOIN contas_bancarias b ON b.id = p.conta_bancaria_id) x
       WHERE x.data BETWEEN $1 AND $2 AND x.demonstracao = $3 ORDER BY x.data, x.id`, [de, ate, ff.demo]);
   // Conta do dinheiro: a conta contábil da conta bancária; sem ela, caixa ou banco.
   const disponivel = (x) => x.conta_contabil || (x.conta_tipo ? (x.conta_tipo === 'caixa' ? c.caixa : c.banco) : (x.forma === 'dinheiro' ? c.caixa : c.banco));
+  let receitaRecebida = { frete: 0, municipal: 0 };
   rec.forEach((r) => {
     const principal = centavos(Math.max(0, Math.min(r.valor, r.liquido - r.anterior)));
-    lanc(dataLocal(r.data), disponivel(r), c.clientes, principal, `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`, `FAT ${r.numero}`, r.tomador_doc);
+    if (caixa) {
+      // Receita recebida, dividida entre CT-e e NFS-e na proporção dos documentos da fatura.
+      const docs = r.docs_cte + r.docs_nfse;
+      const municipal = docs > 0 ? centavos((principal * r.docs_nfse) / docs) : 0;
+      const frete = centavos(principal - municipal);
+      const hist = `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`;
+      lanc(dataLocal(r.data), disponivel(r), c.receita_frete, frete, `${hist}${municipal ? ' — parte CT-e' : ''}`, `FAT ${r.numero}`, r.tomador_doc);
+      lanc(dataLocal(r.data), disponivel(r), c.receita_frete_municipal, municipal, `${hist} — parte NFS-e`, `FAT ${r.numero}`, r.tomador_doc);
+      receitaRecebida = { frete: centavos(receitaRecebida.frete + frete), municipal: centavos(receitaRecebida.municipal + municipal) };
+    } else lanc(dataLocal(r.data), disponivel(r), c.clientes, principal, `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`, `FAT ${r.numero}`, r.tomador_doc);
     lanc(dataLocal(r.data), disponivel(r), c.receita_financeira, centavos(r.valor - principal), `Juros/multa recebidos na fatura ${r.numero} — ${r.tomador_nome}`, `FAT ${r.numero}`, r.tomador_doc);
   });
   // Acerto de viagem fechado: o adiantamento (no ativo) vira despesa da viagem — frete do terceiro
@@ -254,16 +270,26 @@ async function lancamentos(p) {
   });
   // Contas a pagar: competência (despesa no lançamento, fornecedor no pagamento) ou caixa (despesa no pagamento).
   const contaDespesa = (cat) => c[`despesa_${cat}`] || c.despesa_outros;
-  if (cfg.regime === 'competencia') {
+  // Competência: a despesa entra no dia da competência da conta (o mês da despesa), não no dia em que
+  // foi cadastrada. Conta cancelada depois do período continua no mês dela (o mês já foi ao contador)
+  // e sai como estorno no mês do cancelamento.
+  if (!caixa) {
+    const competenciaCp = `COALESCE(competencia, (criado_em AT TIME ZONE 'America/Sao_Paulo')::date)`;
     const { rows: cp } = await pool.query(
-      `SELECT id, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, valor, (criado_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS data FROM contas_pagar
-        WHERE status <> 'cancelada' AND (criado_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date ORDER BY criado_em, id`, [de, ate]);
+      `SELECT id, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, valor, ${competenciaCp}::text AS data FROM contas_pagar
+        WHERE ${competenciaCp} BETWEEN $1::date AND $2::date
+          AND (status <> 'cancelada' OR (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date > $2::date) ORDER BY data, id`, [de, ate]);
     cp.forEach((x) => lanc(dataLocal(x.data), contaDespesa(x.categoria), c.fornecedores, x.valor, `${x.descricao}${x.fornecedor_nome ? ` — ${x.fornecedor_nome}` : ''}`, x.documento || `CP ${x.id}`, x.fornecedor_doc || ''));
+    const { rows: est } = await pool.query(
+      `SELECT id, descricao, categoria, fornecedor_nome, fornecedor_doc, documento, valor, ${competenciaCp}::text AS competencia,
+              (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date::text AS data FROM contas_pagar
+        WHERE status = 'cancelada' AND ${competenciaCp} < $1::date AND (cancelada_em AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $1::date AND $2::date ORDER BY cancelada_em, id`, [de, ate]);
+    est.forEach((x) => lanc(x.data, c.fornecedores, contaDespesa(x.categoria), x.valor, `Estorno: conta cancelada (competência ${diaBr(x.competencia)}) — ${x.descricao}${x.fornecedor_nome ? ` — ${x.fornecedor_nome}` : ''}`, x.documento || `CP ${x.id}`, x.fornecedor_doc || ''));
   }
   const { rows: pg } = await pool.query(
     `SELECT p.data::text AS data, p.valor, p.forma, c.id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, b.tipo AS conta_tipo, b.conta_contabil FROM contas_pagar_pagamentos p
        JOIN contas_pagar c ON c.id = p.conta_id LEFT JOIN contas_bancarias b ON b.id = p.conta_bancaria_id WHERE p.data BETWEEN $1::date AND $2::date ORDER BY p.data, p.id`, [de, ate]);
-  pg.forEach((x) => lanc(dataLocal(x.data), cfg.regime === 'competencia' ? c.fornecedores : contaDespesa(x.categoria), disponivel(x), x.valor,
+  pg.forEach((x) => lanc(dataLocal(x.data), caixa ? contaDespesa(x.categoria) : c.fornecedores, disponivel(x), x.valor,
     `Pagamento: ${x.descricao}${x.fornecedor_nome ? ` — ${x.fornecedor_nome}` : ''}`, x.documento || `CP ${x.id}`, x.fornecedor_doc || ''));
   // Caixa e bancos: tarifa, rendimento, sócios, transferência (uma partida só, pela ponta que entra).
   const { rows: mv } = await pool.query(
@@ -292,6 +318,7 @@ async function lancamentos(p) {
       g[lado] = centavos(g[lado] + l.valor); contas.set(conta, g);
     });
   });
+  if (caixa) totais.receita_recebida = { ...receitaRecebida, total: centavos(receitaRecebida.frete + receitaRecebida.municipal) };
   return { periodo: { de, ate }, regime: cfg.regime, linhas, totais, por_conta: [...contas.values()].map((g) => ({ ...g, nome: NOMES_CONTAS[g.nome] || g.nome || '', saldo: centavos(g.debito - g.credito) })).sort((a, b) => a.conta.localeCompare(b.conta)) };
 }
 
@@ -403,6 +430,8 @@ async function montarPacote(p) {
     livro.totais.nfse ? `NFS-e: R$ ${livro.totais.nfse_valor.toFixed(2)} · ISS R$ ${livro.totais.iss.toFixed(2)} (retido R$ ${livro.totais.iss_retido.toFixed(2)})` : '',
     '', 'livro-de-saidas.html/.csv: registro de saídas com resumo por CFOP, CST/alíquota e UF.',
     `lancamentos-contabeis.csv: ${lanc.totais.linhas} lançamento(s) (regime de ${lanc.regime === 'caixa' ? 'caixa' : 'competência'}) — data, conta débito, conta crédito, valor, histórico, documento, CNPJ/CPF.`,
+    lanc.regime === 'caixa' ? `Regime de caixa: receita lançada no recebimento das faturas — recebido no período R$ ${lanc.totais.receita_recebida.total.toFixed(2)} (CT-e R$ ${lanc.totais.receita_recebida.frete.toFixed(2)} · NFS-e R$ ${lanc.totais.receita_recebida.municipal.toFixed(2)}); despesas no pagamento.`
+      : 'Regime de competência: receita na emissão; despesas pela competência informada em cada conta a pagar (contas canceladas depois do mês saem como estorno no mês do cancelamento).',
     'Os XML importam direto nos sistemas contábeis/fiscais para gerar o SPED (EFD ICMS/IPI e Contribuições) junto com as notas de entrada.',
     livro.totais.ajustes ? `\r\nAjustes de meses anteriores (cancelados/substituídos neste período): ${livro.totais.ajustes} documento(s), R$ ${livro.totais.ajustes_valor.toFixed(2)} · ICMS a estornar R$ ${livro.totais.ajustes_icms.toFixed(2)}. Os eventos estão em CT-e/eventos.` : '',
     livro.totais.icms_outra_uf ? `ICMS devido a outra UF (GNRE, fora da apuração própria): R$ ${livro.totais.icms_outra_uf.toFixed(2)}` : '',

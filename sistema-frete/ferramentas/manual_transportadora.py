@@ -197,6 +197,11 @@ def parte_operacao(g):
     s.append(P('Página própria para o cliente (portal.html, funciona no celular), com login separado do sistema. '
                'Libere em <b>Portal do cliente » Novo acesso</b>: escolha o cliente, os CNPJ/CPF dele, o nome e o e-mail. '
                'A senha provisória aparece uma vez só.'))
+    s.append(P('<b>Endereço de coleta do acesso</b>: ao escolher o cliente do cadastro, o endereço dele (razão social, IE, '
+               'endereço, cidade com o código IBGE, UF, CEP e telefone) é preenchido no quadro "Endereço de coleta" do acesso; '
+               'cliente fora do cadastro é buscado na Receita pelo CNPJ. Esse endereço vem pronto quando o cliente pede coleta '
+               'pelo portal. Sem endereço no acesso, o portal usa o do cadastro de clientes ou o do último CT-e em que o '
+               'cliente foi remetente.'))
     s += lista([
         '<b>Cargas</b>: situação, previsão, histórico, DACTE, XML, foto do comprovante e assinatura.',
         '<b>Valores</b> só nos CT-e em que ele é o pagador, e só se o acesso "vê valores".',
@@ -205,6 +210,10 @@ def parte_operacao(g):
         'valores em R$ nas observações viram "R$ ***". O XML não fica disponível (ele é assinado, traz os valores e não '
         'pode ser alterado), nem sozinho nem no .zip do período. O valor da mercadoria (da nota do próprio cliente) continua.',
         '<b>Financeiro</b>: faturas, boleto e linha digitável. <b>Coletas</b> e <b>cotações</b> pedidas pelo portal.',
+        '<b>Pedir coleta</b>: "Coleta no meu endereço" já vem com o endereço do acesso (dá para alterar só nesta coleta). '
+        '"Coleta reversa" é para buscar em outro local (fornecedor ou cliente dele) e trazer para a empresa dele: o cliente '
+        'informa onde buscar, e a entrega fica no endereço dele, com o frete por conta da empresa dele (destinatário). '
+        'A coleta reversa aparece com a etiqueta "Reversa".',
         '<b>Coletas</b>: cada coleta mostra as etapas (pedida, programada, saiu para coletar, coletada), a data em que foi '
         'pedida, a data agendada com o horário, quando saiu e quando foi coletada, o <b>motorista</b> e o <b>veículo com a '
         'placa</b>, os volumes (pedidos e coletados), quem entregou a mercadoria e o CT-e gerado. Motorista e placa vêm do '

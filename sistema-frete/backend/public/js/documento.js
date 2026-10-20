@@ -144,6 +144,8 @@
   registrar('#klRemDoc', { razao_social: '#klRemNome', ie: '#klRemIe', logradouro: '#klLgr', numero: '#klNro', complemento: '#klCpl', bairro: '#klBairro', municipio: '#klCidade',
     uf: '#klUf', cep: '#klCep', telefone: '#klContatoFone', codigo_municipio: '#klCodMun' });
   registrar('#klDestDoc', { razao_social: '#klDestNome', municipio: '#klDestCidade', uf: '#klDestUf' });
+  registrar('#pcEDoc', { razao_social: '#pcENome', ie: '#pcEIe', logradouro: '#pcELgr', numero: '#pcENro', complemento: '#pcECpl', bairro: '#pcEBairro', municipio: '#pcECidade',
+    codigo_municipio: '#pcECodMun', uf: '#pcEUf', cep: '#pcECep', telefone: '#pcEFone' });
   registrar('#cqDoc', { razao_social: '#cqCliente', email: '#cqEmail', telefone: '#cqFone' });
   // Vendedor, fornecedor de conta a pagar, acerto de viagem, régua, tabela de preço, licença.
   registrar('#cmVDoc', { razao_social: '#cmVNome', email: '#cmVEmail', telefone: '#cmVFone' });

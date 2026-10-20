@@ -2387,3 +2387,7 @@ END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_contas_pagar_datas ON contas_pagar;
 CREATE TRIGGER trg_contas_pagar_datas BEFORE INSERT OR UPDATE ON contas_pagar FOR EACH ROW EXECUTE FUNCTION fn_contas_pagar_datas();
 CREATE INDEX IF NOT EXISTS idx_contas_pagar_competencia ON contas_pagar (competencia);
+
+-- Portal do cliente: endereço de coleta do acesso (vem do cadastro do cliente ou da consulta do CNPJ);
+-- o pedido de coleta pelo portal já abre preenchido com ele.
+ALTER TABLE portal_usuarios ADD COLUMN IF NOT EXISTS endereco_coleta JSONB;

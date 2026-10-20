@@ -11,7 +11,34 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const docFmt = (d) => { const x = String(d || ''); return x.length === 14 ? x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : x.length === 11 ? x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : x; };
+  const docFmt = (d) => Doc.formatar(d || '');
+  const UFS = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RO RR RS SC SP SE TO'.split(' ');
+  // Endereço de coleta do acesso: campo da tela → campo guardado.
+  const CAMPOS_END = { pcEDoc: 'documento', pcENome: 'nome', pcEIe: 'ie', pcELgr: 'logradouro', pcENro: 'numero', pcECpl: 'complemento', pcEBairro: 'bairro',
+    pcECidade: 'cidade', pcEUf: 'uf', pcECep: 'cep', pcECodMun: 'cod_municipio', pcEFone: 'telefone' };
+  const lerEnd = () => Object.fromEntries(Object.entries(CAMPOS_END).map(([id, k]) => [k, $(id).value.trim()]));
+  function porEnd(e = {}, sobrescrever = true) {
+    Object.entries(CAMPOS_END).forEach(([id, k]) => {
+      const v = k === 'documento' ? docFmt(e[k]) : k === 'cep' ? String(e[k] || '').replace(/^(\d{5})(\d{3})$/, '$1-$2') : e[k];
+      if (v && (sobrescrever || !$(id).value.trim())) $(id).value = v;
+    });
+  }
+  // Busca o endereço pelo documento: cadastro de clientes primeiro; CNPJ fora do cadastro, na Receita.
+  async function buscarEndereco(doc, sobrescrever) {
+    const d = Doc.chars(doc);
+    if (![11, 14].includes(d.length)) return false;
+    const achados = await apiFetch(`/api/coletas/clientes?q=${encodeURIComponent(d)}`).then((r) => r.json()).catch(() => []);
+    const k = Array.isArray(achados) ? achados.find((x) => x.documento === d) : null;
+    if (k) { porEnd(k, sobrescrever); if (!$('pcCliente').value.trim()) $('pcCliente').value = k.nome || ''; return 'cadastro'; }
+    if (d.length !== 14) return false;
+    const r = await apiFetch(`/api/cnpj/${d}`); const j = await r.json().catch(() => ({}));
+    if (!r.ok) return false;
+    porEnd({ documento: d, nome: j.razao_social, ie: j.ie, logradouro: j.logradouro, numero: j.numero, complemento: j.complemento, bairro: j.bairro, cidade: j.municipio,
+      uf: j.uf, cep: j.cep, cod_municipio: j.codigo_municipio, telefone: j.telefone }, sobrescrever);
+    if (!$('pcCliente').value.trim()) $('pcCliente').value = j.razao_social || '';
+    return 'receita';
+  }
+  const avisoEnd = (origem) => { const el = $('pcEOrigem'); if (el) el.textContent = { cadastro: '✓ Endereço do cadastro de clientes.', receita: '✓ Endereço da Receita (CNPJ).', acesso: '' }[origem] || ''; };
   const quando = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'nunca entrou');
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
   const api = async (caminho, opcoes = {}) => {
@@ -92,6 +119,19 @@
         <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="pcRaiz" ${a?.por_raiz ? 'checked' : ''} style="width:auto;" /> Vale para todas as filiais (mesma raiz de CNPJ — 8 primeiros dígitos)</label></div>
         <div class="campo"><label for="pcNome">Nome de quem vai usar</label><input id="pcNome" maxlength="120" value="${esc(a?.nome || '')}" /></div>
         <div class="campo"><label for="pcEmail">E-mail (é o login)</label><input id="pcEmail" type="email" maxlength="250" value="${esc(a?.email || '')}" /></div>
+        <div class="campo inteiro" style="margin:6px 0 0;"><b>📍 Endereço de coleta</b> <small id="pcEOrigem" style="color:var(--verde);"></small><br>
+          <small style="color:var(--texto-fraco);">Quando o cliente pedir coleta pelo portal, o formulário já vem com este endereço. Vem do cadastro de clientes (ao escolher o cliente acima) ou da Receita pelo CNPJ.</small></div>
+        <div class="campo"><label for="pcEDoc">CNPJ/CPF do local</label><input id="pcEDoc" maxlength="18" /></div>
+        <div class="campo largo"><label for="pcENome">Razão social</label><input id="pcENome" maxlength="200" /></div>
+        <div class="campo"><label for="pcEIe">Inscrição estadual</label><input id="pcEIe" maxlength="20" /></div>
+        <div class="campo largo"><label for="pcELgr">Endereço</label><input id="pcELgr" maxlength="200" /></div>
+        <div class="campo"><label for="pcENro">Número</label><input id="pcENro" maxlength="30" /></div>
+        <div class="campo"><label for="pcECpl">Complemento</label><input id="pcECpl" maxlength="120" /></div>
+        <div class="campo"><label for="pcEBairro">Bairro</label><input id="pcEBairro" maxlength="120" /></div>
+        <div class="campo"><label for="pcECidade">Cidade</label><input id="pcECidade" maxlength="120" /><input id="pcECodMun" type="hidden" /></div>
+        <div class="campo"><label for="pcEUf">UF</label><select id="pcEUf"><option value=""></option>${UFS.map((u) => `<option>${u}</option>`).join('')}</select></div>
+        <div class="campo"><label for="pcECep">CEP</label><input id="pcECep" maxlength="9" inputmode="numeric" /></div>
+        <div class="campo"><label for="pcEFone">Telefone</label><input id="pcEFone" maxlength="30" /></div>
         <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="pcFin" ${a && !a.pode_financeiro ? '' : 'checked'} style="width:auto;" /> Vê valores de frete, faturas, boletos e baixa o XML (só dos CT-e em que o cliente é o pagador)</label><small class="fraco">Sem isso, o DACTE sai sem os valores do frete e o XML não fica disponível (ele traz os valores e não pode ser alterado).</small></div>
         ${a ? '' : `<div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="pcEnviar" ${estado.config.endereco ? 'checked' : 'disabled'} style="width:auto;" /> Mandar o acesso por e-mail${estado.config.endereco ? '' : ' (configure o endereço público do portal antes)'}</label></div>`}
       </div>
@@ -99,10 +139,18 @@
         <button class="btn btn-primario" id="pcSalvar" style="width:auto;">${a ? 'Salvar' : 'Criar acesso'}</button></div>`;
     modal.classList.remove('oculto');
     ligarBusca();
+    // Endereço: o salvo no acesso; sem ele, o do cadastro/Receita pelo primeiro documento.
+    if (a?.endereco_coleta) porEnd(a.endereco_coleta);
+    else if (a?.documentos?.length) buscarEndereco(a.documentos[0], false).then(avisoEnd).catch(() => {});
+    // Documento digitado à mão (sem escolher do cadastro): busca o endereço se ainda estiver vazio.
+    $('pcDocs').addEventListener('blur', () => {
+      const primeiro = $('pcDocs').value.split(/\n/).map((x) => x.trim()).find(Boolean);
+      if (primeiro && !$('pcELgr').value.trim()) buscarEndereco(primeiro, false).then(avisoEnd).catch(() => {});
+    });
     $('pcSalvar').addEventListener('click', async (e) => {
       const b = e.currentTarget; b.disabled = true;
       const corpo = { cliente_nome: $('pcCliente').value, documentos: $('pcDocs').value, por_raiz: $('pcRaiz').checked, nome: $('pcNome').value, email: $('pcEmail').value,
-        pode_financeiro: $('pcFin').checked, enviar_email: !!$('pcEnviar')?.checked };
+        pode_financeiro: $('pcFin').checked, enviar_email: !!$('pcEnviar')?.checked, endereco_coleta: lerEnd() };
       try {
         if (a) { await api(`/${a.id}`, { method: 'PUT', body: JSON.stringify(corpo) }); fechar(); mostrarAlerta('Acesso salvo.', { tipo: 'sucesso' }); await carregar(); } else { const r = await api('', { method: 'POST', body: JSON.stringify(corpo) }); await carregar(); mostrarSenha(r); }
       } catch (err) { erro(err); b.disabled = false; }
@@ -130,6 +178,7 @@
       const atuais = $('pcDocs').value.split(/\n/).map((x) => x.trim()).filter(Boolean);
       if (k.documento && !atuais.some((x) => x.replace(/\D/g, '') === k.documento)) $('pcDocs').value = [...atuais, docFmt(k.documento)].join('\n');
       if (k.email && !$('pcEmail').value) $('pcEmail').value = k.email;
+      porEnd(k); avisoEnd('cadastro');
       caixa.classList.add('oculto');
     });
   }

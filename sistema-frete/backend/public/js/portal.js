@@ -288,7 +288,7 @@
     ].join('');
     const aguardando = ['pendente'].includes(k.status) ? '<div class="pt-aviso">A transportadora vai programar a coleta e informar o motorista e o veículo aqui.</div>' : '';
     return `<div class="pt-item pt-coleta ${SIT_COL[k.status] || 'azul'}">
-      <div class="cab"><div><div class="titulo">Coleta nº ${k.id} · ${esc(k.remetente_nome)}</div>
+      <div class="cab"><div><div class="titulo">Coleta nº ${k.id} · ${esc(k.remetente_nome)}${k.tomador === 'destinatario' ? ' <span class="sit cinza">Reversa</span>' : ''}</div>
         <div class="rota">${ic('pin')} ${cidade(k.cidade, k.uf)}${k.destino_cidade ? ` ${ic('seta')} ${cidade(k.destino_cidade, k.destino_uf)}` : ''}</div></div>
         <span class="sit ${SIT_COL[k.status] || 'azul'}">${esc(k.status_texto)}</span></div>
       ${etapas}
@@ -304,42 +304,94 @@
       : vazio('truck', 'Nenhuma coleta. Clique em "Pedir coleta" quando tiver mercadoria para enviar.');
   }
   $('ptColetas').addEventListener('click', (e) => { const b = e.target.closest('[data-carga]'); if (b) { e.preventDefault(); abrirCarga(Number(b.dataset.carga)); } });
+  // Pedir coleta: no endereço da empresa do cliente (já preenchido com o endereço do acesso/cadastro) ou
+  // coleta reversa — buscar em outro local (fornecedor, cliente dele) e trazer para a empresa dele.
+  const ufOpcoes = (sel) => `<option value="">—</option>${UFS.map((u) => `<option ${u === sel ? 'selected' : ''}>${u}</option>`).join('')}`;
+  const enderecoTexto = (e) => [[e.logradouro, e.numero].filter(Boolean).join(', ') + (e.complemento ? ` - ${e.complemento}` : ''), e.bairro,
+    e.cidade ? `${e.cidade}${e.uf ? `/${e.uf}` : ''}` : '', e.cep ? `CEP ${String(e.cep).replace(/^(\d{5})(\d{3})$/, '$1-$2')}` : ''].filter(Boolean).map(esc).join(' · ');
+  const camposEndereco = (e = {}) => `
+        <div class="largo"><label for="pkEnd">Endereço</label><input id="pkEnd" maxlength="200" value="${esc(e.logradouro || '')}" /></div>
+        <div><label for="pkNum">Número</label><input id="pkNum" maxlength="30" value="${esc(e.numero || '')}" /></div>
+        <div><label for="pkCpl">Complemento</label><input id="pkCpl" maxlength="120" value="${esc(e.complemento || '')}" /></div>
+        <div><label for="pkBairro">Bairro</label><input id="pkBairro" maxlength="120" value="${esc(e.bairro || '')}" /></div>
+        <div><label for="pkCep">CEP</label><input id="pkCep" inputmode="numeric" maxlength="9" value="${esc(e.cep || '')}" /></div>
+        <div><label for="pkCid">Cidade</label><input id="pkCid" maxlength="120" value="${esc(e.cidade || '')}" /></div>
+        <div><label for="pkUf">UF</label><select id="pkUf">${ufOpcoes(e.uf)}</select></div>`;
   $('ptNovaColeta').addEventListener('click', () => {
     const e = enderecoCliente || {};
-    const v = (k) => esc(e[k] || '');
-    abrirJanela(`<b style="font-size:17px;">${ic('truck')} Pedir coleta</b>`, `<div class="pt-grade">
-        <div class="inteiro"><label for="pkRem">Local da coleta (empresa)</label><input id="pkRem" maxlength="200" value="${esc(e.nome || eu.cliente_nome || '')}" /></div>
-        <div class="largo"><label for="pkEnd">Endereço</label><input id="pkEnd" maxlength="200" value="${v('logradouro')}" /></div>
-        <div><label for="pkNum">Número</label><input id="pkNum" maxlength="30" value="${v('numero')}" /></div>
-        <div><label for="pkBairro">Bairro</label><input id="pkBairro" maxlength="120" value="${v('bairro')}" /></div>
-        <div><label for="pkCid">Cidade</label><input id="pkCid" maxlength="120" value="${v('cidade')}" /></div>
-        <div><label for="pkUf">UF</label><select id="pkUf">${UFS.map((u) => `<option ${u === e.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
-        <div><label for="pkCep">CEP</label><input id="pkCep" inputmode="numeric" maxlength="9" value="${v('cep')}" /></div>
+    const temEndereco = !!(e.logradouro && e.cidade);
+    const nomeCliente = e.nome || eu.cliente_nome || '';
+    abrirJanela(`<b style="font-size:17px;">${ic('truck')} Pedir coleta</b>`, `
+      <div class="pt-tipo" role="radiogroup">
+        <label><input type="radio" name="pkTipo" value="normal" checked /><span>${ic('box')}<b>Coleta no meu endereço</b><small>A transportadora busca a mercadoria na sua empresa.</small></span></label>
+        <label><input type="radio" name="pkTipo" value="reversa" /><span>${ic('seta')}<b>Coleta reversa</b><small>Buscar em outro local (fornecedor, cliente seu) e trazer para a sua empresa.</small></span></label>
+      </div>
+      <div id="pkNormal">
+        ${temEndereco ? `<div class="pt-endereco">${ic('pin')}<div><small>Coletar em</small><b>${esc(nomeCliente)}</b><span>${enderecoTexto(e)}</span></div>
+          <button type="button" class="sec" id="pkAlterar">Alterar</button></div>` : '<div class="pt-aviso">Informe o endereço da coleta. Para vir preenchido nas próximas vezes, peça à transportadora para cadastrar o seu endereço no seu acesso.</div>'}
+        <div id="pkCamposNormal" class="pt-grade ${temEndereco ? 'oculto' : ''}" style="margin-top:12px;">
+          <div class="inteiro"><label for="pkRem">Local da coleta (empresa)</label><input id="pkRem" maxlength="200" value="${esc(nomeCliente)}" /></div>
+          ${camposEndereco(e)}
+        </div>
+        <div class="pt-secao">Para onde vai (opcional)</div>
+        <div class="pt-grade">
+          <div class="largo"><label for="pkDesNome">Destinatário</label><input id="pkDesNome" maxlength="200" /></div>
+          <div><label for="pkDesCid">Cidade de destino</label><input id="pkDesCid" maxlength="120" /></div>
+          <div><label for="pkDesUf">UF</label><select id="pkDesUf">${ufOpcoes('')}</select></div>
+        </div>
+      </div>
+      <div id="pkReversa" class="oculto">
+        <div class="pt-secao">Onde buscar</div>
+        <div class="pt-grade">
+          <div class="largo"><label for="pkRvNome">Empresa / pessoa onde buscar</label><input id="pkRvNome" maxlength="200" /></div>
+          <div><label for="pkRvDoc">CNPJ/CPF (se souber)</label><input id="pkRvDoc" maxlength="18" /></div>
+          ${camposEndereco({}).replace(/id="pk(End|Num|Cpl|Bairro|Cep|Cid|Uf)"/g, 'id="pkRv$1"').replace(/for="pk(End|Num|Cpl|Bairro|Cep|Cid|Uf)"/g, 'for="pkRv$1"')}
+        </div>
+        <div class="pt-endereco" style="margin-top:12px;">${ic('home')}<div><small>Entregar em (frete por conta da sua empresa)</small><b>${esc(nomeCliente)}</b><span>${temEndereco ? enderecoTexto(e) : esc([e.cidade, e.uf].filter(Boolean).join('/'))}</span></div></div>
+      </div>
+      <div class="pt-secao">Quando e o quê</div>
+      <div class="pt-grade">
         <div><label for="pkContato">Falar com</label><input id="pkContato" maxlength="120" value="${esc(eu.nome)}" /></div>
-        <div><label for="pkFone">Telefone</label><input id="pkFone" maxlength="30" value="${v('telefone')}" /></div>
+        <div><label for="pkFone">Telefone</label><input id="pkFone" maxlength="30" value="${esc(e.telefone || '')}" /></div>
         <div><label for="pkData">Data</label><input id="pkData" type="date" min="${hojeIso()}" value="${hojeIso()}" /></div>
         <div><label for="pkDe">Das</label><input id="pkDe" type="time" value="08:00" /></div>
         <div><label for="pkAte">Até</label><input id="pkAte" type="time" value="17:00" /></div>
         <div><label for="pkVol">Volumes</label><input id="pkVol" inputmode="numeric" /></div>
         <div><label for="pkPeso">Peso (kg)</label><input id="pkPeso" inputmode="decimal" /></div>
         <div><label for="pkNf">Nota(s) fiscal(is)</label><input id="pkNf" maxlength="250" /></div>
-        <div><label for="pkDesCid">Destino (cidade)</label><input id="pkDesCid" maxlength="120" /></div>
-        <div><label for="pkDesUf">UF destino</label><select id="pkDesUf"><option value=""></option>${UFS.map((u) => `<option>${u}</option>`).join('')}</select></div>
         <div class="inteiro"><label for="pkObs">Observação (doca, horário de almoço, carga paletizada...)</label><textarea id="pkObs" rows="2" maxlength="2000"></textarea></div>
       </div><p id="pkErro" class="erro oculto"></p>
       <div class="pt-rodape-j"><button class="sec" data-fechar>Cancelar</button><button id="pkEnviar">Pedir coleta</button></div>`);
+    const reversa = () => janela.querySelector('input[name="pkTipo"]:checked').value === 'reversa';
+    janela.querySelectorAll('input[name="pkTipo"]').forEach((r) => r.addEventListener('change', () => {
+      $('pkNormal').classList.toggle('oculto', reversa()); $('pkReversa').classList.toggle('oculto', !reversa());
+      // Na reversa, quem entrega a mercadoria é o outro local: o contato é de lá.
+      if (reversa() && $('pkContato').value === eu.nome) { $('pkContato').value = ''; $('pkFone').value = ''; }
+      if (!reversa() && !$('pkContato').value) { $('pkContato').value = eu.nome; $('pkFone').value = e.telefone || ''; }
+    }));
+    $('pkAlterar')?.addEventListener('click', () => { $('pkCamposNormal').classList.remove('oculto'); $('pkAlterar').closest('.pt-endereco').classList.add('oculto'); $('pkEnd').focus(); });
     $('pkEnviar').addEventListener('click', async (ev) => {
       const b = ev.currentTarget; b.disabled = true;
+      const ehReversa = reversa();
       try {
-        const r = await api('/coletas', { method: 'POST', body: JSON.stringify({
-          remetente_nome: $('pkRem').value, remetente_doc: e.documento || eu.documentos[0], remetente_ie: e.ie, cod_municipio: e.cidade === $('pkCid').value ? e.cod_municipio : null,
-          logradouro: $('pkEnd').value, numero: $('pkNum').value, bairro: $('pkBairro').value, cidade: $('pkCid').value, uf: $('pkUf').value, cep: $('pkCep').value,
-          contato_nome: $('pkContato').value, contato_telefone: $('pkFone').value, data_coleta: $('pkData').value, hora_de: $('pkDe').value, hora_ate: $('pkAte').value,
-          volumes: $('pkVol').value, peso_kg: $('pkPeso').value, notas: $('pkNf').value, destino_cidade: $('pkDesCid').value, destino_uf: $('pkDesUf').value, observacao: $('pkObs').value,
-        }) });
+        const comum = { contato_nome: $('pkContato').value, contato_telefone: $('pkFone').value, data_coleta: $('pkData').value, hora_de: $('pkDe').value, hora_ate: $('pkAte').value,
+          volumes: $('pkVol').value, peso_kg: $('pkPeso').value, notas: $('pkNf').value, observacao: $('pkObs').value };
+        const corpo = ehReversa ? {
+          ...comum, tomador: 'destinatario', remetente_nome: $('pkRvNome').value, remetente_doc: $('pkRvDoc').value,
+          logradouro: $('pkRvEnd').value, numero: $('pkRvNum').value, complemento: $('pkRvCpl').value, bairro: $('pkRvBairro').value, cidade: $('pkRvCid').value, uf: $('pkRvUf').value, cep: $('pkRvCep').value,
+          destinatario_doc: e.documento || eu.documentos[0], destinatario_nome: nomeCliente, destino_cidade: e.cidade || '', destino_uf: e.uf || '',
+        } : {
+          ...comum, tomador: 'remetente', remetente_nome: $('pkRem').value, remetente_doc: e.documento || eu.documentos[0], remetente_ie: e.ie,
+          cod_municipio: e.cidade && e.cidade === $('pkCid').value ? e.cod_municipio : null,
+          logradouro: $('pkEnd').value, numero: $('pkNum').value, complemento: $('pkCpl').value, bairro: $('pkBairro').value, cidade: $('pkCid').value, uf: $('pkUf').value, cep: $('pkCep').value,
+          destinatario_nome: $('pkDesNome').value, destino_cidade: $('pkDesCid').value, destino_uf: $('pkDesUf').value,
+        };
+        if (ehReversa && !corpo.remetente_nome.trim()) throw new Error('Informe onde buscar a mercadoria.');
+        if (!corpo.logradouro.trim() || !corpo.cidade.trim() || !corpo.uf) throw new Error('Informe o endereço da coleta (rua, cidade e UF).');
+        const r = await api('/coletas', { method: 'POST', body: JSON.stringify(corpo) });
         fecharJanela(); await carregarColetas();
-        aviso(`Coleta nº ${r.id} pedida. A transportadora vai programar e você acompanha a situação aqui.`);
-      } catch (err) { $('pkErro').textContent = err.message; $('pkErro').classList.remove('oculto'); b.disabled = false; }
+        aviso(`Coleta nº ${r.id} pedida${ehReversa ? ' (reversa)' : ''}. A transportadora vai programar e você acompanha a situação aqui.`);
+      } catch (err) { if ($('pkErro')) { $('pkErro').textContent = err.message; $('pkErro').classList.remove('oculto'); b.disabled = false; } else aviso(err.message); }
     });
   });
 

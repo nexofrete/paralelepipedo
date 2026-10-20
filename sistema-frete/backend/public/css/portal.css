@@ -166,6 +166,24 @@ main.pt-app { max-width: 1180px; margin: 0 auto; padding: 24px 20px 40px; min-he
 .pt-placa { display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .06em; border: 1.5px solid var(--texto); border-radius: 4px; padding: 0 6px; font-size: 13px; }
 .pt-alerta-linha { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: var(--laranja-fraco); color: var(--laranja); font-size: 13.5px; }
 
+/* ---------- Pedir coleta ---------- */
+.pt-tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.pt-tipo label { margin: 0; cursor: pointer; }
+.pt-tipo input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pt-tipo span { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; padding: 12px 14px; border: 1.5px solid var(--borda-forte); border-radius: 10px; color: var(--texto); font-weight: 400; height: 100%; }
+.pt-tipo span svg.ic { grid-row: span 2; margin-top: 2px; color: var(--fraco); }
+.pt-tipo span b { font-size: 14.5px; }
+.pt-tipo span small { color: var(--fraco); font-size: 12.5px; }
+.pt-tipo input:checked + span { border-color: var(--azul); background: var(--azul-fraco); }
+.pt-tipo input:checked + span svg.ic { color: var(--azul); }
+.pt-tipo input:focus-visible + span { box-shadow: 0 0 0 3px var(--azul-fraco); }
+.pt-endereco { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--fundo); border: 1px solid var(--borda); }
+.pt-endereco > svg.ic { color: var(--azul); width: 22px; height: 22px; }
+.pt-endereco > div { flex: 1; display: grid; font-size: 13.5px; color: var(--fraco); }
+.pt-endereco b { color: var(--texto); font-size: 14.5px; }
+.pt-endereco button { padding: 7px 12px; font-size: 13px; }
+.pt-secao { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--fraco); margin: 18px 0 8px; }
+
 /* ---------- Histórico, formulários, tabelas ---------- */
 .pt-tempo { list-style: none; margin: 12px 0 0; padding: 0 0 0 18px; border-left: 2px solid var(--borda); }
 .pt-tempo li { position: relative; padding: 0 0 16px 14px; }
@@ -201,6 +219,7 @@ table.pt-tab .n { text-align: right; }
 }
 @media (max-width: 640px) {
   .pt-grade .largo { grid-column: auto; }
+  .pt-tipo { grid-template-columns: 1fr; }
   .pt-item { grid-template-columns: 1fr; }
   .pt-item .dir { text-align: left; justify-items: start; }
   .pt-usuario .quem, .pt-topo .rotulo { display: none; }

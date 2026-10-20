@@ -79,6 +79,10 @@
         },
         {
           "area": "Segurança",
+          "texto": "Portal: o acesso guarda o endereço de coleta (do cadastro do cliente ou da Receita), o pedido de coleta já vem preenchido e há a opção de coleta reversa (buscar em outro local e trazer para a empresa do cliente)."
+        },
+        {
+          "area": "Segurança",
           "texto": "Manutenção » Fuso do banco: confere se a hora de autorização dos CT-e/MDF-e bate com o protocolo da SEFAZ e corrige (com backup antes) os gravados 3h adiantados quando o PostgreSQL estava em UTC."
         },
         {

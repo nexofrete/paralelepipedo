@@ -11,6 +11,7 @@ const config = require('./config');
 const { tomadorDe, valorCte } = require('./faturamento/faturamento');
 const { SITUACOES } = require('./cte/ocorrencias');
 const ticket = require('./ticketDownload');
+const Doc = require('./utils/documento');
 
 const SEGREDO = crypto.createHmac('sha256', String(config.jwtSecret)).update('portal-do-cliente').digest('hex');
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -315,7 +316,7 @@ async function faturaDoCliente(u, id) {
 async function listarColetas(u) {
   const { rows } = await pool.query(
     `SELECT k.id, k.status, k.data_coleta, k.hora_de, k.hora_ate, k.remetente_nome, k.cidade, k.uf, k.destino_cidade, k.destino_uf, k.volumes, k.peso_kg,
-            k.notas, k.motivo, k.criado_em, k.canal, k.volumes_coletados, k.peso_coletado, k.entregue_por,
+            k.notas, k.motivo, k.criado_em, k.canal, k.tomador, k.destinatario_nome, k.volumes_coletados, k.peso_coletado, k.entregue_por,
             to_char(k.criado_em AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS pedida_em,
             to_char(k.coletado_em AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS coletada_em,
             CASE WHEN k.status IN ('programada', 'em_coleta', 'coletada', 'nao_coletada') THEN r.motorista_nome END AS motorista,
@@ -332,13 +333,32 @@ async function listarColetas(u) {
     carga_id: k.cte_id && k.cte_status === 'autorizado' ? k.cte_id : null, cte_id: undefined, cte_serie: undefined, cte_numero: undefined, cte_status: undefined }));
 }
 
-// Endereço de coleta sugerido: o do cadastro do cliente (primeiro documento).
+// Endereço de coleta sugerido, nesta ordem: o do acesso (cadastrado no Portal do cliente), o do cadastro
+// de clientes (primeiro documento do acesso) ou o do CT-e mais recente em que o cliente foi o remetente.
 async function enderecoDoCliente(u) {
-  if (!u.documentos.length) return null;
-  const { rows } = await pool.query(
-    `SELECT documento, razao_social AS nome, ie, logradouro, numero, complemento, bairro, municipio AS cidade, uf, cep, cod_municipio, telefone
-       FROM clientes WHERE documento = ANY($1::text[]) ORDER BY array_position($1::text[], documento::text) LIMIT 1`, [u.documentos]);
-  return rows[0] || null;
+  const { rows: [a] } = await pool.query('SELECT endereco_coleta FROM portal_usuarios WHERE id = $1', [u.id]);
+  let e = a?.endereco_coleta || null;
+  if (!e && u.documentos.length) {
+    const { rows } = await pool.query(
+      `SELECT documento, razao_social AS nome, ie, logradouro, numero, complemento, bairro, municipio AS cidade, uf, cep, cod_municipio, telefone
+         FROM clientes WHERE documento = ANY($1::text[]) ORDER BY array_position($1::text[], documento::text) LIMIT 1`, [u.documentos]);
+    e = rows[0] || null;
+  }
+  if (!e && u.documentos.length) {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(dados->'remetente'->>'cnpj', dados->'remetente'->>'cpf') AS documento, dados->'remetente'->>'xNome' AS nome, dados->'remetente'->>'ie' AS ie,
+              dados->'remetente'->'endereco'->>'xLgr' AS logradouro, dados->'remetente'->'endereco'->>'nro' AS numero, dados->'remetente'->'endereco'->>'xCpl' AS complemento,
+              dados->'remetente'->'endereco'->>'xBairro' AS bairro, dados->'remetente'->'endereco'->>'xMun' AS cidade, dados->'remetente'->'endereco'->>'UF' AS uf,
+              dados->'remetente'->'endereco'->>'CEP' AS cep, dados->'remetente'->'endereco'->>'cMun' AS cod_municipio, dados->'remetente'->>'fone' AS telefone
+         FROM ctes_emitidos WHERE COALESCE(dados->'remetente'->>'cnpj', dados->'remetente'->>'cpf') = ANY($1::text[]) AND status IN ('autorizado', 'rascunho')
+        ORDER BY id DESC LIMIT 1`, [u.documentos]);
+    e = rows[0] || null;
+  }
+  if (!e) return null;
+  // Cadastro com o CEP no campo do bairro (planilha importada fora de ordem): devolve o CEP ao lugar dele.
+  const soDig = (v) => String(v || '').replace(/\D/g, '');
+  if (/^\d{5}-?\d{3}$/.test(String(e.bairro || '').trim()) && !soDig(e.cep)) e = { ...e, cep: soDig(e.bairro), bairro: null };
+  return e;
 }
 
 // Só o que o cliente pode informar no portal (nada de vínculo com cotação, preço, situação...).
@@ -352,10 +372,11 @@ const CAMPOS_COTACAO_PORTAL = ['telefone', 'origem_cidade', 'origem_uf', 'destin
 async function pedirColeta(u, entrada = {}) {
   const coletas = require('./coletas');
   const b = so(entrada, CAMPOS_COLETA_PORTAL);
-  const doc = docLimpo(b.remetente_doc) || u.documentos[0] || null;
-  // Quem pede pelo portal coleta no próprio endereço, ou num fornecedor que manda para ele (frete por conta do cliente).
+  // Quem pede pelo portal coleta no próprio endereço, ou faz uma coleta reversa: busca num fornecedor ou num
+  // cliente dele e traz para a empresa dele (frete por conta do cliente, como destinatário).
   // Quem paga é sempre a empresa do cliente: remetente (frete pago) ou destinatário (frete a pagar).
   const tomador = entrada.tomador === 'destinatario' ? 'destinatario' : 'remetente';
+  const doc = docLimpo(b.remetente_doc) || (tomador === 'remetente' ? u.documentos[0] : null) || null;
   if (tomador === 'remetente' && doc && !ehDoCliente(u, doc)) throw falha('Coleta com frete pago pelo remetente: o remetente precisa ser a sua empresa.');
   const destDoc = docLimpo(b.destinatario_doc);
   if (tomador === 'destinatario' && destDoc && !ehDoCliente(u, destDoc)) throw falha('Coleta com frete a pagar pelo destinatário: o destinatário precisa ser a sua empresa.');
@@ -435,12 +456,24 @@ async function responderCotacao(u, id, aprovar, motivo) {
 }
 
 // ---------- Administração (tela interna) ----------
-const CAMPOS_PUBLICOS = 'id, nome, email, cliente_nome, documentos, por_raiz, pode_financeiro, ativo, trocar_senha, ultimo_acesso, criado_por_nome, criado_em';
+const CAMPOS_PUBLICOS = 'id, nome, email, cliente_nome, documentos, por_raiz, pode_financeiro, ativo, trocar_senha, ultimo_acesso, criado_por_nome, criado_em, endereco_coleta';
+// Endereço de coleta do acesso: só os campos do endereço, limpos (CEP e IBGE só números).
+function lerEndereco(e) {
+  if (!e || typeof e !== 'object') return null;
+  const t = (v, max) => { const x = String(v ?? '').replace(/\s+/g, ' ').trim(); return x ? x.slice(0, max) : null; };
+  const dig = (v, n) => { const d = String(v ?? '').replace(/\D/g, ''); return d.length === n ? d : null; };
+  const r = {
+    documento: Doc.limpar(e.documento), nome: t(e.nome, 200), ie: t(e.ie, 20), logradouro: t(e.logradouro, 200), numero: t(e.numero, 30), complemento: t(e.complemento, 120),
+    bairro: t(e.bairro, 120), cidade: t(e.cidade, 120), uf: /^[A-Za-z]{2}$/.test(String(e.uf || '').trim()) ? String(e.uf).trim().toUpperCase() : null,
+    cep: dig(e.cep, 8), cod_municipio: dig(e.cod_municipio, 7), telefone: t(e.telefone, 30),
+  };
+  return Object.values(r).some((v) => v) ? r : null;
+}
 function lerAcesso(b = {}) {
   const a = {
     nome: String(b.nome || '').trim().slice(0, 120), email: String(b.email || '').trim().toLowerCase().slice(0, 250),
     cliente_nome: String(b.cliente_nome || '').trim().slice(0, 200) || null, documentos: lerDocumentos(b.documentos),
-    por_raiz: !!b.por_raiz, pode_financeiro: b.pode_financeiro !== false,
+    por_raiz: !!b.por_raiz, pode_financeiro: b.pode_financeiro !== false, endereco_coleta: lerEndereco(b.endereco_coleta),
   };
   if (!a.nome) throw falha('Informe o nome de quem vai usar o portal.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email)) throw falha('E-mail inválido.');
@@ -453,16 +486,16 @@ async function criarAcesso(b, usuarioNome) {
   const a = lerAcesso(b);
   const senha = senhaProvisoria();
   const { rows } = await pool.query(
-    `INSERT INTO portal_usuarios (nome, email, cliente_nome, documentos, por_raiz, pode_financeiro, senha_hash, criado_por_nome)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${CAMPOS_PUBLICOS}`,
-    [a.nome, a.email, a.cliente_nome, a.documentos, a.por_raiz, a.pode_financeiro, await hashSenha(senha), usuarioNome]).catch(emailRepetido);
+    `INSERT INTO portal_usuarios (nome, email, cliente_nome, documentos, por_raiz, pode_financeiro, senha_hash, criado_por_nome, endereco_coleta)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${CAMPOS_PUBLICOS}`,
+    [a.nome, a.email, a.cliente_nome, a.documentos, a.por_raiz, a.pode_financeiro, await hashSenha(senha), usuarioNome, a.endereco_coleta]).catch(emailRepetido);
   return { acesso: rows[0], senha };
 }
 async function alterarAcesso(id, b) {
   const a = lerAcesso(b);
   const { rows } = await pool.query(
-    `UPDATE portal_usuarios SET nome = $2, email = $3, cliente_nome = $4, documentos = $5, por_raiz = $6, pode_financeiro = $7 WHERE id = $1 RETURNING ${CAMPOS_PUBLICOS}`,
-    [id, a.nome, a.email, a.cliente_nome, a.documentos, a.por_raiz, a.pode_financeiro]).catch(emailRepetido);
+    `UPDATE portal_usuarios SET nome = $2, email = $3, cliente_nome = $4, documentos = $5, por_raiz = $6, pode_financeiro = $7, endereco_coleta = $8 WHERE id = $1 RETURNING ${CAMPOS_PUBLICOS}`,
+    [id, a.nome, a.email, a.cliente_nome, a.documentos, a.por_raiz, a.pode_financeiro, a.endereco_coleta]).catch(emailRepetido);
   if (!rows[0]) throw falha('Acesso não encontrado.', 404);
   return rows[0];
 }

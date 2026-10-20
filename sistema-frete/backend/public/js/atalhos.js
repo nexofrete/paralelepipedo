@@ -60,7 +60,7 @@
     { codigo: '211', rotulo: '＋ Nova manutenção', chave: 't:frota:manutencoes', botao: 'fvNovaManut', palavras: 'nova manutencao' },
   ];
 
-  const visivel = (el) => el && !el.classList.contains('oculto');
+  const visivel = (el) => el && !el.classList.contains('oculto') && !window.Modulos?.fora(el);
   // Nome do item sem os contadores (ex.: "Notas sem mapa 5").
   const limpo = (el) => { const c = el.cloneNode(true); c.querySelectorAll('.nav-badge, .nav-cod, [id^="badge"]').forEach((b) => b.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
 

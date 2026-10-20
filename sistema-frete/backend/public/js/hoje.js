@@ -80,5 +80,5 @@
   // Atualiza sozinha a cada 5 minutos enquanto está aberta.
   setInterval(() => { if (!$('pagina-hoje').classList.contains('oculto') && !document.hidden) carregar().catch(() => {}); }, 5 * 60 * 1000);
   // É a primeira tela de quem trabalha na transportadora.
-  setTimeout(() => nav.click(), 0);
+  if (!window.Modulos?.fora(nav)) setTimeout(() => nav.click(), 0);
 })();

@@ -7,7 +7,7 @@ const pool = require('../db');
 const { SITUACOES } = require('../cte/ocorrencias');
 
 const router = express.Router();
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('../utils/documento');
 const docLimpo = (v) => String(v ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
 // "Maria da Silva Souza" → "Maria S." (o nome inteiro de quem recebeu não vai para a internet).
 // DATE do banco (vem como Date à meia-noite local) → "dd/mm/aaaa".

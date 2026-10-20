@@ -2281,7 +2281,7 @@ function renderizarListaTransportadoras() {
 const CAMPOS_EMPRESA = [
   ['eRazaoSocial', 'razao_social'], ['eNomeFantasia', 'nome_fantasia'], ['eCnpj', 'cnpj'],
   ['eIe', 'ie'], ['eTelefone', 'telefone'], ['eEmail', 'email'], ['eEndereco', 'endereco'],
-  ['eBairro', 'bairro'], ['eMunicipio', 'municipio'], ['eUf', 'uf'], ['eCep', 'cep'],
+  ['eBairro', 'bairro'], ['eMunicipio', 'municipio'], ['eUf', 'uf'], ['eCep', 'cep'], ['eModulos', 'modulos'],
 ];
 
 async function carregarEmpresa() {
@@ -2290,7 +2290,7 @@ async function carregarEmpresa() {
     if (!resposta.ok) return;
     const empresa = await resposta.json();
     CAMPOS_EMPRESA.forEach(([elId, campo]) => {
-      document.getElementById(elId).value = elId === 'eCnpj' ? Doc.formatar((empresa && empresa[campo]) || '') : (empresa && empresa[campo]) || '';
+      document.getElementById(elId).value = elId === 'eCnpj' ? Doc.formatar((empresa && empresa[campo]) || '') : elId === 'eModulos' ? (empresa?.modulos || 'ambos') : (empresa && empresa[campo]) || '';
     });
     logoEmpresa = empresa?.logo || null;
     mostrarPreviaLogo();
@@ -2368,6 +2368,7 @@ document.getElementById('btnSalvarEmpresa').addEventListener('click', async () =
     }
     okEl.style.display = 'block';
     setTimeout(() => { okEl.style.display = 'none'; }, 3000);
+    window.Modulos?.aplicar(corpo.modulos);
   } catch (err) {
     erroEl.textContent = 'Falha de conexão com o servidor.';
     erroEl.classList.add('visivel');

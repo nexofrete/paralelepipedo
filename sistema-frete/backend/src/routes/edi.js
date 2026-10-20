@@ -17,7 +17,7 @@ const router = express.Router();
 
 const embarcador = permitirAlguma('pode_ver_auditoria', 'pode_editar_registros', 'pode_enviar_xml');
 const transportadora = permitirAlguma('pode_emitir_cte');
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('../utils/documento');
 const docLimpo = (v) => String(v ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
 const raiz = (cnpj) => docLimpo(cnpj).slice(0, 8);
 const data = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);

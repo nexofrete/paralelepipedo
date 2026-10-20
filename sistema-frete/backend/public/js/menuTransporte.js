@@ -35,7 +35,7 @@
   // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
   tsubs.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));
   const itensDo = (g) => [...g.sub.querySelectorAll('.nav-tsub, .nav-item')];
-  const visivel = (el) => !el.classList.contains('oculto');
+  const visivel = (el) => !el.classList.contains('oculto') && !window.Modulos?.fora(el);
   const atualizarVisiveis = () => grupos.forEach((g) => { g.cab.classList.toggle('oculto', !itensDo(g).some(visivel)); });
   atualizarVisiveis();
   // Itens de página dentro dos grupos (Cadastros, Manutenção...) aparecem depois, quando o dashboard confere a permissão.
@@ -107,4 +107,6 @@
   const itemIni = inicial && document.querySelector(`.barra-lateral .nav-sub .nav-item[data-pagina="${inicial}"]`);
   grupoAtual = itemIni ? grupos.find((x) => x.sub.contains(itemIni))?.chave || null : null;
   desenhar();
+  // Módulos da empresa trocados (Cadastros » Empresa): refaz o menu na hora.
+  document.addEventListener('modulos-mudou', () => { atualizarVisiveis(); desenhar(); });
 })();

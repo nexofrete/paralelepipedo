@@ -16,7 +16,7 @@ const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const centavos = (v) => Math.round((Number(v) || 0) * 100) / 100;
 const iso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
 const dia = (v) => String(v || '').slice(0, 10).split('-').reverse().join('/');
-const soDigitos = (v) => String(v || '').replace(/\D/g, '');
+const soDigitos = Doc.digitos;
 const BASES = { recebido: 'Sobre o recebido (fatura paga)', faturado: 'Sobre o faturado (CT-e autorizado)' };
 
 // ---------- Vendedores ----------

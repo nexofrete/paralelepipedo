@@ -12,7 +12,7 @@ const VER_APLIC = 'NEXOFRETE-1';
 // 16.02.01 — Outros serviços de transporte de natureza municipal.
 const TRIB_NAC_PADRAO = '160201';
 
-const so = (v) => String(v ?? '').replace(/\D/g, '');
+const so = Doc.digitos;
 // Texto aceito pelo leiaute: sem espaço nas pontas, sem caracteres fora do Latin-1.
 const limpo = (v, max) => String(v ?? '').normalize('NFC').replace(/[^\x20-\xFF\n]/g, ' ').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim().slice(0, max).trim();
 const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

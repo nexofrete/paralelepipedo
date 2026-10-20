@@ -7,22 +7,18 @@
 // Com isso, a cidade até onde a transportadora contratada leva (a do
 // redespacho) vem do CADASTRO — e não mais da leitura do texto da nota.
 const pool = require('./db');
+const Doc = require('./utils/documento');
 
 const CNPJ_REDESPACHO_RE = /REDESPACHO\s*:[^<]{0,250}?(?:CNPJ\s*:?\s*(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})|(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}))/i;
-const soDigitos = (v) => String(v || '').replace(/\D/g, '');
-const formatarCnpj = (d) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+const soDigitos = Doc.digitos;
+const formatarCnpj = (d) => Doc.formatar(d);
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Dígitos verificadores do CNPJ. CNPJ digitado errado na nota (ex.: no "REDESPACHO:")
 // é recusado por todos os serviços de consulta — confere antes e sugere o certo.
-function digitosCnpj(base12) {
-  const calc = (nums, pesos) => { const r = nums.reduce((s, n, i) => s + n * pesos[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
-  const n = base12.split('').map(Number);
-  const d1 = calc(n, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  const d2 = calc([...n, d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  return `${d1}${d2}`;
-}
-function cnpjValido(d) { return /^\d{14}$/.test(d) && !/^(\d)\1{13}$/.test(d) && digitosCnpj(d.slice(0, 12)) === d.slice(12); }
+// Dígito verificador e validação: a regra única de CNPJ/CPF do sistema (utils/documento.js).
+const digitosCnpj = Doc.dvCnpj;
+const cnpjValido = (d) => /^\d{14}$/.test(d) && Doc.cnpjValido(d);
 function sugestaoCnpj(d) { return formatarCnpj(d.slice(0, 12) + digitosCnpj(d.slice(0, 12))); }
 const erroCnpjInvalido = (d) => `CNPJ inválido — o dígito verificador não confere (provavelmente digitado errado na nota). O correto deve ser ${sugestaoCnpj(d)}: corrija o CNPJ aqui e clique em "Completar pelo CNPJ".`;
 

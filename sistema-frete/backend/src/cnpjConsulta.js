@@ -9,23 +9,13 @@
 const pool = require('./db');
 const Doc = require('./utils/documento');
 
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const soDigitos = Doc.digitos;
 const limpo = (v) => { const t = String(v ?? '').replace(/\s+/g, ' ').trim(); return t || null; };
-const formatarCnpj = (d) => String(d).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-
-function digitosCnpj(base12) {
-  const calc = (nums, pesos) => { const r = nums.reduce((s, n, i) => s + n * pesos[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
-  const n = base12.split('').map(Number);
-  const d1 = calc(n, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  const d2 = calc([...n, d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  return `${d1}${d2}`;
-}
-const cnpjValido = (d) => /^\d{14}$/.test(d) && !/^(\d)\1{13}$/.test(d) && digitosCnpj(d.slice(0, 12)) === d.slice(12);
-function cpfValido(d) {
-  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
-  const dig = (n) => { let s = 0; for (let i = 0; i < n; i += 1) s += Number(d[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
-  return dig(9) === Number(d[9]) && dig(10) === Number(d[10]);
-}
+const formatarCnpj = (d) => Doc.formatar(d);
+// Dígito verificador e validação: a regra única de CNPJ/CPF do sistema (utils/documento.js, já com o CNPJ alfanumérico).
+const digitosCnpj = Doc.dvCnpj;
+const cnpjValido = (d) => /^\d{14}$/.test(d) && Doc.cnpjValido(d);
+const cpfValido = Doc.cpfValido;
 
 const CABECALHOS = { 'User-Agent': 'Nexofrete (consulta de CNPJ para cadastro)', Accept: 'application/json' };
 async function buscarJson(url) {

@@ -23,6 +23,16 @@ def parte_operacao(g):
     s.append(P('O menu da esquerda é organizado por área: <b>Operação, Financeiro, Frota, Gestão, Notas e fretes</b> (a '
                'parte do embarcador) e <b>Configuração</b>. O grupo da tela aberta abre sozinho; os que você abrir à mão '
                'ficam abertos e o navegador lembra. No celular, o botão <b>Menu</b> abre o menu como uma gaveta.'))
+    s += h2('Módulos da empresa')
+    s.append(P('Em <b>Cadastros » Empresa » Módulos usados pela empresa</b>, o administrador escolhe o que aparece:'))
+    s += lista([
+        '<b>Transportadora e embarcador (tudo)</b>: o padrão, todo o menu.',
+        '<b>Só transportadora</b>: some <b>Notas e fretes</b> e <b>Relatórios</b> (a parte do embarcador); a primeira tela é a Hoje.',
+        '<b>Só embarcador</b>: somem Hoje, Operação, Financeiro, Frota, Gestão, Filiais (unidades) e Configuração fiscal; '
+        'a primeira tela é a Visão geral.',
+    ])
+    s += aviso('nota', 'A escolha esconde os itens do menu, do "Ir para" (Ctrl+K) e da tela Hoje para todos os usuários; '
+                       'não apaga nada nem muda permissões. Volte para "tudo" a qualquer momento.')
     s += h2('Recolher o menu e cores pelo tema')
     s += lista([
         'A <b>seta na borda do menu</b> (botão redondo no alto) recolhe o menu: ficam só os ícones e a tela ganha '

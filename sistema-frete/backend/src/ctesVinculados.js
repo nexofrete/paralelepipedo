@@ -21,7 +21,7 @@ const pool = require('./db');
 // CT-e substituto (tpCTe 3) troca os dados do principal; CT-e de anulação
 // (tpCTe 2) prende o principal para revisão.
 
-const soDigitos = (v) => String(v || '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('./utils/documento');
 const normalizarNome = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .toUpperCase().replace(/\b(LTDA|EIRELI|ME|EPP|S\/?A|SA)\b/g, '').replace(/[^A-Z0-9]/g, '');
 

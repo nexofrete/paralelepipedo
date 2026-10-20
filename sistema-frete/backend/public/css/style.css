@@ -1651,3 +1651,7 @@ body.tem-aviso .btn-recolher-menu { top: 116px; }
   html.menu-recolhido .barra-lateral:not(:hover) :is(#badgeMensagens, #badgeAgenda) { position: absolute; top: 2px; right: 4px; font-size: 9px !important; padding: 0 4px !important; }
 }
 @media (max-width: 800px) { .btn-recolher-menu { display: none; } }
+
+/* Módulos da empresa (js/modulos.js): some o que a empresa não usa. */
+html[data-modulos="transportadora"] [data-modulo="embarcador"],
+html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !important; }

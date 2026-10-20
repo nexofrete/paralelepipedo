@@ -13,16 +13,22 @@ function limpar(v, max = 14) {
   return d.slice(0, max) || null;
 }
 
+// Só os números (CEP, telefone, IBGE, código de barras... e documentos que só podem ser numéricos, como o CPF).
+const digitos = (v) => String(v ?? '').replace(/\D/g, '');
+
+// Os 2 dígitos verificadores do CNPJ a partir das 12 primeiras posições (numéricas ou com letras).
+function dvCnpj(base12) {
+  const b = chars(base12).slice(0, 12);
+  const val = (ch) => ch.charCodeAt(0) - 48;
+  const calc = (txt, pesos) => { const r = pesos.reduce((s, p, i) => s + val(txt[i]) * p, 0) % 11; return r < 2 ? 0 : 11 - r; };
+  const d1 = calc(b, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = calc(`${b}${d1}`, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return `${d1}${d2}`;
+}
 function cnpjValido(v) {
   const d = chars(v);
   if (!/^[0-9A-Z]{12}\d{2}$/.test(d) || /^(\d)\1{13}$/.test(d)) return false;
-  const val = (ch) => ch.charCodeAt(0) - 48;
-  const dv = (n) => {
-    const pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    const r = pesos.reduce((s, p, i) => s + val(d[i]) * p, 0) % 11;
-    return r < 2 ? 0 : 11 - r;
-  };
-  return dv(12) === Number(d[12]) && dv(13) === Number(d[13]);
+  return dvCnpj(d.slice(0, 12)) === d.slice(12);
 }
 function cpfValido(v) {
   const d = String(v ?? '').replace(/\D/g, '');
@@ -41,4 +47,4 @@ function formatar(v) {
   return v == null ? '' : String(v);
 }
 
-module.exports = { chars, limpar, ehCnpjAlfanumerico, cnpjValido, cpfValido, valido, formatoOk, formatar };
+module.exports = { chars, digitos, dvCnpj, limpar, ehCnpjAlfanumerico, cnpjValido, cpfValido, valido, formatoOk, formatar };

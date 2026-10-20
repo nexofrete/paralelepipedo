@@ -21,7 +21,7 @@ const lerValor = (v) => {
   const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
   return Number.isFinite(n) ? centavos(n) : null;
 };
-const soDigitos = (v) => String(v || '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('../utils/documento');
 // Texto para comparar nomes: maiúsculo, sem acento nem pontuação.
 const normal = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const GENERICAS = new Set(['LTDA', 'EIRELI', 'EPP', 'COMERCIO', 'INDUSTRIA', 'SERVICOS', 'TRANSPORTES', 'TRANSPORTE', 'LOGISTICA', 'BRASIL', 'DISTRIBUIDORA', 'COMERCIAL', 'GRUPO', 'CIA', 'DO', 'DA', 'DE', 'DOS', 'DAS', 'E']);

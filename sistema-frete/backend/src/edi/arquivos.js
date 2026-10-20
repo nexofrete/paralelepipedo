@@ -11,7 +11,7 @@
 const { A, N, D8, D6, H4, layout, linha, ler, identificacoes } = require('./proceda');
 
 const CABECALHO = [A('remetente', 35), A('destinatario', 35), D6('data'), H4('hora'), A('intercambio', 12)];
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('../utils/documento');
 const docLimpo = (v) => String(v ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
 const QUEBRA = '\r\n';
 const juntar = (linhas) => linhas.join(QUEBRA) + QUEBRA;

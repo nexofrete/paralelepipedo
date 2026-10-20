@@ -2391,3 +2391,8 @@ CREATE INDEX IF NOT EXISTS idx_contas_pagar_competencia ON contas_pagar (compete
 -- Portal do cliente: endereço de coleta do acesso (vem do cadastro do cliente ou da consulta do CNPJ);
 -- o pedido de coleta pelo portal já abre preenchido com ele.
 ALTER TABLE portal_usuarios ADD COLUMN IF NOT EXISTS endereco_coleta JSONB;
+
+-- Módulos que a empresa usa: transportadora (TMS: CT-e, coletas, frota, faturamento...), embarcador
+-- (notas e fretes: auditoria do que a transportadora cobra, pagamento de fretes, relatórios) ou ambos.
+-- Só esconde da tela (menu, "Ir para", Hoje); as permissões de cada usuário continuam valendo.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS modulos VARCHAR(15) NOT NULL DEFAULT 'ambos';

@@ -194,6 +194,8 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
 
 ## Menu por área e tela "Hoje"
 
+- **Módulos da empresa** (Cadastros → Empresa → *Módulos usados pela empresa*): **tudo** (padrão), **só transportadora** (some Notas e fretes e Relatórios) ou **só embarcador** (somem Hoje, Operação, Financeiro, Frota, Gestão, Filiais e Configuração fiscal; abre na Visão geral). Esconde do menu, do "Ir para" e da Hoje; não mexe em permissões. Coluna `empresa.modulos`; na tela, `public/js/modulos.js` marca `html[data-modulos]` e os itens com `data-modulo` somem pelo CSS.
+
 - **🏠 Hoje** (código **000**) é a primeira tela de quem emite CT-e ou cuida do financeiro. Ela mostra, por área, o que precisa de atenção:
   - **Operação:** CT-e rejeitados ou com erro, rascunhos, entregas atrasadas, com ocorrência ou previstas para hoje, coletas a programar, cotações pedidas no portal e MDF-e em aberto.
   - **Financeiro:** faturas vencidas e a receber na semana, CT-e a faturar, contas a pagar vencidas, de hoje e da semana, boletos rejeitados, extrato a conciliar, saldo em caixa e bancos e falha no envio ao contador.

@@ -8,8 +8,9 @@ const router = express.Router();
 
 const CAMPOS_EMPRESA = [
   'razao_social', 'nome_fantasia', 'cnpj', 'ie', 'telefone', 'email',
-  'endereco', 'bairro', 'municipio', 'uf', 'cep',
+  'endereco', 'bairro', 'municipio', 'uf', 'cep', 'modulos',
 ];
+const MODULOS = ['ambos', 'transportadora', 'embarcador'];
 
 // GET /api/empresa
 router.get('/', autenticar, async (req, res) => {
@@ -25,6 +26,7 @@ router.get('/', autenticar, async (req, res) => {
 // PUT /api/empresa  (cria se não existir, atualiza se já existir — só admin)
 router.put('/', autenticar, apenasAdmin, async (req, res) => {
   try {
+    if (req.body.modulos !== undefined && !MODULOS.includes(req.body.modulos)) return res.status(400).json({ erro: 'Módulos inválidos.' });
     const campos = CAMPOS_EMPRESA.filter((c) => req.body[c] !== undefined);
     // CNPJ só com os dígitos (a tela mostra com pontuação).
     const valores = campos.map((c) => (c === 'cnpj' ? Doc.limpar(req.body[c]) : req.body[c] || null));

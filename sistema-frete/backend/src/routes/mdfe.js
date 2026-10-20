@@ -16,7 +16,7 @@ const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
 const log = (req, acao, detalhes, registroId) => registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao, detalhes, registroId });
 const erro = (res, err, padrao) => { console.error('[mdfe]', err.message); res.status(err.status || 400).json({ erro: err.message || padrao }); };
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('../utils/documento');
 const placaLimpa = (v) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 router.get('/tabelas', autenticar, emitir, (req, res) => res.json({ tiposCarga: TIPOS_CARGA, tiposRodado: TIPOS_RODADO, tiposCarroceria: TIPOS_CARROCERIA }));

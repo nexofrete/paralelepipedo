@@ -10,7 +10,7 @@ const VERSAO = '4.00';
 const VER_PROC = 'Nexofrete 1.0';
 
 // ---------- formatos ----------
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const { digitos: soDigitos } = require('../utils/documento');
 // CNPJ pode ser alfanumérico (CNPJs novos a partir de 2026): letras maiúsculas e dígitos.
 const cnpjLimpo = (v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 // Texto como o schema aceita: sem quebras de linha, sem espaço nas pontas,

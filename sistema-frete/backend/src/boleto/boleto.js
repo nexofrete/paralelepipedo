@@ -6,7 +6,7 @@
 // (você manda um arquivo de teste antes de usar de verdade). Os campos de
 // convênio/carteira/código do beneficiário vêm do contrato com o banco.
 
-const so = (v) => String(v ?? '').replace(/\D/g, '');
+const { digitos: so } = require('../utils/documento');
 const pad = (v, n) => so(v).padStart(n, '0').slice(-n);
 
 // Módulo 10 (pesos 2,1 da direita para a esquerda; soma os dígitos do produto).

@@ -66,6 +66,10 @@
           "texto": "Links de download (DACTE, XML, boleto, fatura, planilhas, anexos, mapa) não levam mais a senha de acesso na URL: cada clique gera um ticket que só abre aquele arquivo e vence em 2 minutos. Vale também no portal do cliente."
         },
         {
+          "area": "Segurança",
+          "texto": "Portal do cliente: quem não vê valores (acesso sem \"vê valores\" ou CT-e pago por outra empresa) recebe o DACTE sem os valores do frete e não baixa o XML, que traz os valores."
+        },
+        {
           "area": "Manual",
           "texto": "Manual do sistema atualizado com as Partes 4 a 6: operação da transportadora, financeiro e gestão, e integrações."
         }

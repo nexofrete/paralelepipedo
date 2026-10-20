@@ -23,6 +23,7 @@ const pagina = (fn) => async (req, res) => {
   try { await fn(req, res); } catch (err) { res.status(err.status || 400).send(String(err.message || 'Erro.').replace(/</g, '&lt;')); }
 };
 const logPortal = (req, detalhes) => registrar({ usuarioNome: `Portal: ${req.portal.nome} <${req.portal.email}>`, acao: 'portal', detalhes });
+const ERRO_XML_SEM_VALOR = 'O XML do CT-e traz o valor do frete, e o seu acesso não inclui os valores destes CT-e (só quem paga o frete e tem acesso ao financeiro). O DACTE continua disponível, sem os valores. Se precisar do XML, fale com a transportadora.';
 const empresa = async () => (await pool.query('SELECT * FROM empresa WHERE id = 1')).rows[0] || {};
 
 // ======================= API do cliente =======================
@@ -83,12 +84,15 @@ api.get('/cargas/:id(\\d+)/dacte', auth, pagina(async (req, res) => {
   const c = await portal.cteDoCliente(req.portal, req.params.id);
   const reg = await emissao.carregar(c.id);
   const e = await emissao.carregarEmitente();
-  res.set('Content-Type', 'text/html; charset=utf-8').send(await gerarDacte(emissao.dadosParaXml(reg, e), reg));
+  // Sem acesso ao valor deste CT-e: o DACTE sai sem os valores do frete.
+  res.set('Content-Type', 'text/html; charset=utf-8').send(await gerarDacte(emissao.dadosParaXml(reg, e), reg, { semValores: !portal.veValor(req.portal, c.dados) }));
 }));
 
 api.get('/cargas/:id(\\d+)/xml', auth, pagina(async (req, res) => {
   const c = await portal.cteDoCliente(req.portal, req.params.id);
   if (!c.xml_autorizado) return res.status(404).send('Este CT-e não tem XML autorizado.');
+  // O XML assinado traz os valores do frete e não pode ser editado: só para quem vê o valor.
+  if (!portal.veValor(req.portal, c.dados)) return res.status(403).send(ERRO_XML_SEM_VALOR);
   res.set({ 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="${c.chave}-procCTe.xml"` });
   return res.send(c.xml_autorizado);
 }));
@@ -112,16 +116,18 @@ api.get('/xmls.zip', auth, pagina(async (req, res) => {
   const u = req.portal;
   const demo = await portal.emDemonstracao();
   const { rows } = await pool.query(
-    `SELECT c.chave, c.xml_autorizado, c.autorizado_em FROM ctes_emitidos c
+    `SELECT c.chave, c.xml_autorizado, c.autorizado_em, c.dados FROM ctes_emitidos c
       WHERE c.status IN ('autorizado', 'cancelado') AND c.xml_autorizado IS NOT NULL AND c.autorizado_em >= $3::date AND c.autorizado_em < $4::date + 1
         AND ${portal.condicaoCliente(1)}${demo ? '' : ' AND NOT c.demonstracao'} ORDER BY c.autorizado_em LIMIT 5000`, [u.documentos, u.raizes, de, ate]);
   if (!rows.length) return res.status(404).send('Nenhum CT-e com XML neste período.');
+  const permitidos = rows.filter((r) => portal.veValor(u, r.dados));
+  if (!permitidos.length) return res.status(403).send(ERRO_XML_SEM_VALOR);
   const { EscritorZip } = require('../utils/zip');
   const tmp = path.join(os.tmpdir(), `portal-xml-${crypto.randomBytes(6).toString('hex')}.zip`);
   const zip = new EscritorZip(tmp);
-  rows.forEach((r) => zip.adicionar(`${r.chave}-procCTe.xml`, Buffer.from(r.xml_autorizado, 'utf8'), { data: new Date(r.autorizado_em) }));
+  permitidos.forEach((r) => zip.adicionar(`${r.chave}-procCTe.xml`, Buffer.from(r.xml_autorizado, 'utf8'), { data: new Date(r.autorizado_em) }));
   zip.fechar();
-  logPortal(req, `Baixou ${rows.length} XML de CT-e (${de} a ${ate})`);
+  logPortal(req, `Baixou ${permitidos.length} XML de CT-e (${de} a ${ate})${permitidos.length < rows.length ? `; ${rows.length - permitidos.length} ficaram de fora (sem acesso ao valor)` : ''}`);
   res.download(tmp, `cte-xml-${de}-a-${ate}.zip`, () => fs.rm(tmp, { force: true }, () => {}));
 }));
 

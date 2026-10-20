@@ -163,10 +163,14 @@ const numNf = (k) => Number(String(k).slice(25, 34));
 const atrasada = (c) => c.status === 'autorizado' && !['entregue', 'devolvido'].includes(c.situacao_entrega) && c.previsao_entrega
   && String(c.previsao_entrega instanceof Date ? c.previsao_entrega.toISOString() : c.previsao_entrega).slice(0, 10) < hoje();
 
+// Quem vê o valor do frete de um CT-e: só o acesso com financeiro E que é o pagador (tomador).
+// Vale para a tela, o DACTE (sai sem valores) e o XML (que traz os valores e não pode ser editado).
+const veValor = (u, d = {}) => !!u.pode_financeiro && papeisNoCte(u, d).pagador;
+
 function resumoCte(u, c) {
   const d = c.dados || {};
   const { papeis, pagador } = papeisNoCte(u, d);
-  const verValor = pagador && u.pode_financeiro;
+  const verValor = veValor(u, d);
   return {
     id: c.id, cte: c.numero ? `${c.serie}/${c.numero}` : `(sem número, ref. ${c.id})`, numero: c.numero, chave: c.chave, emissao: c.autorizado_em, cancelado: c.status === 'cancelado', demonstracao: c.demonstracao,
     remetente: d.remetente?.xNome || c.remetente_nome, destinatario: d.destinatario?.xNome || c.destinatario_nome,
@@ -221,7 +225,7 @@ async function detalheCarga(u, id) {
             (assinatura_arquivo IS NOT NULL) AS tem_assinatura
        FROM cte_ocorrencias WHERE cte_id = $1 ORDER BY data_hora DESC, id DESC`, [c.id]);
   return {
-    ...r, recebedor_nome: c.recebedor_nome, tem_xml: !!c.xml_autorizado,
+    ...r, recebedor_nome: c.recebedor_nome, tem_xml: !!c.xml_autorizado && r.valor != null, ve_valor: r.valor != null,
     componentes: r.valor != null ? (d.valores?.componentes || []).map((x) => ({ nome: x.xNome, valor: Number(x.vComp) })) : null,
     valor_mercadoria: Number(d.carga?.vCarga || 0) || null, produto: d.carga?.proPred || null,
     historico: [
@@ -484,7 +488,7 @@ async function enviarAcesso(acesso, senha) {
 }
 
 module.exports = {
-  SEGREDO, autenticarPortal, entrar, trocarSenha, esqueci, redefinir, lerDocumentos, senhaProvisoria, conferirSenhaNova, condicaoCliente, papeisNoCte, ehDoCliente,
+  SEGREDO, autenticarPortal, entrar, trocarSenha, esqueci, redefinir, lerDocumentos, senhaProvisoria, conferirSenhaNova, condicaoCliente, papeisNoCte, ehDoCliente, veValor,
   listarCargas, cteDoCliente, detalheCarga, indicadores, listarFaturas, faturaDoCliente, listarColetas, enderecoDoCliente, pedirColeta,
   listarCotacoes, cotacaoDoCliente, pedirCotacao, responderCotacao, criarAcesso, alterarAcesso, novaSenha, ativar, enviarAcesso, CAMPOS_PUBLICOS, emDemonstracao,
 };

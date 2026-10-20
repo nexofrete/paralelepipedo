@@ -302,6 +302,7 @@ Página própria para o cliente da transportadora: **`/portal.html`** (funciona 
 - **Início:** cargas em andamento, atrasadas, % de entregas no prazo (30 dias), frete do mês, faturas em aberto e as últimas movimentações.
 - **Cargas** em que ele aparece (remetente, destinatário, expedidor, recebedor ou pagador): situação, previsão, histórico, **DACTE, XML, foto do comprovante e assinatura**. Busca por NF, CT-e ou cidade. **XML do período** num .zip, para o fiscal dele.
 - **Valores do frete** só nos CT-e em que ele é o **pagador**.
+- **Quem não vê valores** (acesso sem "vê valores", ou CT-e pago por outra empresa): o DACTE sai **sem os valores do frete** (componentes, total, valor a receber e ICMS; R$ nas observações vira `R$ ***`) e o **XML não fica disponível** — nem avulso nem no .zip do período —, porque o XML assinado traz os valores e não pode ser alterado. O .zip só leva os CT-e que ele paga. O botão do .zip some para acesso sem "vê valores".
 - **Financeiro:** faturas em que ele é o pagador, com a fatura impressa, o **boleto** e a linha digitável para copiar.
 - **Coletas:** pede coleta. Ela cai em Coletas com o canal "🌐 Portal" e ele acompanha a situação.
 - **Cotações:** pede cotação e aprova ou recusa pelo portal.

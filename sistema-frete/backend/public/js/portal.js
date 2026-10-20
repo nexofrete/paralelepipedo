@@ -128,6 +128,7 @@
     $('ptCliente').textContent = `${eu.cliente_nome || eu.nome} · ${eu.nome}`;
     if (empresa?.logo) { $('ptLogoApp').src = empresa.logo; $('ptLogoApp').classList.remove('oculto'); }
     $('ptAbaFin').classList.toggle('oculto', !eu.pode_financeiro);
+    $('ptXmlLote').classList.toggle('oculto', !eu.pode_financeiro);   // o XML traz o valor do frete
     irPara(abaAtual);
   }
   function irPara(aba) {
@@ -201,16 +202,29 @@
         <div class="pt-rodape-j">
           <a class="botao sec" href="${esc(link(`/cargas/${c.id}/dacte`))}" target="_blank" rel="noopener">🖨 DACTE</a>
           ${c.tem_xml ? `<a class="botao sec" href="${esc(link(`/cargas/${c.id}/xml`))}">⬇ XML</a>` : ''}
-          <button data-fechar>Fechar</button></div>`);
+          <button data-fechar>Fechar</button></div>
+        ${c.ve_valor ? '' : '<p class="fraco" style="font-size:12.5px; margin:8px 0 0;">Valores do frete não exibidos neste acesso (só quem paga o frete e tem acesso ao financeiro): o DACTE sai sem os valores e o XML não fica disponível.</p>'}`);
     } catch (err) { aviso(err.message); }
   }
 
   $('ptXmlLote').addEventListener('click', () => {
     const hoje = hojeIso();
-    abrirJanela('<b>⬇ XML dos CT-e do período</b>', `<p class="fraco" style="font-size:13.5px;">Baixa num arquivo .zip os XML de todos os CT-e em que a sua empresa aparece (máximo de 3 meses por vez).</p>
+    abrirJanela('<b>⬇ XML dos CT-e do período</b>', `<p class="fraco" style="font-size:13.5px;">Baixa num arquivo .zip os XML dos CT-e em que a sua empresa paga o frete (máximo de 3 meses por vez). O XML traz o valor do frete, então os CT-e pagos por outra empresa ficam de fora.</p>
       <div class="pt-grade"><div><label for="ptjDe">De</label><input id="ptjDe" type="date" value="${hoje.slice(0, 8)}01" /></div><div><label for="ptjAte">Até</label><input id="ptjAte" type="date" value="${hoje}" /></div></div>
       <div class="pt-rodape-j"><button class="sec" data-fechar>Cancelar</button><button id="ptjBaixar">Baixar .zip</button></div>`);
-    $('ptjBaixar').addEventListener('click', () => { window.location.href = link(`/xmls.zip?${new URLSearchParams({ de: $('ptjDe').value, ate: $('ptjAte').value })}`); fecharJanela(); });
+    // Baixa pelo fetch (com o cabeçalho): se não houver XML, o aviso aparece aqui em vez de trocar a página.
+    $('ptjBaixar').addEventListener('click', async () => {
+      const botao = $('ptjBaixar'); botao.disabled = true;
+      try {
+        const r = await fetch(`/api/portal/xmls.zip?${new URLSearchParams({ de: $('ptjDe').value, ate: $('ptjAte').value })}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!r.ok) throw new Error((await r.text().catch(() => '')) || 'Não foi possível baixar agora.');
+        const nome = (/filename="?([^";]+)"?/.exec(r.headers.get('Content-Disposition') || '') || [])[1] || 'cte-xml.zip';
+        const url = URL.createObjectURL(await r.blob());
+        const a = Object.assign(document.createElement('a'), { href: url, download: nome });
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+        fecharJanela();
+      } catch (err) { aviso(err.message); botao.disabled = false; }
+    });
   });
 
   // ---------- Financeiro ----------

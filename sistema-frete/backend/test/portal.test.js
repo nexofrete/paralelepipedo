@@ -48,3 +48,29 @@ test('portal: o filtro SQL cobre todos os papéis do CT-e', () => {
   assert.match(sql, /\$1::text\[\]/);
   assert.match(sql, /\$2::text\[\]/);
 });
+
+test('portal: valor do frete só para quem tem financeiro e paga o CT-e; DACTE sem valores', async () => {
+  const u = { documentos: ['44555666000199'], raizes: [], pode_financeiro: true };
+  const pago = { tomador: '0', remetente: { cnpj: '44555666000199' } };
+  const deOutro = { tomador: '3', remetente: { cnpj: '44555666000199' }, destinatario: { cnpj: '77888999000155' } };
+  assert.strictEqual(portal.veValor(u, pago), true);
+  assert.strictEqual(portal.veValor(u, deOutro), false);
+  assert.strictEqual(portal.veValor({ ...u, pode_financeiro: false }, pago), false);
+
+  const { gerarDacte } = require('../src/cte/dacte');
+  const end = { xLgr: 'RUA A', nro: '1', xBairro: 'C', xMun: 'CAMPINAS', UF: 'SP', CEP: '13010000', cMun: '3509502' };
+  const d = {
+    emitente: { cnpj: '11222333000181', xNome: 'TRANSP', endereco: end }, remetente: { cnpj: '44555666000199', xNome: 'REM', endereco: end },
+    destinatario: { cnpj: '77888999000155', xNome: 'DEST', endereco: end }, inicio: { xMun: 'CAMPINAS', UF: 'SP' }, fim: { xMun: 'SANTOS', UF: 'SP' },
+    valores: { vTPrest: 1234.56, vRec: 1234.56, componentes: [{ xNome: 'FRETE PESO', vComp: 1000.5 }] },
+    icms: { cst: '00', vBC: 1234.56, pICMS: 12, vICMS: 148.15 }, carga: { vCarga: 5000, proPred: 'DIVERSOS', quantidades: [] },
+    observacoes: 'Valor aproximado dos tributos R$ 148,15', nfes: [],
+  };
+  const reg = { ambiente: 2, status: 'rascunho' };
+  const cheio = await gerarDacte(d, reg);
+  assert.match(cheio, /1\.234,56/);
+  const sem = await gerarDacte(d, reg, { semValores: true });
+  assert.doesNotMatch(sem, /1\.234,56|1\.000,50|148,15/);
+  assert.match(sem, /não exibidos neste acesso/);
+  assert.match(sem, /5\.000,00/);   // valor da carga (da nota do próprio cliente) continua
+});

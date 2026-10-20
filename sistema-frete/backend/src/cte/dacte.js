@@ -31,14 +31,17 @@ function participante(titulo, p) {
     <div>${esc(e.xMun)} / ${esc(e.UF)} ${e.CEP ? `— CEP ${esc(e.CEP)}` : ''}</div>
     <div>CNPJ/CPF: ${esc(docFmt(p.cnpj || p.cpf))} &nbsp; IE: ${esc(p.ie || '')} ${p.fone ? `&nbsp; Fone: ${esc(p.fone)}` : ''}</div></div>`;
 }
-function grupoIcms(i = {}) {
+function grupoIcms(i = {}, semValores = false) {
   const cst = String(i.cst || '00');
   const desc = { '00': '00 - Tributação normal', OUTRAUF: '90 - ICMS devido a outra UF', 20: '20 - Com redução de base', 40: '40 - Isenta', 41: '41 - Não tributada', 51: '51 - Diferido', 60: '60 - Cobrado por ST', 90: '90 - Outros', SN: 'Simples Nacional' }[cst] || cst;
+  if (semValores) return `<div class="linha">${campo('Situação tributária', esc(desc), 'flex:2')}${campo('Base, alíquota e valor do ICMS', 'não exibidos neste acesso', 'flex:3')}</div>`;
   return `<div class="linha">${campo('Situação tributária', esc(desc), 'flex:2')}${campo('Base de cálculo', moeda(i.vBC))}${campo('Alíq. ICMS', i.pICMS != null && i.pICMS !== '' ? `${moeda(i.pICMS)}%` : '')}${campo('Valor ICMS', moeda(i.vICMS))}${campo('% Red. BC', i.pRedBC ? moeda(i.pRedBC) : '')}</div>`;
 }
 
 // d: dados completos (emissao.dadosParaXml); reg: linha de ctes_emitidos.
-async function gerarDacte(d, reg) {
+// semValores: cópia para quem não pode ver o valor do frete (portal do cliente sem financeiro
+// ou que não paga este CT-e) — esconde componentes, total, valor a receber, ICMS e R$ nas observações.
+async function gerarDacte(d, reg, { semValores = false } = {}) {
   const em = d.emitente;
   const homolog = Number(reg.ambiente) === 2;
   const autorizado = ['autorizado', 'cancelado', 'substituido'].includes(reg.status);
@@ -122,10 +125,10 @@ async function gerarDacte(d, reg) {
   <div class="linha">${campo('Produto predominante', esc(d.carga?.proPred), 'flex:3')}${campo('Outras características', esc(d.carga?.xOutCat || ''), 'flex:2')}${campo('Valor total da carga', moeda(d.carga?.vCarga), 'flex:1.5')}</div>
   <div class="linha">${qtds.map((q) => campo(`${q.tpMed || 'Quantidade'} (${UNIDADE[String(q.cUnid).padStart(2, '0')] || q.cUnid})`, moeda(q.qCarga).replace(/,00$/, ''))).join('') || campo('Quantidade', '')}</div>
   <div class="bloco"><div class="tit">Componentes do valor da prestação do serviço</div>
-    <table><tr>${comps.map((c) => `<th>${esc(c.xNome)}</th>`).join('')}<th>Valor total do serviço</th><th>Valor a receber</th></tr>
-    <tr>${comps.map((c) => `<td>${moeda(c.vComp)}</td>`).join('')}<td><b>${moeda(d.valores?.vTPrest)}</b></td><td><b>${moeda(d.valores?.vRec ?? d.valores?.vTPrest)}</b></td></tr></table></div>
+    ${semValores ? '<p style="margin:4px 0;">Valores do frete não exibidos neste acesso.</p>' : `<table><tr>${comps.map((c) => `<th>${esc(c.xNome)}</th>`).join('')}<th>Valor total do serviço</th><th>Valor a receber</th></tr>
+    <tr>${comps.map((c) => `<td>${moeda(c.vComp)}</td>`).join('')}<td><b>${moeda(d.valores?.vTPrest)}</b></td><td><b>${moeda(d.valores?.vRec ?? d.valores?.vTPrest)}</b></td></tr></table>`}</div>
   <div class="bloco" style="padding:0;"><div class="tit" style="margin:0;">Informações relativas ao imposto</div></div>
-  ${grupoIcms(d.icms)}
+  ${grupoIcms(d.icms, semValores)}
   <div class="bloco"><div class="tit">Documentos originários</div>
     <table><tr><th>Tipo</th><th>Chave de acesso da NF-e</th></tr>
     ${(d.nfes || []).map((c) => `<tr><td>NF-e</td><td>${esc(chaveFmt(c))}</td></tr>`).join('')}</table></div>
@@ -133,7 +136,7 @@ async function gerarDacte(d, reg) {
     <table><tr><th>Documento</th><th>Série/número</th><th>Chave de acesso</th></tr>${referencias.map(([t, c]) => `<tr><td>${t}</td><td>${esc(nCte(c))}</td><td>${esc(chaveFmt(c))}</td></tr>`).join('')}</table></div>` : ''}
   ${docsAnteriores.length ? `<div class="bloco"><div class="tit">Documentos de transporte anterior</div>
     <table><tr><th>Emitente</th><th>CNPJ/CPF</th><th>Série/número</th><th>Chave de acesso do CT-e</th></tr>${docsAnteriores.map(([e, c]) => `<tr><td>${esc(e.xNome)}</td><td>${esc(docFmt(e.cnpj || e.cpf))}</td><td>${esc(nCte(c))}</td><td>${esc(chaveFmt(c))}</td></tr>`).join('')}</table></div>` : ''}
-  <div class="bloco" style="min-height:48px;"><div class="tit">Observações</div>${esc(d.observacoes || '')}</div>
+  <div class="bloco" style="min-height:48px;"><div class="tit">Observações</div>${esc(semValores ? String(d.observacoes || '').replace(/R\$\s*-?[\d.,]+/g, 'R$ ***') : d.observacoes || '')}</div>
   <div class="linha">${campo('RNTRC da empresa', esc(em.rntrc || ''))}${campo('CIOT', '')}${campo('Data prevista de entrega', '')}
     ${campo('Este conhecimento de transporte atende à legislação de transporte rodoviário em vigor', '', 'flex:3')}</div>
   <div class="linha">${campo('Uso exclusivo do emissor do CT-e', '', 'flex:1')}${campo('Reservado ao fisco', '', 'flex:1')}</div>

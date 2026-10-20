@@ -200,6 +200,10 @@ def parte_operacao(g):
     s += lista([
         '<b>Cargas</b>: situação, previsão, histórico, DACTE, XML, foto do comprovante e assinatura.',
         '<b>Valores</b> só nos CT-e em que ele é o pagador, e só se o acesso "vê valores".',
+        '<b>Quem não vê valores</b> (acesso sem "vê valores", ou CT-e pago por outra empresa): o DACTE sai com o quadro '
+        '"Valores do frete não exibidos neste acesso" no lugar dos componentes, do total, do valor a receber e do ICMS, e '
+        'valores em R$ nas observações viram "R$ ***". O XML não fica disponível (ele é assinado, traz os valores e não '
+        'pode ser alterado), nem sozinho nem no .zip do período. O valor da mercadoria (da nota do próprio cliente) continua.',
         '<b>Financeiro</b>: faturas, boleto e linha digitável. <b>Coletas</b> e <b>cotações</b> pedidas pelo portal.',
     ])
     s += aviso('atencao', 'Para o cliente acessar de fora, o servidor precisa estar publicado na internet com HTTPS. '

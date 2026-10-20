@@ -54,6 +54,13 @@ api.post('/esqueci', limiteEsqueci, rota(async (req, res) => {
 
 api.post('/redefinir', limiteLogin, rota(async (req, res) => res.json(await portal.redefinir(req.body?.token, req.body?.senha)), 'Erro.'));
 
+// Ticket de download para um link direto do portal (DACTE, XML, fatura...).
+api.post('/ticket', auth, rota(async (req, res) => {
+  const caminho = String(req.body?.caminho || '');
+  if (!caminho.startsWith('/api/portal/')) return res.status(400).json({ erro: 'Caminho de download inválido.' });
+  res.json({ ticket: require('../ticketDownload').emitir({ pid: req.portal.id, v: req.portal.sessao_versao }, caminho) });
+}, 'Erro ao gerar o link de download.'));
+
 api.post('/senha', auth, rota(async (req, res) => {
   const token = await portal.trocarSenha(req.portal, req.body?.atual, req.body?.nova);
   logPortal(req, 'Trocou a senha do portal');

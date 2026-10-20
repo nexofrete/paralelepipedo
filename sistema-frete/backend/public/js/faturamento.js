@@ -264,7 +264,7 @@
       const btn = e.currentTarget; btn.disabled = true;
       try {
         const r = await post('/boleto/remessa');
-        window.location.href = `/api/faturamento/boleto/arquivos/${r.id}/baixar?token=${encodeURIComponent(token)}`;
+        LinkSeguro.ir(`/api/faturamento/boleto/arquivos/${r.id}/baixar?token=${encodeURIComponent(token)}`);
         mostrarAlerta(`Remessa ${r.nome} gerada: ${r.entradas} boleto(s) novo(s)${r.baixas ? ` e ${r.baixas} pedido(s) de baixa` : ''}. Envie o arquivo ao banco.`, { tipo: 'sucesso' });
         setTimeout(() => boletos().catch(() => {}), 800);
       } catch (err) { erro(err); btn.disabled = false; }

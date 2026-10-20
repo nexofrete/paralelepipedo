@@ -27,6 +27,7 @@
     if (!r.ok) throw new Error(corpo.erro || 'Não foi possível completar agora.');
     return corpo;
   }
+  LinkSeguro.configurar(async (caminho) => (await api('/ticket', { method: 'POST', body: JSON.stringify({ caminho }) })).ticket);
   const link = (caminho) => `/api/portal${caminho}${caminho.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
 
   // ---------- Janela ----------

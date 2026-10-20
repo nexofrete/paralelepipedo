@@ -186,16 +186,19 @@
     if (!mapa) {
       mapa = L.map('rtMapa', { scrollWheelZoom: false });
       // As imagens vêm pelo servidor do Nexofrete (que guarda cópia); sem internet, fundo cinza.
-      const camada = L.tileLayer(`/api/roteirizacao/mapa/{z}/{x}/{y}.png?token=${encodeURIComponent(token)}`, {
-        maxZoom: 18, attribution: '&copy; colaboradores do OpenStreetMap',
-        errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN4+/btfwAJ4gPu4vb0xQAAAABJRU5ErkJggg==',
-      }).addTo(mapa);
-      let avisou = false;
-      camada.on('tileerror', () => {
-        if (avisou) return;
-        avisou = true;
-        $('rtFonte').insertAdjacentHTML('beforebegin', '<p class="mt-aviso" id="rtAvisoMapa">🗺️ O mapa de fundo não carregou (sem internet no servidor ou o serviço de mapas recusou). A rota e as paradas continuam certas; o endereço das imagens pode ser trocado em ⚙ Restrições e mapa.</p>');
-      });
+      // O ?token= é um ticket que só vale para as imagens do mapa (linkSeguro.js), não a sessão.
+      LinkSeguro.ticket('/api/roteirizacao/mapa/').then((ticketMapa) => {
+        const camada = L.tileLayer(`/api/roteirizacao/mapa/{z}/{x}/{y}.png?token=${encodeURIComponent(ticketMapa)}`, {
+          maxZoom: 18, attribution: '&copy; colaboradores do OpenStreetMap',
+          errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN4+/btfwAJ4gPu4vb0xQAAAABJRU5ErkJggg==',
+        }).addTo(mapa);
+        let avisou = false;
+        camada.on('tileerror', () => {
+          if (avisou) return;
+          avisou = true;
+          $('rtFonte').insertAdjacentHTML('beforebegin', '<p class="mt-aviso" id="rtAvisoMapa">🗺️ O mapa de fundo não carregou (sem internet no servidor ou o serviço de mapas recusou). A rota e as paradas continuam certas; o endereço das imagens pode ser trocado em ⚙ Restrições e mapa.</p>');
+        });
+      }).catch(() => {});
     }
     mapa.eachLayer((camada) => { if (!(camada instanceof L.TileLayer)) mapa.removeLayer(camada); });
     const r = resultado;

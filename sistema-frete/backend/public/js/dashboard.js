@@ -313,6 +313,14 @@ async function apiFetch(caminho, opcoes = {}) {
   return resposta;
 }
 
+// Links de download: na hora do clique o ?token= vira um ticket que vale só para aquele arquivo (linkSeguro.js).
+LinkSeguro.configurar(async (caminho) => {
+  const r = await apiFetch('/api/auth/ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caminho }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ticket) throw new Error(d.erro || 'não foi possível gerar o link.');
+  return d.ticket;
+});
+
 // =====================================================================
 // Diálogo padrão do sistema: toda mensagem, confirmação ou pergunta aparece
 // no centro da tela, com um desenho que mostra o tipo (sucesso, erro,

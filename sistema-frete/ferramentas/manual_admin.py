@@ -185,6 +185,11 @@ def parte_admin(g):
          'servidor e para endereços de rede interna (não serve para imitar sites da internet); o instalador confere a impressão '
          'digital e cancela se o certificado tiver sido trocado no caminho; a chave secreta fica fora da pasta do sistema '
          '(C:\\ProgramData\\Nexofrete\\certificado), com acesso só do usuário do servidor — não copie essa pasta.'],
+        ['Links de download sem a senha', 'DACTE, XML, boleto, fatura, planilhas, anexos e as imagens do mapa abrem em outra aba '
+         'por um link. Esse link não leva a sessão do usuário: na hora do clique o sistema gera um ticket que só abre aquele '
+         'arquivo, só para leitura, e vence em 2 minutos (o do mapa da roteirização, em 8 horas, e só serve para as imagens do '
+         'mapa). Assim o histórico do navegador, um proxy ou um log não guardam nada que dê acesso ao sistema. Vale também no '
+         'portal do cliente. Link antigo copiado ou salvo nos favoritos não abre mais: volte à tela e clique de novo no botão.'],
         ['Aviso de senha de fábrica', 'Enquanto o administrador padrão usar a senha "admin123", ou o arquivo PRIMEIRO_ACESSO.txt '
          'existir, os administradores veem um aviso 🔐 no sino.'],
     ], [0.3, 0.7])

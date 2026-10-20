@@ -111,6 +111,15 @@ router.post('/verificar-codigo-2fa', async (req, res) => {
 
 const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, ${CAMPOS_PERMISSAO.join(', ')}`;
 
+// POST /api/auth/ticket { caminho } — ticket de download para um link direto (ver ticketDownload.js).
+router.post('/ticket', autenticar, (req, res) => {
+  try {
+    res.json({ ticket: require('../ticketDownload').emitir({ id: req.usuario.id }, req.body?.caminho) });
+  } catch (err) {
+    res.status(err.status || 500).json({ erro: err.status ? err.message : 'Erro ao gerar o link de download.' });
+  }
+});
+
 // POST /api/auth/sair — só registra no log que o usuário saiu (a sessão em
 // si é encerrada na tela, apagando o token).
 router.post('/sair', autenticar, (req, res) => {

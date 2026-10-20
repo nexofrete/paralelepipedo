@@ -139,6 +139,8 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 - **Usuário interno**: você escolhe manualmente o que essa pessoa pode fazer (ver todos os registros, enviar XML, editar, excluir, gerenciar outros usuários)
 - **Administrador**: acesso total (só o admin pode criar outro admin)
 
+**Links de download sem a senha de acesso.** Os links que abrem em outra aba (DACTE, XML, boleto, fatura, planilhas, anexos, imagens do mapa) não levam o token da sessão: na hora do clique a tela pede `POST /api/auth/ticket` (no portal, `POST /api/portal/ticket`) e troca o `?token=` por um ticket que só vale para aquele caminho, só GET, por 2 minutos (mapa da roteirização: 8 horas, só `/api/roteirizacao/mapa/`). O servidor recusa o token da sessão na URL e o ticket no cabeçalho. Na tela, isso fica em `public/js/linkSeguro.js` (cliques, nova aba, `window.open` e `LinkSeguro.ir(url)` para baixar na mesma aba); no servidor, em `src/ticketDownload.js`.
+
 ## Importar vários XML de uma vez
 
 Na aba "Enviar XML" tem um botão **"Selecionar uma pasta inteira"** — escolha a pasta onde estão os XMLs de NF-e/CT-e e o sistema importa todos automaticamente, sem precisar clicar arquivo por arquivo.

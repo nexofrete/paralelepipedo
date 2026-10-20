@@ -2,25 +2,31 @@ const jwt = require('jsonwebtoken');
 const config = require('./config');
 const pool = require('./db');
 const { CAMPOS_PERMISSAO } = require('./permissoes');
+const ticket = require('./ticketDownload');
 
-// Protege rotas: exige um token JWT válido no cabeçalho Authorization
-// (ou, para links diretos de download que não conseguem mandar cabeçalho, via ?token=).
+// Protege rotas: exige um token JWT válido no cabeçalho Authorization. Links diretos de
+// download (que não conseguem mandar cabeçalho) levam ?token= com um ticket de download
+// (ver ticketDownload.js) — nunca o token da sessão.
 const ROTAS_LIBERADAS_TROCA_SENHA = ['/api/auth/trocar-senha', '/api/auth/eu', '/api/auth/sair'];
 
 async function autenticar(req, res, next) {
   const authHeader = req.headers.authorization;
-  let token = authHeader ? authHeader.split(' ')[1] : null;
-  if (!token && req.query.token) token = req.query.token;
-
-  if (!token) {
-    return res.status(401).json({ erro: 'Token não informado. Faça login novamente.' });
-  }
+  const token = authHeader ? authHeader.split(' ')[1] : null;
 
   let payload;
-  try {
-    payload = jwt.verify(token, config.jwtSecret);
-  } catch (err) {
-    return res.status(401).json({ erro: 'Sessão expirada ou token inválido. Faça login novamente.' });
+  if (token) {
+    try {
+      payload = jwt.verify(token, config.jwtSecret);
+    } catch (err) {
+      return res.status(401).json({ erro: 'Sessão expirada ou token inválido. Faça login novamente.' });
+    }
+    // Ticket de download e token do portal não valem como sessão do sistema.
+    if (payload.tipo || !payload.id) return res.status(401).json({ erro: 'Sessão expirada ou token inválido. Faça login novamente.' });
+  } else if (req.query.token) {
+    payload = ticket.conferir(req.query.token, req, 'dl');
+    if (!payload) return res.status(401).json({ erro: ticket.ERRO_LINK });
+  } else {
+    return res.status(401).json({ erro: 'Token não informado. Faça login novamente.' });
   }
 
   // As permissões são lidas do banco a cada requisição (não do token), então

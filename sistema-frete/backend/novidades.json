@@ -62,6 +62,10 @@
           "texto": "Revisão de segurança e de cálculos: comprovantes enviados não executam como página, portal do cliente só aceita os campos permitidos, baixa de fatura sem duplicar, boleto e conciliação ajustados, datas no horário de Brasília."
         },
         {
+          "area": "Segurança",
+          "texto": "Links de download (DACTE, XML, boleto, fatura, planilhas, anexos, mapa) não levam mais a senha de acesso na URL: cada clique gera um ticket que só abre aquele arquivo e vence em 2 minutos. Vale também no portal do cliente."
+        },
+        {
           "area": "Manual",
           "texto": "Manual do sistema atualizado com as Partes 4 a 6: operação da transportadora, financeiro e gestão, e integrações."
         }

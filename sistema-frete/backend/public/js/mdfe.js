@@ -120,7 +120,7 @@
     try {
       if (acao === 'editar') return abrirFormulario(id);
       if (acao === 'damdfe') return window.open(`/api/mdfe/${id}/damdfe?token=${tk}`, '_blank');
-      if (acao === 'xml') { window.location.href = `/api/mdfe/${id}/xml?token=${tk}`; return null; }
+      if (acao === 'xml') { LinkSeguro.ir(`/api/mdfe/${id}/xml?token=${tk}`); return null; }
       if (acao === 'excluir') {
         if (!await confirmar('Excluir este rascunho de MDF-e?', { tipo: 'perigo', textoOk: 'Excluir' })) return null;
         await api(`/${id}`, { method: 'DELETE' }); return carregarLista();

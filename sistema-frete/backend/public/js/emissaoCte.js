@@ -155,7 +155,7 @@
       if (acao === 'editar') return abrirFormulario(id);
       if (acao === 'etiquetas') return window.open(`/api/etiquetas/imprimir?ctes=${id}&token=${encodeURIComponent(token)}`, '_blank');
       if (acao === 'dacte') return window.open(`/api/cte-emissao/${id}/dacte?token=${encodeURIComponent(token)}`, '_blank');
-      if (acao === 'xml') { window.location.href = `/api/cte-emissao/${id}/xml?token=${encodeURIComponent(token)}`; return null; }
+      if (acao === 'xml') { LinkSeguro.ir(`/api/cte-emissao/${id}/xml?token=${encodeURIComponent(token)}`); return null; }
       btn.disabled = true;
       if (acao === 'transmitir') await transmitir(id);
       if (acao === 'consultar') {

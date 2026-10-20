@@ -10,6 +10,7 @@ const pool = require('./db');
 const config = require('./config');
 const { tomadorDe, valorCte } = require('./faturamento/faturamento');
 const { SITUACOES } = require('./cte/ocorrencias');
+const ticket = require('./ticketDownload');
 
 const SEGREDO = crypto.createHmac('sha256', String(config.jwtSecret)).update('portal-do-cliente').digest('hex');
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -45,14 +46,19 @@ function lerDocumentos(v) {
   return [...new Set(lista)].slice(0, 50);
 }
 
-// Middleware: exige o token do portal (cabeçalho ou ?token= nos links de download).
+// Middleware: exige o token do portal no cabeçalho; nos links de download, ?token= leva
+// um ticket de download (ticketDownload.js), nunca o token da sessão.
 async function autenticarPortal(req, res, next) {
   const cab = req.headers.authorization;
-  const token = (cab ? cab.split(' ')[1] : null) || req.query.token;
-  if (!token) return res.status(401).json({ erro: 'Entre com o seu e-mail e senha.' });
+  const token = cab ? cab.split(' ')[1] : null;
   let p;
-  try { p = jwt.verify(token, SEGREDO); } catch { return res.status(401).json({ erro: 'Sua sessão expirou. Entre de novo.' }); }
-  if (p.tipo !== 'portal') return res.status(401).json({ erro: 'Entre com o seu e-mail e senha.' });
+  if (token) {
+    try { p = jwt.verify(token, SEGREDO); } catch { return res.status(401).json({ erro: 'Sua sessão expirou. Entre de novo.' }); }
+    if (p.tipo !== 'portal') return res.status(401).json({ erro: 'Entre com o seu e-mail e senha.' });
+  } else if (req.query.token) {
+    p = ticket.conferir(req.query.token, req, 'dl-portal');
+    if (!p) return res.status(401).json({ erro: ticket.ERRO_LINK });
+  } else return res.status(401).json({ erro: 'Entre com o seu e-mail e senha.' });
   try {
     const { rows } = await pool.query(
       `UPDATE portal_usuarios SET ultimo_acesso = NOW() WHERE id = $1 AND ativo AND sessao_versao = $2

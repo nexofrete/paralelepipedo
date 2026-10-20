@@ -74,6 +74,10 @@
           "texto": "Portal do cliente: quem não vê valores (acesso sem \"vê valores\" ou CT-e pago por outra empresa) recebe o DACTE sem os valores do frete e não baixa o XML, que traz os valores."
         },
         {
+          "area": "Segurança",
+          "texto": "Manutenção » Fuso do banco: confere se a hora de autorização dos CT-e/MDF-e bate com o protocolo da SEFAZ e corrige (com backup antes) os gravados 3h adiantados quando o PostgreSQL estava em UTC."
+        },
+        {
           "area": "Manual",
           "texto": "Manual do sistema atualizado com as Partes 4 a 6: operação da transportadora, financeiro e gestão, e integrações."
         }

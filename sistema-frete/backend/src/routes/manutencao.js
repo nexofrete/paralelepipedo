@@ -55,6 +55,26 @@ router.post('/backup-agora', async (req, res) => {
   }
 });
 
+// GET /api/manutencao/fuso — confere o fuso do banco e a hora de autorização dos CT-e/MDF-e.
+router.get('/fuso', async (req, res) => {
+  try { res.json(await require('../fusoBanco').diagnosticar()); } catch (err) { res.status(500).json({ erro: `Erro ao conferir o fuso: ${err.message}` }); }
+});
+
+// POST /api/manutencao/fuso/corrigir — faz um backup e acerta a hora de autorização pelo protocolo da SEFAZ.
+router.post('/fuso/corrigir', async (req, res) => {
+  try {
+    const fuso = require('../fusoBanco');
+    const copia = await backup.executarBackupComTratamentoDeErro();
+    const r = await fuso.corrigir();
+    await fuso.verificarAoLigar();
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'corrigir_fuso',
+      detalhes: `Corrigiu a hora de autorização pelo protocolo da SEFAZ: ${r.map((x) => `${x.corrigidos} ${x.documento}`).join(', ')} (backup antes: ${copia.arquivo})` });
+    res.json({ corrigidos: r, backup: copia.arquivo, diagnostico: await fuso.diagnosticar() });
+  } catch (err) {
+    res.status(500).json({ erro: `Não corrigi nada: ${err.message}` });
+  }
+});
+
 // POST /api/manutencao/backups/:arquivo/restaurar  — volta o banco para esse backup.
 router.post('/backups/:arquivo/restaurar', async (req, res) => {
   if (String(req.body?.confirmacao || '').trim().toUpperCase() !== 'RESTAURAR') {

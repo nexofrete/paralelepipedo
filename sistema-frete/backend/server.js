@@ -318,6 +318,7 @@ async function iniciar() {
     require('./src/faturamento/regua').agendar();
     require('./src/integracao/webhooks').agendar();
     require('./src/avisosSeguranca').iniciar();
+    require('./src/fusoBanco').verificarAoLigar();
     licenca.agendarConferencia();
     require('./src/unidades').garantirMatriz().catch((e) => console.error('[unidades]', e.message));
     require('./src/servidorHttps').aplicar(app).then((st) => {

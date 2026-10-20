@@ -112,6 +112,12 @@ O pacote deixa de fora `dados`, `.env`, os testes e o próprio empacotador, e se
 
 **Limites (para saber o que esperar):** nenhuma proteção de software instalado no computador do cliente é impossível de quebrar. Um programador experiente, com tempo, consegue remover a verificação mesmo do código ofuscado. Juntas, a chave assinada, a conferência online e a ofuscação tiram a cópia do alcance de quem só "pegou a pasta" e tornam o desvio caro e trabalhoso. Para o restante, vale o contrato de licença de uso.
 
+## Fuso do banco (Manutenção)
+
+O sistema grava sempre no horário de Brasília, qualquer que seja o fuso do PostgreSQL (`TimeZone` fixado em cada conexão; troque com `DB_TIMEZONE` no `.env` só se a empresa for de outro fuso). Em versões antigas, com o PostgreSQL em UTC, a hora de autorização do CT-e/MDF-e ficava **3 horas adiantada**: o CT-e das 22h caía no dia seguinte (e, no último dia do mês, no mês seguinte).
+
+Em **Manutenção → 🕒 Fuso do banco** o sistema mostra o fuso do PostgreSQL, o da sessão e compara a hora de autorização de cada CT-e/MDF-e com a hora do **protocolo da SEFAZ** (`dhRecbto`, que vem com fuso no XML). Se achar diferença, o botão **Corrigir pelo protocolo da SEFAZ** faz um backup e acerta só esses documentos, cada um pela hora do próprio protocolo. A conferência roda ao ligar; havendo documento errado, o aviso aparece no sino dos administradores. Depois de corrigir, gere de novo o livro dos meses já mandados ao contador e confira com ele.
+
 ## Backup (faça antes de começar a usar)
 
 Fica em **Manutenção → Backup automático**. Ligue o backup diário e preencha a **pasta de cópia**. O recomendado é uma pasta do OneDrive ou do Google Drive para computador, para a cópia subir sozinha para a nuvem. Se o computador do servidor queimar, o backup continua lá.

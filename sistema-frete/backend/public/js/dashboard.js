@@ -9340,6 +9340,39 @@ document.getElementById('btnExportarClientes')?.addEventListener('click', async 
 });
 
 
+// ---------- Manutenção: fuso do banco ----------
+async function carregarFuso() {
+  const alvo = document.getElementById('fusoStatus');
+  if (!alvo) return;
+  try {
+    const resposta = await apiFetch('/api/manutencao/fuso');
+    if (resposta.status === 403) { document.getElementById('painelFuso')?.classList.add('oculto'); return; }
+    const f = await resposta.json();
+    if (!resposta.ok) { alvo.innerHTML = `<span style="color:var(--vermelho);">⚠ ${cfEsc(f.erro || 'Não consegui conferir.')}</span>`; return; }
+    const cor = { ok: 'var(--verde)', protegido: 'var(--verde)', corrigir: 'var(--laranja, #e8890c)' }[f.situacao];
+    const dia = (v) => (v ? `${String(v).slice(8, 10)}/${String(v).slice(5, 7)}/${String(v).slice(0, 4)} ${String(v).slice(11, 16)}` : '');
+    alvo.innerHTML = `<div style="color:${cor}; font-weight:600;">${f.situacao === 'corrigir' ? '⚠' : '✓'} ${cfEsc(f.mensagem)}</div>
+      <div style="margin-top:8px; color:var(--texto-fraco); font-size:12.5px;">PostgreSQL: <b>${cfEsc(f.fuso_servidor)}</b> · sistema grava em <b>${cfEsc(f.fuso_sessao)}</b> · hora do banco ${cfEsc(dia(f.hora_banco))}
+        ${Math.abs(f.relogio_diferenca_s) > 120 ? ` · <span style="color:var(--vermelho);">relógio do banco ${f.relogio_diferenca_s > 0 ? 'adiantado' : 'atrasado'} ${Math.round(Math.abs(f.relogio_diferenca_s) / 60)} min em relação ao servidor do sistema</span>` : ''}</div>
+      <ul style="margin:8px 0 0; padding-left:18px; font-size:12.5px;">${f.documentos.map((d) => `<li>${d.documento}: ${d.total} com protocolo · ${d.certos} certo(s)${d.errados ? ` · <b>${d.errados} com hora errada</b> (${Math.round(d.diferenca_min / 60)}h; de ${cfEsc(dia(d.primeiro))} a ${cfEsc(dia(d.ultimo))}${d.dia_trocado ? `; ${d.dia_trocado} caíram no dia errado` : ''}${d.mes_trocado ? `, ${d.mes_trocado} no mês errado` : ''})` : ''}</li>`).join('')}</ul>`;
+    document.getElementById('btnFusoCorrigir').classList.toggle('oculto', f.situacao !== 'corrigir');
+  } catch (err) { alvo.textContent = 'Não consegui conferir agora.'; }
+}
+document.getElementById('btnFusoConferir')?.addEventListener('click', () => { document.getElementById('fusoStatus').textContent = 'Conferindo…'; carregarFuso(); });
+document.getElementById('btnFusoCorrigir')?.addEventListener('click', async () => {
+  const ok = await confirmar('O sistema faz um backup e depois acerta a hora de autorização de cada CT-e/MDF-e com a hora do protocolo da SEFAZ que está no XML dele. Os demais dados não mudam. Se algum mês já foi mandado ao contador com esses documentos, confira com ele o livro de saídas daquele mês.',
+    { tipo: 'aviso', titulo: 'Corrigir as horas?', textoOk: 'Fazer backup e corrigir' });
+  if (!ok) return;
+  const botao = document.getElementById('btnFusoCorrigir'); botao.disabled = true; botao.textContent = 'Corrigindo…';
+  try {
+    const resposta = await apiFetch('/api/manutencao/fuso/corrigir', { method: 'POST' });
+    const r = await resposta.json();
+    if (!resposta.ok) mostrarAlerta(r.erro || 'Erro ao corrigir.', { tipo: 'erro' });
+    else mostrarAlerta(`Corrigido: ${r.corrigidos.map((x) => `${x.corrigidos} ${x.documento}`).join(' e ')}. Backup feito antes: ${r.backup}.`, { tipo: 'sucesso' });
+  } finally { botao.disabled = false; botao.textContent = 'Corrigir pelo protocolo da SEFAZ'; carregarFuso(); }
+});
+if (usuario?.perfil === 'admin') carregarFuso(); else document.getElementById('painelFuso')?.classList.add('oculto');
+
 // ---------- Manutenção: HTTPS ----------
 async function carregarHttps() {
   const alvo = document.getElementById('httpsStatus');

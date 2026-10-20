@@ -3217,6 +3217,20 @@
           <button id="btnInstalarAtalho" class="btn btn-secundario" style="width:auto;">📌 Baixar o instalador do atalho</button>
         </div>
 
+        <div class="painel" style="padding:24px; margin-bottom:22px;" id="painelFuso">
+          <h3 style="margin-top:0; font-size:15px;">🕒 Fuso do banco</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Confere se as horas gravadas estão no horário de Brasília. Em versões antigas, um PostgreSQL configurado em UTC
+            gravava a hora de autorização do CT-e/MDF-e 3 horas adiantada (o CT-e das 22h caía no dia seguinte — e, no último
+            dia do mês, no mês seguinte). A conferência compara cada CT-e/MDF-e com a hora do protocolo da SEFAZ que está no XML.
+          </p>
+          <div id="fusoStatus" style="font-size:13.5px;">Conferindo…</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+            <button class="btn btn-secundario" id="btnFusoConferir" style="width:auto;">Conferir de novo</button>
+            <button class="btn btn-primario oculto" id="btnFusoCorrigir" style="width:auto;">Corrigir pelo protocolo da SEFAZ</button>
+          </div>
+        </div>
+
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🔐 HTTPS — cadeado na rede da empresa</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">

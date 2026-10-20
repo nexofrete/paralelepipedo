@@ -121,8 +121,15 @@ def parte_admin(g):
          'WhatsApp (via Twilio). Não manda nada quando não há urgência.'],
         ['Avisar todos os usuários', 'Faixa no topo da tela de todo mundo, em até 20 segundos. Tem mensagens prontas de '
          'manutenção e pode encerrar sozinha depois de X minutos.'],
+        ['Fuso do banco', 'Confere se as horas estão no horário de Brasília. Compara a hora de autorização de cada CT-e e '
+         'MDF-e com a hora do protocolo da SEFAZ que está no XML. Em versões antigas, um PostgreSQL em UTC gravava essa hora '
+         '3 horas adiantada (o CT-e das 22h caía no dia seguinte, e no último dia do mês, no mês seguinte). "Corrigir pelo '
+         'protocolo da SEFAZ" faz um backup e acerta só esses documentos, um a um. Hoje o sistema grava sempre no horário de '
+         'Brasília, qualquer que seja o fuso do PostgreSQL. Se houver documento com hora errada, o aviso aparece também no sino.'],
         ['Backup automático', 'Veja a seção 25.'],
     ], [0.3, 0.7])
+    s += aviso('importante', 'Depois de corrigir o fuso, se algum mês já foi mandado ao contador com esses documentos, '
+                             'gere de novo o livro de saídas daquele mês e confira com ele: um CT-e pode ter mudado de dia ou de mês.')
     s += aviso('atencao', 'Mudar o % da reentrega/devolução refaz o valor esperado das reentregas e devoluções que ainda '
                           'não foram decididas. As já aprovadas por uma pessoa, faturadas ou canceladas não mudam.')
     s += aviso('dica', 'Antes de uma manutenção no servidor, use "Avisar todos os usuários" com a mensagem pronta '

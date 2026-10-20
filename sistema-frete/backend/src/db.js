@@ -61,9 +61,19 @@ async function aplicarSchema() {
   await pool.query(schemaSql);
 }
 
+// Fuso padrão do servidor PostgreSQL (o do postgresql.conf), numa conexão sem o fuso de Brasília
+// que o sistema usa: é o fuso em que os dados foram gravados antes de o sistema fixar o fuso da sessão.
+async function fusoPadraoServidor() {
+  const { options: _o, ...semFuso } = configConexao;
+  const c = new Client({ ...semFuso, database: nomeBanco });
+  await c.connect();
+  try { return (await c.query('SHOW TimeZone')).rows[0].TimeZone; } finally { await c.end().catch(() => {}); }
+}
+
 module.exports = {
   inicializarBanco,
   aplicarSchema,
+  fusoPadraoServidor,
   query: (...args) => pool.query(...args),
   // Cliente dedicado, pra operações em transação (BEGIN/COMMIT).
   connect: () => pool.connect(),

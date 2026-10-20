@@ -4,6 +4,8 @@
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const moeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const num = (v, c = 0) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
+  const ic = (nome) => `<svg class="ic" aria-hidden="true"><use href="#i-${nome}"/></svg>`;
+  const vazio = (icone, texto) => `<div class="pt-vazio">${ic(icone)}${texto}</div>`;
   const dia = (v) => { if (!v) return ''; const s = String(v).slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : ''; };
   // Data e hora do servidor (emissão, entrega, pedido): o dia no horário de Brasília.
   const diaTs = (v) => (v ? new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '');
@@ -66,7 +68,7 @@
       (redefinir ? $('ptSenhaNova') : $('ptSenhaAtual')).focus();
       return;
     }
-    abrirJanela('<b>🔑 Trocar a senha</b>', `<div class="pt-grade" style="grid-template-columns:1fr;">
+    abrirJanela(`<b>${ic('key')} Trocar a senha</b>`, `<div class="pt-grade" style="grid-template-columns:1fr;">
       <div><label for="ptjAtual">Senha atual</label><input id="ptjAtual" type="password" autocomplete="current-password" /></div>
       <div><label for="ptjNova">Senha nova (8+ caracteres, letras e números)</label><input id="ptjNova" type="password" autocomplete="new-password" /></div>
       <div><label for="ptjConf">Repita a senha nova</label><input id="ptjConf" type="password" autocomplete="new-password" /></div></div>
@@ -125,7 +127,10 @@
     if (eu.trocar_senha) { telaSenha(true); return; }
     $('ptEntrada').classList.add('oculto'); $('ptApp').classList.remove('oculto');
     $('ptNomeApp').textContent = empresa?.nome || 'Portal do cliente';
-    $('ptCliente').textContent = `${eu.cliente_nome || eu.nome} · ${eu.nome}`;
+    $('ptUsuarioNome').textContent = eu.nome;
+    $('ptCliente').textContent = eu.cliente_nome || '';
+    $('ptAvatar').textContent = String(eu.nome || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+    $('ptRodapeEmpresa').textContent = [empresa?.nome, empresa?.telefone, empresa?.email].filter(Boolean).join(' · ');
     if (empresa?.logo) { $('ptLogoApp').src = empresa.logo; $('ptLogoApp').classList.remove('oculto'); }
     $('ptAbaFin').classList.toggle('oculto', !eu.pode_financeiro);
     $('ptXmlLote').classList.toggle('oculto', !eu.pode_financeiro);   // o XML traz o valor do frete
@@ -143,16 +148,22 @@
   // ---------- Início ----------
   async function carregarInicio() {
     const r = await api('/inicio');
+    const cartao = (icone, titulo, valor, rodape, extra = '') => `<div ${extra}><span class="ico">${ic(icone)}</span><span class="tit">${titulo}</span><b>${valor}</b><span>${rodape || '&nbsp;'}</span></div>`;
     const cartoes = [
-      `<div data-ir="cargas" data-filtro="transito">Cargas em andamento<b>${r.em_aberto}</b>${r.em_rota ? `${r.em_rota} saiu(íram) para entrega` : '&nbsp;'}</div>`,
-      `<div data-ir="cargas" data-filtro="atrasadas" class="${r.atrasadas ? 'alerta' : ''}">Atrasadas<b>${r.atrasadas}</b>${r.com_ocorrencia ? `${r.com_ocorrencia} com ocorrência` : 'passaram da previsão'}</div>`,
-      `<div class="${r.pontualidade >= 95 ? 'bom' : r.pontualidade != null && r.pontualidade < 85 ? 'alerta' : ''}">Entregas no prazo (30 dias)<b>${r.pontualidade == null ? '—' : `${num(r.pontualidade, 1)}%`}</b>${r.entregues_30} entrega(s)</div>`,
-      eu.pode_financeiro ? `<div>Frete do mês (você paga)<b>${moeda(r.frete_mes)}</b>${r.emitidos_mes} CT-e no mês</div>` : '',
-      eu.pode_financeiro ? `<div data-ir="financeiro" class="${r.faturas_vencidas ? 'alerta' : ''}">Faturas em aberto<b>${moeda(r.faturas_saldo)}</b>${r.faturas_abertas} fatura(s)${r.faturas_vencidas ? ` · ${r.faturas_vencidas} vencida(s)` : ''}</div>` : '',
-      `<div data-ir="cotacoes" class="${r.cotacoes_para_responder ? 'alerta' : ''}">Cotações para responder<b>${r.cotacoes_para_responder}</b>${r.cotacoes_pedidas ? `${r.cotacoes_pedidas} em cálculo` : '&nbsp;'}</div>`,
-      `<div data-ir="coletas">Coletas em aberto<b>${r.coletas_abertas}</b>&nbsp;</div>`,
+      cartao('truck', 'Cargas em andamento', r.em_aberto, r.em_rota ? `${r.em_rota} saiu(íram) para entrega` : '', 'data-ir="cargas" data-filtro="transito"'),
+      cartao('alerta', 'Atrasadas', r.atrasadas, r.com_ocorrencia ? `${r.com_ocorrencia} com ocorrência` : 'passaram da previsão', `data-ir="cargas" data-filtro="atrasadas" class="${r.atrasadas ? 'alerta' : ''}"`),
+      cartao('grafico', 'Entregas no prazo (30 dias)', r.pontualidade == null ? '—' : `${num(r.pontualidade, 1)}%`, `${r.entregues_30} entrega(s)`,
+        `class="${r.pontualidade >= 95 ? 'bom' : r.pontualidade != null && r.pontualidade < 85 ? 'alerta' : ''}"`),
+      eu.pode_financeiro ? cartao('cash', 'Frete do mês (você paga)', moeda(r.frete_mes), `${r.emitidos_mes} CT-e no mês`) : '',
+      eu.pode_financeiro ? cartao('doc', 'Faturas em aberto', moeda(r.faturas_saldo), `${r.faturas_abertas} fatura(s)${r.faturas_vencidas ? ` · ${r.faturas_vencidas} vencida(s)` : ''}`,
+        `data-ir="financeiro" class="${r.faturas_vencidas ? 'alerta' : ''}"`) : '',
+      cartao('tag', 'Cotações para responder', r.cotacoes_para_responder, r.cotacoes_pedidas ? `${r.cotacoes_pedidas} em cálculo` : '', `data-ir="cotacoes" class="${r.cotacoes_para_responder ? 'alerta' : ''}"`),
+      cartao('cal', 'Coletas em aberto', r.coletas_abertas, '', 'data-ir="coletas"'),
     ].join('');
-    $('ptInicio').innerHTML = `<div class="pt-numeros">${cartoes}</div>
+    const hora = Number(new Date().toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
+    $('ptInicio').innerHTML = `<div class="pt-saudacao"><h2>${hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'}, ${esc(String(eu.nome || '').split(' ')[0])}</h2>
+        <p>Resumo das cargas${eu.cliente_nome ? ` de <b>${esc(eu.cliente_nome)}</b>` : ''} com ${esc(empresa?.nome || 'a transportadora')}.</p></div>
+      <div class="pt-numeros">${cartoes}</div>
       <div class="cartao"><h2>Últimas movimentações</h2>${r.movimentos.length ? `<ul class="pt-tempo">${r.movimentos.map((m) => `<li><a href="#" data-carga="${m.cte_id}"><b>${esc(m.descricao)}</b></a> · CT-e ${esc(m.cte)} · ${esc(m.destinatario_nome || '')}
         <small>${diaHora(m.data_hora)}${m.local ? ` · ${esc(m.local)}` : ''}</small></li>`).join('')}</ul>` : '<p class="fraco">Nenhuma movimentação ainda.</p>'}</div>`;
   }
@@ -170,11 +181,11 @@
   async function carregarCargas() {
     document.querySelectorAll('#ptFiltrosCargas [data-filtro]').forEach((b) => b.classList.toggle('ativo', b.dataset.filtro === filtroCargas));
     const lista = await api(`/cargas?${new URLSearchParams({ filtro: filtroCargas, busca: $('ptBuscaCargas').value.trim() })}`);
-    $('ptCargas').innerHTML = lista.length ? lista.map((c) => `<div class="pt-item clicavel" data-carga="${c.id}">
+    $('ptCargas').innerHTML = lista.length ? lista.map((c) => `<div class="pt-item clicavel ${c.atrasada ? 'laranja' : SIT[c.situacao] || 'azul'}" data-carga="${c.id}">
         <div><div class="titulo">${c.nfs.length ? `NF ${esc(c.nfs.join(', '))}` : `CT-e ${esc(c.cte)}`} · ${esc(c.destinatario || '')}</div>
           <div class="linha">${esc(c.origem || '')} → ${esc(c.destino || '')} · CT-e ${esc(c.cte)} de ${diaTs(c.emissao)}${c.volumes ? ` · ${num(c.volumes)} vol.` : ''}${c.papeis.length ? ` · você é ${esc(c.papeis.join(' e ').toLowerCase())}` : ''}</div></div>
         <div class="dir">${etiqueta(c)}<div class="linha">${c.entregue_em ? `entregue ${diaTs(c.entregue_em)}` : c.previsao ? `previsão ${dia(c.previsao)}` : ''}</div>${c.valor != null ? `<div class="valor">${moeda(c.valor)}</div>` : ''}</div>
-      </div>`).join('') : `<div class="pt-vazio">${filtroCargas === 'transito' ? 'Nenhuma carga em andamento agora.' : 'Nenhuma carga encontrada.'}</div>`;
+      </div>`).join('') : vazio('box', filtroCargas === 'transito' ? 'Nenhuma carga em andamento agora.' : 'Nenhuma carga encontrada.');
   }
   $('ptFiltrosCargas').addEventListener('click', (e) => { const b = e.target.closest('[data-filtro]'); if (b) { filtroCargas = b.dataset.filtro; carregarCargas().catch((err) => aviso(err.message)); } });
   $('ptBuscaCargas').addEventListener('input', () => { clearTimeout(tempoBusca); tempoBusca = setTimeout(() => carregarCargas().catch((err) => aviso(err.message)), 350); });
@@ -197,11 +208,11 @@
         <h3 style="font-size:15px; margin:16px 0 0;">Histórico</h3>
         <ul class="pt-tempo">${c.historico.map((h) => `<li><b>${esc(h.descricao)}</b>${h.recebedor ? ` — recebido por ${esc(h.recebedor)}` : ''}${h.nova_previsao ? ` — nova previsão ${dia(h.nova_previsao)}` : ''}
           <small>${diaHora(h.data_hora)}${h.local ? ` · ${esc(h.local)}` : ''}</small>
-          ${h.tem_comprovante ? `<a class="botao sec" style="padding:4px 10px; font-size:12.5px; margin-top:4px;" href="${esc(link(`/cargas/${c.id}/comprovante/${h.id}`))}" target="_blank" rel="noopener">📷 Comprovante</a>` : ''}
-          ${h.tem_assinatura ? `<a class="botao sec" style="padding:4px 10px; font-size:12.5px; margin-top:4px;" href="${esc(link(`/cargas/${c.id}/comprovante/${h.id}?tipo=assinatura`))}" target="_blank" rel="noopener">✍ Assinatura</a>` : ''}</li>`).join('')}</ul>
+          ${h.tem_comprovante ? `<a class="botao sec" style="padding:4px 10px; font-size:12.5px; margin-top:4px;" href="${esc(link(`/cargas/${c.id}/comprovante/${h.id}`))}" target="_blank" rel="noopener">${ic('doc')} Comprovante</a>` : ''}
+          ${h.tem_assinatura ? `<a class="botao sec" style="padding:4px 10px; font-size:12.5px; margin-top:4px;" href="${esc(link(`/cargas/${c.id}/comprovante/${h.id}?tipo=assinatura`))}" target="_blank" rel="noopener">${ic('check')} Assinatura</a>` : ''}</li>`).join('')}</ul>
         <div class="pt-rodape-j">
-          <a class="botao sec" href="${esc(link(`/cargas/${c.id}/dacte`))}" target="_blank" rel="noopener">🖨 DACTE</a>
-          ${c.tem_xml ? `<a class="botao sec" href="${esc(link(`/cargas/${c.id}/xml`))}">⬇ XML</a>` : ''}
+          <a class="botao sec" href="${esc(link(`/cargas/${c.id}/dacte`))}" target="_blank" rel="noopener">${ic('doc')} DACTE</a>
+          ${c.tem_xml ? `<a class="botao sec" href="${esc(link(`/cargas/${c.id}/xml`))}">${ic('baixar')} XML</a>` : ''}
           <button data-fechar>Fechar</button></div>
         ${c.ve_valor ? '' : '<p class="fraco" style="font-size:12.5px; margin:8px 0 0;">Valores do frete não exibidos neste acesso (só quem paga o frete e tem acesso ao financeiro): o DACTE sai sem os valores e o XML não fica disponível.</p>'}`);
     } catch (err) { aviso(err.message); }
@@ -209,7 +220,7 @@
 
   $('ptXmlLote').addEventListener('click', () => {
     const hoje = hojeIso();
-    abrirJanela('<b>⬇ XML dos CT-e do período</b>', `<p class="fraco" style="font-size:13.5px;">Baixa num arquivo .zip os XML dos CT-e em que a sua empresa paga o frete (máximo de 3 meses por vez). O XML traz o valor do frete, então os CT-e pagos por outra empresa ficam de fora.</p>
+    abrirJanela(`<b>${ic('baixar')} XML dos CT-e do período</b>`, `<p class="fraco" style="font-size:13.5px;">Baixa num arquivo .zip os XML dos CT-e em que a sua empresa paga o frete (máximo de 3 meses por vez). O XML traz o valor do frete, então os CT-e pagos por outra empresa ficam de fora.</p>
       <div class="pt-grade"><div><label for="ptjDe">De</label><input id="ptjDe" type="date" value="${hoje.slice(0, 8)}01" /></div><div><label for="ptjAte">Até</label><input id="ptjAte" type="date" value="${hoje}" /></div></div>
       <div class="pt-rodape-j"><button class="sec" data-fechar>Cancelar</button><button id="ptjBaixar">Baixar .zip</button></div>`);
     // Baixa pelo fetch (com o cabeçalho): se não houver XML, o aviso aparece aqui em vez de trocar a página.
@@ -233,14 +244,14 @@
     const lista = await api('/faturas');
     $('ptFaturas').innerHTML = lista.length ? lista.map((f) => {
       const [txt, cor] = f.vencida ? ['Vencida', 'vermelho'] : SIT_FAT[f.status] || [f.status, 'cinza'];
-      return `<div class="pt-item">
+      return `<div class="pt-item ${cor}">
         <div><div class="titulo">Fatura nº ${esc(f.numero)}</div><div class="linha">Emitida em ${dia(f.emissao)} · ${f.qtd_ctes} CT-e · vencimento <b>${dia(f.vencimento)}</b></div>
           ${f.boleto_linha ? `<div class="linha" style="margin-top:4px;">Linha digitável: <span class="linha-digitavel">${esc(f.boleto_linha.replace(/^(\d{5})(\d{5})(\d{5})(\d{6})(\d{5})(\d{6})(\d)(\d{14})$/, '$1.$2 $3.$4 $5.$6 $7 $8'))}</span></div>` : ''}</div>
         <div class="dir"><span class="sit ${cor}">${txt}</span><div class="valor">${moeda(f.valor)}</div>${f.status === 'parcial' ? `<div class="linha">falta ${moeda(f.saldo)}</div>` : ''}</div>
-        <div class="pt-acoes"><a class="botao sec" href="${esc(link(`/faturas/${f.id}/imprimir`))}" target="_blank" rel="noopener">🖨 Fatura</a>
-          ${f.tem_boleto ? `<a class="botao sec" href="${esc(link(`/faturas/${f.id}/boleto`))}" target="_blank" rel="noopener">🏦 Boleto</a><button class="sec" data-copiar="${esc(f.boleto_linha)}">📋 Copiar linha</button>` : ''}</div>
+        <div class="pt-acoes"><a class="botao sec" href="${esc(link(`/faturas/${f.id}/imprimir`))}" target="_blank" rel="noopener">${ic('doc')} Fatura</a>
+          ${f.tem_boleto ? `<a class="botao sec" href="${esc(link(`/faturas/${f.id}/boleto`))}" target="_blank" rel="noopener">${ic('cash')} Boleto</a><button class="sec" data-copiar="${esc(f.boleto_linha)}">Copiar linha digitável</button>` : ''}</div>
       </div>`;
-    }).join('') : '<div class="pt-vazio">Nenhuma fatura.</div>';
+    }).join('') : vazio('doc', 'Nenhuma fatura.');
   }
   $('ptFaturas').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-copiar]'); if (!b) return;
@@ -249,22 +260,54 @@
 
   // ---------- Coletas ----------
   const SIT_COL = { pendente: 'azul', programada: 'azul', em_coleta: 'azul', coletada: 'verde', nao_coletada: 'laranja', cancelada: 'cinza' };
+  const ETAPAS = ['Pedida', 'Programada', 'Saiu para coletar', 'Coletada'];
+  const POSICAO = { pendente: 0, programada: 1, em_coleta: 2, coletada: 3, nao_coletada: 3 };
+  const placaFmt = (p) => { const t = String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return t.length === 7 ? `${t.slice(0, 3)}-${t.slice(3)}` : t; };
+  const cidade = (c, uf) => (c ? `${esc(c)}${uf ? `/${esc(uf)}` : ''}` : '');
+  const dado = (icone, rotulo, valor) => (valor ? `<div>${ic(icone)}<span>${rotulo}<b>${valor}</b></span></div>` : '');
+  function cartaoColeta(k) {
+    const pos = POSICAO[k.status] ?? 0;
+    const etapas = k.status === 'cancelada' ? '' : `<div class="pt-etapas">${ETAPAS.map((t, i) => {
+      if (k.status === 'nao_coletada' && i === 3) return '<div class="falhou">Não coletada</div>';
+      return `<div class="${i < pos || (i === pos && k.status === 'coletada') ? 'feita' : i === pos ? 'atual' : ''}">${t}</div>`;
+    }).join('')}</div>`;
+    const janela = [k.hora_de ? `das ${esc(k.hora_de)}` : '', k.hora_ate ? `às ${esc(k.hora_ate)}` : ''].filter(Boolean).join(' ');
+    const volumes = k.volumes_coletados != null && k.status === 'coletada'
+      ? `${num(k.volumes_coletados)} coletado(s)${k.volumes ? ` de ${num(k.volumes)}` : ''}` : k.volumes ? `${num(k.volumes)} vol.${k.peso_kg ? ` · ${num(k.peso_kg, 1)} kg` : ''}` : '';
+    const ficha = [
+      dado('cal', 'Pedida em', esc(k.pedida_em)),
+      dado('relogio', 'Data agendada', `${dia(k.data_coleta)}${janela ? ` <small>${janela}</small>` : ''}`),
+      dado('check', 'Coletada em', esc(k.coletada_em)),
+      dado('truck', 'Saiu para coletar', k.status !== 'coletada' ? esc(k.saiu_em) : ''),
+      dado('user', 'Motorista', esc(k.motorista)),
+      dado('placa', 'Veículo', k.placa ? `<span class="pt-placa">${esc(placaFmt(k.placa))}</span>${k.veiculo ? ` <small>${esc(k.veiculo)}</small>` : ''}` : ''),
+      dado('box', 'Volumes', volumes),
+      dado('user', 'Entregue por', esc(k.entregue_por)),
+      dado('doc', 'Nota(s) fiscal(is)', esc(k.notas)),
+      dado('doc', 'CT-e', k.cte ? (k.carga_id ? `<a href="#" data-carga="${k.carga_id}">${esc(k.cte)}</a>` : esc(k.cte)) : ''),
+    ].join('');
+    const aguardando = ['pendente'].includes(k.status) ? '<div class="pt-aviso">A transportadora vai programar a coleta e informar o motorista e o veículo aqui.</div>' : '';
+    return `<div class="pt-item pt-coleta ${SIT_COL[k.status] || 'azul'}">
+      <div class="cab"><div><div class="titulo">Coleta nº ${k.id} · ${esc(k.remetente_nome)}</div>
+        <div class="rota">${ic('pin')} ${cidade(k.cidade, k.uf)}${k.destino_cidade ? ` ${ic('seta')} ${cidade(k.destino_cidade, k.destino_uf)}` : ''}</div></div>
+        <span class="sit ${SIT_COL[k.status] || 'azul'}">${esc(k.status_texto)}</span></div>
+      ${etapas}
+      <div class="pt-ficha">${ficha}</div>
+      ${k.motivo && ['nao_coletada', 'cancelada'].includes(k.status) ? `<div class="pt-alerta-linha">${ic('alerta')} ${esc(k.motivo)}</div>` : aguardando}
+    </div>`;
+  }
   let enderecoCliente = null;
   async function carregarColetas() {
     const r = await api('/coletas');
     enderecoCliente = r.endereco;
-    $('ptColetas').innerHTML = r.coletas.length ? r.coletas.map((k) => `<div class="pt-item">
-        <div><div class="titulo">Coleta nº ${k.id} · ${esc(k.remetente_nome)}</div>
-          <div class="linha">${esc(k.cidade)}/${esc(k.uf)}${k.destino_cidade ? ` → ${esc(k.destino_cidade)}/${esc(k.destino_uf || '')}` : ''} · dia ${dia(k.data_coleta)}${k.hora_de ? ` das ${esc(k.hora_de)}` : ''}${k.hora_ate ? ` às ${esc(k.hora_ate)}` : ''}
-          ${[k.volumes ? `${num(k.volumes)} vol.` : '', k.peso_kg ? `${num(k.peso_kg, 1)} kg` : '', k.notas ? `NF ${esc(k.notas)}` : ''].filter(Boolean).map((x) => ` · ${x}`).join('')}</div>
-          ${k.motivo && ['nao_coletada', 'cancelada'].includes(k.status) ? `<div class="linha" style="color:var(--laranja);">${esc(k.motivo)}</div>` : ''}</div>
-        <div class="dir"><span class="sit ${SIT_COL[k.status] || 'azul'}">${esc(k.status_texto)}</span>${k.cte ? `<div class="linha">CT-e ${esc(k.cte)}</div>` : ''}</div></div>`).join('')
-      : '<div class="pt-vazio">Nenhuma coleta. Clique em "＋ Pedir coleta" quando tiver mercadoria para enviar.</div>';
+    $('ptColetas').innerHTML = r.coletas.length ? r.coletas.map(cartaoColeta).join('')
+      : vazio('truck', 'Nenhuma coleta. Clique em "Pedir coleta" quando tiver mercadoria para enviar.');
   }
+  $('ptColetas').addEventListener('click', (e) => { const b = e.target.closest('[data-carga]'); if (b) { e.preventDefault(); abrirCarga(Number(b.dataset.carga)); } });
   $('ptNovaColeta').addEventListener('click', () => {
     const e = enderecoCliente || {};
     const v = (k) => esc(e[k] || '');
-    abrirJanela('<b style="font-size:17px;">📦 Pedir coleta</b>', `<div class="pt-grade">
+    abrirJanela(`<b style="font-size:17px;">${ic('truck')} Pedir coleta</b>`, `<div class="pt-grade">
         <div class="inteiro"><label for="pkRem">Local da coleta (empresa)</label><input id="pkRem" maxlength="200" value="${esc(e.nome || eu.cliente_nome || '')}" /></div>
         <div class="largo"><label for="pkEnd">Endereço</label><input id="pkEnd" maxlength="200" value="${v('logradouro')}" /></div>
         <div><label for="pkNum">Número</label><input id="pkNum" maxlength="30" value="${v('numero')}" /></div>
@@ -307,16 +350,16 @@
     const lista = await api('/cotacoes');
     $('ptCotacoes').innerHTML = lista.length ? lista.map((t) => {
       const [txt, cor] = SIT_COT[t.situacao] || [t.situacao, 'cinza'];
-      return `<div class="pt-item">
+      return `<div class="pt-item ${cor}">
         <div><div class="titulo">Cotação nº ${t.id} · ${esc(t.origem_cidade)}/${esc(t.origem_uf)} → ${esc(t.destino_cidade)}/${esc(t.destino_uf)}</div>
           <div class="linha">${diaTs(t.criado_em)} · ${[t.peso_kg ? `${num(t.peso_kg, 1)} kg` : '', t.volumes ? `${num(t.volumes)} vol.` : '', t.valor_mercadoria ? `NF ${moeda(t.valor_mercadoria)}` : ''].filter(Boolean).join(' · ')}
           ${t.situacao !== 'solicitada' ? ` · válida até ${dia(t.validade)}` : ''}${t.prazo_dias ? ` · prazo ${t.prazo_dias} dia(s) útil(eis)` : ''}</div>
           ${t.status === 'aprovada' ? `<div class="linha" style="color:var(--verde);">${t.coleta_id ? `Coleta nº ${t.coleta_id} registrada.` : 'A transportadora vai programar a coleta.'}</div>` : ''}</div>
         <div class="dir"><span class="sit ${cor}">${txt}</span>${Number(t.valor_total) > 0 ? `<div class="valor">${moeda(t.valor_total)}</div>` : ''}</div>
-        <div class="pt-acoes">${t.situacao !== 'solicitada' ? `<a class="botao sec" href="${esc(link(`/cotacoes/${t.id}/proposta`))}" target="_blank" rel="noopener">🖨 Proposta</a>` : ''}
+        <div class="pt-acoes">${t.situacao !== 'solicitada' ? `<a class="botao sec" href="${esc(link(`/cotacoes/${t.id}/proposta`))}" target="_blank" rel="noopener">${ic('doc')} Proposta</a>` : ''}
           ${t.pode_responder ? `<button data-aprovar="${t.id}" data-valor="${t.valor_total}">✓ Aprovar</button><button class="perigo" data-recusar="${t.id}">✗ Recusar</button>` : ''}</div>
       </div>`;
-    }).join('') : '<div class="pt-vazio">Nenhuma cotação. Clique em "＋ Pedir cotação".</div>';
+    }).join('') : vazio('tag', 'Nenhuma cotação. Clique em "Pedir cotação".');
   }
   $('ptCotacoes').addEventListener('click', (e) => {
     const a = e.target.closest('[data-aprovar]');
@@ -342,7 +385,7 @@
   $('ptNovaCotacao').addEventListener('click', async () => {
     if (!enderecoCliente) { try { enderecoCliente = (await api('/coletas')).endereco; } catch { /* sem endereço */ } }
     const e = enderecoCliente || {};
-    abrirJanela('<b style="font-size:17px;">💲 Pedir cotação</b>', `<div class="pt-grade">
+    abrirJanela(`<b style="font-size:17px;">${ic('tag')} Pedir cotação</b>`, `<div class="pt-grade">
         <div><label for="pqOriCid">Origem (cidade)</label><input id="pqOriCid" maxlength="120" value="${esc(e.cidade || '')}" /></div>
         <div><label for="pqOriUf">UF</label><select id="pqOriUf">${UFS.map((u) => `<option ${u === e.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
         <div><label for="pqDesCid">Destino (cidade)</label><input id="pqDesCid" maxlength="120" /></div>

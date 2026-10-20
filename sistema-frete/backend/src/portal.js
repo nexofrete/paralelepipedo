@@ -310,16 +310,26 @@ async function faturaDoCliente(u, id) {
 }
 
 // ---------- Coletas ----------
+// Coletas do cliente, com o motorista e o veículo do romaneio em que a coleta foi programada
+// (nome e placa — sem documento nem telefone do motorista) e as datas já no horário de Brasília.
 async function listarColetas(u) {
   const { rows } = await pool.query(
     `SELECT k.id, k.status, k.data_coleta, k.hora_de, k.hora_ate, k.remetente_nome, k.cidade, k.uf, k.destino_cidade, k.destino_uf, k.volumes, k.peso_kg,
-            k.notas, k.motivo, k.coletado_em, k.criado_em, k.canal, ct.serie AS cte_serie, ct.numero AS cte_numero, ct.id AS cte_id, ct.status AS cte_status
-       FROM coletas k LEFT JOIN ctes_emitidos ct ON ct.id = k.cte_id
+            k.notas, k.motivo, k.criado_em, k.canal, k.volumes_coletados, k.peso_coletado, k.entregue_por,
+            to_char(k.criado_em AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS pedida_em,
+            to_char(k.coletado_em AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS coletada_em,
+            CASE WHEN k.status IN ('programada', 'em_coleta', 'coletada', 'nao_coletada') THEN r.motorista_nome END AS motorista,
+            CASE WHEN k.status IN ('programada', 'em_coleta', 'coletada', 'nao_coletada') THEN r.placa END AS placa,
+            CASE WHEN k.status IN ('programada', 'em_coleta', 'coletada', 'nao_coletada') THEN r.veiculo END AS veiculo,
+            to_char(r.saiu_em, 'DD/MM/YYYY HH24:MI') AS saiu_em,
+            ct.serie AS cte_serie, ct.numero AS cte_numero, ct.id AS cte_id, ct.status AS cte_status
+       FROM coletas k LEFT JOIN ctes_emitidos ct ON ct.id = k.cte_id LEFT JOIN romaneios r ON r.id = k.romaneio_id
       WHERE k.portal_usuario_id = $3 OR k.remetente_doc = ANY($1::text[]) OR (LENGTH(k.remetente_doc) = 14 AND LEFT(k.remetente_doc, 8) = ANY($2::text[]))
       ORDER BY (k.status IN ('pendente', 'programada', 'em_coleta', 'nao_coletada')) DESC, k.data_coleta DESC, k.id DESC LIMIT 200`,
     [u.documentos, u.raizes, u.id]);
   const STATUS = require('./coletas').STATUS;
-  return rows.map((k) => ({ ...k, status_texto: STATUS[k.status] || k.status, cte: k.cte_id && k.cte_status === 'autorizado' ? `${k.cte_serie}/${k.cte_numero}` : null, cte_id: undefined, cte_serie: undefined, cte_numero: undefined }));
+  return rows.map((k) => ({ ...k, status_texto: STATUS[k.status] || k.status, cte: k.cte_id && k.cte_status === 'autorizado' ? `${k.cte_serie}/${k.cte_numero}` : null,
+    carga_id: k.cte_id && k.cte_status === 'autorizado' ? k.cte_id : null, cte_id: undefined, cte_serie: undefined, cte_numero: undefined, cte_status: undefined }));
 }
 
 // Endereço de coleta sugerido: o do cadastro do cliente (primeiro documento).

@@ -75,6 +75,10 @@
         },
         {
           "area": "Segurança",
+          "texto": "Portal do cliente com visual novo (marca da transportadora na entrada, abas com ícones, indicadores) e coletas com etapas, data agendada, hora da coleta, motorista e placa do veículo."
+        },
+        {
+          "area": "Segurança",
           "texto": "Manutenção » Fuso do banco: confere se a hora de autorização dos CT-e/MDF-e bate com o protocolo da SEFAZ e corrige (com backup antes) os gravados 3h adiantados quando o PostgreSQL estava em UTC."
         },
         {

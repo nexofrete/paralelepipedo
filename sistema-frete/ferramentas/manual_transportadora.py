@@ -205,7 +205,15 @@ def parte_operacao(g):
         'valores em R$ nas observações viram "R$ ***". O XML não fica disponível (ele é assinado, traz os valores e não '
         'pode ser alterado), nem sozinho nem no .zip do período. O valor da mercadoria (da nota do próprio cliente) continua.',
         '<b>Financeiro</b>: faturas, boleto e linha digitável. <b>Coletas</b> e <b>cotações</b> pedidas pelo portal.',
+        '<b>Coletas</b>: cada coleta mostra as etapas (pedida, programada, saiu para coletar, coletada), a data em que foi '
+        'pedida, a data agendada com o horário, quando saiu e quando foi coletada, o <b>motorista</b> e o <b>veículo com a '
+        'placa</b>, os volumes (pedidos e coletados), quem entregou a mercadoria e o CT-e gerado. Motorista e placa vêm do '
+        'romaneio em que a coleta foi programada (Coletas » Programar): coleta sem romaneio não mostra motorista. O '
+        'documento e o telefone do motorista não aparecem para o cliente.',
     ])
+    s.append(P('Visual: entrada com a marca da transportadora (nome e logo do cadastro da empresa), cabeçalho com o '
+               'usuário, abas com ícones, resumo com saudação e indicadores, e a cor de cada cartão pela situação. '
+               'Segue o tema claro ou escuro do aparelho e funciona no celular.'))
     s += aviso('atencao', 'Para o cliente acessar de fora, o servidor precisa estar publicado na internet com HTTPS. '
                           'Informe o endereço em Configurar (só aceita https:// ou http:// sem aspas e símbolos).')
 

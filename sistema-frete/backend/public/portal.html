@@ -9,68 +9,121 @@
   <link rel="stylesheet" href="css/portal.css" />
 </head>
 <body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4M18 10v4"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M1 5h13v11H1zM14 9h4l4 4v3h-8z"/><circle cx="5.5" cy="18" r="1.9"/><circle cx="17.5" cy="18" r="1.9"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2M16 7l3 3M18.5 4.5l2 2"/></symbol>
+    <symbol id="i-sair" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+    <symbol id="i-mais" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-grafico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
+    <symbol id="i-placa" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h12"/></symbol>
+  </svg>
+
   <!-- Entrada -->
   <section id="ptEntrada" class="pt-entrada oculto">
-    <div class="pt-marca"><img id="ptLogo" class="oculto" alt="" /><div><h1 id="ptNomeEmpresa">Portal do cliente</h1><p>Acompanhe suas cargas, documentos e faturas.</p></div></div>
-    <form id="ptFormEntrar" class="cartao" autocomplete="on">
-      <div><label for="ptEmail">E-mail</label><input id="ptEmail" type="email" autocomplete="username" required /></div>
-      <div><label for="ptSenha">Senha</label><input id="ptSenha" type="password" autocomplete="current-password" required /></div>
-      <button type="submit">Entrar</button>
-      <p id="ptErroEntrar" class="erro oculto"></p>
-      <button type="button" id="ptEsqueci" class="pt-link">Esqueci a senha</button>
-    </form>
-    <form id="ptFormEsqueci" class="cartao oculto">
-      <p style="margin-top:0;">Informe o seu e-mail. Vamos mandar um link para você criar uma senha nova.</p>
-      <div><label for="ptEsqEmail">E-mail</label><input id="ptEsqEmail" type="email" required /></div>
-      <button type="submit">Enviar o link</button>
-      <p id="ptMsgEsqueci" class="ok oculto"></p>
-      <button type="button" class="pt-link" data-pt-voltar>← Voltar</button>
-    </form>
-    <form id="ptFormSenha" class="cartao oculto">
-      <h2 id="ptSenhaTitulo">Crie a sua senha</h2>
-      <p id="ptSenhaTexto" class="fraco" style="margin-top:0; font-size:13.5px;">Use pelo menos 8 caracteres, com letras e números.</p>
-      <div id="ptCampoAtual"><label for="ptSenhaAtual">Senha atual (a provisória)</label><input id="ptSenhaAtual" type="password" autocomplete="current-password" /></div>
-      <div><label for="ptSenhaNova">Senha nova</label><input id="ptSenhaNova" type="password" autocomplete="new-password" required /></div>
-      <div><label for="ptSenhaConf">Repita a senha nova</label><input id="ptSenhaConf" type="password" autocomplete="new-password" required /></div>
-      <button type="submit">Salvar a senha</button>
-      <p id="ptErroSenha" class="erro oculto"></p>
-    </form>
-    <p id="ptContato" class="fraco" style="text-align:center; font-size:12.5px;"></p>
+    <aside class="pt-lado">
+      <div class="pt-marca"><img id="ptLogo" class="oculto" alt="" /><div><h1 id="ptNomeEmpresa">Transportadora</h1><p>Portal do cliente</p></div></div>
+      <div class="pt-chamada">
+        <h2>Suas cargas, documentos e faturas em um só lugar.</h2>
+        <p>Acompanhe cada entrega em tempo real, peça coletas e cotações e baixe seus documentos quando precisar.</p>
+        <ul class="pt-beneficios">
+          <li><span class="bola"><svg class="ic"><use href="#i-truck"/></svg></span><div><b>Rastreamento das cargas</b><span>Situação, previsão e comprovante de entrega de cada nota.</span></div></li>
+          <li><span class="bola"><svg class="ic"><use href="#i-doc"/></svg></span><div><b>Documentos fiscais</b><span>DACTE e XML dos CT-e, faturas e boletos.</span></div></li>
+          <li><span class="bola"><svg class="ic"><use href="#i-cal"/></svg></span><div><b>Coletas e cotações</b><span>Peça pelo portal e acompanhe motorista, veículo e data.</span></div></li>
+        </ul>
+      </div>
+      <div class="pt-lado-rodape"><svg class="ic"><use href="#i-escudo"/></svg> Acesso protegido · cada usuário vê só as cargas da própria empresa</div>
+    </aside>
+    <div class="pt-form-lado">
+      <div class="pt-form-caixa">
+        <h2 id="ptTituloForm">Entrar</h2>
+        <p class="sub">Use o e-mail e a senha que a transportadora cadastrou para você.</p>
+        <form id="ptFormEntrar" class="cartao" autocomplete="on">
+          <div><label for="ptEmail">E-mail</label><input id="ptEmail" type="email" autocomplete="username" placeholder="voce@empresa.com.br" required /></div>
+          <div><label for="ptSenha">Senha</label><input id="ptSenha" type="password" autocomplete="current-password" required /></div>
+          <button type="submit">Entrar</button>
+          <p id="ptErroEntrar" class="erro oculto"></p>
+          <button type="button" id="ptEsqueci" class="pt-link">Esqueci a senha</button>
+        </form>
+        <form id="ptFormEsqueci" class="cartao oculto">
+          <p style="margin-top:0;">Informe o seu e-mail. Vamos mandar um link para você criar uma senha nova.</p>
+          <div><label for="ptEsqEmail">E-mail</label><input id="ptEsqEmail" type="email" required /></div>
+          <button type="submit">Enviar o link</button>
+          <p id="ptMsgEsqueci" class="ok oculto"></p>
+          <button type="button" class="pt-link" data-pt-voltar>← Voltar</button>
+        </form>
+        <form id="ptFormSenha" class="cartao oculto">
+          <h2 id="ptSenhaTitulo">Crie a sua senha</h2>
+          <p id="ptSenhaTexto" class="fraco" style="margin-top:0; font-size:13.5px;">Use pelo menos 8 caracteres, com letras e números.</p>
+          <div id="ptCampoAtual"><label for="ptSenhaAtual">Senha atual (a provisória)</label><input id="ptSenhaAtual" type="password" autocomplete="current-password" /></div>
+          <div><label for="ptSenhaNova">Senha nova</label><input id="ptSenhaNova" type="password" autocomplete="new-password" required /></div>
+          <div><label for="ptSenhaConf">Repita a senha nova</label><input id="ptSenhaConf" type="password" autocomplete="new-password" required /></div>
+          <button type="submit">Salvar a senha</button>
+          <p id="ptErroSenha" class="erro oculto"></p>
+        </form>
+        <div class="pt-seguro"><svg class="ic"><use href="#i-escudo"/></svg> Conexão protegida</div>
+        <p id="ptContato" class="fraco"></p>
+      </div>
+    </div>
   </section>
 
   <!-- Aplicativo -->
   <div id="ptApp" class="oculto">
     <header class="pt-topo">
-      <div class="pt-topo-in">
+      <div class="pt-faixa"><div class="pt-topo-in">
         <img id="ptLogoApp" class="oculto" alt="" />
-        <div><div class="nome" id="ptNomeApp"></div><div class="cliente" id="ptCliente"></div></div>
+        <div><div class="nome" id="ptNomeApp"></div><div class="rotulo">Portal do cliente</div></div>
         <span class="espaco"></span>
-        <button class="sec" id="ptMinhaSenha" title="Trocar a senha">🔑</button>
-        <button class="sec" id="ptSair">Sair</button>
-      </div>
-      <nav class="pt-abas" id="ptAbas">
-        <button data-aba="inicio" class="ativa">Início</button>
-        <button data-aba="cargas">Cargas</button>
-        <button data-aba="financeiro" id="ptAbaFin">Financeiro</button>
-        <button data-aba="coletas">Coletas</button>
-        <button data-aba="cotacoes">Cotações</button>
-      </nav>
+        <div class="pt-usuario"><div class="quem"><b id="ptUsuarioNome"></b><span id="ptCliente"></span></div><div class="pt-avatar" id="ptAvatar"></div></div>
+        <button class="acao" id="ptMinhaSenha" title="Trocar a senha"><svg class="ic"><use href="#i-key"/></svg></button>
+        <button class="acao" id="ptSair" title="Sair"><svg class="ic"><use href="#i-sair"/></svg> Sair</button>
+      </div></div>
+      <div class="pt-abas-faixa"><nav class="pt-abas" id="ptAbas">
+        <button data-aba="inicio" class="ativa"><svg class="ic"><use href="#i-home"/></svg> Início</button>
+        <button data-aba="cargas"><svg class="ic"><use href="#i-box"/></svg> Cargas</button>
+        <button data-aba="financeiro" id="ptAbaFin"><svg class="ic"><use href="#i-cash"/></svg> Financeiro</button>
+        <button data-aba="coletas"><svg class="ic"><use href="#i-truck"/></svg> Coletas</button>
+        <button data-aba="cotacoes"><svg class="ic"><use href="#i-tag"/></svg> Cotações</button>
+      </nav></div>
     </header>
     <main class="pt-app">
       <section data-pagina="inicio"><div id="ptInicio"></div></section>
       <section data-pagina="cargas" class="oculto">
-        <div class="pt-barra"><h2>Cargas</h2><button class="sec" id="ptXmlLote">⬇ XML do período (.zip)</button></div>
+        <div class="pt-barra"><div><h2>Cargas</h2><p>Notas em que a sua empresa aparece: situação, previsão, comprovante e documentos.</p></div>
+          <button class="sec" id="ptXmlLote"><svg class="ic"><use href="#i-baixar"/></svg> XML do período (.zip)</button></div>
         <div class="pt-filtros" id="ptFiltrosCargas">
           <button data-filtro="transito" class="ativo">Em andamento</button><button data-filtro="atrasadas">Atrasadas</button>
           <button data-filtro="entregues">Entregues</button><button data-filtro="todas">Todas</button>
-          <input id="ptBuscaCargas" placeholder="Nota fiscal, CT-e, cidade ou nome" aria-label="Buscar" />
+          <input id="ptBuscaCargas" placeholder="Buscar por nota fiscal, CT-e, cidade ou nome" aria-label="Buscar" />
         </div>
         <div id="ptCargas" class="pt-lista"></div>
       </section>
-      <section data-pagina="financeiro" class="oculto"><div class="pt-barra"><h2>Faturas</h2></div><div id="ptFaturas" class="pt-lista"></div></section>
-      <section data-pagina="coletas" class="oculto"><div class="pt-barra"><h2>Coletas</h2><button id="ptNovaColeta">＋ Pedir coleta</button></div><div id="ptColetas" class="pt-lista"></div></section>
-      <section data-pagina="cotacoes" class="oculto"><div class="pt-barra"><h2>Cotações</h2><button id="ptNovaCotacao">＋ Pedir cotação</button></div><div id="ptCotacoes" class="pt-lista"></div></section>
+      <section data-pagina="financeiro" class="oculto">
+        <div class="pt-barra"><div><h2>Faturas</h2><p>Faturas do frete que a sua empresa paga, com boleto e linha digitável.</p></div></div>
+        <div id="ptFaturas" class="pt-lista"></div></section>
+      <section data-pagina="coletas" class="oculto">
+        <div class="pt-barra"><div><h2>Coletas</h2><p>Acompanhe cada coleta: data, motorista e veículo que vão buscar a mercadoria.</p></div>
+          <button id="ptNovaColeta"><svg class="ic"><use href="#i-mais"/></svg> Pedir coleta</button></div>
+        <div id="ptColetas" class="pt-lista"></div></section>
+      <section data-pagina="cotacoes" class="oculto">
+        <div class="pt-barra"><div><h2>Cotações</h2><p>Peça o preço do frete e aprove pelo portal.</p></div>
+          <button id="ptNovaCotacao"><svg class="ic"><use href="#i-mais"/></svg> Pedir cotação</button></div>
+        <div id="ptCotacoes" class="pt-lista"></div></section>
     </main>
+    <footer class="pt-rodape"><span id="ptRodapeEmpresa"></span><span>Portal do cliente</span></footer>
   </div>
 
   <div id="ptFundo" class="pt-fundo oculto"><div class="pt-janela" id="ptJanela" role="dialog" aria-modal="true"></div></div>

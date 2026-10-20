@@ -310,7 +310,8 @@ Página própria para o cliente da transportadora: **`/portal.html`** (funciona 
 - **Valores do frete** só nos CT-e em que ele é o **pagador**.
 - **Quem não vê valores** (acesso sem "vê valores", ou CT-e pago por outra empresa): o DACTE sai **sem os valores do frete** (componentes, total, valor a receber e ICMS; R$ nas observações vira `R$ ***`) e o **XML não fica disponível** — nem avulso nem no .zip do período —, porque o XML assinado traz os valores e não pode ser alterado. O .zip só leva os CT-e que ele paga. O botão do .zip some para acesso sem "vê valores".
 - **Financeiro:** faturas em que ele é o pagador, com a fatura impressa, o **boleto** e a linha digitável para copiar.
-- **Coletas:** pede coleta. Ela cai em Coletas com o canal "🌐 Portal" e ele acompanha a situação.
+- **Coletas:** pede coleta. Ela cai em Coletas com o canal "🌐 Portal" e ele acompanha cada etapa (pedida → programada → saiu para coletar → coletada), com data do pedido, data agendada e horário, saída, hora da coleta, **motorista e veículo com a placa** (do romaneio em que a coleta foi programada; sem documento nem telefone do motorista), volumes pedidos e coletados, quem entregou e o CT-e gerado.
+- **Visual:** entrada com a marca da transportadora, cabeçalho com o usuário, abas com ícones, indicadores e cartões coloridos pela situação; tema claro/escuro e celular.
 - **Cotações:** pede cotação e aprova ou recusa pelo portal.
   - Com a **cotação automática** ligada (⚙ Configurar), o preço da tabela sai na hora.
   - Desligada, o pedido aparece em Cotações, filtro **"🌐 Do portal"**. A equipe clica em **Calcular o preço**, salva, e a cotação fica para o cliente aprovar.

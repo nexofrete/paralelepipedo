@@ -34,6 +34,10 @@
           "texto": "Comissão de vendedores (sobre o recebido ou o faturado), com carteira de clientes, fechamento em contas a pagar e estornos."
         },
         {
+          "area": "Financeiro",
+          "texto": "CIOT e vale-pedágio pelo provedor (Pamcard, Repom, e-Frete, Target ou simulador) no acerto com terceiro: declarar, comprar o vale-pedágio, encerrar ao fechar o acerto e cancelar, com tudo indo para o MDF-e."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

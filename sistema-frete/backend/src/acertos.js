@@ -225,4 +225,4 @@ async function reabrir(id) {
   });
 }
 
-module.exports = { CATEGORIAS, impostosTac, lerAcerto, calcular, custosDoMdfe, criar, alterar, detalhe, lancar, acertar, reabrir };
+module.exports = { CATEGORIAS, impostosTac, lerAcerto, calcular, custosDoMdfe, levarAoMdfe, criar, alterar, detalhe, lancar, acertar, reabrir };

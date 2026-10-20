@@ -321,6 +321,27 @@ def parte_financeiro(g):
         '<b>Acerto de viagem</b> (120): motorista próprio (adiantamento e despesas) ou terceiro/agregado (frete, '
         'adiantamento, CIOT, vale-pedágio; retenções do TAC calculadas). Gera as contas a pagar e o demonstrativo para assinar.',
     ])
+    s += h2('CIOT e vale-pedágio pelo provedor (pagamento eletrônico de frete)')
+    s.append(P('Contratar terceiro (TAC ou agregado) exige o CIOT, gerado por um provedor habilitado pela ANTT (Pamcard, '
+               'Repom, e-Frete, Target), e o vale-pedágio pago pela empresa fora do frete. Em <b>Acerto de viagem » '
+               '⚙ CIOT e vale-pedágio</b> (administrador) escolha o provedor, o ambiente (homologação ou produção), as '
+               'credenciais, a fornecedora do vale-pedágio, os eixos padrão e a forma de pagamento ao contratado.'))
+    s += lista([
+        'No acerto com terceiro, o quadro <b>CIOT e vale-pedágio</b> mostra o contratado, o RNTRC, o motorista, a placa e os '
+        'valores; rota e peso vêm do MDF-e do acerto (sem MDF-e, informe origem e destino).',
+        '<b>Declarar CIOT</b>: o sistema confere o que a ANTT exige (CNPJ e RNTRC da empresa, CPF/CNPJ e RNTRC do contratado, '
+        'CPF do motorista, placa, rota, frete e peso) e lista tudo o que falta de uma vez. O CIOT vai para o acerto e para o MDF-e '
+        'ainda não transmitido.',
+        '<b>Comprar vale-pedágio</b>: pelo valor informado ou calculado pelo provedor pela rota e pelos eixos; número da compra, '
+        'valor e fornecedora vão para o acerto e para o MDF-e.',
+        '<b>Fechar o acerto</b> encerra a operação no provedor com o valor final (frete ± acréscimos e descontos) e o peso. Se o '
+        'provedor falhar, o acerto fecha e a tela avisa para usar "Encerrar agora".',
+        '<b>Cancelar CIOT</b>: até 24 horas depois da declaração, com motivo; tira o CIOT e o vale-pedágio do acerto e do MDF-e. '
+        'Acerto com CIOT aberto não pode ser cancelado antes do CIOT.',
+    ])
+    s += aviso('importante', 'Pamcard, Repom, e-Frete e Target só liberam a API (manual, endereço e credenciais de homologação) '
+                             'com o contrato. Até lá o provedor escolhido avisa que a integração aguarda o contrato e nada é '
+                             'enviado. O <b>Simulador</b> faz o fluxo inteiro sem valor legal, para treinar a equipe.')
 
     # 46
     s += h1('46. Comissão de vendedores')

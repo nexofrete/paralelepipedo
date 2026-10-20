@@ -164,6 +164,11 @@ acertos.post('/:id(\\d+)/acertar', autenticar, operacao, async (req, res) => {
   try {
     const r = await ac.acertar(Number(req.params.id), req.usuario.nome);
     log(req, 'acerto', `Fechou o acerto ${req.params.id}: saldo ${brl(r.totais.saldo)}${r.totais.saldo > 0 ? ' a pagar' : r.totais.saldo < 0 ? ' a devolver' : ''}`);
+    // CIOT aberto: encerra com o valor final do acerto. Se o provedor falhar, o acerto fica fechado e a tela avisa.
+    try {
+      const enc = await require('../pef/pef').encerrar(Number(req.params.id));
+      if (enc) { r.ciot_encerrado = enc.ciot; log(req, 'ciot', `Encerrou o CIOT ${enc.ciot} ao fechar o acerto ${req.params.id}`); }
+    } catch (e) { r.ciot_erro = e.message; }
     res.json(r);
   } catch (err) { erro(res, err, 'Erro ao fechar o acerto.'); }
 });
@@ -178,6 +183,8 @@ acertos.post('/:id(\\d+)/cancelar', autenticar, operacao, async (req, res) => {
     if (!rows[0]) throw Object.assign(new Error('Só dá para cancelar acerto em aberto.'), { status: 409 });
     const { rows: pagos } = await cliente.query(`SELECT 1 FROM contas_pagar WHERE acerto_id = $1 AND valor_pago > 0 AND status <> 'cancelada'`, [req.params.id]);
     if (pagos.length) throw Object.assign(new Error('O adiantamento já foi pago: estorne em Contas a pagar antes de cancelar.'), { status: 409 });
+    const { rows: ciot } = await cliente.query(`SELECT ciot FROM pef_operacoes WHERE acerto_id = $1 AND status = 'declarada'`, [req.params.id]);
+    if (ciot.length) throw Object.assign(new Error(`O acerto tem o CIOT ${ciot[0].ciot} aberto no provedor: cancele o CIOT antes de cancelar o acerto.`), { status: 409 });
     await cliente.query(`UPDATE contas_pagar SET status = 'cancelada' WHERE acerto_id = $1 AND status = 'aberta'`, [req.params.id]);
     await cliente.query(`UPDATE acertos SET status = 'cancelado' WHERE id = $1`, [req.params.id]);
     await cliente.query('COMMIT');

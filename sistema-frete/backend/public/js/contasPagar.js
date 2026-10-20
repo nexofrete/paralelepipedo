@@ -175,7 +175,8 @@
     const abertos = lista.filter((a) => a.status === 'aberto');
     $('cpAbaAcertos').innerHTML = `<div class="painel oc-painel">
       <div class="oc-barra"><div class="oc-filtros">${[['abertos', 'Em aberto'], ['acertados', 'Acertados'], ['todos', 'Todos']].map(([id, n]) => `<button class="oc-filtro ${filtroAc === id ? 'ativo' : ''}" data-ax-filtro="${id}">${n}</button>`).join('')}</div>
-        ${filtroAc === 'abertos' && abertos.length ? `<span style="font-size:13px; color:var(--texto-fraco);">${abertos.length} viagem(ns) aguardando acerto · adiantado ${brl(abertos.reduce((s, a) => s + Number(a.adiantamento), 0))}</span>` : ''}</div>
+        ${filtroAc === 'abertos' && abertos.length ? `<span style="font-size:13px; color:var(--texto-fraco);">${abertos.length} viagem(ns) aguardando acerto · adiantado ${brl(abertos.reduce((s, a) => s + Number(a.adiantamento), 0))}</span>` : ''}
+        ${admin ? '<button class="btn btn-secundario" id="axCfgCiot" style="width:auto; margin-left:auto;">⚙ CIOT e vale-pedágio</button>' : ''}</div>
       ${lista.length ? `<table class="edi-tabela"><thead><tr><th>Nº</th><th>Saída</th><th>Motorista</th><th>Tipo</th><th>Viagem</th><th class="n">Frete / despesas</th><th class="n">Adiantamento</th><th class="n">Saldo</th><th>Situação</th><th></th></tr></thead><tbody>
         ${lista.map((a) => `<tr><td><b>${a.id}</b></td><td>${dia(a.data_saida)}</td><td>${esc(a.motorista_nome)}${a.placa ? `<br><small>${esc(a.placa)}</small>` : ''}</td>
           <td>${a.tipo === 'terceiro' ? 'Terceiro' : 'Próprio'}</td><td><small>${esc(a.descricao || '')}${a.mdfe_numero ? ` · MDF-e ${esc(a.mdfe_numero)}` : ''}</small></td>
@@ -186,6 +187,109 @@
         : '<div class="kanban-vazio">Nenhum acerto neste filtro. Abra um acerto quando o motorista sair para a viagem (com o adiantamento) e feche quando ele voltar.</div>'}</div>`;
     $('cpAbaAcertos').querySelectorAll('[data-ax-filtro]').forEach((b) => b.addEventListener('click', () => { filtroAc = b.dataset.axFiltro; telaAcertos().catch(erro); }));
     $('cpAbaAcertos').querySelectorAll('[data-ax-abrir]').forEach((b) => b.addEventListener('click', () => abrirAcerto(Number(b.dataset.axAbrir)).catch(erro)));
+    $('axCfgCiot')?.addEventListener('click', () => configCiot().catch(erro));
+  }
+
+  // ---------- CIOT e vale-pedágio (pagamento eletrônico de frete) ----------
+  const UFS = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RO RR RS SC SP SE TO'.split(' ');
+  const ciotFmt = (c) => String(c || '').replace(/^(\d{4})(\d{4})(\d{4})$/, '$1 $2 $3');
+  async function configCiot() {
+    const { config: c, provedores } = await json('/api/pef/config');
+    const campoCred = (p) => p.credenciais.map((k) => `<div class="campo"><label for="pfCred_${k}">${{ usuario: 'Usuário', senha: 'Senha', codigo_cliente: 'Código do cliente', token_integrador: 'Token do integrador' }[k] || k}</label>
+      <input id="pfCred_${k}" data-cred="${k}" ${/senha|token/.test(k) ? 'type="password" autocomplete="new-password"' : ''} value="${esc(c.provedor === p.id ? c.credenciais[k] || '' : '')}" /></div>`).join('');
+    $('cpModalConteudo').innerHTML = `${titulo('⚙ CIOT e vale-pedágio')}
+      <p style="font-size:13px; color:var(--texto-fraco); margin:8px 0 12px;">O provedor (IPEF habilitada pela ANTT) gera o CIOT da contratação do terceiro e vende o vale-pedágio. A integração com Pamcard, Repom, e-Frete e Target é ligada com o manual da API e as credenciais que o provedor entrega no contrato. O simulador faz o fluxo completo sem valor legal, para treinar.</p>
+      <div class="cte-grade">
+        <div class="campo largo"><label for="pfProv">Provedor</label><select id="pfProv">${provedores.map((p) => `<option value="${p.id}" ${p.id === c.provedor ? 'selected' : ''}>${esc(p.nome)}${p.aguardando ? ' — aguardando contrato' : ''}</option>`).join('')}</select></div>
+        <div class="campo"><label for="pfAmb">Ambiente</label><select id="pfAmb"><option value="homologacao" ${c.ambiente !== 'producao' ? 'selected' : ''}>Homologação (testes)</option><option value="producao" ${c.ambiente === 'producao' ? 'selected' : ''}>Produção</option></select></div>
+        <div class="campo inteiro" id="pfCreds" style="display:contents;"></div>
+        <div class="campo"><label for="pfVpCnpj">CNPJ da fornecedora do vale-pedágio</label><input id="pfVpCnpj" maxlength="18" value="${esc(Doc.formatar(c.vp_fornecedora_cnpj || ''))}" /></div>
+        <div class="campo largo"><label for="pfVpNome">Fornecedora (nome)</label><input id="pfVpNome" maxlength="120" value="${esc(c.vp_fornecedora_nome || '')}" placeholder="Ex.: a fornecedora contratada com o provedor" /></div>
+        <div class="campo"><label for="pfEixos">Eixos (padrão)</label><input id="pfEixos" type="number" min="2" max="9" value="${esc(c.eixos_padrao)}" /></div>
+        <div class="campo"><label for="pfForma">Pagamento ao contratado</label><select id="pfForma">${[['cartao', 'Cartão frete do provedor'], ['pix', 'PIX'], ['conta', 'Conta bancária']].map(([k, n]) => `<option value="${k}" ${c.forma_pagamento === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;"><button class="btn btn-secundario" data-cp-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="pfSalvar" style="width:auto;">Salvar</button></div>`;
+    modal.classList.remove('oculto');
+    const mostrarCred = () => { $('pfCreds').innerHTML = campoCred(provedores.find((p) => p.id === $('pfProv').value)); };
+    mostrarCred(); $('pfProv').addEventListener('change', mostrarCred);
+    $('pfSalvar').addEventListener('click', async () => {
+      const credenciais = {}; $('cpModalConteudo').querySelectorAll('[data-cred]').forEach((el) => { credenciais[el.dataset.cred] = el.value; });
+      try {
+        await json('/api/pef/config', { method: 'PUT', body: JSON.stringify({ provedor: $('pfProv').value, ambiente: $('pfAmb').value, credenciais, vp_fornecedora_cnpj: $('pfVpCnpj').value,
+          vp_fornecedora_nome: $('pfVpNome').value, eixos_padrao: $('pfEixos').value, forma_pagamento: $('pfForma').value }) });
+        fecharModal(); mostrarAlerta('Configuração do CIOT salva.', { tipo: 'sucesso' });
+      } catch (err) { erro(err); }
+    });
+  }
+
+  // Quadro do CIOT no acerto com terceiro: declarar, comprar o vale-pedágio, encerrar ou cancelar.
+  async function carregarCiot(id, depois) {
+    const alvo = $('axCiotPainel'); if (!alvo) return;
+    let s;
+    try { s = await json(`/api/pef/acertos/${id}`); } catch (err) { alvo.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${esc(err.message)}</p>`; return; }
+    const o = s.atual; const p = s.previa || {};
+    const etiqueta = s.provedor.simulado ? ' <span class="oc-sit pendente" title="Sem valor legal: nada é enviado à ANTT">simulador</span>' : s.ambiente === 'homologacao' ? ' <span class="oc-sit pendente">homologação</span>' : '';
+    const linha = (r, v) => (v ? `<div><small style="color:var(--texto-fraco);">${r}</small><br><b>${v}</b></div>` : '');
+    let corpo;
+    if (!o) {
+      const faltaRota = !p.origem || !p.destino;
+      corpo = `${s.provedor.aguardando ? `<p class="mt-aviso" style="font-size:12.5px;">A integração com a ${esc(s.provedor.nome)} ainda está aguardando o manual e as credenciais do contrato. Use o simulador ou digite o CIOT do site do provedor em "Editar".</p>` : ''}
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px 14px; font-size:13px;">
+          ${linha('Contratado', `${esc(p.contratado?.nome || '—')}${p.contratado?.tipo ? ` (${p.contratado.tipo})` : ''}`)}${linha('RNTRC', esc(p.contratado?.rntrc || '— falta'))}
+          ${linha('Motorista', esc(p.motorista?.nome || ''))}${linha('Placa', esc(p.veiculos?.[0]?.placa || '— falta'))}
+          ${linha('Frete', brl(p.valores?.frete))}${linha('Adiantamento / saldo', `${brl(p.valores?.adiantamento)} / ${brl(p.valores?.saldo)}`)}
+        </div>
+        <div class="cte-grade" style="margin-top:8px;">
+          <div class="campo"><label for="ciOriCid">Origem</label><input id="ciOriCid" value="${esc(p.origem?.cidade || '')}" placeholder="cidade" /></div>
+          <div class="campo"><label for="ciOriUf">UF</label><select id="ciOriUf"><option value=""></option>${UFS.map((u) => `<option ${u === p.origem?.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+          <div class="campo"><label for="ciDesCid">Destino</label><input id="ciDesCid" value="${esc(p.destino?.cidade || '')}" placeholder="cidade" /></div>
+          <div class="campo"><label for="ciDesUf">UF</label><select id="ciDesUf"><option value=""></option>${UFS.map((u) => `<option ${u === p.destino?.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+          <div class="campo"><label for="ciPeso">Peso (kg)</label><input id="ciPeso" inputmode="decimal" value="${esc(p.carga?.peso_kg || '')}" /></div>
+          <div class="campo"><label for="ciEixos">Eixos</label><input id="ciEixos" type="number" min="2" max="9" value="${esc(p.veiculos?.[0]?.eixos || 5)}" /></div>
+          <div class="campo"><label for="ciFim">Término previsto</label><input id="ciFim" type="date" /></div>
+          <div class="campo"><label for="ciTipo">Tipo</label><select id="ciTipo"><option value="padrao">Viagem (padrão)</option><option value="tac_agregado">TAC agregado (período)</option></select></div>
+          <div class="campo"><label for="ciPagId">${{ cartao: 'Nº do cartão frete', pix: 'Chave PIX', conta: 'Banco / agência / conta' }[p.pagamento?.forma] || 'Pagamento'} do contratado</label><input id="ciPagId" maxlength="80" /></div>
+        </div>
+        ${faltaRota ? '<small style="color:var(--texto-fraco);">Sem MDF-e no acerto: informe a origem e o destino.</small>' : '<small style="color:var(--texto-fraco);">Rota, peso e placa vieram do MDF-e do acerto.</small>'}
+        <div style="margin-top:8px;"><button class="btn btn-primario" id="ciDeclarar" style="width:auto;">Declarar CIOT</button></div>`;
+    } else {
+      const encerrada = o.status === 'encerrada';
+      const prazo = new Date(new Date(o.criado_em).getTime() + s.cancelar_ate_horas * 3600000);
+      corpo = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px 14px; font-size:13px;">
+          ${linha('CIOT', `<span style="font-size:17px; letter-spacing:.04em;">${esc(ciotFmt(o.ciot))}</span>${o.verificador ? ` <small>verif. ${esc(o.verificador)}</small>` : ''}`)}
+          ${linha('Situação', encerrada ? `Encerrada em ${new Date(o.encerrada_em).toLocaleString('pt-BR')}` : 'Declarada (viagem em andamento)')}
+          ${linha('Rota', `${esc(o.operacao.origem?.cidade)}/${esc(o.operacao.origem?.uf)} → ${esc(o.operacao.destino?.cidade)}/${esc(o.operacao.destino?.uf)}`)}
+          ${linha('Protocolo', esc(o.protocolo || ''))}
+          ${o.vp_numero ? linha('Vale-pedágio', `${brl(o.vp_valor)} · nº ${esc(o.vp_numero)}<br><small>${esc(o.vp_fornecedora_nome || '')} ${esc(Doc.formatar(o.vp_fornecedora_cnpj || ''))}</small>`) : ''}
+          ${encerrada && o.encerramento ? linha('Valor final do frete', brl(o.encerramento.valor_frete)) : ''}
+        </div>
+        ${o.erro ? `<p style="color:var(--vermelho); font-size:12.5px;">Última tentativa: ${esc(o.erro)}</p>` : ''}
+        ${!encerrada ? `<div class="cte-grade" style="margin-top:8px;">
+          ${o.vp_numero ? '' : `<div class="campo"><label for="ciVpEixos">Eixos</label><input id="ciVpEixos" type="number" min="2" max="9" value="${esc(o.operacao.veiculos?.[0]?.eixos || 5)}" /></div>
+          <div class="campo"><label for="ciVpValor">Valor do vale-pedágio</label><input id="ciVpValor" inputmode="decimal" placeholder="em branco: o provedor calcula pela rota" /></div>`}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            ${o.vp_numero ? '' : '<button class="btn btn-primario" id="ciComprarVp" style="width:auto;">Comprar vale-pedágio</button>'}
+            <button class="btn btn-secundario" id="ciEncerrar" style="width:auto;">Encerrar agora</button>
+            ${Date.now() < prazo.getTime() ? `<button class="btn btn-secundario" id="ciCancelar" style="width:auto; color:var(--vermelho);">Cancelar CIOT</button><small style="align-self:center; color:var(--texto-fraco);">cancela até ${prazo.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small>` : ''}
+          </div><small style="color:var(--texto-fraco);">Ao fechar o acerto, a operação é encerrada sozinha com o valor final.</small>` : ''}`;
+    }
+    alvo.innerHTML = `<h4 style="margin:0 0 6px;">🪪 CIOT e vale-pedágio · ${esc(s.provedor.nome || '')}${etiqueta}</h4>${corpo}`;
+    const fazer = async (botao, fn, ok) => { const b = $(botao); b.disabled = true; try { const r = await fn(); if (ok) mostrarAlerta(ok(r), { tipo: 'sucesso' }); await depois(); } catch (err) { b.disabled = false; erro(err); } };
+    $('ciDeclarar')?.addEventListener('click', () => fazer('ciDeclarar', () => json(`/api/pef/acertos/${id}/declarar`, { method: 'POST', body: JSON.stringify({
+      origem_cidade: $('ciOriCid').value, origem_uf: $('ciOriUf').value, destino_cidade: $('ciDesCid').value, destino_uf: $('ciDesUf').value, peso_kg: $('ciPeso').value.replace(/\./g, '').replace(',', '.'),
+      eixos: $('ciEixos').value, data_fim: $('ciFim').value, tipo_viagem: $('ciTipo').value, pagamento_id: $('ciPagId').value }) }),
+    (r) => `CIOT ${ciotFmt(r.ciot)} declarado.${r.ciot_no_mdfe ? ' Já foi para o MDF-e.' : ''}`));
+    $('ciComprarVp')?.addEventListener('click', () => fazer('ciComprarVp', () => json(`/api/pef/acertos/${id}/vale-pedagio`, { method: 'POST', body: JSON.stringify({ valor: $('ciVpValor').value, eixos: $('ciVpEixos').value }) }),
+      (r) => `Vale-pedágio comprado: ${brl(r.vp_valor)} (nº ${r.vp_numero}).${r.vp_no_mdfe ? ' Já foi para o MDF-e.' : ''}`));
+    $('ciEncerrar')?.addEventListener('click', async () => {
+      if (!await confirmar('Encerrar a operação agora? Use quando a viagem terminou. O valor final é o do acerto (frete ± acréscimos e descontos).', { textoOk: 'Encerrar' })) return;
+      fazer('ciEncerrar', () => json(`/api/pef/acertos/${id}/encerrar`, { method: 'POST', body: '{}' }), () => 'Operação encerrada.');
+    });
+    $('ciCancelar')?.addEventListener('click', async () => {
+      const motivo = await pedirTexto('Motivo do cancelamento do CIOT (ex.: viagem não realizada, contratado trocado):', { titulo: 'Cancelar CIOT', tipo: 'perigo' });
+      if (motivo == null) return;
+      fazer('ciCancelar', () => json(`/api/pef/acertos/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }), () => 'CIOT cancelado.');
+    });
   }
 
   async function formAcerto(a = null) {
@@ -282,6 +386,7 @@
           ${Number(a.vale_pedagio_valor) ? `<p style="font-size:12.5px;">Vale-pedágio: ${brl(a.vale_pedagio_valor)} (pago pela empresa à fornecedora; não entra no frete).</p>` : ''}
           ${a.contas.length ? `<h4 style="margin:12px 0 6px;">Em contas a pagar</h4>${a.contas.map((c) => `<div style="font-size:12.5px;">• ${esc(c.descricao.split(' — ')[0])}: ${brl(c.valor)} · venc. ${dia(c.vencimento)} · <b>${{ aberta: Number(c.valor_pago) ? 'parcial' : 'em aberto', paga: 'paga', cancelada: 'cancelada' }[c.status]}</b></div>`).join('')}` : ''}
         </div></div>
+      ${a.tipo === 'terceiro' && a.status !== 'cancelado' ? '<div id="axCiotPainel" class="painel" style="padding:12px 14px; margin-top:14px;"><small>Carregando o CIOT…</small></div>' : ''}
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
         ${aberto ? '<button class="btn btn-secundario" id="axCancelar" style="width:auto; color:var(--vermelho);">Cancelar acerto</button><button class="btn btn-secundario" id="axEditar" style="width:auto;">Editar</button>' : ''}
         ${a.status === 'acertado' ? '<button class="btn btn-secundario" id="axReabrir" style="width:auto;">Reabrir</button>' : ''}
@@ -289,6 +394,7 @@
         ${aberto ? '<button class="btn btn-primario" id="axAcertar" style="width:auto;">✓ Fechar o acerto</button>' : ''}</div>`;
     modal.classList.remove('oculto');
     const depois = async () => { await abrirAcerto(id); telaAcertos().catch(() => {}); };
+    if (a.tipo === 'terceiro' && a.status !== 'cancelado') carregarCiot(id, depois);
     $('axLancar')?.addEventListener('click', async () => {
       try { await json(`/api/acertos/${id}/lancamentos`, { method: 'POST', body: JSON.stringify({ tipo: $('axLTipo').value, categoria: $('axLCat').value, valor: $('axLValor').value, data: $('axLData').value, descricao: $('axLDesc').value }) }); await depois(); $('axLValor')?.focus(); } catch (err) { erro(err); }
     });
@@ -297,7 +403,11 @@
     $('axAcertar')?.addEventListener('click', async () => {
       const msg = t.saldo > 0 ? `Fechar o acerto? ${brl(t.saldo)} vão para Contas a pagar.` : t.saldo < 0 ? `Fechar o acerto? O motorista devolve ${brl(-t.saldo)}.` : 'Fechar o acerto?';
       if (!await confirmar(`${msg}${a.mdfe_id ? ' O custo da viagem vai para o painel (resultado por viagem).' : ''}`, { textoOk: 'Fechar acerto' })) return;
-      try { await json(`/api/acertos/${id}/acertar`, { method: 'POST' }); await depois(); } catch (err) { erro(err); }
+      try {
+        const r = await json(`/api/acertos/${id}/acertar`, { method: 'POST' }); await depois();
+        if (r.ciot_encerrado) mostrarAlerta(`Acerto fechado e CIOT ${ciotFmt(r.ciot_encerrado)} encerrado no provedor.`, { tipo: 'sucesso' });
+        if (r.ciot_erro) mostrarAlerta(`Acerto fechado, mas o CIOT não foi encerrado: ${r.ciot_erro} Use "Encerrar agora" no quadro do CIOT.`, { tipo: 'aviso' });
+      } catch (err) { erro(err); }
     });
     $('axReabrir')?.addEventListener('click', async () => { try { await json(`/api/acertos/${id}/reabrir`, { method: 'POST' }); await depois(); } catch (err) { erro(err); } });
     $('axCancelar')?.addEventListener('click', async () => {

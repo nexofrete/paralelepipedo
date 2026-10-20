@@ -2396,3 +2396,22 @@ ALTER TABLE portal_usuarios ADD COLUMN IF NOT EXISTS endereco_coleta JSONB;
 -- (notas e fretes: auditoria do que a transportadora cobra, pagamento de fretes, relatórios) ou ambos.
 -- Só esconde da tela (menu, "Ir para", Hoje); as permissões de cada usuário continuam valendo.
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS modulos VARCHAR(15) NOT NULL DEFAULT 'ambos';
+
+-- Pagamento eletrônico de frete (CIOT e vale-pedágio) pelo provedor (Pamcard, Repom, e-Frete, Target ou simulador).
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS pef_config JSONB;
+CREATE TABLE IF NOT EXISTS pef_operacoes (
+  id SERIAL PRIMARY KEY,
+  acerto_id INTEGER NOT NULL REFERENCES acertos(id),
+  provedor VARCHAR(20) NOT NULL,
+  ambiente VARCHAR(12) NOT NULL DEFAULT 'homologacao',
+  simulado BOOLEAN NOT NULL DEFAULT FALSE,
+  status VARCHAR(12) NOT NULL,                 -- declarada | encerrada | cancelada
+  ciot VARCHAR(12), verificador VARCHAR(10), protocolo VARCHAR(40),
+  operacao JSONB NOT NULL,                     -- o que foi enviado (contratado, motorista, veículo, rota, valores)
+  vp_numero VARCHAR(30), vp_valor NUMERIC(14,2), vp_fornecedora_cnpj VARCHAR(14), vp_fornecedora_nome VARCHAR(120), vp_em TIMESTAMPTZ,
+  encerrada_em TIMESTAMPTZ, encerramento JSONB, protocolo_encerramento VARCHAR(40),
+  cancelada_em TIMESTAMPTZ, motivo_cancelamento VARCHAR(200), protocolo_cancelamento VARCHAR(40),
+  erro VARCHAR(500), usuario_nome VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_pef_operacoes_acerto ON pef_operacoes (acerto_id);

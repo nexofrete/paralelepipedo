@@ -14,6 +14,10 @@
           "texto": "Filtro de período igual em todas as telas (Este mês, Mês passado, Últimos 30 dias...), lembrado em cada tela."
         },
         {
+          "area": "Menu",
+          "texto": "Seta para recolher o menu lateral (fica só com os ícones e a tela ganha espaço; passando o mouse ele abre por cima). O menu agora acompanha o tema: claro no tema claro, escuro no escuro."
+        },
+        {
           "area": "Financeiro",
           "texto": "Régua de cobrança: lembretes automáticos por e-mail e WhatsApp antes e depois do vencimento, com pausa por cliente e pagamento prometido."
         },

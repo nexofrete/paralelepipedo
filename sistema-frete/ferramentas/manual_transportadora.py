@@ -23,6 +23,16 @@ def parte_operacao(g):
     s.append(P('O menu da esquerda é organizado por área: <b>Operação, Financeiro, Frota, Gestão, Notas e fretes</b> (a '
                'parte do embarcador) e <b>Configuração</b>. O grupo da tela aberta abre sozinho; os que você abrir à mão '
                'ficam abertos e o navegador lembra. No celular, o botão <b>Menu</b> abre o menu como uma gaveta.'))
+    s += h2('Recolher o menu e cores pelo tema')
+    s += lista([
+        'A <b>seta na borda do menu</b> (botão redondo no alto) recolhe o menu: ficam só os ícones e a tela ganha '
+        'espaço. Clique de novo para abrir.',
+        'Com o menu recolhido, <b>passe o mouse</b> sobre ele para abri-lo por cima da tela, sem empurrar o conteúdo; '
+        'tirando o mouse, ele volta a ficar só com os ícones. Parado sobre um ícone, aparece o nome da tela.',
+        'O navegador lembra se o menu fica aberto ou recolhido. No celular, o menu continua sendo a gaveta do botão Menu.',
+        'O menu acompanha o <b>tema</b> escolhido (Tema claro / Tema escuro, no rodapé do menu): claro no tema claro e '
+        'escuro no tema escuro, com o logo na cor certa.',
+    ])
     s += h2('Tela Hoje (código 000)')
     s.append(P('É a primeira tela de quem emite CT-e ou cuida do financeiro. Mostra, por área, o que precisa de atenção, '
                'em cartões que abrem a tela certa já filtrada. Vermelho é para resolver já, amarelo é para hoje e azul é '

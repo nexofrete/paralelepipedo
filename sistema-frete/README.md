@@ -195,6 +195,8 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
 - **Menu em grupos**, com os mesmos números do "Ir para":
   - 🚛 Operação, 💰 Financeiro, 🔧 Frota, 📊 Gestão, 📥 Notas e fretes (a parte do embarcador) e ⚙️ Configuração.
   - O grupo da tela aberta abre sozinho. Os que você abrir à mão ficam abertos, e o navegador lembra.
+- **Recolher o menu:** a seta redonda na borda do menu deixa só os ícones (a tela ganha espaço). Recolhido, passar o mouse abre o menu por cima, sem empurrar o conteúdo; o nome de cada tela aparece ao parar o mouse no ícone. O navegador lembra a escolha (`js/menuRecolher.js`; aplicada antes de desenhar em `js/tema.js`).
+- **Cores pelo tema:** o menu segue o tema escolhido (claro ou escuro), com o logo na cor certa — as cores ficam nas variáveis `--lat-*` de `css/style.css`.
 - **No celular**, o menu vira uma gaveta: o botão **☰ Menu** abre, e escolher a tela fecha.
 - **Filtro de período igual em todas as telas** (Painel gerencial e Margem, Frota, Fiscal e contabilidade, Movimentação do caixa, Ocorrências e Coletas):
   - Tem um atalho (Este mês, Mês passado, Últimos 30 dias, Últimos 3 meses, Este ano…) e as datas "de" e "até". Aplica na hora, sem botão "Filtrar".

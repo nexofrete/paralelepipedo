@@ -32,6 +32,64 @@
   const api = (caminho, opcoes = {}) => apiFetch(`/api/mdfe${caminho}`, { ...opcoes, headers: { 'Content-Type': 'application/json', ...(opcoes.headers || {}) } }).then(json);
   const post = (caminho, corpo = {}) => api(caminho, { method: 'POST', body: JSON.stringify(corpo) });
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
+  // Gerenciamento de risco (api /api/gr).
+  const apiGr = (caminho, opcoes = {}) => apiFetch(`/api/gr${caminho}`, { ...opcoes, headers: { 'Content-Type': 'application/json', ...(opcoes.headers || {}) } }).then(json);
+  const brlGr = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const COR_GR = { liberado: 'var(--verde)', vencida: '#d97706', pendente: '#d97706', negado: 'var(--vermelho)', sem_consulta: 'var(--texto-fraco)' };
+  // Versão curta para a tabela da frota.
+  const seloGrCurto = (s) => {
+    if (!s) return '<span style="color:var(--texto-fraco); font-size:12px;" title="Sem consulta na GR">—</span>';
+    const curto = { liberado: `✓ até ${s.validade ? s.validade.split('-').reverse().join('/').replace(/\/(\d{2})(\d{2})$/, '/$2') : ''}`, vencida: '⚠ vencida', negado: '✕ negado', pendente: '⏳ em análise', sem_consulta: '—' }[s.situacao];
+    return `<span style="color:${COR_GR[s.situacao] || 'inherit'}; font-weight:600; font-size:12px; white-space:nowrap;" title="${esc(s.texto)}">${curto}</span>`;
+  };
+  const seloGr = (s) => (s ? `<span style="color:${COR_GR[s.situacao] || 'inherit'}; font-weight:600; font-size:12px;">${s.situacao === 'liberado' ? '✓' : '⚠'} ${esc(s.texto)}</span>` : '<span style="color:var(--texto-fraco); font-size:12px;">sem consulta na GR</span>');
+  // Registro à mão do resultado da consulta feita no site da gerenciadora.
+  async function registrarGrManual(tipo, chave, nome) {
+    return new Promise((ok) => {
+      const fundo = document.createElement('div'); fundo.className = 'modal-fundo'; fundo.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9500; display:flex; align-items:center; justify-content:center;';
+      fundo.innerHTML = `<div class="painel" style="max-width:460px; width:94%;"><h4 style="margin:0 0 8px;">Registrar consulta da GR — ${esc(nome)}</h4>
+        <div class="cte-grade"><div class="campo"><label for="grmStatus">Resultado</label><select id="grmStatus" class="cte-entrada"><option value="liberado">Liberado</option><option value="pendente">Em análise</option><option value="negado">Negado</option></select></div>
+        <div class="campo"><label for="grmProt">Protocolo / nº da liberação</label><input id="grmProt" class="cte-entrada" maxlength="40" /></div>
+        <div class="campo"><label for="grmVal">Válido até</label><input id="grmVal" type="date" class="cte-entrada" /></div>
+        <div class="campo largo"><label for="grmMot">Observação</label><input id="grmMot" class="cte-entrada" maxlength="300" /></div></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;"><button class="btn btn-secundario" id="grmCanc" style="width:auto;">Cancelar</button><button class="btn btn-primario" id="grmOk" style="width:auto;">Registrar</button></div></div>`;
+      document.body.appendChild(fundo);
+      const sair = (v) => { fundo.remove(); ok(v); };
+      fundo.querySelector('#grmCanc').addEventListener('click', () => sair(null));
+      fundo.querySelector('#grmOk').addEventListener('click', async () => {
+        try { sair(await apiGr('/consultas/manual', { method: 'POST', body: JSON.stringify({ tipo, chave, status: $('grmStatus').value, protocolo: $('grmProt').value, validade: $('grmVal').value, motivo: $('grmMot').value }) })); } catch (e) { erro(e); }
+      });
+    });
+  }
+  async function configGr() {
+    const { config: c, provedores } = await apiGr('/config');
+    const val = (v) => (v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+    modal.querySelector('#mdfeModalConteudo').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">🛡 Gerenciamento de risco</h3><span style="cursor:pointer; font-size:18px;" data-mdfe-fechar>✕</span></div>
+      <p style="font-size:13px; color:var(--texto-fraco);">A gerenciadora de risco (GR) consulta e libera o motorista e o veículo e monitora a viagem (SM). As regras abaixo vêm do plano de gerenciamento de risco da apólice. Buonny, Telerisco, Opentech e Tecnorisk são ligadas com o manual da API e as credenciais do contrato; até lá, registre à mão a consulta feita no site da GR. O simulador faz o fluxo inteiro, sem valor para a seguradora.</p>
+      <div class="cte-grade">
+        <div class="campo largo"><label for="grProv">Gerenciadora</label><select id="grProv" class="cte-entrada">${provedores.map((p) => `<option value="${p.id}" ${p.id === c.provedor ? 'selected' : ''}>${esc(p.nome)}${p.aguardando ? ' — aguardando contrato' : ''}</option>`).join('')}</select></div>
+        <div class="campo"><label for="grUsu">Usuário</label><input id="grUsu" class="cte-entrada" value="${esc(c.credenciais.usuario || '')}" /></div>
+        <div class="campo"><label for="grSenha">Senha</label><input id="grSenha" type="password" autocomplete="new-password" class="cte-entrada" value="${esc(c.credenciais.senha || '')}" /></div>
+        <div class="campo"><label for="grCod">Código do cliente</label><input id="grCod" class="cte-entrada" value="${esc(c.credenciais.codigo_cliente || '')}" /></div>
+        <div class="campo"><label for="grValid">Validade da liberação (dias)</label><input id="grValid" type="number" min="1" max="730" class="cte-entrada" value="${esc(c.validade_dias)}" /></div>
+        <div class="campo"><label for="grLimite">Limite da apólice por veículo (R$)</label><input id="grLimite" class="cte-entrada" inputmode="decimal" value="${val(c.limite_apolice)}" placeholder="sem limite" /></div>
+        <div class="campo"><label for="grRast">Rastreador a partir de (R$)</label><input id="grRast" class="cte-entrada" inputmode="decimal" value="${val(c.valor_rastreador)}" placeholder="não exige" /></div>
+        <div class="campo"><label for="grEsc">Escolta a partir de (R$)</label><input id="grEsc" class="cte-entrada" inputmode="decimal" value="${val(c.valor_escolta)}" placeholder="não exige" /></div>
+        <div class="campo"><label for="grSm">SM (monitoramento) a partir de (R$)</label><input id="grSm" class="cte-entrada" inputmode="decimal" value="${val(c.valor_sm)}" placeholder="não exige" /></div>
+        <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="grExige" ${c.exigir_liberacao ? 'checked' : ''} style="width:auto;" /> Motorista e veículo precisam estar liberados pela GR</label></div>
+        <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="grBloq" ${c.bloquear_mdfe ? 'checked' : ''} style="width:auto;" /> Não deixar transmitir o MDF-e com pendência de gerenciamento de risco (sem isso, só avisa)</label></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;"><button class="btn btn-secundario" data-mdfe-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="grSalvar" style="width:auto;">Salvar</button></div>`;
+    modal.classList.remove('oculto');
+    $('grSalvar').addEventListener('click', async () => {
+      try {
+        await apiGr('/config', { method: 'PUT', body: JSON.stringify({ provedor: $('grProv').value, credenciais: { usuario: $('grUsu').value, senha: $('grSenha').value, codigo_cliente: $('grCod').value },
+          validade_dias: $('grValid').value, limite_apolice: $('grLimite').value, valor_rastreador: $('grRast').value, valor_escolta: $('grEsc').value, valor_sm: $('grSm').value,
+          exigir_liberacao: $('grExige').checked, bloquear_mdfe: $('grBloq').checked }) });
+        fechar(); mostrarAlerta('Gerenciamento de risco salvo.', { tipo: 'sucesso' });
+      } catch (e) { erro(e); }
+    });
+  }
   const fechar = () => modal.classList.add('oculto');
   const opcoes = (mapa, atual) => Object.entries(mapa).map(([k, t]) => `<option value="${k}" ${String(atual) === k ? 'selected' : ''}>${k} - ${esc(t)}</option>`).join('');
   const campo = (id, rotulo, valor = '', { tipo = 'text', classe = '', ph = '', extra = '' } = {}) => `<div class="campo ${classe}"><label for="${id}">${rotulo}</label><input type="${tipo}" id="${id}" class="cte-entrada" value="${esc(valor)}" placeholder="${esc(ph)}" ${extra} /></div>`;
@@ -58,6 +116,7 @@
           <button class="btn btn-primario" id="mdfeNovo" style="width:auto;">+ MDF-e dos CT-e autorizados</button>
           <button class="btn btn-secundario" id="mdfeAbertos" style="width:auto;">🔎 Não encerrados na SEFAZ</button>
           <button class="btn btn-secundario" id="mdfeTestar" style="width:auto;">📡 Testar conexão</button>
+          <button class="btn btn-secundario" id="mdfeGr" style="width:auto;">🛡 Gerenciamento de risco</button>
           <select id="mdfeFiltro" class="cte-entrada" style="width:auto; margin-left:auto;"><option value="">Todos</option>${Object.entries(STATUS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select>
         </div>
         <div style="overflow-x:auto;"><table class="edi-tabela" id="tabelaMdfe"><thead><tr><th>Nº</th><th>Situação</th><th>Veículo / motorista</th><th>Percurso</th><th style="text-align:right;">Docs</th><th style="text-align:right;">Valor da carga</th><th></th></tr></thead><tbody></tbody></table></div>
@@ -70,6 +129,7 @@
         b.disabled = false;
       });
       $('mdfeFiltro').addEventListener('change', () => carregarLista());
+      $('mdfeGr').addEventListener('click', () => configGr().catch(erro));
       $('tabelaMdfe').addEventListener('click', acaoDaLista);
       api('/tabelas').then((t) => { tabelas = t; }).catch(() => {});
     }
@@ -305,6 +365,7 @@
         ${campo('mfVpForn', 'CNPJ fornecedora vale-pedágio', Doc.formatar(vp.cnpjForn || ''))}${campo('mfVpDoc', 'CPF/CNPJ do pagador', Doc.formatar(vp.docPg || ''))}${campo('mfVpCompra', 'Nº do comprovante', vp.nCompra || '')}${campo('mfVpValor', 'Valor do vale-pedágio', fmt(vp.vValePed))}
         ${campo('mfContrNome', 'Contratante do frete (nome)', d.contratantes?.[0]?.xNome || '', { classe: 'largo' })}${campo('mfContrDoc', 'CNPJ/CPF do contratante', Doc.formatar(d.contratantes?.[0]?.doc || ''))}</div>`)}
       ${sec('Observações', `<textarea id="mfObs" class="cte-entrada" rows="2" style="width:100%;">${esc(d.infCpl || '')}</textarea>`)}
+      <div class="cte-secao"><h4>🛡 Gerenciamento de risco</h4><div id="mfGr"><small>Conferindo…</small></div></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px;">
         <button class="btn btn-secundario" data-mdfe-fechar style="width:auto;">Fechar</button>
         <button class="btn btn-secundario" id="mfPrevia" style="width:auto;">👁 Prévia do DAMDFE</button>
@@ -338,6 +399,56 @@
       };
     };
     const salvar = () => api(`/${id}`, { method: 'PUT', body: JSON.stringify({ dados: ler() }) });
+    const editavel = ['rascunho', 'rejeitado', 'erro'].includes(m.status);
+    // Quadro do gerenciamento de risco: liberação de cada motorista e veículo, regras da apólice, escolta e SM.
+    async function carregarGr() {
+      const alvo = $('mfGr'); if (!alvo) return;
+      let a;
+      try { a = await apiGr(`/mdfe/${id}`); } catch (e) { alvo.innerHTML = `<small style="color:var(--vermelho);">${esc(e.message)}</small>`; return; }
+      const linhaItem = (x) => `<tr><td>${x.tipo === 'motorista' ? '👤' : '🚛'} <b>${esc(x.nome || x.chave)}</b> <small style="color:var(--texto-fraco);">${esc(x.tipo === 'motorista' ? cpfFmt(x.chave) : x.chave)}</small></td><td>${seloGr(x)}</td>
+        <td style="white-space:nowrap;">${x.situacao !== 'liberado' ? `<button class="btn btn-secundario" data-gr-consultar="${x.tipo}|${esc(x.chave)}" style="width:auto; padding:3px 9px; font-size:12px;">Consultar na GR</button>
+          <button class="btn btn-secundario" data-gr-manual="${x.tipo}|${esc(x.chave)}|${esc(x.nome || x.chave)}" style="width:auto; padding:3px 9px; font-size:12px;">Registrar à mão</button>` : ''}</td></tr>`;
+      alvo.innerHTML = `<div style="font-size:12.5px; color:var(--texto-fraco); margin-bottom:6px;">Gerenciadora: <b>${esc(a.provedor.nome || '')}</b>${a.provedor.aguardando ? ' (aguardando contrato: registre à mão a consulta do site da GR)' : ''} · carga de <b>${brlGr(a.valor)}</b>${a.rastreador ? ` · rastreador ${esc(a.rastreador.tecnologia)} ${esc(a.rastreador.id || '')}` : ''}</div>
+        ${a.itens.length ? `<table class="edi-tabela"><tbody>${a.itens.map(linhaItem).join('')}</tbody></table>` : ''}
+        ${a.regras.length ? `<ul style="margin:8px 0; padding-left:18px; font-size:13px;">${a.regras.map((r) => `<li style="color:${r.ok ? 'var(--verde)' : '#d97706'};">${r.ok ? '✓' : '⚠'} ${esc(r.regra)}</li>`).join('')}</ul>` : ''}
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px; font-size:13px;">
+          <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" id="grEscolta" ${a.escolta?.contratada ? 'checked' : ''} style="width:auto;" /> Escolta contratada</label>
+          <input id="grEscoltaEmp" class="cte-entrada" style="max-width:220px;" placeholder="empresa de escolta" value="${esc(a.escolta?.empresa || '')}" />
+          ${a.sm ? `<span>📡 SM <b>${esc(a.sm.numero)}</b> enviada${a.sm.simulado ? ' (simulada)' : ''}</span><button class="btn btn-secundario" id="grSmCancelar" style="width:auto; padding:4px 10px; font-size:12.5px;">Cancelar SM</button>`
+            : '<button class="btn btn-secundario" id="grSmEnviar" style="width:auto;">📡 Enviar SM (monitoramento)</button>'}
+          ${editavel ? '<button class="btn btn-secundario" id="grRever" style="width:auto;">↻ Salvar e conferir de novo</button>' : ''}
+        </div>
+        ${a.pendencias.length ? `<div class="cte-aviso ${a.bloqueia ? 'erro' : ''}" style="margin-top:8px; font-size:12.5px;"><b>${a.bloqueia ? 'Não transmite enquanto houver:' : 'Pendências (a empresa escolheu só avisar):'}</b><ul style="margin:4px 0 0; padding-left:18px;">${a.pendencias.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>`
+          : '<div style="color:var(--verde); font-size:13px; margin-top:8px;">✓ Gerenciamento de risco em ordem para esta viagem.</div>'}`;
+      const recarregar = () => carregarGr();
+      alvo.querySelectorAll('[data-gr-consultar]').forEach((b) => b.addEventListener('click', async () => {
+        const [tipo, chave] = b.dataset.grConsultar.split('|'); b.disabled = true;
+        try { const r = await apiGr('/consultar', { method: 'POST', body: JSON.stringify({ tipo, chave }) }); mostrarAlerta(`${r.nome || chave}: ${r.texto}${r.protocolo ? ` (protocolo ${r.protocolo})` : ''}.`, { tipo: r.situacao === 'liberado' ? 'sucesso' : 'aviso' }); } catch (e) { erro(e); }
+        recarregar();
+      }));
+      alvo.querySelectorAll('[data-gr-manual]').forEach((b) => b.addEventListener('click', async () => {
+        const [tipo, chave, nome] = b.dataset.grManual.split('|');
+        if (await registrarGrManual(tipo, chave, nome)) recarregar();
+      }));
+      const salvarEscolta = async () => {
+        try { const r = await apiGr(`/mdfe/${id}/escolta`, { method: 'PUT', body: JSON.stringify({ contratada: $('grEscolta').checked, empresa: $('grEscoltaEmp').value }) }); d.gr = { ...(d.gr || {}), escolta: r.escolta }; recarregar(); } catch (e) { erro(e); }
+      };
+      $('grEscolta').addEventListener('change', salvarEscolta);
+      $('grEscoltaEmp').addEventListener('change', () => { if ($('grEscolta').checked) salvarEscolta(); });
+      $('grSmEnviar')?.addEventListener('click', async (ev) => {
+        ev.currentTarget.disabled = true;
+        try { const r = await apiGr(`/mdfe/${id}/sm`, { method: 'POST' }); mostrarAlerta(`SM ${r.numero} enviada à gerenciadora.`, { tipo: 'sucesso' }); } catch (e) { erro(e); }
+        recarregar();
+      });
+      $('grSmCancelar')?.addEventListener('click', async () => {
+        const motivo = await pedirTexto('Motivo do cancelamento da SM:', { titulo: 'Cancelar SM', tipo: 'perigo' });
+        if (motivo == null) return;
+        try { await apiGr(`/mdfe/${id}/sm/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }); } catch (e) { erro(e); }
+        recarregar();
+      });
+      $('grRever')?.addEventListener('click', async () => { try { await salvar(); recarregar(); } catch (e) { erro(e); } });
+    }
+    carregarGr();
     $('mfSalvar').addEventListener('click', async () => { try { await salvar(); mostrarAlerta('Rascunho salvo.', { tipo: 'sucesso' }); carregarLista(); } catch (e) { erro(e); } });
     $('mfPrevia').addEventListener('click', async () => { try { await salvar(); window.open(`/api/mdfe/${id}/damdfe?token=${encodeURIComponent(token)}`, '_blank'); } catch (e) { erro(e); } });
     $('mfTransmitir').addEventListener('click', async (e) => {
@@ -362,21 +473,24 @@
 
   // ======================= Veículos e motoristas =======================
   async function montarFrota() {
-    await Promise.all([carregarCadastros(), Object.keys(tabelas.tiposRodado).length ? null : api('/tabelas').then((t) => { tabelas = t; })]);
+    let grSit = { motorista: {}, veiculo: {} };
+    await Promise.all([carregarCadastros(), Object.keys(tabelas.tiposRodado).length ? null : api('/tabelas').then((t) => { tabelas = t; }), apiGr('/situacoes').then((r) => { grSit = r; }).catch(() => {})]);
     painelFrota.innerHTML = `<div class="cte-duas" style="display:grid; grid-template-columns:1.4fr 1fr; gap:16px;">
       <div class="painel"><div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">🚛 Veículos</h3><button class="btn btn-primario" id="frNovoVeic" style="width:auto;">+ Veículo</button></div>
-        <table class="edi-tabela" style="margin-top:10px;"><thead><tr><th>Placa</th><th>Tipo</th><th>Tara / capacidade</th><th>Rodado / carroceria</th><th></th></tr></thead><tbody>
+        <div style="overflow-x:auto;"><table class="edi-tabela" style="margin-top:10px;"><thead><tr><th>Placa</th><th>Tipo</th><th>Tara / capacidade</th><th>Rodado / carroceria</th><th>GR</th><th></th></tr></thead><tbody>
         ${veiculos.map((x) => `<tr style="${x.ativo ? '' : 'opacity:.5;'}"><td><b>${esc(x.placa)}</b><br><small style="color:var(--texto-fraco);">${esc(x.descricao || '')}${x.proprietario?.doc ? ' · terceiro' : ''}</small></td>
           <td>${x.tipo === 'reboque' ? 'Reboque' : 'Tração'}</td><td>${fmt(x.tara, 0)} kg${x.cap_kg ? ` / ${fmt(x.cap_kg, 0)} kg` : ''}</td>
           <td style="font-size:12px;">${esc(tabelas.tiposRodado[x.tp_rod] || '')}${x.tipo === 'reboque' ? '' : ' / '}${esc(tabelas.tiposCarroceria[x.tp_car] || '')}</td>
+          <td>${seloGrCurto(grSit.veiculo[x.placa])}${x.rastreador_tecnologia ? `<br><small>📡 ${esc(x.rastreador_tecnologia)}</small>` : ''}</td>
           <td><div class="cte-acoes"><button class="btn btn-secundario" data-fr-veic="${x.id}">✏️</button>${x.ativo ? `<button class="btn btn-secundario" data-fr-desat-veic="${x.id}">Desativar</button>` : ''}</div></td></tr>`).join('')
-          || '<tr><td colspan="5" style="color:var(--texto-fraco);">Nenhum veículo cadastrado.</td></tr>'}</tbody></table></div>
+          || '<tr><td colspan="6" style="color:var(--texto-fraco);">Nenhum veículo cadastrado.</td></tr>'}</tbody></table></div></div>
       <div class="painel"><div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">👤 Motoristas</h3><button class="btn btn-primario" id="frNovoMot" style="width:auto;">+ Motorista</button></div>
-        <table class="edi-tabela" style="margin-top:10px;"><thead><tr><th>Nome</th><th>CPF</th><th>CNH</th><th></th></tr></thead><tbody>
+        <div style="overflow-x:auto;"><table class="edi-tabela" style="margin-top:10px;"><thead><tr><th>Nome</th><th>CPF</th><th>CNH</th><th>GR</th><th></th></tr></thead><tbody>
         ${motoristas.map((x) => { const venc = x.cnh_validade && new Date(x.cnh_validade) < new Date(); return `<tr style="${x.ativo ? '' : 'opacity:.5;'}"><td><b>${esc(x.nome)}</b><br><small style="color:var(--texto-fraco);">${esc(x.telefone || '')}</small></td><td>${cpfFmt(x.cpf)}</td>
           <td style="${venc ? 'color:var(--vermelho);' : ''}">${esc(x.cnh || '')}${x.cnh_validade ? `<br><small>${venc ? 'vencida ' : 'vence '}${new Date(x.cnh_validade).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</small>` : ''}</td>
+          <td>${seloGrCurto(grSit.motorista[x.cpf])}</td>
           <td><div class="cte-acoes"><button class="btn btn-secundario" data-fr-mot="${x.id}">✏️</button>${x.ativo ? `<button class="btn btn-secundario" data-fr-desat-mot="${x.id}">Desativar</button>` : ''}</div></td></tr>`; }).join('')
-          || '<tr><td colspan="4" style="color:var(--texto-fraco);">Nenhum motorista cadastrado.</td></tr>'}</tbody></table></div></div>`;
+          || '<tr><td colspan="5" style="color:var(--texto-fraco);">Nenhum motorista cadastrado.</td></tr>'}</tbody></table></div></div></div>`;
     $('frNovoVeic').addEventListener('click', () => formVeiculo({}));
     $('frNovoMot').addEventListener('click', () => formMotorista({}));
     painelFrota.querySelectorAll('[data-fr-veic]').forEach((b) => b.addEventListener('click', () => formVeiculo(veiculos.find((x) => String(x.id) === b.dataset.frVeic))));
@@ -395,7 +509,8 @@
         ${campo('veRenavam', 'RENAVAM', x.renavam || '', { extra: 'maxlength="11"' })}${selUf('veUf', 'UF do licenciamento', x.uf)}
         ${campo('veTara', 'Tara (kg)', x.tara || '', { tipo: 'number' })}${campo('veCapKg', 'Capacidade (kg)', x.cap_kg || '', { tipo: 'number' })}${campo('veCapM3', 'Capacidade (m³)', x.cap_m3 || '', { tipo: 'number' })}
         <div class="campo"><label for="veRod">Tipo de rodado</label><select id="veRod" class="cte-entrada">${opcoes(tabelas.tiposRodado, x.tp_rod || '01')}</select></div>
-        <div class="campo"><label for="veCar">Carroceria</label><select id="veCar" class="cte-entrada">${opcoes(tabelas.tiposCarroceria, x.tp_car || '02')}</select></div></div></div>
+        <div class="campo"><label for="veCar">Carroceria</label><select id="veCar" class="cte-entrada">${opcoes(tabelas.tiposCarroceria, x.tp_car || '02')}</select></div>
+        ${campo('veRastTec', 'Rastreador (tecnologia)', x.rastreador_tecnologia || '', { ph: 'ex.: Sascar, Omnilink, Onixsat' })}${campo('veRastId', 'ID / terminal do rastreador', x.rastreador_id || '')}</div></div>
       <details ${p.doc ? 'open' : ''}><summary style="cursor:pointer;">Veículo de terceiro (agregado / TAC)</summary><div class="cte-grade" style="margin-top:8px;">
         ${campo('vePropDoc', 'CPF/CNPJ do proprietário', Doc.formatar(p.doc || ''))}${campo('vePropNome', 'Nome do proprietário', p.xNome || '', { classe: 'largo' })}${campo('vePropRntrc', 'RNTRC', p.rntrc || '', { extra: 'maxlength="8"' })}
         ${campo('vePropIe', 'IE (ou ISENTO)', p.ie || '')}${selUf('vePropUf', 'UF', p.uf)}
@@ -407,6 +522,7 @@
       try {
         await post('/veiculos', { placa: $('vePlaca').value, tipo: $('veTipo').value, descricao: $('veDesc').value, renavam: $('veRenavam').value, uf: $('veUf').value,
           tara: Number($('veTara').value), cap_kg: Number($('veCapKg').value), cap_m3: Number($('veCapM3').value), tp_rod: $('veRod').value, tp_car: $('veCar').value,
+          rastreador_tecnologia: $('veRastTec').value, rastreador_id: $('veRastId').value,
           proprietario: doc ? { doc, xNome: $('vePropNome').value.trim(), rntrc: digitos($('vePropRntrc').value), ie: $('vePropIe').value.trim(), uf: $('vePropUf').value, tpProp: $('vePropTp').value } : null });
         fechar(); montarFrota();
       } catch (e) { erro(e); }

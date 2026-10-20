@@ -120,7 +120,8 @@ const acao = (nome, fn, msg) => router.post(`/:id(\\d+)/${nome}`, autenticar, em
     res.json(r);
   } catch (err) { erro(res, err, `Erro ao ${nome}.`); }
 });
-acao('transmitir', (id) => emissao.transmitir(id), 'Transmitiu');
+// Gerenciamento de risco: com o bloqueio ligado, só transmite com motorista/veículo liberados e as regras da apólice cumpridas.
+acao('transmitir', async (id) => { await require('../gr/gr').conferirParaTransmitir(id); return emissao.transmitir(id); }, 'Transmitiu');
 acao('consultar', (id) => emissao.consultar(id), 'Consultou');
 acao('cancelar', (id, b) => emissao.cancelar(id, b.justificativa), 'Cancelou');
 acao('encerrar', (id, b) => emissao.encerrar(id, b), 'Encerrou');
@@ -171,10 +172,12 @@ router.post('/veiculos', autenticar, emitir, async (req, res) => {
     if (!(Number(b.tara) > 0)) return res.status(400).json({ erro: 'Informe a tara (kg).' });
     const v = [placa, b.tipo === 'reboque' ? 'reboque' : 'tracao', soDigitos(b.renavam) || null, Math.round(b.tara), Number(b.cap_kg) ? Math.round(b.cap_kg) : null,
       Number(b.cap_m3) ? Math.round(b.cap_m3) : null, TIPOS_RODADO[b.tp_rod] ? b.tp_rod : '01', TIPOS_CARROCERIA[b.tp_car] ? b.tp_car : '02',
-      String(b.uf || '').toUpperCase().slice(0, 2) || null, String(b.descricao || '').trim().slice(0, 60) || null, b.proprietario?.doc ? b.proprietario : null, b.ativo !== false];
+      String(b.uf || '').toUpperCase().slice(0, 2) || null, String(b.descricao || '').trim().slice(0, 60) || null, b.proprietario?.doc ? b.proprietario : null, b.ativo !== false,
+      String(b.rastreador_tecnologia || '').trim().slice(0, 40) || null, String(b.rastreador_id || '').trim().slice(0, 40) || null];
     const { rows } = await pool.query(
-      `INSERT INTO veiculos (placa, tipo, renavam, tara, cap_kg, cap_m3, tp_rod, tp_car, uf, descricao, proprietario, ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       ON CONFLICT (placa) DO UPDATE SET tipo = $2, renavam = $3, tara = $4, cap_kg = $5, cap_m3 = $6, tp_rod = $7, tp_car = $8, uf = $9, descricao = $10, proprietario = $11, ativo = $12 RETURNING *`, v);
+      `INSERT INTO veiculos (placa, tipo, renavam, tara, cap_kg, cap_m3, tp_rod, tp_car, uf, descricao, proprietario, ativo, rastreador_tecnologia, rastreador_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       ON CONFLICT (placa) DO UPDATE SET tipo = $2, renavam = $3, tara = $4, cap_kg = $5, cap_m3 = $6, tp_rod = $7, tp_car = $8, uf = $9, descricao = $10, proprietario = $11, ativo = $12,
+         rastreador_tecnologia = $13, rastreador_id = $14 RETURNING *`, v);
     log(req, 'veiculo', `Salvou o veículo ${placa}`);
     res.json(rows[0]);
   } catch (err) { erro(res, err, 'Erro ao salvar o veículo.'); }

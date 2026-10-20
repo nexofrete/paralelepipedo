@@ -235,6 +235,7 @@ app.use('/api/transferencias', unidadesRoutes.transferencias);
 app.use('/api/contas-pagar', contasPagarRoutes.contasPagar);
 app.use('/api/acertos', contasPagarRoutes.acertos);
 app.use('/api/pef', require('./src/routes/pef'));
+app.use('/api/gr', require('./src/routes/gr'));
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
 app.use('/api/contabil', require('./src/routes/contabil'));

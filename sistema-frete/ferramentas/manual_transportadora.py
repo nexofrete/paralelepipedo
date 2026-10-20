@@ -149,6 +149,25 @@ def parte_operacao(g):
         'Confira veículo, motoristas, seguro, CIOT, vale-pedágio e contratante, e <b>Salvar e transmitir</b>.',
         'No fim da viagem, <b>Encerrar</b>. Com MDF-e aberto para a placa, a SEFAZ recusa outro.',
     ])
+    s += h2('Gerenciamento de risco (GR)')
+    s.append(P('Em <b>MDF-e » 🛡 Gerenciamento de risco</b> escolha a gerenciadora (Buonny, Telerisco, Opentech, Tecnorisk ou o '
+               'simulador), as credenciais e as regras do plano de gerenciamento de risco da apólice: validade da liberação, '
+               'limite de valor por veículo e os valores a partir dos quais a viagem precisa de rastreador, escolta e '
+               'solicitação de monitoramento (SM). Dá para só avisar ou impedir a transmissão do MDF-e com pendência.'))
+    s += lista([
+        '<b>Liberação de motorista e veículo</b>: "Consultar na GR" pede a liberação à gerenciadora; "Registrar à mão" guarda '
+        'o resultado da consulta feita no site da GR (resultado, protocolo e validade). A situação aparece em Veículos e '
+        'motoristas (coluna GR) e no MDF-e: liberado até a data, vencida, negado, em análise ou sem consulta.',
+        '<b>Rastreador</b>: tecnologia e ID no cadastro do veículo.',
+        '<b>No MDF-e</b>, o quadro Gerenciamento de risco mostra cada motorista e veículo, as regras da apólice para o valor da '
+        'carga, a escolta (marque quando contratada) e a SM. "Salvar e conferir de novo" refaz a conferência depois de '
+        'trocar motorista ou veículo.',
+        '<b>Enviar SM</b>: manda a viagem (motoristas, veículo e rastreador, carretas, origem, destinos, valor e produto) para '
+        'a gerenciadora monitorar; só com motorista e veículo liberados. A SM pode ser cancelada com motivo.',
+    ])
+    s += aviso('importante', 'Buonny, Telerisco, Opentech e Tecnorisk só liberam a API com o contrato. Até lá a gerenciadora '
+                             'escolhida avisa e nada é enviado: registre à mão a consulta do site da GR. O simulador faz o fluxo '
+                             'inteiro, sem valor para a seguradora.')
 
     # 34
     s += h1('34. NFS-e do frete municipal')

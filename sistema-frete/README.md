@@ -655,6 +655,12 @@ Em **🚛 Operação de Transporte → 📋 MDF-e**, o sistema emite o MDF-e (mo
 
 Com o MDF-e autorizado, também dá para **incluir motorista** (troca durante a viagem), consultar e cancelar. O cancelamento só vale antes de o caminhão sair; depois disso, encerre.
 
+**🛡 Gerenciamento de risco (GR).** Na lista de MDF-e, *🛡 Gerenciamento de risco* configura a gerenciadora (**Buonny, Telerisco, Opentech, Tecnorisk** ou **Simulador**), as credenciais (senha criptografada) e as regras da apólice: validade da liberação (dias), limite de valor por veículo e valores que exigem rastreador, escolta e SM; e se a pendência só avisa ou **impede a transmissão** do MDF-e.
+- Liberação de motorista (CPF) e veículo (placa): **Consultar na GR** ou **Registrar à mão** (resultado, protocolo, validade) a consulta feita no site da GR. Situação na coluna **GR** de Veículos e motoristas e no MDF-e.
+- Rastreador (tecnologia e ID) no cadastro do veículo.
+- No MDF-e, o quadro **Gerenciamento de risco** confere tudo para o valor da carga, marca a escolta e envia/cancela a **SM** (só com motorista e veículo liberados).
+- Tabelas `gr_consultas` e `gr_sm`; código em `src/gr/` (`provedores.js`: uma interface por gerenciadora). As gerenciadoras reais aguardam o manual da API e as credenciais do contrato.
+
 ## Painel gerencial
 
 Fica em **🚛 Operação de Transporte → 📊 Painel gerencial**. Acessa quem emite CT-e ou tem a permissão do Financeiro ou de Relatórios.

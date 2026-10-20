@@ -38,6 +38,10 @@
           "texto": "CIOT e vale-pedágio pelo provedor (Pamcard, Repom, e-Frete, Target ou simulador) no acerto com terceiro: declarar, comprar o vale-pedágio, encerrar ao fechar o acerto e cancelar, com tudo indo para o MDF-e; o vale-pedágio comprado vira conta a pagar para a fornecedora."
         },
         {
+          "area": "Financeiro",
+          "texto": "Gerenciamento de risco: liberação de motorista e veículo na gerenciadora (Buonny, Telerisco, Opentech, Tecnorisk, simulador ou registro à mão), regras da apólice (limite, rastreador, escolta, SM) conferidas no MDF-e e envio da SM."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

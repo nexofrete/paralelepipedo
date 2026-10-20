@@ -2417,3 +2417,35 @@ CREATE TABLE IF NOT EXISTS pef_operacoes (
 CREATE INDEX IF NOT EXISTS idx_pef_operacoes_acerto ON pef_operacoes (acerto_id);
 -- Conta a pagar do vale-pedágio comprado pelo provedor (cancelada junto com o CIOT, se ainda não foi paga).
 ALTER TABLE pef_operacoes ADD COLUMN IF NOT EXISTS vp_conta_id INTEGER REFERENCES contas_pagar(id);
+
+-- Gerenciamento de risco (GR): consulta e liberação de motorista e veículo, regras da apólice e
+-- solicitação de monitoramento (SM) da viagem, pela gerenciadora (Buonny, Telerisco, Opentech, Tecnorisk ou simulador).
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS gr_config JSONB;
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS rastreador_tecnologia VARCHAR(40);
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS rastreador_id VARCHAR(40);
+CREATE TABLE IF NOT EXISTS gr_consultas (
+  id SERIAL PRIMARY KEY,
+  tipo VARCHAR(10) NOT NULL,                  -- motorista | veiculo
+  chave VARCHAR(14) NOT NULL,                 -- CPF do motorista ou placa
+  nome VARCHAR(150),
+  provedor VARCHAR(20) NOT NULL,
+  simulado BOOLEAN NOT NULL DEFAULT FALSE,
+  status VARCHAR(12) NOT NULL,                -- liberado | negado | pendente
+  protocolo VARCHAR(40), motivo VARCHAR(300), validade DATE,
+  usuario_nome VARCHAR(150),
+  consultado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_gr_consultas_chave ON gr_consultas (tipo, chave, consultado_em DESC);
+CREATE TABLE IF NOT EXISTS gr_sm (
+  id SERIAL PRIMARY KEY,
+  mdfe_id INTEGER NOT NULL REFERENCES mdfes(id),
+  provedor VARCHAR(20) NOT NULL,
+  simulado BOOLEAN NOT NULL DEFAULT FALSE,
+  numero VARCHAR(40),
+  status VARCHAR(12) NOT NULL,                -- enviada | cancelada
+  viagem JSONB NOT NULL,
+  motivo_cancelamento VARCHAR(200), cancelada_em TIMESTAMPTZ,
+  usuario_nome VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_gr_sm_mdfe ON gr_sm (mdfe_id);

@@ -1,4 +1,5 @@
 const express = require('express');
+const Doc = require('../utils/documento');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const pool = require('../db');
@@ -24,7 +25,7 @@ const CAMPOS_TABELA = [
 // Cliente da tabela (tabela exclusiva): só números, CNPJ ou CPF. Vazio = tabela geral.
 function lerCliente(body) {
   if (!('cliente_doc' in body)) return null;
-  const doc = String(body.cliente_doc || '').replace(/\D/g, '');
+  const doc = Doc.limpar(body.cliente_doc) || '';
   if (doc && ![11, 14].includes(doc.length)) return 'CNPJ/CPF do cliente da tabela inválido.';
   body.cliente_doc = doc || null;
   body.cliente_nome = doc ? (String(body.cliente_nome || '').trim().slice(0, 200) || null) : null;

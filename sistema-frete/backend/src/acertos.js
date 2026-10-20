@@ -9,6 +9,7 @@
 // para o MDF-e (se ainda não foi transmitido); o custo vai para o "resultado
 // por viagem" do painel.
 const pool = require('./db');
+const Doc = require('./utils/documento');
 const contas = require('./contasPagar');
 
 const { centavos, valor } = contas;
@@ -34,14 +35,14 @@ function lerAcerto(b = {}) {
   const a = {
     tipo: b.tipo === 'terceiro' ? 'terceiro' : 'proprio',
     motorista_nome: texto(b.motorista_nome, 120), motorista_cpf: digitos(b.motorista_cpf, 11),
-    proprietario_nome: texto(b.proprietario_nome, 200), proprietario_doc: digitos(b.proprietario_doc, 14), rntrc: digitos(b.rntrc, 20),
+    proprietario_nome: texto(b.proprietario_nome, 200), proprietario_doc: Doc.limpar(b.proprietario_doc), rntrc: digitos(b.rntrc, 20),
     placa: texto(b.placa, 10)?.toUpperCase().replace(/[^A-Z0-9]/g, '') || null, descricao: texto(b.descricao, 200),
     data_saida: /^\d{4}-\d{2}-\d{2}$/.test(String(b.data_saida || '')) ? b.data_saida : contas.hojeBr(),
     mdfe_id: Number(b.mdfe_id) || null, romaneio_id: Number(b.romaneio_id) || null, transferencia_id: Number(b.transferencia_id) || null,
     valor_frete: valor(b.valor_frete) || 0, adiantamento: valor(b.adiantamento) || 0,
     reter_impostos: b.reter_impostos === true || b.reter_impostos === 'true',
     inss: valor(b.inss) || 0, sest_senat: valor(b.sest_senat) || 0, irrf: valor(b.irrf) || 0,
-    ciot: digitos(b.ciot, 12), vale_pedagio_valor: valor(b.vale_pedagio_valor) || 0, vale_pedagio_cnpj: digitos(b.vale_pedagio_cnpj, 14), vale_pedagio_compra: texto(b.vale_pedagio_compra, 30),
+    ciot: digitos(b.ciot, 12), vale_pedagio_valor: valor(b.vale_pedagio_valor) || 0, vale_pedagio_cnpj: Doc.limpar(b.vale_pedagio_cnpj), vale_pedagio_compra: texto(b.vale_pedagio_compra, 30),
     prazo_saldo_dias: Math.min(Math.max(parseInt(b.prazo_saldo_dias, 10) || 0, 0), 120), observacao: texto(b.observacao, 2000),
   };
   if (!a.motorista_nome) throw falha('Informe o motorista.');

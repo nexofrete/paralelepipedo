@@ -54,6 +54,10 @@
           "texto": "CNPJ automático em todos os cadastros: ao digitar, preenche os dados da Receita (endereço, cidade com código IBGE, IE, contato), com máscara, validação e CNPJ alfanumérico."
         },
         {
+          "area": "Cadastros",
+          "texto": "CNPJ alfanumérico gravado com as letras em todos os cadastros (transportadora, empresa, CT-e, NFS-e, vendedor, contas a pagar, acerto, frota e tabela de preço), com o dígito verificador conferido pela regra nova da Receita."
+        },
+        {
           "area": "Segurança",
           "texto": "Revisão de segurança e de cálculos: comprovantes enviados não executam como página, portal do cliente só aceita os campos permitidos, baixa de fatura sem duplicar, boleto e conciliação ajustados, datas no horário de Brasília."
         },

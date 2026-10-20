@@ -4,6 +4,7 @@
 // O que é pago entra em Contas a pagar; o que o motorista pagou na viagem
 // entra como despesa no acerto de viagem.
 const pool = require('./db');
+const Doc = require('./utils/documento');
 const contas = require('./contasPagar');
 
 const COMBUSTIVEIS = { diesel_s10: 'Diesel S10', diesel_s500: 'Diesel S500', arla32: 'ARLA 32', gasolina: 'Gasolina', etanol: 'Etanol', gnv: 'GNV' };
@@ -40,7 +41,7 @@ const decimal = (v, casas = 3) => {
   return Number.isFinite(n) ? Math.round(n * 10 ** casas) / 10 ** casas : null;
 };
 const { centavos, hojeBr } = contas;
-const doc = (v) => String(v || '').replace(/\D/g, '').slice(0, 14) || null;
+const doc = (v) => Doc.limpar(v);
 const diaBr = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).slice(0, 10).split('-').reverse().join('/') : '');
 const isoDe = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).slice(0, 10) : null);
 const somarDias = (dataIso, dias) => new Date(Date.parse(`${dataIso}T12:00:00Z`) + dias * 86400000).toISOString().slice(0, 10);

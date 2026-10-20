@@ -1,4 +1,5 @@
 const express = require('express');
+const Doc = require('../utils/documento');
 const pool = require('../db');
 const { autenticar, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
@@ -15,7 +16,7 @@ const CAMPOS_TRANSPORTADORA = [
 // Verifica em tempo real (antes de salvar) se já existe uma transportadora com esse CNPJ.
 router.get('/verificar-cnpj', autenticar, permitir('pode_gerenciar_transportadoras'), async (req, res) => {
   try {
-    const cnpj = (req.query.cnpj || '').replace(/\D/g, '');
+    const cnpj = Doc.limpar(req.query.cnpj) || '';
     if (!cnpj) return res.json({ existe: false });
 
     const condicoes = ['cnpj = $1'];
@@ -131,7 +132,7 @@ router.post('/', autenticar, permitir('pode_gerenciar_transportadoras'), async (
     }
     prepararPortal(req.body);
     const campos = Object.keys(req.body).filter((c) => CAMPOS_TRANSPORTADORA.includes(c) && req.body[c] !== '');
-    const valores = campos.map((c) => req.body[c]);
+    const valores = campos.map((c) => (c === 'cnpj' ? Doc.limpar(req.body[c]) : req.body[c]));
     const placeholders = campos.map((_, i) => `$${i + 1}`);
 
     const { rows } = await pool.query(
@@ -162,7 +163,7 @@ router.put('/:id', autenticar, permitir('pode_gerenciar_transportadoras'), async
       return res.status(400).json({ erro: 'Nenhum campo para atualizar.' });
     }
     const sets = campos.map((c, i) => `${c} = $${i + 1}`);
-    const valores = campos.map((c) => req.body[c] || null);
+    const valores = campos.map((c) => (c === 'cnpj' ? Doc.limpar(req.body[c]) : req.body[c] || null));
     valores.push(req.params.id);
 
     const { rows } = await pool.query(

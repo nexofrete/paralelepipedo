@@ -363,6 +363,13 @@ def parte_integracoes(g):
         'campos vazios</b>: o que já foi digitado fica. Empresa que não está ativa na Receita gera aviso.',
         '<b>CNPJ alfanumérico</b> (a partir de julho de 2026, ex.: 12.ABC.345/01DE-35) é aceito e validado; os dados vão à mão.',
     ])
+    s.append(P('<b>CNPJ alfanumérico gravado como foi digitado.</b> O servidor guarda as letras (sempre em maiúsculas) '
+               'em todos os cadastros: transportadora, empresa, configuração do CT-e, tomador da NFS-e, vendedor, '
+               'contas a pagar, proprietário e vale-pedágio do acerto, posto e oficina da frota e cliente da tabela de '
+               'preço. O dígito verificador é conferido pela regra nova da Receita (cada letra vale o seu código menos 48), '
+               'que também vale para o CNPJ só de números. A busca de transportadora repetida e a NFS-e (tag CNPJ) '
+               'também usam o CNPJ com letras. Como os serviços públicos de consulta ainda não trazem esse CNPJ, '
+               'a tela avisa "CNPJ alfanumérico: preencha os campos à mão" em vez de dar erro.'))
     s += aviso('nota', 'A consulta é feita pelo servidor em três serviços públicos (BrasilAPI, CNPJ.ws e ReceitaWS) e '
                        'fica guardada 30 dias. Sem internet, aparece o aviso para preencher à mão.')
 

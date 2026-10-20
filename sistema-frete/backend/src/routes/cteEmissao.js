@@ -2,6 +2,7 @@
 // rascunhos, transmissão à SEFAZ, consulta, cancelamento, carta de correção,
 // DACTE e XML.
 const express = require('express');
+const Doc = require('../utils/documento');
 const multer = require('multer');
 const pool = require('../db');
 const { autenticar, apenasAdmin, permitir } = require('../middlewareAuth');
@@ -66,7 +67,7 @@ router.put('/config', autenticar, apenasAdmin, async (req, res) => {
       if (tipo === 'inteiro') return parseInt(v, 10);
       if (tipo === 'numero') return Number(String(v).replace(',', '.'));
       // CNPJ/CPF: só os dígitos (a tela mostra com pontuação).
-      if (tipo === 'doc') return String(v).replace(/\D/g, '') || null;
+      if (tipo === 'doc') return Doc.limpar(v);
       return String(v).trim();
     };
     const pares = campos.map((c) => [c, conv(c, req.body[c])]).filter(([, v]) => v !== undefined);

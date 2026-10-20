@@ -10,6 +10,7 @@
 //    for pago de novo, comissiona outra vez (próximo "ciclo" do documento).
 //  • Na base "recebido", o desconto dado na fatura reduz a base na proporção.
 const pool = require('./db');
+const Doc = require('./utils/documento');
 
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const centavos = (v) => Math.round((Number(v) || 0) * 100) / 100;
@@ -32,7 +33,7 @@ function lerVendedor(b = {}) {
   if (!nome) throw falha('Informe o nome do vendedor.');
   const pct = Number(String(b.comissao_pct ?? '').replace(',', '.'));
   if (!(pct >= 0 && pct <= 50)) throw falha('Comissão entre 0% e 50%.');
-  const documento = soDigitos(b.documento) || null;
+  const documento = Doc.limpar(b.documento);
   if (documento && ![11, 14].includes(documento.length)) throw falha('CPF/CNPJ do vendedor inválido.');
   const email = String(b.email || '').trim().slice(0, 160) || null;
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw falha('E-mail inválido.');
@@ -109,7 +110,7 @@ async function documentosDoPeriodo(base, { de, ate }) {
     ...ctes.map((c) => { const t = tomadorDe(c.dados || {}); const d = c.dados || {};
       return { doc_tipo: 'cte', doc_id: c.id, documento: `CT-e ${c.serie}/${c.numero}${String(d.tpCTe ?? '0') === '1' ? ' (compl.)' : ''}`, cliente_doc: t.doc, cliente: t.nome,
         valor: centavos(Number(d.valores?.vTPrest ?? c.valor_total) * (c.fator ?? 1)), vendedor_id: c.vendedor_id, data_ref: c.data_ref }; }),
-    ...nfse.map((n) => ({ doc_tipo: 'nfse', doc_id: n.id, documento: `NFS-e ${n.numero_nfse}`, cliente_doc: soDigitos(n.tomador_doc), cliente: n.tomador_nome, valor: centavos(Number(n.valor) * (n.fator ?? 1)), vendedor_id: n.vendedor_id, data_ref: n.data_ref })),
+    ...nfse.map((n) => ({ doc_tipo: 'nfse', doc_id: n.id, documento: `NFS-e ${n.numero_nfse}`, cliente_doc: Doc.limpar(n.tomador_doc) || '', cliente: n.tomador_nome, valor: centavos(Number(n.valor) * (n.fator ?? 1)), vendedor_id: n.vendedor_id, data_ref: n.data_ref })),
   ];
 }
 

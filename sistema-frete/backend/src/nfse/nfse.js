@@ -1,6 +1,7 @@
 // Emissão de NFS-e (Padrão Nacional) para o frete municipal: rascunho,
 // numeração da DPS, assinatura, envio à Sefin Nacional, cancelamento.
 const pool = require('../db');
+const Doc = require('../utils/documento');
 const { assinar } = require('../cte/assinatura');
 const { montarDps, montarCancelamento, lerNfse, idDps, so, limpo, TRIB_NAC_PADRAO } = require('./montarNfse');
 const sefin = require('./sefinNacional');
@@ -55,7 +56,7 @@ function lerDados(b = {}, cfg = CONFIG_PADRAO) {
   const d = {
     competencia: /^\d{4}-\d{2}-\d{2}$/.test(String(b.competencia || '')) ? b.competencia : hoje(),
     tomador: {
-      doc: so(t.doc).slice(0, 14), nome: limpo(t.nome, 200), im: limpo(t.im, 15) || null, email: limpo(t.email, 80) || null, fone: so(t.fone).slice(0, 20) || null,
+      doc: Doc.limpar(t.doc) || '', nome: limpo(t.nome, 200), im: limpo(t.im, 15) || null, email: limpo(t.email, 80) || null, fone: so(t.fone).slice(0, 20) || null,
       end: { cep: so(end.cep).slice(0, 8), xLgr: limpo(end.xLgr, 255), nro: limpo(end.nro, 60), xCpl: limpo(end.xCpl, 156) || null, xBairro: limpo(end.xBairro, 60),
         cMun: so(end.cMun).slice(0, 7), xMun: limpo(end.xMun, 120), uf: limpo(end.uf, 2).toUpperCase() },
     },

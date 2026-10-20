@@ -7,6 +7,7 @@
 //    o limite de consultas desses serviços.
 //  • CNPJ com dígito verificador errado nem é consultado.
 const pool = require('./db');
+const Doc = require('./utils/documento');
 
 const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
 const limpo = (v) => { const t = String(v ?? '').replace(/\s+/g, ' ').trim(); return t || null; };
@@ -121,6 +122,12 @@ async function completarIbge(d) {
 }
 
 async function consultar(doc, { forcar = false } = {}) {
+  const alfa = Doc.chars(doc);
+  // CNPJ alfanumérico: os serviços públicos de consulta ainda não atendem; o cadastro é feito à mão.
+  if (Doc.ehCnpjAlfanumerico(alfa)) {
+    if (!Doc.cnpjValido(alfa)) throw Object.assign(new Error('CNPJ alfanumérico inválido: o dígito verificador não confere.'), { status: 400 });
+    return { naoEncontrado: true, alfanumerico: true, cnpj: alfa, cnpj_formatado: Doc.formatar(alfa), erro: 'CNPJ alfanumérico: os serviços de consulta da Receita ainda não trazem esses dados. Preencha os campos à mão.' };
+  }
   const cnpj = soDigitos(doc);
   if (cnpj.length !== 14) throw Object.assign(new Error('CNPJ precisa ter 14 dígitos.'), { status: 400 });
   if (!cnpjValido(cnpj)) throw Object.assign(new Error(`CNPJ inválido: o dígito verificador não confere (o certo seria ${formatarCnpj(cnpj.slice(0, 12) + digitosCnpj(cnpj.slice(0, 12)))}).`), { status: 400 });

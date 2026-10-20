@@ -1,4 +1,5 @@
 const express = require('express');
+const Doc = require('../utils/documento');
 const pool = require('../db');
 const { autenticar, apenasAdmin } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
@@ -26,7 +27,7 @@ router.put('/', autenticar, apenasAdmin, async (req, res) => {
   try {
     const campos = CAMPOS_EMPRESA.filter((c) => req.body[c] !== undefined);
     // CNPJ só com os dígitos (a tela mostra com pontuação).
-    const valores = campos.map((c) => (c === 'cnpj' ? String(req.body[c] || '').replace(/\D/g, '') || null : req.body[c] || null));
+    const valores = campos.map((c) => (c === 'cnpj' ? Doc.limpar(req.body[c]) : req.body[c] || null));
 
     const colunas = ['id', ...campos];
     const placeholders = ['1', ...campos.map((_, i) => `$${i + 1}`)];

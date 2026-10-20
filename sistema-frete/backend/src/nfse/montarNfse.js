@@ -5,6 +5,7 @@
 //
 // Frete com início e fim no MESMO município não é CT-e (não tem ICMS): é
 // serviço de transporte municipal, item 16.02 da LC 116/2003, com ISS.
+const Doc = require('../utils/documento');
 const NS = 'http://www.sped.fazenda.gov.br/nfse';
 const VERSAO = '1.01';
 const VER_APLIC = 'NEXOFRETE-1';
@@ -40,7 +41,7 @@ function opSimpNac(crt) {
 }
 
 function pessoa(p) {
-  const d = so(p.doc);
+  const d = Doc.limpar(p.doc) || '';
   const end = p.end || {};
   const temEnd = so(end.cMun).length === 7 && so(end.cep).length === 8 && limpo(end.xLgr, 1) && limpo(end.xBairro, 1);
   return `${d.length === 11 ? `<CPF>${d}</CPF>` : `<CNPJ>${d}</CNPJ>`}${t('IM', p.im, 15)}${t('xNome', p.nome, 300)}`

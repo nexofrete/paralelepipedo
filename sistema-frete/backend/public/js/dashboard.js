@@ -2105,21 +2105,12 @@ document.getElementById('btnDescobrirSsw')?.addEventListener('click', async (e) 
 document.getElementById('btnCancelarTransportadora').addEventListener('click', () => painelFormTransportadora.classList.add('oculto'));
 
 // ---------- CNPJ: máscara automática + busca de dados (consulta do servidor: /api/cnpj) ----------
-function formatarCnpjExibicao(valor) {
-  const d = (valor || '').replace(/\D/g, '').slice(0, 14);
-  let partes = [];
-  if (d.length > 0) partes.push(d.slice(0, 2));
-  if (d.length > 2) partes.push(d.slice(2, 5));
-  if (d.length > 5) partes.push(d.slice(5, 8));
-  let resultado = partes.join('.');
-  if (d.length > 8) resultado += `/${d.slice(8, 12)}`;
-  if (d.length > 12) resultado += `-${d.slice(12, 14)}`;
-  return resultado;
-}
+// CNPJ numérico ou alfanumérico (letras nas 12 primeiras posições): mesma máscara.
+const formatarCnpjExibicao = (valor) => Doc.mascaraParcial(valor);
 
 document.getElementById('tCnpj').addEventListener('input', async (e) => {
   e.target.value = formatarCnpjExibicao(e.target.value);
-  const digitos = e.target.value.replace(/\D/g, '');
+  const digitos = Doc.chars(e.target.value);
   const statusEl = document.getElementById('statusBuscaCnpj');
   const btnSalvar = document.getElementById('btnSalvarTransportadora');
   btnSalvar.disabled = false;
@@ -2150,9 +2141,9 @@ document.getElementById('tCnpj').addEventListener('input', async (e) => {
   try {
     const resposta = await apiFetch(`/api/cnpj/${digitos}`);
     const dados = await resposta.json().catch(() => ({}));
-    if (digitos !== e.target.value.replace(/\D/g, '')) return;
+    if (digitos !== Doc.chars(e.target.value)) return;
     if (!resposta.ok) {
-      statusEl.textContent = `${dados.erro || 'CNPJ não encontrado na Receita.'} Preencha manualmente.`;
+      statusEl.textContent = dados.erro || 'CNPJ não encontrado na Receita. Preencha manualmente.';
       return;
     }
     // Preenche o que está vazio (o que já foi digitado fica).
@@ -2175,7 +2166,7 @@ document.getElementById('btnSalvarTransportadora').addEventListener('click', asy
   const corpo = {};
   CAMPOS_TRANSPORTADORA.forEach(([elId, campo]) => {
     let valor = document.getElementById(elId).value.trim();
-    if (elId === 'tCnpj') valor = valor.replace(/\D/g, '');
+    if (elId === 'tCnpj') valor = Doc.chars(valor);
     if (valor) corpo[campo] = valor;
   });
   corpo.rastreamento_ssw = document.getElementById('tRastreamentoSsw').checked;

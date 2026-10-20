@@ -1,6 +1,7 @@
 // Contas a pagar: lançamento (com parcelas), baixa total ou parcial,
 // estorno e cancelamento. O acerto de viagem também lança aqui.
 const crypto = require('crypto');
+const Doc = require('./utils/documento');
 const pool = require('./db');
 
 const CATEGORIAS = {
@@ -33,7 +34,7 @@ function somarMeses(dataIso, meses) {
 function lerConta(b = {}) {
   const c = {
     descricao: texto(b.descricao, 200), categoria: CATEGORIAS[b.categoria] ? b.categoria : 'outros', fornecedor_nome: texto(b.fornecedor_nome, 200),
-    fornecedor_doc: String(b.fornecedor_doc || '').replace(/\D/g, '').slice(0, 14) || null, documento: texto(b.documento, 60),
+    fornecedor_doc: Doc.limpar(b.fornecedor_doc), documento: texto(b.documento, 60),
     vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null, centro_custo_id: Number(b.centro_custo_id) || null,
     parcelas: Math.min(Math.max(parseInt(b.parcelas, 10) || 1, 1), 60), dividir: b.dividir !== false && b.dividir !== 'false',
   };

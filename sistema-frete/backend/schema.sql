@@ -2415,3 +2415,5 @@ CREATE TABLE IF NOT EXISTS pef_operacoes (
   criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_pef_operacoes_acerto ON pef_operacoes (acerto_id);
+-- Conta a pagar do vale-pedágio comprado pelo provedor (cancelada junto com o CIOT, se ainda não foi paga).
+ALTER TABLE pef_operacoes ADD COLUMN IF NOT EXISTS vp_conta_id INTEGER REFERENCES contas_pagar(id);

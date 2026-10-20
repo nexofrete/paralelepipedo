@@ -280,7 +280,7 @@
       eixos: $('ciEixos').value, data_fim: $('ciFim').value, tipo_viagem: $('ciTipo').value, pagamento_id: $('ciPagId').value }) }),
     (r) => `CIOT ${ciotFmt(r.ciot)} declarado.${r.ciot_no_mdfe ? ' Já foi para o MDF-e.' : ''}`));
     $('ciComprarVp')?.addEventListener('click', () => fazer('ciComprarVp', () => json(`/api/pef/acertos/${id}/vale-pedagio`, { method: 'POST', body: JSON.stringify({ valor: $('ciVpValor').value, eixos: $('ciVpEixos').value }) }),
-      (r) => `Vale-pedágio comprado: ${brl(r.vp_valor)} (nº ${r.vp_numero}).${r.vp_no_mdfe ? ' Já foi para o MDF-e.' : ''}`));
+      (r) => `Vale-pedágio comprado: ${brl(r.vp_valor)} (nº ${r.vp_numero}). Lançado em Contas a pagar para a fornecedora.${r.vp_no_mdfe ? ' Já foi para o MDF-e.' : ''}`));
     $('ciEncerrar')?.addEventListener('click', async () => {
       if (!await confirmar('Encerrar a operação agora? Use quando a viagem terminou. O valor final é o do acerto (frete ± acréscimos e descontos).', { textoOk: 'Encerrar' })) return;
       fazer('ciEncerrar', () => json(`/api/pef/acertos/${id}/encerrar`, { method: 'POST', body: '{}' }), () => 'Operação encerrada.');
@@ -288,7 +288,7 @@
     $('ciCancelar')?.addEventListener('click', async () => {
       const motivo = await pedirTexto('Motivo do cancelamento do CIOT (ex.: viagem não realizada, contratado trocado):', { titulo: 'Cancelar CIOT', tipo: 'perigo' });
       if (motivo == null) return;
-      fazer('ciCancelar', () => json(`/api/pef/acertos/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }), () => 'CIOT cancelado.');
+      fazer('ciCancelar', () => json(`/api/pef/acertos/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }), (r) => `CIOT cancelado.${r.aviso ? ` ${r.aviso}` : ''}`);
     });
   }
 

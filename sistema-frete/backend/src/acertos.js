@@ -218,9 +218,10 @@ async function reabrir(id) {
     const { rows } = await cliente.query(`SELECT id FROM acertos WHERE id = $1 AND status = 'acertado' FOR UPDATE`, [id]);
     if (!rows[0]) throw falha('Este acerto não está fechado.', 409);
     const { rows: pagos } = await cliente.query(
-      `SELECT id FROM contas_pagar WHERE acerto_id = $1 AND categoria <> 'adiantamento' AND status <> 'cancelada' AND valor_pago > 0`, [id]);
+      `SELECT id FROM contas_pagar WHERE acerto_id = $1 AND categoria NOT IN ('adiantamento', 'pedagio') AND status <> 'cancelada' AND valor_pago > 0`, [id]);
     if (pagos.length) throw falha('O saldo deste acerto já foi pago (total ou parcial): estorne o pagamento em Contas a pagar antes de reabrir.', 409);
-    await cliente.query(`UPDATE contas_pagar SET status = 'cancelada' WHERE acerto_id = $1 AND categoria <> 'adiantamento' AND status = 'aberta'`, [id]);
+    // O saldo sai; o adiantamento e o vale-pedágio (comprado pelo provedor) continuam.
+    await cliente.query(`UPDATE contas_pagar SET status = 'cancelada' WHERE acerto_id = $1 AND categoria NOT IN ('adiantamento', 'pedagio') AND status = 'aberta'`, [id]);
     await cliente.query(`UPDATE acertos SET status = 'aberto', saldo = NULL, acertado_em = NULL, acertado_por_nome = NULL WHERE id = $1`, [id]);
   });
 }

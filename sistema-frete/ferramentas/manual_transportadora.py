@@ -333,7 +333,10 @@ def parte_financeiro(g):
         'CPF do motorista, placa, rota, frete e peso) e lista tudo o que falta de uma vez. O CIOT vai para o acerto e para o MDF-e '
         'ainda não transmitido.',
         '<b>Comprar vale-pedágio</b>: pelo valor informado ou calculado pelo provedor pela rota e pelos eixos; número da compra, '
-        'valor e fornecedora vão para o acerto e para o MDF-e.',
+        'valor e fornecedora vão para o acerto e para o MDF-e, e o valor vira <b>conta a pagar</b> para a fornecedora '
+        '(categoria Pedágio, ligada ao acerto). Fechar e reabrir o acerto não mexem nela; cancelar o CIOT cancela a conta se '
+        'ainda não foi paga (paga, a tela avisa para conferir o estorno com o provedor). O demonstrativo do período não conta '
+        'o pedágio duas vezes: ele já está no custo da viagem.',
         '<b>Fechar o acerto</b> encerra a operação no provedor com o valor final (frete ± acréscimos e descontos) e o peso. Se o '
         'provedor falhar, o acerto fecha e a tela avisa para usar "Encerrar agora".',
         '<b>Cancelar CIOT</b>: até 24 horas depois da declaração, com motivo; tira o CIOT e o vale-pedágio do acerto e do MDF-e. '

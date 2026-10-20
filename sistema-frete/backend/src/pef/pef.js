@@ -149,11 +149,21 @@ async function comprarValePedagio(acertoId, { valor, eixos } = {}, usuarioNome) 
   const op = { ...o.operacao, veiculos: [{ ...o.operacao.veiculos[0], eixos: parseInt(eixos, 10) || o.operacao.veiculos[0].eixos }] };
   try {
     const r = await provedorDe(o.provedor).comprarValePedagio(op, { valor: Number(String(valor ?? '').replace(/\./g, '').replace(',', '.')) || 0, eixos: op.veiculos[0].eixos }, cfg);
+    // O vale-pedágio é pago pela empresa à fornecedora (fora do frete): vira conta a pagar ligada ao acerto
+    // (categoria Pedágio; o demonstrativo não conta de novo, o custo da viagem já leva o pedágio).
+    const { rows: [a] } = await pool.query('SELECT id, placa, data_saida FROM acertos WHERE id = $1', [acertoId]);
+    const [conta] = await require('../contasPagar').criar({
+      descricao: `Vale-pedágio nº ${r.numero} — acerto ${acertoId} (CIOT ${o.ciot})`, categoria: 'pedagio',
+      fornecedor_nome: r.fornecedora_nome || 'Fornecedora do vale-pedágio', fornecedor_doc: r.fornecedora_cnpj, documento: String(r.numero).slice(0, 60),
+      competencia: String(a.data_saida instanceof Date ? a.data_saida.toISOString() : a.data_saida).slice(0, 10),
+      vencimento: require('../contasPagar').hojeBr(), valor: centavos(r.valor), placa: a.placa,
+      observacao: `Comprado pelo provedor ${provedorDe(o.provedor).nome}${o.simulado ? ' (simulado)' : ''}.`,
+    }, usuarioNome || 'CIOT', { acertoId });
     const { rows } = await pool.query(
-      `UPDATE pef_operacoes SET vp_numero = $2, vp_valor = $3, vp_fornecedora_cnpj = $4, vp_fornecedora_nome = $5, vp_em = NOW(), erro = NULL WHERE id = $1 RETURNING *`,
-      [o.id, r.numero, centavos(r.valor), r.fornecedora_cnpj, r.fornecedora_nome || null]);
+      `UPDATE pef_operacoes SET vp_numero = $2, vp_valor = $3, vp_fornecedora_cnpj = $4, vp_fornecedora_nome = $5, vp_em = NOW(), vp_conta_id = $6, erro = NULL WHERE id = $1 RETURNING *`,
+      [o.id, r.numero, centavos(r.valor), r.fornecedora_cnpj, r.fornecedora_nome || null, conta.id]);
     const noMdfe = await levarAoAcerto(acertoId, { vale_pedagio_valor: centavos(r.valor), vale_pedagio_cnpj: r.fornecedora_cnpj, vale_pedagio_compra: String(r.numero).slice(0, 30) });
-    return { ...rows[0], vp_no_mdfe: noMdfe, usuario: usuarioNome };
+    return { ...rows[0], vp_no_mdfe: noMdfe, conta_id: conta.id };
   } catch (err) { await registrarErro(o.id, err); throw err; }
 }
 
@@ -196,7 +206,13 @@ async function cancelar(acertoId, motivo) {
   if (a?.mdfe_id) {
     await pool.query(`UPDATE mdfes SET dados = dados - 'ciot'${o.vp_numero ? " - 'valePedagio'" : ''} WHERE id = $1 AND status IN ('rascunho', 'rejeitado', 'erro')`, [a.mdfe_id]);
   }
-  return { cancelada: true };
+  // Conta do vale-pedágio: cancelada se ainda não foi paga; paga, fica (o provedor estorna o crédito).
+  let aviso = null;
+  if (o.vp_conta_id) {
+    const { rowCount } = await pool.query(`UPDATE contas_pagar SET status = 'cancelada', observacao = TRIM(COALESCE(observacao, '') || E'\nCancelada com o CIOT.') WHERE id = $1 AND status = 'aberta' AND valor_pago = 0`, [o.vp_conta_id]);
+    if (!rowCount) aviso = 'A conta a pagar do vale-pedágio já foi paga (total ou parcial): confira o estorno do crédito com o provedor.';
+  }
+  return { cancelada: true, aviso };
 }
 
 // Situação no acerto: a operação atual, o histórico e o que já dá para pré-preencher na tela.

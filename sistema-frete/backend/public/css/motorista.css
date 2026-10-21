@@ -15,6 +15,7 @@
 .mt-item.feito .mt-num { background: var(--verde); }
 .mt-end { margin: 6px 0; font-size: 15px; }
 .mt-info { font-size: 13px; color: var(--fraco); }
+.mt-agenda { margin-top: 6px; padding: 6px 9px; border-radius: 8px; font-size: 13px; background: rgba(168,85,247,0.14); color: #7e22ce; }
 .mt-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .mt-botoes a, .mt-botoes button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 13px 8px; border-radius: 9px; font-size: 15px; font-weight: 600; text-decoration: none; border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); width: auto; }
 .mt-botoes .ok { background: var(--verde); border-color: var(--verde); color: #fff; }

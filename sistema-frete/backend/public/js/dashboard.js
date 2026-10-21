@@ -9258,7 +9258,8 @@ carregarContasEmail();
 const clEstado = { pagina: 1, total: 0, lista: [], editandoId: null };
 const CL_CAMPOS = [['clRazaoSocial', 'razao_social'], ['clNomeFantasia', 'nome_fantasia'], ['clIe', 'ie'], ['clIndIe', 'ind_ie'],
   ['clTelefone', 'telefone'], ['clEmail', 'email'], ['clLogradouro', 'logradouro'], ['clNumero', 'numero'], ['clComplemento', 'complemento'],
-  ['clBairro', 'bairro'], ['clMunicipio', 'municipio'], ['clUf', 'uf'], ['clCep', 'cep'], ['clObservacoes', 'observacoes']];
+  ['clBairro', 'bairro'], ['clMunicipio', 'municipio'], ['clUf', 'uf'], ['clCep', 'cep'], ['clObservacoes', 'observacoes'],
+  ['clAgendaInstrucoes', 'agendamento_instrucoes']];
 const clDoc = (d) => { const x = String(d || ''); return x.length === 14 ? formatarCnpj(x) : x.length === 11 ? x.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : x || '—'; };
 const clIe = (c) => (c.ie ? cfEsc(c.ie) : c.ind_ie === '2' ? 'ISENTO' : c.ind_ie === '9' ? '<span style="color:var(--texto-fraco);">não contribuinte</span>' : '—');
 let clTimerBusca = null;
@@ -9278,7 +9279,7 @@ async function carregarClientes(pagina = clEstado.pagina) {
     document.getElementById('btnClientesProxima').disabled = d.pagina >= paginas;
     corpo.innerHTML = d.clientes.length ? d.clientes.map((c) => `
       <tr style="cursor:pointer;" onclick="abrirCliente(${c.id})">
-        <td><b>${cfEsc(c.razao_social || '—')}</b>${c.nome_fantasia ? `<br><small style="color:var(--texto-fraco);">${cfEsc(c.nome_fantasia)}</small>` : ''}${c.editado_manual ? ' <small title="Corrigido à mão">✎</small>' : ''}</td>
+        <td><b>${cfEsc(c.razao_social || '—')}</b>${c.exige_agendamento ? ' <small title="Exige agendamento da entrega">📅</small>' : ''}${c.nome_fantasia ? `<br><small style="color:var(--texto-fraco);">${cfEsc(c.nome_fantasia)}</small>` : ''}${c.editado_manual ? ' <small title="Corrigido à mão">✎</small>' : ''}</td>
         <td style="white-space:nowrap;">${clDoc(c.documento)}</td>
         <td>${clIe(c)}</td>
         <td>${cfEsc(c.municipio || '—')}${c.uf ? `/${cfEsc(c.uf)}` : ''}</td>
@@ -9298,6 +9299,7 @@ async function abrirCliente(id) {
     document.getElementById('tituloFormCliente').textContent = c.razao_social || 'Cliente';
     document.getElementById('clDocumento').value = clDoc(c.documento);
     CL_CAMPOS.forEach(([el, campo]) => { document.getElementById(el).value = c[campo] ?? ''; });
+    document.getElementById('clExigeAgenda').checked = !!c.exige_agendamento;
     const r = c.resumo || {};
     document.getElementById('clienteResumoFretes').innerHTML = `${r.notas || 0} nota(s) no sistema · frete cobrado ${formatoMoeda(r.frete_total)} · faturado ${formatoMoeda(r.faturado_total)}`
       + `${r.faturado_total ? ` · ${(100 * r.frete_total / r.faturado_total).toFixed(2).replace('.', ',')}% de frete` : ''}`
@@ -9310,6 +9312,7 @@ async function abrirCliente(id) {
 document.getElementById('btnSalvarCliente')?.addEventListener('click', async () => {
   const corpo = {};
   CL_CAMPOS.forEach(([el, campo]) => { corpo[campo] = document.getElementById(el).value.trim(); });
+  corpo.exige_agendamento = document.getElementById('clExigeAgenda').checked;
   const resposta = await apiFetch(`/api/clientes/${clEstado.editandoId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
   const r = await resposta.json();
   if (!resposta.ok) { mostrarAlerta(r.erro || 'Erro ao salvar.'); return; }

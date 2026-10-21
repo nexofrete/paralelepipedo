@@ -45,7 +45,8 @@ function mensagem(o, cte, empresa, link) {
     `Transporte ${nomeEmpresa} · CT-e ${cte.serie}/${cte.numero}${nfs.length ? ` · NF ${nfs.join(', ')}` : ''}.`,
   ];
   if (o.tipo === 'entrega' && o.recebedor_nome) linhas.push(`Recebido por ${o.recebedor_nome}.`);
-  if (o.nova_previsao) linhas.push(`Nova previsão de entrega: ${diaBr(o.nova_previsao)}.`);
+  if (o.tipo === 'agendada' && o.observacao) linhas.push(`${o.observacao}.`);   // "Agendado para 22/10/2026, 08:00 às 12:00" (sem senha)
+  else if (o.nova_previsao) linhas.push(`Nova previsão de entrega: ${diaBr(o.nova_previsao)}.`);
   else if (['em_rota', 'transito'].includes(o.tipo) && cte.previsao_entrega) linhas.push(`Previsão de entrega: ${diaBr(cte.previsao_entrega)}.`);
   if (['problema', 'devolucao'].includes(o.tipo) && (empresa.telefone || empresa.email)) {
     linhas.push(`Fale com a gente: ${[empresa.telefone, empresa.email].filter(Boolean).join(' · ')}.`);

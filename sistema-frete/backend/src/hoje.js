@@ -38,6 +38,14 @@ async function montar(req) {
       destino: { ir: 'ocorrencias', aba: 'entregas', clicar: '[data-oc-filtro="atrasados"]' } });
     add('operacao', { chave: 'ocorrencias', icone: '⚠️', titulo: 'Entregas com ocorrência', qtd: e.ocorrencias, nivel: 'perigo', detalhe: 'avaria, recusa, endereço não localizado…',
       destino: { ir: 'ocorrencias', aba: 'entregas', clicar: '[data-oc-filtro="ocorrencia"]' } });
+    const ag = require('./cte/agendamento');
+    const agd = await um(`SELECT COUNT(*) FILTER (WHERE ${ag.SQL_EXIGE('c')} AND NOT ${ag.SQL_ATIVO('c')})::int AS agendar,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM cte_agendamentos a WHERE a.cte_id = c.id AND a.status = 'ativo' AND a.data = $1))::int AS agendadas_hoje
+      FROM ctes_emitidos c WHERE c.status = 'autorizado' AND COALESCE(c.situacao_entrega, 'pendente') NOT IN ('entregue', 'devolvido') AND COALESCE(c.dados->>'tpCTe', '0') <> '1'`, [h]);
+    add('operacao', { chave: 'entregas_agendar', icone: '📅', titulo: 'Entregas a agendar', qtd: agd.agendar, nivel: 'atencao', detalhe: 'o cliente exige agendamento: marque a data com ele',
+      destino: { ir: 'ocorrencias', aba: 'entregas', clicar: '[data-oc-filtro="agendar"]' } });
+    add('operacao', { chave: 'agendadas_hoje', icone: '🕘', titulo: 'Entregas agendadas para hoje', qtd: agd.agendadas_hoje, nivel: 'info', detalhe: 'confira se estão no caminhão',
+      destino: { ir: 'ocorrencias', aba: 'entregas', clicar: '[data-oc-filtro="agendados"]' } });
     add('operacao', { chave: 'entregas_hoje', icone: '🚚', titulo: 'Entregas previstas para hoje', qtd: e.hoje, nivel: 'info',
       destino: { ir: 'ocorrencias', aba: 'entregas', clicar: '[data-oc-filtro="hoje"]' } });
 

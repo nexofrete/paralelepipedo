@@ -52,6 +52,7 @@
         <h2><span class="mt-num">${k + 1}</span>${esc(i.destinatario)}</h2>
         <div class="mt-end">${esc(endereco)}</div>
         <div class="mt-info">CT-e ${esc(i.serie)}/${esc(i.numero)}${i.nfs.length ? ` · NF ${esc(i.nfs.join(', '))}` : ''}${i.volumes ? ` · ${i.volumes} vol.` : ''}${i.peso ? ` · ${i.peso.toLocaleString('pt-BR')} kg` : ''}</div>
+        ${i.agendamento && !feito ? `<div class="mt-agenda">📅 Agendado ${esc(i.agendamento.data.slice(8, 10))}/${esc(i.agendamento.data.slice(5, 7))}${i.agendamento.hora_de || i.agendamento.hora_ate ? `, ${esc(i.agendamento.hora_de || '')}${i.agendamento.hora_ate ? ` às ${esc(i.agendamento.hora_ate)}` : ''}` : ''}${i.agendamento.senha ? ` · senha <b>${esc(i.agendamento.senha)}</b>` : ''}${i.agendamento.doca ? ` · doca ${esc(i.agendamento.doca)}` : ''}${i.agendamento.observacao ? `<br>${esc(i.agendamento.observacao)}` : ''}</div>` : ''}
         <div class="mt-status" style="color:${feito ? 'var(--verde)' : i.situacao === 'ocorrencia' ? 'var(--laranja)' : 'var(--azul)'};">${esc(SIT[i.situacao] || i.situacao)}${i.situacao === 'entregue' && i.recebedor ? ` · ${esc(i.recebedor)}` : i.situacao === 'ocorrencia' && i.ultima ? ` · ${esc(i.ultima.descricao)}` : ''}</div>
         ${feito ? '' : `<div class="mt-botoes">
           <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}" target="_blank" rel="noopener">🗺 Mapa</a>

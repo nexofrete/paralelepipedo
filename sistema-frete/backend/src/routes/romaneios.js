@@ -10,6 +10,7 @@ const { autenticar, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
 const oc = require('../cte/ocorrencias');
 const coletas = require('../coletas');
+const ag = require('../cte/agendamento');
 
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
@@ -33,6 +34,7 @@ function itemDoCte(c) {
     nfs: (d.nfes || []).map(nfDaChave).filter(Boolean), volumes: q(/VOLUME/i), peso: q(/PESO/), valor_carga: Number(d.carga?.vCarga) || 0, valor_frete: Number(c.valor_total) || 0,
     previsao: c.previsao_entrega, situacao: c.situacao_entrega, data_entrega: c.data_entrega, recebedor: c.recebedor_nome,
     ultima: c.ultima || null,
+    agendamento: c.agendamento || null, exige_agendamento: !!c.exige_agendamento,
   };
 }
 
@@ -40,7 +42,8 @@ async function itensDoRomaneio(id, cliente = pool) {
   const { rows } = await cliente.query(
     `SELECT c.id, c.serie, c.numero, c.chave, c.dados, c.valor_total, c.destinatario_nome, c.previsao_entrega, c.situacao_entrega, c.data_entrega, c.recebedor_nome, i.ordem,
             (SELECT json_build_object('descricao', o.descricao, 'data_hora', o.data_hora, 'tipo', o.tipo) FROM cte_ocorrencias o
-              WHERE o.cte_id = c.id ORDER BY o.data_hora DESC, o.id DESC LIMIT 1) AS ultima
+              WHERE o.cte_id = c.id ORDER BY o.data_hora DESC, o.id DESC LIMIT 1) AS ultima,
+            ${ag.SQL_JSON('c')} AS agendamento, ${ag.SQL_EXIGE('c')} AS exige_agendamento
        FROM romaneio_itens i JOIN ctes_emitidos c ON c.id = i.cte_id WHERE i.romaneio_id = $1 ORDER BY i.ordem, c.numero`, [id]);
   return rows.map(itemDoCte);
 }
@@ -254,7 +257,7 @@ router.get('/:id(\\d+)/imprimir', autenticar, emitir, async (req, res) => {
           <b>${{ aberto: 'Aguardando saída', em_rota: 'Em rota', fechado: 'Fechado' }[r.status]}</b></div>
         ${qr ? `<div class="qr">${qr}<div>App do motorista<br>código <b>${esc(r.codigo_acesso)}</b></div></div>` : ''}</div>
       ${itens.length || !cols.length ? `<table><thead><tr><th>#</th><th>CT-e</th><th>NF</th><th>Destinatário</th><th>Endereço</th><th>Cidade</th><th class="n">Vol.</th><th class="n">Peso (kg)</th><th class="n">Valor carga</th><th>Recebido por (nome legível / documento / data e hora)</th></tr></thead><tbody>
-      ${itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}</td><td>${esc(i.nfs.join(', '))}</td><td>${esc(i.destinatario)}${i.telefone ? `<br>${esc(i.telefone)}` : ''}</td>
+      ${itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}</td><td>${esc(i.nfs.join(', '))}</td><td>${esc(i.destinatario)}${i.telefone ? `<br>${esc(i.telefone)}` : ''}${i.agendamento ? `<br><b>AGENDADO ${esc(ag.resumo(i.agendamento))}</b>` : ''}</td>
         <td>${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}${i.cep ? `<br>CEP ${esc(i.cep)}` : ''}</td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
         <td class="n">${n(i.volumes)}</td><td class="n">${n(i.peso, 1)}</td><td class="n">${n(i.valor_carga, 2)}</td>
         <td class="ass">${i.situacao === 'entregue' ? `Entregue · ${esc(i.recebedor || '')}` : ''}</td></tr>`).join('')}

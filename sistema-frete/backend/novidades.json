@@ -46,6 +46,10 @@
           "texto": "PIX com baixa automática pela API Pix do banco (padrão do Banco Central): cobrança dinâmica com vencimento, multa e juros na fatura, baixa sozinha pela conferência de 5 em 5 minutos ou pelo webhook do banco; com simulador."
         },
         {
+          "area": "Entregas",
+          "texto": "Agendamento de entrega: cliente marcado \"exige agendamento\" no cadastro (com instruções de como agendar), filtro \"A agendar\" nas Ocorrências, agendar com data, janela, senha e doca, reagendar e cancelar; a previsão segue a data marcada, e o agendamento aparece no romaneio, no app do motorista, no portal (sem a senha) e na tela Hoje."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

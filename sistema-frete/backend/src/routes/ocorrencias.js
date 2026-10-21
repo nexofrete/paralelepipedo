@@ -9,6 +9,7 @@ const pool = require('../db');
 const { autenticar, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
 const oc = require('../cte/ocorrencias');
+const ag = require('../cte/agendamento');
 
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
@@ -65,6 +66,8 @@ const FILTROS = {
   em_rota: "situacao_entrega = 'em_rota'",
   entregues: "situacao_entrega = 'entregue'",
   devolvidos: "situacao_entrega = 'devolvido'",
+  agendar: `situacao_entrega NOT IN ('entregue', 'devolvido') AND ${ag.SQL_EXIGE('c')} AND NOT ${ag.SQL_ATIVO('c')}`,
+  agendados: `situacao_entrega NOT IN ('entregue', 'devolvido') AND ${ag.SQL_ATIVO('c')}`,
   todos: 'TRUE',
 };
 
@@ -102,7 +105,8 @@ router.get('/painel', autenticar, emitir, async (req, res) => {
               c.dados->'nfes' AS nfes, c.dados->'fim' AS fim,
               (SELECT json_build_object('descricao', o.descricao, 'data_hora', o.data_hora, 'tipo', o.tipo, 'cidade', o.cidade)
                  FROM cte_ocorrencias o WHERE o.cte_id = c.id ORDER BY o.data_hora DESC, o.id DESC LIMIT 1) AS ultima,
-              (SELECT COUNT(*)::int FROM cte_ocorrencias o WHERE o.cte_id = c.id) AS qtd_ocorrencias
+              (SELECT COUNT(*)::int FROM cte_ocorrencias o WHERE o.cte_id = c.id) AS qtd_ocorrencias,
+              ${ag.SQL_JSON('c')} AS agendamento, ${ag.SQL_EXIGE('c')} AS exige_agendamento
          FROM ctes_emitidos c WHERE ${cond.join(' AND ')}
         ORDER BY ${filtro === 'entregues' || filtro === 'devolvidos' ? 'c.data_entrega DESC NULLS LAST' : 'c.previsao_entrega NULLS LAST, c.numero'} LIMIT 1000`, val);
     const { rows: cont } = await pool.query(
@@ -113,8 +117,10 @@ router.get('/painel', autenticar, emitir, async (req, res) => {
               COUNT(*) FILTER (WHERE situacao_entrega = 'em_rota')::int AS em_rota,
               COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date = $1::date)::int AS entregues_hoje,
               COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date >= $1::date - 30)::int AS entregues_30,
-              COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date >= $1::date - 30 AND data_entrega::date <= previsao_original)::int AS no_prazo_30
-         FROM ctes_emitidos WHERE status = 'autorizado' AND COALESCE(dados->>'tpCTe', '0') <> '1'`, [hoje]);
+              COUNT(*) FILTER (WHERE situacao_entrega = 'entregue' AND data_entrega::date >= $1::date - 30 AND data_entrega::date <= previsao_original)::int AS no_prazo_30,
+              COUNT(*) FILTER (WHERE ${FILTROS.agendar})::int AS agendar,
+              COUNT(*) FILTER (WHERE ${FILTROS.agendados})::int AS agendados
+         FROM ctes_emitidos c WHERE status = 'autorizado' AND COALESCE(dados->>'tpCTe', '0') <> '1'`, [hoje]);
     res.json({
       hoje, filtro, contagens: cont[0],
       linhas: rows.map((r) => ({ ...r, nfs: (r.nfes || []).map(nfDaChave).filter(Boolean), nfes: undefined })),
@@ -138,8 +144,35 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
       origem: d.inicio ? `${d.inicio.xMun}/${d.inicio.UF}` : null, destino: d.fim ? `${d.fim.xMun}/${d.fim.UF}` : null,
       endereco: d.destinatario?.endereco ? [d.destinatario.endereco.xLgr, d.destinatario.endereco.nro, d.destinatario.endereco.xBairro].filter(Boolean).join(', ') : null,
       ocorrencias: ocs.map((o) => ({ ...o, tem_comprovante: !!o.comprovante_arquivo, tem_assinatura: !!o.assinatura_arquivo, comprovante_arquivo: undefined, assinatura_arquivo: undefined })),
+      agendamentos: await ag.doCte(r.id), regra_agendamento: await ag.exigeDoCte(r.id),
+      contato: { nome: d.destinatario?.xNome || null, telefone: d.destinatario?.fone || d.destinatario?.endereco?.fone || null, email: d.destinatario?.email || null },
     });
   } catch (err) { erro(res, err, 'Erro ao buscar o CT-e.'); }
+});
+
+// ---------- Agendamento de entrega (regras em src/cte/agendamento.js) ----------
+// POST /api/ocorrencias/:id/agendamento { data, hora_de, hora_ate, senha, doca, contato, observacao }
+router.post('/:id(\\d+)/agendamento', autenticar, emitir, async (req, res) => {
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    const r = await ag.agendar(cliente, { cteId: Number(req.params.id), corpo: req.body || {}, usuarioNome: req.usuario.nome });
+    await cliente.query('COMMIT');
+    oc.depoisDeLancar([r.lancada]);
+    log(req, 'cte_agendamento', `${r.reagendamento ? 'Reagendou' : 'Agendou'} a entrega do CT-e ${r.numero}: ${r.resumo}`, Number(req.params.id));
+    res.status(201).json({ id: r.id, reagendamento: r.reagendamento, numero: r.numero });
+  } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao agendar a entrega.'); } finally { cliente.release(); }
+});
+// POST /api/ocorrencias/agendamento/:id/cancelar { motivo }
+router.post('/agendamento/:id(\\d+)/cancelar', autenticar, emitir, async (req, res) => {
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    const r = await ag.cancelar(cliente, { id: Number(req.params.id), motivo: req.body?.motivo });
+    await cliente.query('COMMIT');
+    log(req, 'cte_agendamento', `Cancelou o agendamento da entrega do CT-e ${r.numero}: ${String(req.body?.motivo || '').slice(0, 200)}`, r.cteId);
+    res.json({ ok: true });
+  } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao cancelar o agendamento.'); } finally { cliente.release(); }
 });
 
 // Grava uma ocorrência (regras em src/cte/ocorrencias.js).
@@ -182,6 +215,7 @@ router.delete('/ocorrencia/:id(\\d+)', autenticar, emitir, async (req, res) => {
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
+    await ag.aoApagarOcorrencia(cliente, Number(req.params.id));
     const { rows } = await cliente.query(
       `DELETE FROM cte_ocorrencias o USING ctes_emitidos c WHERE o.id = $1 AND c.id = o.cte_id RETURNING o.cte_id, o.descricao, o.data_hora, o.comprovante_arquivo, c.numero`, [req.params.id]);
     if (!rows[0]) { await cliente.query('ROLLBACK'); return res.status(404).json({ erro: 'Ocorrência não encontrada.' }); }

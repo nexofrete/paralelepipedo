@@ -198,6 +198,27 @@ def parte_operacao(g):
         '<b>Rastreio público</b> (rastreio.html): o cliente consulta pela chave do CT-e ou CNPJ + NF, sem valores.',
     ])
     s += aviso('atencao', 'GPS e câmera do celular só funcionam com HTTPS (ou no próprio servidor da rede).')
+    s.append(P('<b>Agendamento de entrega</b>. Para o cliente que só recebe com hora marcada (atacadista, '
+               'supermercado, centro de distribuição):'))
+    s += passos([
+        'Em Cadastros &gt; Clientes, abra o cliente, marque <b>Exige agendamento da entrega</b> e escreva em '
+        '<b>Como agendar</b> o caminho (e-mail, portal, telefone, antecedência).',
+        'Os CT-e para esse cliente (destinatário ou local de entrega) aparecem no filtro <b>A agendar</b> das '
+        'Ocorrências (041) e na tela Hoje.',
+        'Clique no botão <b>calendário</b> da linha: informe a data, a janela (das / até as), a senha ou protocolo, a '
+        'doca, com quem agendou e uma observação para o motorista. Salve.',
+        'Entra a ocorrência "Entrega agendada" e a previsão passa a ser a data marcada. Para mudar, use o mesmo botão '
+        '(<b>Reagendar</b>); o anterior fica no histórico. Para desfazer, <b>cancelar agendamento</b> com o motivo: a '
+        'previsão volta à original.',
+    ])
+    s += lista([
+        'O romaneio mostra o agendamento de cada entrega (e avisa quando é de outro dia); a folha impressa traz '
+        '"AGENDADO" com janela, senha e doca.',
+        'O app do motorista mostra a janela, a senha, a doca e a observação.',
+        'O portal do cliente e o aviso por e-mail/WhatsApp mostram só a data e a janela: senha e doca não saem da '
+        'transportadora.',
+        'Filtro <b>Agendados</b> e "Entregas agendadas para hoje" na tela Hoje, para conferir se estão no caminhão.',
+    ])
 
     # 36
     s += h1('36. Filiais e transferências')

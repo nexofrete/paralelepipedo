@@ -30,7 +30,7 @@
   let catalogo = []; let situacoes = {};
   let estado = { filtro: 'abertos', dados: null };
   const FILTROS = [
-    ['abertos', 'Em aberto'], ['atrasados', 'Atrasados', 'perigo'], ['hoje', 'Previsão hoje'], ['em_rota', 'Saiu para entrega'],
+    ['abertos', 'Em aberto'], ['atrasados', 'Atrasados', 'perigo'], ['hoje', 'Previsão hoje'], ['agendar', 'A agendar', 'perigo'], ['agendados', 'Agendados'], ['em_rota', 'Saiu para entrega'],
     ['ocorrencia', 'Com ocorrência', 'perigo'], ['entregues', 'Entregues'], ['devolvidos', 'Devolvidos'], ['todos', 'Todos'],
   ];
 
@@ -75,6 +75,15 @@
     return `<span class="oc-prev">${diaSemana(p)}<small style="color:var(--texto-fraco);">em ${dias} dia${dias > 1 ? 's' : ''}</small></span>`;
   }
 
+  // Agendamento: "08:00 às 12:00" etc.
+  const janela = (a) => (a.hora_de && a.hora_ate ? `${a.hora_de} às ${a.hora_ate}` : a.hora_de ? `a partir das ${a.hora_de}` : a.hora_ate ? `até as ${a.hora_ate}` : 'qualquer horário');
+  function seloAgenda(l) {
+    if (['entregue', 'devolvido'].includes(l.situacao_entrega)) return '';
+    const a = l.agendamento;
+    if (a) return `<br><span class="oc-agenda" title="${esc([a.contato ? `Agendado com ${a.contato}` : '', a.observacao].filter(Boolean).join(' · '))}">📅 ${dia(a.data)} · ${esc(janela(a))}${a.senha ? ` · senha <b>${esc(a.senha)}</b>` : ''}${a.doca ? ` · doca ${esc(a.doca)}` : ''}</span>`;
+    return l.exige_agendamento ? '<br><span class="oc-agenda falta">⚠ exige agendamento</span>' : '';
+  }
+
   function desenhar() {
     const d = estado.dados; const c = d.contagens;
     const pctPrazo = c.entregues_30 ? Math.round((c.no_prazo_30 / c.entregues_30) * 100) : null;
@@ -85,11 +94,11 @@
       <div><b style="color:${c.ocorrencia ? '#d97706' : 'inherit'};">${c.ocorrencia}</b>com ocorrência</div>
       <div><b>${c.entregues_hoje}</b>entregues hoje</div>
       <div><b>${pctPrazo == null ? '—' : `${pctPrazo}%`}</b>entregues no prazo (30 dias)</div>`;
-    const cont = { abertos: c.abertos, atrasados: c.atrasados, hoje: c.hoje, em_rota: c.em_rota, ocorrencia: c.ocorrencia };
+    const cont = { abertos: c.abertos, atrasados: c.atrasados, hoje: c.hoje, agendar: c.agendar, agendados: c.agendados, em_rota: c.em_rota, ocorrencia: c.ocorrencia };
     $('ocFiltros').innerHTML = FILTROS.map(([k, t, cls]) => `<button class="oc-filtro ${cls || ''} ${estado.filtro === k ? 'ativo' : ''}" data-oc-filtro="${k}">${t}${cont[k] != null ? `<span class="n">${cont[k]}</span>` : ''}</button>`).join('');
     $('ocPeriodo').classList.toggle('oculto', !['entregues', 'devolvidos', 'todos'].includes(estado.filtro));
     if (!d.linhas.length) {
-      $('ocTabela').innerHTML = `<div class="kanban-vazio">${estado.filtro === 'atrasados' ? 'Nenhuma entrega atrasada. 👏' : 'Nenhum CT-e aqui.'}</div>`;
+      $('ocTabela').innerHTML = `<div class="kanban-vazio">${estado.filtro === 'atrasados' ? 'Nenhuma entrega atrasada. 👏' : estado.filtro === 'agendar' ? 'Nenhuma entrega esperando agendamento. Marque "Exige agendamento" no cadastro dos clientes que pedem.' : 'Nenhum CT-e aqui.'}</div>`;
       atualizarLote();
       return;
     }
@@ -102,12 +111,12 @@
         <td>${esc(l.nfs.join(', ') || '—')}</td>
         <td>${esc(l.destinatario_nome || '—')}<br><small style="color:var(--texto-fraco);">${esc(l.cidade_fim || '')}${l.uf_fim ? `/${esc(l.uf_fim)}` : ''}</small></td>
         <td>${dia(l.autorizado_em)}</td>
-        <td>${previsaoHtml(l, d.hoje)}</td>
+        <td>${previsaoHtml(l, d.hoje)}${seloAgenda(l)}</td>
         <td><span class="oc-sit ${esc(l.situacao_entrega)}">${esc(situacoes[l.situacao_entrega] || l.situacao_entrega)}</span>
           ${l.situacao_entrega === 'entregue' ? `<br><small style="color:var(--texto-fraco);">${dataHora(l.data_entrega)}${l.recebedor_nome ? ` · ${esc(l.recebedor_nome)}` : ''}</small>`
     : l.ultima ? `<br><small style="color:var(--texto-fraco);">${esc(l.ultima.descricao)} · ${dataHora(l.ultima.data_hora)}</small>` : ''}</td>
         <td><div class="oc-linha-acoes">
-          ${marcavel(l) ? `<button class="primario" data-oc-lancar="${l.id}">+ Ocorrência</button>` : ''}
+          ${marcavel(l) ? `<button class="primario" data-oc-lancar="${l.id}">+ Ocorrência</button><button data-oc-agendar="${l.id}" title="${l.agendamento ? 'Reagendar a entrega' : 'Agendar a entrega com o destinatário'}" aria-label="${l.agendamento ? 'Reagendar' : 'Agendar'}">📅</button>` : ''}
           <button data-oc-ver="${l.id}">Histórico${l.qtd_ocorrencias ? ` (${l.qtd_ocorrencias})` : ''}</button></div></td></tr>`).join('')}
       </tbody></table>${d.linhas.length >= 1000 ? '<p class="edi-dica">Mostrando os primeiros 1000. Use a busca para achar os outros.</p>' : ''}`;
     $('ocTodos').addEventListener('change', (e) => { document.querySelectorAll('[data-oc-marca]').forEach((x) => { x.checked = e.target.checked; }); atualizarLote(); });
@@ -124,6 +133,8 @@
   $('ocTabela').addEventListener('click', (e) => {
     const lancarB = e.target.closest('[data-oc-lancar]');
     if (lancarB) { abrirLancamento(Number(lancarB.dataset.ocLancar)); return; }
+    const agendarB = e.target.closest('[data-oc-agendar]');
+    if (agendarB) { abrirAgendamento(Number(agendarB.dataset.ocAgendar)).catch((err) => mostrarAlerta(err.message, { tipo: 'erro' })); return; }
     const ver = e.target.closest('[data-oc-ver]');
     if (ver) abrirHistorico(Number(ver.dataset.ocVer));
   });
@@ -208,6 +219,49 @@
     });
   }
 
+  async function abrirAgendamento(id) {
+    const c = await api(`/${id}`);
+    const atual = c.agendamentos.find((a) => a.status === 'ativo');
+    const regra = c.regra_agendamento || {};
+    const ct = c.contato || {};
+    $('ocModalConteudo').innerHTML = `${cabecalhoCte(c)}
+      <h4 style="margin:16px 0 6px;">📅 ${atual ? 'Reagendar a entrega' : 'Agendar a entrega'}</h4>
+      ${regra.exige ? `<div class="cte-aviso" style="margin:6px 0;">${esc(regra.cliente || 'O cliente')} exige agendamento.${regra.instrucoes ? `<br><b>Como agendar:</b> <span style="white-space:pre-wrap;">${esc(regra.instrucoes)}</span>` : ''}</div>` : ''}
+      ${ct.telefone || ct.email ? `<p class="edi-dica" style="margin:4px 0;">Contato do destinatário: ${[ct.telefone ? `📞 ${esc(ct.telefone)}` : '', ct.email ? `✉ ${esc(ct.email)}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
+      ${atual ? `<div class="cte-aviso ok" style="margin:6px 0;">Agendado hoje para <b>${diaSemana(atual.data)}</b>, ${esc(janela(atual))}${atual.senha ? ` · senha <b>${esc(atual.senha)}</b>` : ''}${atual.doca ? ` · doca ${esc(atual.doca)}` : ''}${atual.contato ? ` · com ${esc(atual.contato)}` : ''}
+        · <a href="#" id="agCancelar" style="color:var(--vermelho);">cancelar agendamento</a></div>` : ''}
+      <div class="oc-form" style="margin-top:10px;">
+        <div class="campo"><label for="agData">Data da entrega</label><input type="date" id="agData" min="${esc(estado.dados?.hoje || '')}" value="${esc(atual?.data || '')}" /></div>
+        <div class="campo"><label for="agDe">Janela: das</label><input type="time" id="agDe" value="${esc(atual?.hora_de || '')}" /></div>
+        <div class="campo"><label for="agAte">até as</label><input type="time" id="agAte" value="${esc(atual?.hora_ate || '')}" /></div>
+        <div class="campo"><label for="agSenha">Senha / protocolo</label><input type="text" id="agSenha" maxlength="60" value="${esc(atual?.senha || '')}" /></div>
+        <div class="campo"><label for="agDoca">Doca</label><input type="text" id="agDoca" maxlength="40" value="${esc(atual?.doca || '')}" /></div>
+        <div class="campo"><label for="agContato">Agendado com (nome)</label><input type="text" id="agContato" maxlength="120" value="${esc(atual?.contato || '')}" /></div>
+        <div class="campo inteiro"><label for="agObs">Observação (para o motorista)</label><input type="text" id="agObs" maxlength="500" value="${esc(atual?.observacao || '')}" placeholder="Ex: levar paleteira; descarga por conta do motorista" /></div>
+      </div>
+      <p class="edi-dica" style="margin:0;">Ao salvar, entra a ocorrência "Entrega agendada" e a previsão de entrega passa a ser a data marcada. A senha e a doca não vão para o cliente nem para o OCOREN.</p>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+        <button class="btn btn-secundario" data-oc-fechar style="width:auto;">Fechar</button>
+        <button class="btn btn-primario" id="agSalvar" style="width:auto;">${atual ? 'Reagendar' : 'Agendar entrega'}</button></div>`;
+    modal.classList.remove('oculto');
+    $('agSalvar').addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        const r = await api(`/${id}/agendamento`, { method: 'POST', body: JSON.stringify({ data: $('agData').value, hora_de: $('agDe').value, hora_ate: $('agAte').value,
+          senha: $('agSenha').value, doca: $('agDoca').value, contato: $('agContato').value, observacao: $('agObs').value }) });
+        fecharModal();
+        mostrarAlerta(`Entrega do CT-e ${r.numero} ${r.reagendamento ? 'reagendada' : 'agendada'}.`, { tipo: 'sucesso' });
+        await carregar();
+      } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); b.disabled = false; }
+    });
+    $('agCancelar')?.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      const motivo = await pedirTexto('Por que cancelar o agendamento? A previsão volta a ser a de antes.');
+      if (!motivo) return;
+      try { await api(`/agendamento/${atual.id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }); mostrarAlerta('Agendamento cancelado.', { tipo: 'sucesso' }); await carregar(); await abrirAgendamento(id); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+    });
+  }
+
   async function abrirHistorico(id) {
     const c = await api(`/${id}`);
     const itens = [...c.ocorrencias.map((o) => `<li style="--cor-ev:${COR_TIPO[o.tipo] || '#8a94a6'};"><b>${esc(o.descricao)}</b>
@@ -218,11 +272,17 @@
         <small>${o.origem === 'motorista' ? '📱 pelo app do motorista · ' : ''}${o.romaneio_id ? `romaneio ${o.romaneio_id} · ` : ''}${o.tem_comprovante ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📎 Ver comprovante</a> · ` : ''}${o.tem_assinatura ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?tipo=assinatura&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">✍ Assinatura</a> · ` : ''}${o.latitude != null ? `<a href="https://www.google.com/maps?q=${o.latitude},${o.longitude}" target="_blank" rel="noopener">📍 Local</a> · ` : ''}
           <a href="#" data-oc-apagar="${o.id}" style="color:var(--vermelho);">apagar</a>${o.enviada_edi_em ? ' · enviada no OCOREN' : ''}</small></li>`),
     `<li style="--cor-ev:#8a94a6;"><b>CT-e emitido</b><small>${dataHora(c.autorizado_em)} · ${esc(c.origem || '')}</small></li>`].join('');
-    $('ocModalConteudo').innerHTML = `${cabecalhoCte(c)}<ul class="oc-tempo">${itens}</ul>
+    const STATUS_AG = { ativo: 'vale', substituido: 'reagendado depois', cancelado: 'cancelado' };
+    const agendas = c.agendamentos.length ? `<h4 style="margin:14px 0 6px;">📅 Agendamentos</h4><table class="edi-tabela"><tbody>${c.agendamentos.map((a) => `<tr${a.status !== 'ativo' ? ' style="opacity:.6;"' : ''}>
+        <td style="white-space:nowrap;"><b>${diaSemana(a.data)}</b><br><small>${esc(janela(a))}</small></td>
+        <td>${a.senha ? `senha <b>${esc(a.senha)}</b>` : ''}${a.doca ? ` · doca ${esc(a.doca)}` : ''}${a.contato ? `<br><small>com ${esc(a.contato)}</small>` : ''}${a.observacao ? `<br><small>${esc(a.observacao)}</small>` : ''}</td>
+        <td><small>${esc(STATUS_AG[a.status] || a.status)}${a.motivo_cancelamento ? `: ${esc(a.motivo_cancelamento)}` : ''}<br>${esc(a.usuario_nome || '')} · ${dataHora(a.criado_em)}</small></td></tr>`).join('')}</tbody></table>` : '';
+    $('ocModalConteudo').innerHTML = `${cabecalhoCte(c)}${agendas}<ul class="oc-tempo">${itens}</ul>
       <div style="display:flex; justify-content:flex-end; gap:10px;">
         ${c.chave ? `<button class="btn btn-secundario" id="ocCopiarLink" style="width:auto;">🔗 Copiar link de rastreio</button>` : ''}
-        ${!['entregue', 'devolvido'].includes(c.situacao_entrega) && c.status === 'autorizado' ? `<button class="btn btn-primario" id="ocNova" style="width:auto;">+ Ocorrência</button>` : ''}</div>`;
+        ${!['entregue', 'devolvido'].includes(c.situacao_entrega) && c.status === 'autorizado' ? `<button class="btn btn-secundario" id="ocAgendar" style="width:auto;">📅 Agendar</button><button class="btn btn-primario" id="ocNova" style="width:auto;">+ Ocorrência</button>` : ''}</div>`;
     modal.classList.remove('oculto');
+    $('ocAgendar')?.addEventListener('click', () => abrirAgendamento(id).catch((err) => mostrarAlerta(err.message, { tipo: 'erro' })));
     $('ocNova')?.addEventListener('click', () => abrirLancamento(id));
     $('ocCopiarLink')?.addEventListener('click', () => copiar(`${location.origin}/rastreio.html?chave=${c.chave}`));
     document.querySelectorAll('[data-oc-apagar]').forEach((a) => a.addEventListener('click', async (ev) => {
@@ -323,7 +383,7 @@
       })() : ''}
       ${r.itens.length || !r.coletas?.length ? `<table class="edi-tabela" style="margin-top:8px;"><thead><tr><th>#</th><th>CT-e</th><th>Destinatário</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>
       ${r.itens.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.serie)}/${esc(i.numero)}<br><small style="color:var(--texto-fraco);">NF ${esc(i.nfs.join(', '))}</small></td>
-        <td>${esc(i.destinatario)}<br><small style="color:var(--texto-fraco);">${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}</small></td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
+        <td>${esc(i.destinatario)}<br><small style="color:var(--texto-fraco);">${esc(i.endereco)}${i.bairro ? ` — ${esc(i.bairro)}` : ''}</small>${seloAgenda({ situacao_entrega: i.situacao, agendamento: i.agendamento, exige_agendamento: i.exige_agendamento })}${i.agendamento && i.agendamento.data !== String(r.data).slice(0, 10) && !['entregue', 'devolvido'].includes(i.situacao) ? ' <small style="color:#b45309;">⚠ agendado para outro dia</small>' : ''}</td><td>${esc(i.cidade)}/${esc(i.uf)}</td>
         <td><span class="oc-sit ${esc(i.situacao)}">${esc(situacoes[i.situacao] || i.situacao)}</span>${i.situacao === 'entregue' && i.recebedor ? `<br><small>${esc(i.recebedor)}</small>` : i.ultima ? `<br><small style="color:var(--texto-fraco);">${esc(i.ultima.descricao)}</small>` : ''}</td></tr>`).join('')}
       </tbody></table>` : ''}
       ${r.coletas?.length ? `<h4 style="margin:14px 0 6px;">📦 Coletas (${r.coletas.filter((c) => c.status === 'coletada').length}/${r.coletas.length} feitas)</h4>

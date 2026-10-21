@@ -1487,6 +1487,9 @@
               <div><label>UF</label><input type="text" id="clUf" maxlength="2" /></div>
               <div><label>CEP</label><input type="text" id="clCep" /></div>
               <div style="grid-column:1/-1;"><label>Observações</label><textarea id="clObservacoes" rows="2" style="width:100%;"></textarea></div>
+              <div style="grid-column:1/-1;"><label style="display:flex; gap:8px; align-items:center; font-weight:600;"><input type="checkbox" id="clExigeAgenda" style="width:auto;" /> 📅 Exige agendamento da entrega</label>
+                <small style="color:var(--texto-fraco);">Os CT-e para este cliente (como destinatário ou local de entrega) aparecem em "A agendar" nas Ocorrências até alguém marcar a data.</small></div>
+              <div style="grid-column:1/-1;"><label>Como agendar (aparece para quem for marcar a entrega)</label><textarea id="clAgendaInstrucoes" rows="2" style="width:100%;" placeholder="Ex: agendar pelo e-mail recebimento@cliente.com.br com 48h de antecedência; doca só de manhã"></textarea></div>
             </div>
             <div style="display:flex; gap:8px; margin-top:12px;">
               <button class="btn btn-primario" id="btnSalvarCliente" style="width:auto;">Salvar</button>

@@ -2470,3 +2470,21 @@ CREATE INDEX IF NOT EXISTS idx_pix_cobrancas_fatura ON pix_cobrancas (fatura_id,
 CREATE TABLE IF NOT EXISTS pix_sim_pagamentos (
   id SERIAL PRIMARY KEY, txid VARCHAR(35) NOT NULL, valor NUMERIC(14,2) NOT NULL, e2e VARCHAR(40) NOT NULL, horario TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Agendamento de entrega com o destinatário (data, janela, senha da doca).
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS exige_agendamento BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS agendamento_instrucoes TEXT;
+CREATE TABLE IF NOT EXISTS cte_agendamentos (
+  id SERIAL PRIMARY KEY,
+  cte_id INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
+  data DATE NOT NULL,
+  hora_de TIME, hora_ate TIME,
+  senha VARCHAR(60), doca VARCHAR(40), contato VARCHAR(120), observacao TEXT,
+  status VARCHAR(12) NOT NULL DEFAULT 'ativo',  -- ativo | substituido | cancelado
+  motivo_cancelamento VARCHAR(200),
+  ocorrencia_id INTEGER REFERENCES cte_ocorrencias(id) ON DELETE SET NULL,
+  usuario_nome VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cte_agendamentos_cte ON cte_agendamentos (cte_id, criado_em);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_cte_agendamentos_ativo ON cte_agendamentos (cte_id) WHERE status = 'ativo';

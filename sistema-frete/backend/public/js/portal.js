@@ -184,7 +184,7 @@
     $('ptCargas').innerHTML = lista.length ? lista.map((c) => `<div class="pt-item clicavel ${c.atrasada ? 'laranja' : SIT[c.situacao] || 'azul'}" data-carga="${c.id}">
         <div><div class="titulo">${c.nfs.length ? `NF ${esc(c.nfs.join(', '))}` : `CT-e ${esc(c.cte)}`} · ${esc(c.destinatario || '')}</div>
           <div class="linha">${esc(c.origem || '')} → ${esc(c.destino || '')} · CT-e ${esc(c.cte)} de ${diaTs(c.emissao)}${c.volumes ? ` · ${num(c.volumes)} vol.` : ''}${c.papeis.length ? ` · você é ${esc(c.papeis.join(' e ').toLowerCase())}` : ''}</div></div>
-        <div class="dir">${etiqueta(c)}<div class="linha">${c.entregue_em ? `entregue ${diaTs(c.entregue_em)}` : c.previsao ? `previsão ${dia(c.previsao)}` : ''}</div>${c.valor != null ? `<div class="valor">${moeda(c.valor)}</div>` : ''}</div>
+        <div class="dir">${etiqueta(c)}<div class="linha">${c.entregue_em ? `entregue ${diaTs(c.entregue_em)}` : c.agendamento ? `agendada ${dia(c.agendamento.data)}${c.agendamento.janela ? `, ${esc(c.agendamento.janela)}` : ''}` : c.previsao ? `previsão ${dia(c.previsao)}` : ''}</div>${c.valor != null ? `<div class="valor">${moeda(c.valor)}</div>` : ''}</div>
       </div>`).join('') : vazio('box', filtroCargas === 'transito' ? 'Nenhuma carga em andamento agora.' : 'Nenhuma carga encontrada.');
   }
   $('ptFiltrosCargas').addEventListener('click', (e) => { const b = e.target.closest('[data-filtro]'); if (b) { filtroCargas = b.dataset.filtro; carregarCargas().catch((err) => aviso(err.message)); } });
@@ -202,7 +202,7 @@
           <div>Remetente<b>${esc(c.remetente || '')}</b></div><div>Destinatário<b>${esc(c.destinatario || '')}</b></div>
           <div>Trajeto<b>${esc(c.origem || '')} → ${esc(c.destino || '')}</b></div><div>Nota(s) fiscal(is)<b>${esc(c.nfs.join(', ') || '—')}</b></div>
           <div>Carga<b>${[c.volumes ? `${num(c.volumes)} vol.` : '', c.peso ? `${num(c.peso, 1)} kg` : ''].filter(Boolean).join(' · ') || '—'}</b></div>
-          <div>${c.entregue_em ? 'Entregue em' : 'Previsão de entrega'}<b>${c.entregue_em ? diaHora(c.entregue_em) : dia(c.previsao) || '—'}</b></div>
+          <div>${c.entregue_em ? 'Entregue em' : c.agendamento ? 'Entrega agendada' : 'Previsão de entrega'}<b>${c.entregue_em ? diaHora(c.entregue_em) : c.agendamento ? `${dia(c.agendamento.data)}${c.agendamento.janela ? `, ${esc(c.agendamento.janela)}` : ''}` : dia(c.previsao) || '—'}</b></div>
           ${c.recebedor_nome ? `<div>Recebido por<b>${esc(c.recebedor_nome)}</b></div>` : ''}
         </div>${comp}
         <h3 style="font-size:15px; margin:16px 0 0;">Histórico</h3>

@@ -180,6 +180,8 @@ function resumoCte(u, c) {
     volumes: quantidade(d, /VOL/) || null, peso: quantidade(d, /PESO/) || null,
     situacao: c.status === 'cancelado' ? 'cancelado' : c.situacao_entrega, situacao_texto: c.status === 'cancelado' ? 'CT-e cancelado' : SITUACOES[c.situacao_entrega] || c.situacao_entrega,
     previsao: c.previsao_entrega, entregue_em: c.data_entrega, atrasada: atrasada(c),
+    // Sem senha nem doca (são combinadas com quem recebe, não com o embarcador).
+    agendamento: c.agendamento && !['entregue', 'devolvido'].includes(c.situacao_entrega) ? { data: c.agendamento.data, janela: require('./cte/agendamento').janela(c.agendamento) || null } : null,
     papeis, pagador, valor: verValor ? valorCte(c) : null,
   };
 }
@@ -201,7 +203,7 @@ async function listarCargas(u, { filtro = 'transito', busca = '', de, ate } = {}
   }
   const { rows } = await pool.query(
     `SELECT c.id, c.serie, c.numero, c.chave, c.status, c.autorizado_em, c.valor_total, c.dados, c.demonstracao, c.situacao_entrega, c.previsao_entrega,
-            c.data_entrega, c.remetente_nome, c.destinatario_nome, c.cidade_fim, c.uf_fim
+            c.data_entrega, c.remetente_nome, c.destinatario_nome, c.cidade_fim, c.uf_fim, ${require('./cte/agendamento').SQL_JSON('c')} AS agendamento
        FROM ctes_emitidos c WHERE ${onde.join(' AND ')}
       ORDER BY ${f === 'transito' || f === 'atrasadas' ? 'c.previsao_entrega NULLS LAST, c.autorizado_em' : 'c.autorizado_em DESC'} LIMIT 300`, val);
   return rows.map((c) => resumoCte(u, c));
@@ -212,7 +214,7 @@ async function cteDoCliente(u, id) {
   const val = [u.documentos, u.raizes, Number(id)];
   const demo = await emDemonstracao();
   const { rows } = await pool.query(
-    `SELECT c.* FROM ctes_emitidos c WHERE c.id = $3 AND c.status IN ('autorizado', 'cancelado') AND ${condicaoCliente(1)}${demo ? '' : ' AND NOT c.demonstracao'}`, val);
+    `SELECT c.*, ${require('./cte/agendamento').SQL_JSON('c')} AS agendamento FROM ctes_emitidos c WHERE c.id = $3 AND c.status IN ('autorizado', 'cancelado') AND ${condicaoCliente(1)}${demo ? '' : ' AND NOT c.demonstracao'}`, val);
   if (!rows[0]) throw falha('Carga não encontrada.', 404);
   return rows[0];
 }

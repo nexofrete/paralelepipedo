@@ -69,6 +69,13 @@ async function montar(req) {
       add('operacao', { chave: 'parceiros_atrasados', icone: '🤝', titulo: 'Entregas atrasadas com parceiros', qtd: pa.atrasados, nivel: 'perigo', detalhe: 'cobre o parceiro (redespacho)', destino: { ir: 'parceiros' } });
     } catch (e) { console.error('[hoje]', e.message); }
     try {
+      const mo = await require('./monitoramento').pendencias();
+      add('operacao', { chave: 'veiculos_parados', icone: '🛑', titulo: 'Veículos parados fora de entrega', qtd: mo.parados, nivel: 'perigo', detalhe: 'ligue para o motorista', destino: { ir: 'monitoramento' } });
+      add('operacao', { chave: 'veiculos_desvio', icone: '↪', titulo: 'Veículos fora da rota', qtd: mo.desvio, nivel: 'perigo', detalhe: 'longe do caminho planejado', destino: { ir: 'monitoramento' } });
+      add('operacao', { chave: 'veiculos_sem_sinal', icone: '📵', titulo: 'Veículos em rota sem sinal', qtd: mo.sem_sinal, nivel: 'atencao', detalhe: 'o app do motorista parou de mandar a posição', destino: { ir: 'monitoramento' } });
+      add('operacao', { chave: 'veiculos_atraso', icone: '⌛', titulo: 'Rotas com entrega que vai atrasar', qtd: mo.atraso, nivel: 'atencao', detalhe: 'a chegada prevista passa do agendamento ou da previsão', destino: { ir: 'monitoramento' } });
+    } catch (e) { console.error('[hoje]', e.message); }
+    try {
       const pl = await require('./paletes').pendencias();
       add('operacao', { chave: 'vales_palete', icone: '🟫', titulo: 'Vales-palete vencidos', qtd: pl.vencidos, nivel: 'atencao', detalhe: `${pl.paletes_vencidos} palete(s) não devolvidos no prazo: cobre a devolução ou gere a nota de débito`,
         destino: { ir: 'paletes', clicar: '[data-pl-vfiltro="vencidos"]' } });

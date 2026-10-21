@@ -32,3 +32,4 @@ button:disabled { opacity: .6; }
 .rt-aviso { background: rgba(217,119,6,.12); color: var(--laranja); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
 .rt-rodape { text-align: center; color: var(--fraco); font-size: 12.5px; margin-top: 24px; }
 @media (max-width: 560px) { .rt-linha { grid-template-columns: 1fr; } }
+.rt-dados small { display: block; font-size: 12px; color: var(--fraco); }

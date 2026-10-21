@@ -15,13 +15,17 @@
     if (t.logo) { $('rtLogo').src = t.logo; $('rtLogo').classList.remove('oculto'); }
     $('rtNome').textContent = `Rastreio — ${t.nome}`;
     $('rtContato').textContent = [t.nome, t.telefone, t.email].filter(Boolean).join(' · ');
+    // "hoje por volta das 16:30" ou "22/10 por volta das 09:10" (horário de Brasília).
+    const quandoChega = (v) => { const fmt = (o) => new Date(v).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', ...o });
+      const dia = fmt({ day: '2-digit', month: '2-digit' }); const hoje = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
+      return `${dia === hoje ? 'hoje' : dia} por volta das ${fmt({ hour: '2-digit', minute: '2-digit' })}`; };
     $('rtResultado').innerHTML = r.entregas.map((e) => `<section class="rt-cartao">
       <div class="rt-status"><div><small style="color:var(--fraco);">CT-e ${esc(e.cte)}</small><h2>${esc(e.destino || '')}</h2></div>
         <span class="rt-sit ${esc(e.situacao_codigo)}">${esc(e.situacao)}</span></div>
       <div class="rt-dados">
         <div>Origem<b>${esc(e.origem || '—')}</b></div><div>Destino<b>${esc(e.destino || '—')}</b></div>
         ${e.entregue_em ? `<div>Entregue em<b>${esc(dataHora(e.entregue_em))}</b></div>${e.recebido_por ? `<div>Recebido por<b>${esc(e.recebido_por)}</b></div>` : ''}`
-    : `<div>Previsão de entrega<b>${esc(dia(e.previsao))}</b></div>`}
+    : `<div>Previsão de entrega<b>${esc(dia(e.previsao))}</b></div>${e.chegada_prevista ? `<div>Chegada prevista<b>${esc(quandoChega(e.chegada_prevista.horario))}</b>${e.chegada_prevista.entregas_antes ? `<small>${e.chegada_prevista.entregas_antes} entrega(s) antes da sua</small>` : '<small>a sua é a próxima entrega</small>'}</div>` : ''}`}
       </div>
       ${e.demonstracao ? '<div class="rt-aviso">Entrega de demonstração (sem valor fiscal).</div>' : ''}
       <ul class="rt-linha-tempo">${e.historico.map((h) => `<li><b>${esc(h.descricao)}</b><small>${esc(dataHora(h.data_hora))}${h.local ? ` · ${esc(h.local)}` : ''}</small>${h.detalhe ? `<small>${esc(h.detalhe)}</small>` : ''}</li>`).join('')}</ul>

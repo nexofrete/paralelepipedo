@@ -43,7 +43,9 @@ router.get('/', async (req, res) => {
       const { rows: ocs } = await pool.query(
         'SELECT descricao, tipo, data_hora, cidade, uf, recebedor_nome, nova_previsao FROM cte_ocorrencias WHERE cte_id = $1 ORDER BY data_hora DESC, id DESC', [c.id]);
       const d = c.dados || {};
+      const chegada = c.status === 'autorizado' && !['entregue', 'devolvido'].includes(c.situacao_entrega) ? await require('../monitoramento').previsaoDoCte(c.id).catch(() => null) : null;
       resultado.push({
+        chegada_prevista: chegada ? { horario: chegada.chegada_prevista, entregas_antes: chegada.entregas_antes } : null,
         cte: `${c.serie}/${c.numero}`, emissao: c.autorizado_em, cancelado: c.status === 'cancelado', demonstracao: c.demonstracao,
         origem: d.inicio ? `${d.inicio.xMun}/${d.inicio.UF}` : null, destino: d.fim ? `${d.fim.xMun}/${d.fim.UF}` : null,
         destinatario: d.destinatario?.xNome || null,

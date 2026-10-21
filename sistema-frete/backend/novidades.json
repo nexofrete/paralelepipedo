@@ -82,6 +82,10 @@
           "texto": "Controle de paletes (066): troca de paletes na baixa da entrega e da coleta (app do motorista e Ocorrências), saldo por cliente e tipo (PBR, CHEP, plástico), vale-palete numerado para o que não voltou, devolução que baixa os vales, cobrança dos vencidos por nota de débito que entra na fatura, e a aba Paletes no portal do cliente."
         },
         {
+          "area": "Entregas",
+          "texto": "Monitoramento de veículos no mapa (045): o app do motorista manda a posição do GPS durante a rota; mapa da frota com situação (em movimento, no cliente, parado, sem sinal), trajeto do dia, chegada prevista em cada entrega e alertas de parado, sem sinal, fora da rota e entrega que vai atrasar (também na tela Hoje). O cliente vê a hora prevista de chegada no portal e no rastreio."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

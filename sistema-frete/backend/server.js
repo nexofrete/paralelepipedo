@@ -262,6 +262,7 @@ app.post('/api/sac/whatsapp', express.urlencoded({ extended: false, limit: '100k
 });
 app.use('/api/sac', require('./src/routes/sac'));
 app.use('/api/paletes', require('./src/routes/paletes'));
+app.use('/api/monitoramento', require('./src/routes/monitoramento'));
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
 app.use('/api/contabil', require('./src/routes/contabil'));

@@ -2757,3 +2757,21 @@ CREATE TABLE IF NOT EXISTS paletes_movimentos (
 );
 CREATE INDEX IF NOT EXISTS idx_paletes_mov_parte ON paletes_movimentos (parte_doc, tipo_palete, data);
 CREATE INDEX IF NOT EXISTS idx_paletes_mov_cte ON paletes_movimentos (cte_id);
+
+-- Monitoramento de veículos: posições enviadas pelo app do motorista durante a rota
+-- (romaneio em rota), previsão de chegada em cada entrega e alertas (parado, sem sinal, fora da rota).
+CREATE TABLE IF NOT EXISTS veiculo_posicoes (
+  id BIGSERIAL PRIMARY KEY,
+  romaneio_id INTEGER REFERENCES romaneios(id) ON DELETE CASCADE,
+  placa VARCHAR(10), motorista_nome VARCHAR(120),
+  lat NUMERIC(9,6) NOT NULL, lon NUMERIC(9,6) NOT NULL,
+  velocidade NUMERIC(5,1),                       -- km/h (do GPS do celular)
+  precisao INTEGER,                              -- metros
+  origem VARCHAR(10) NOT NULL DEFAULT 'app',
+  registrado_em TIMESTAMPTZ NOT NULL, recebido_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_veiculo_posicoes_rom ON veiculo_posicoes (romaneio_id, registrado_em);
+CREATE INDEX IF NOT EXISTS idx_veiculo_posicoes_data ON veiculo_posicoes (registrado_em);
+-- Paradas do romaneio já localizadas no mapa e o desenho da rota (para o "fora da rota").
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS rota_planejada JSONB;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS monitor_config JSONB;

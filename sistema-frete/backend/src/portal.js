@@ -227,8 +227,10 @@ async function detalheCarga(u, id) {
     `SELECT id, descricao, tipo, data_hora, cidade, uf, recebedor_nome, nova_previsao, observacao, (comprovante_arquivo IS NOT NULL) AS tem_comprovante,
             (assinatura_arquivo IS NOT NULL) AS tem_assinatura
        FROM cte_ocorrencias WHERE cte_id = $1 ORDER BY data_hora DESC, id DESC`, [c.id]);
+  // Caminhão em rota com o app ligado: a chegada prevista (sem mostrar onde o caminhão está).
+  const chegada = !['entregue', 'devolvido'].includes(c.situacao_entrega) && c.status === 'autorizado' ? await require('./monitoramento').previsaoDoCte(c.id).catch(() => null) : null;
   return {
-    ...r, recebedor_nome: c.recebedor_nome, tem_xml: !!c.xml_autorizado && r.valor != null, ve_valor: r.valor != null,
+    ...r, chegada_prevista: chegada, recebedor_nome: c.recebedor_nome, tem_xml: !!c.xml_autorizado && r.valor != null, ve_valor: r.valor != null,
     componentes: r.valor != null ? (d.valores?.componentes || []).map((x) => ({ nome: x.xNome, valor: Number(x.vComp) })) : null,
     valor_mercadoria: Number(d.carga?.vCarga || 0) || null, produto: d.carga?.proPred || null,
     historico: [

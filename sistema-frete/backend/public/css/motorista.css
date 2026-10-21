@@ -54,3 +54,7 @@
 .mt-pl-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .mt-pl-aviso { font-size: 13px; margin: 8px 0 0; color: #b45309; }
 .mt-pl-aviso:empty { display: none; }
+
+.mt-gps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; margin: 8px 0; padding: 7px 10px; border-radius: 8px; background: rgba(22,163,74,.1); color: #15803d; }
+.mt-gps.ruim { background: rgba(217,119,6,.12); color: #b45309; }
+.mt-gps button { width: auto; padding: 4px 10px; font-size: 12px; margin-left: auto; }

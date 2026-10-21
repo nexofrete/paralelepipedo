@@ -182,7 +182,8 @@ const PASTA_MAPA = path.join(__dirname, '..', '..', 'dados', 'mapa-cache');
 const MAPA_PADRAO = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const VALIDADE_MAPA_MS = 30 * 86400000;
 const versao = (() => { try { return require('../../package.json').version; } catch { return '1'; } })();
-router.get('/mapa/:z(\\d+)/:x(\\d+)/:y(\\d+).png', autenticar, podeVer, async (req, res) => {
+// O fundo do mapa também serve o monitoramento de veículos (quem emite CT-e).
+router.get('/mapa/:z(\\d+)/:x(\\d+)/:y(\\d+).png', autenticar, permitirAlguma('pode_ver_relatorios', 'pode_emitir_cte'), async (req, res) => {
   const z = Number(req.params.z); const x = Number(req.params.x); const y = Number(req.params.y);
   if (z > 19 || x >= 2 ** z || y >= 2 ** z) return res.status(400).end();
   const arquivo = path.join(PASTA_MAPA, String(z), String(x), `${y}.png`);

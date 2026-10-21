@@ -22,6 +22,7 @@
       guardar('motoristaCodigo', codigo);
       $('mtEntrar').classList.add('oculto'); $('mtRota').classList.remove('oculto');
       desenhar();
+      ligarRastreio();
       if (dados.romaneio.parceiro) $('mtJornada').classList.add('oculto'); else carregarJornada();
     } catch (err) {
       if (err.status === 404 || err.status === 410) guardar('motoristaCodigo', null);
@@ -29,6 +30,67 @@
       $('mtErroCodigo').textContent = err.message;
     }
   }
+
+  // Monitoramento: com a rota em andamento, o celular manda a posição de tempos em tempos
+  // (o que não foi por falta de internet fica guardado e vai depois).
+  let vigia = null; let ultimoPonto = 0; let ultimoEnvio = 0; let gps = ''; let telaLigada = null; let querTela = false;
+  let fila = (() => { try { return JSON.parse(localStorage.getItem('motoristaPosicoes') || '[]'); } catch { return []; } })();
+  const guardarFila = () => { try { localStorage.setItem('motoristaPosicoes', JSON.stringify(fila.slice(-1500))); } catch { /* sem armazenamento */ } };
+  const intervalo = () => (dados?.rastreio?.intervalo_s || 60) * 1000;
+  function mostrarGps() {
+    const el = $('mtGps');
+    if (!dados || dados.romaneio.status !== 'em_rota') { el.classList.add('oculto'); return; }
+    el.classList.remove('oculto');
+    const ruim = gps === 'negado' || gps === 'erro' || gps === 'sem';
+    el.classList.toggle('ruim', ruim);
+    const min = Math.round((Date.now() - ultimoEnvio) / 60000);
+    const quando = ultimoEnvio ? (min < 1 ? 'enviada agora' : `enviada há ${min} min`) : 'aguardando o GPS';
+    el.innerHTML = `${ruim ? `⚠ ${gps === 'negado' ? 'Localização bloqueada: libere a localização deste site nas configurações do navegador para a transportadora acompanhar a rota.' : gps === 'sem' ? 'Este celular não tem GPS no navegador.' : 'Sem sinal de GPS agora.'}`
+      : `📡 Localização da rota ligada · ${quando}${fila.length > 1 ? ` · ${fila.length} aguardando internet` : ''}`}
+      ${'wakeLock' in navigator && !ruim ? `<button type="button" id="mtTela">${querTela ? '🔆 Tela sempre ligada' : 'Manter a tela ligada'}</button>` : ''}`;
+    $('mtTela')?.addEventListener('click', async () => {
+      querTela = !querTela;
+      try { if (!querTela && telaLigada) { await telaLigada.release(); telaLigada = null; } else if (querTela) await pedirTela(); } catch { querTela = false; }
+      mostrarGps();
+    });
+  }
+  // A tela apaga sozinha (e o navegador para o GPS); o pedido cai quando o app sai da frente e é refeito na volta.
+  async function pedirTela() {
+    telaLigada = await navigator.wakeLock.request('screen');
+    telaLigada.addEventListener('release', () => { telaLigada = null; });
+  }
+  async function enviarFila() {
+    if (!fila.length || !codigo) return;
+    const lote = fila.slice(0, 300);
+    try {
+      await api('/posicao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pontos: lote }) });
+      fila = fila.slice(lote.length); ultimoEnvio = Date.now(); guardarFila();
+    } catch { /* sem internet: tenta na próxima */ }
+    mostrarGps();
+  }
+  function ligarRastreio() {
+    if (!dados || dados.romaneio.status !== 'em_rota') { if (vigia !== null) { navigator.geolocation.clearWatch(vigia); vigia = null; } mostrarGps(); return; }
+    if (!navigator.geolocation) { gps = 'sem'; mostrarGps(); return; }
+    if (vigia === null) {
+      vigia = navigator.geolocation.watchPosition((p) => {
+        gps = 'ok';
+        const t = p.timestamp || Date.now();
+        if (t - ultimoPonto >= 15000) {
+          ultimoPonto = t;
+          fila.push({ lat: p.coords.latitude, lon: p.coords.longitude, vel: p.coords.speed, prec: Math.round(p.coords.accuracy || 0), t });
+          guardarFila();
+        }
+        if (Date.now() - ultimoEnvio >= intervalo()) enviarFila(); else mostrarGps();
+      }, (e) => { gps = e.code === 1 ? 'negado' : 'erro'; mostrarGps(); }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 60000 });
+    }
+    mostrarGps();
+  }
+  setInterval(() => { if (Date.now() - ultimoEnvio >= intervalo()) enviarFila(); else mostrarGps(); }, 30000);
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible') return;
+    enviarFila();
+    if (querTela && !telaLigada) pedirTela().catch(() => {});
+  });
 
   const SIT = { pendente: 'A entregar', em_transito: 'A entregar', em_rota: 'Saiu para entrega', agendada: 'Agendado', ocorrencia: 'Com ocorrência', entregue: 'Entregue', devolvido: 'Devolvido' };
   function desenhar() {

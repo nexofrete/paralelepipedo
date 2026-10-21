@@ -206,6 +206,7 @@
           <div>Carga<b>${[c.volumes ? `${num(c.volumes)} vol.` : '', c.peso ? `${num(c.peso, 1)} kg` : ''].filter(Boolean).join(' · ') || '—'}</b></div>
           <div>${c.entregue_em ? 'Entregue em' : c.agendamento ? 'Entrega agendada' : 'Previsão de entrega'}<b>${c.entregue_em ? diaHora(c.entregue_em) : c.agendamento ? `${dia(c.agendamento.data)}${c.agendamento.janela ? `, ${esc(c.agendamento.janela)}` : ''}` : dia(c.previsao) || '—'}</b></div>
           ${c.recebedor_nome ? `<div>Recebido por<b>${esc(c.recebedor_nome)}</b></div>` : ''}
+          ${c.chegada_prevista ? `<div>Caminhão a caminho<b>chega ~${esc(new Date(c.chegada_prevista.chegada_prevista).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }))}</b><small>${c.chegada_prevista.entregas_antes ? `${c.chegada_prevista.entregas_antes} entrega(s) antes` : 'é a próxima entrega'}${c.chegada_prevista.km != null ? ` · ~${c.chegada_prevista.km} km` : ''}</small></div>` : ''}
         </div>${comp}
         <h3 style="font-size:15px; margin:16px 0 0;">Histórico</h3>
         <ul class="pt-tempo">${c.historico.map((h) => `<li><b>${esc(h.descricao)}</b>${h.recebedor ? ` — recebido por ${esc(h.recebedor)}` : ''}${h.nova_previsao ? ` — nova previsão ${dia(h.nova_previsao)}` : ''}

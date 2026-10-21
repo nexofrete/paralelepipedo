@@ -238,3 +238,4 @@ table.pt-tab .n { text-align: right; }
 .pt-avaliar input { flex: 1; min-width: 160px; }
 .pt-estrela { background: none !important; border: none !important; box-shadow: none !important; padding: 0 2px !important; font-size: 24px; color: var(--borda-forte); cursor: pointer; }
 .pt-estrela.ativa { color: #f59e0b; }
+.pt-dados small, .rt-dados small { display: block; }

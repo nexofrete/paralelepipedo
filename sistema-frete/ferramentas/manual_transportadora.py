@@ -61,7 +61,7 @@ def parte_operacao(g):
                '(001 Coletas, 002 Nova coleta).'))
     s += tabela(['Área', 'Códigos principais'], [
         ['0xx Operação', '000 Hoje · 001 Coletas · 010 Cotações · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · '
-         '040 Romaneios · 041 Ocorrências · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
+         '040 Romaneios · 041 Ocorrências · 045 Monitoramento · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
          '061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
@@ -220,6 +220,28 @@ def parte_operacao(g):
         'transportadora.',
         'Filtro <b>Agendados</b> e "Entregas agendadas para hoje" na tela Hoje, para conferir se estão no caminhão.',
     ])
+    s += h2('Monitoramento de veículos no mapa (045)')
+    s.append(P('Com o romaneio em rota (Dar saída, ou "Iniciar a rota" no app), o <b>app do motorista</b> manda a posição do '
+               'GPS do celular a cada minuto (o que não foi por falta de internet vai depois). O motorista vê "Localização da '
+               'rota ligada" no alto do app e pode deixar a tela sempre ligada: com a tela apagada o navegador pode parar de '
+               'mandar a posição.'))
+    s += lista([
+        '<b>Mapa da frota</b>: cada caminhão em rota com a situação (em movimento, no cliente, parado, sem sinal), a '
+        'velocidade, as entregas feitas, a próxima entrega e a <b>chegada prevista</b>. A tela se atualiza a cada 30 segundos.',
+        '<b>Clicando no veículo</b>: o trajeto do dia (azul), a rota planejada (tracejada), as entregas numeradas na ordem do '
+        'romaneio (verde = feita, vermelho = vai atrasar), onde cada baixa foi dada e os km rodados pelo GPS.',
+        '<b>Chegada prevista</b>: pela distância até cada entrega (ruas ~ 1,3 × a linha reta, velocidade média da '
+        'roteirização) mais o tempo de cada entrega. Entrega com endereço não achado no mapa fica no centro da cidade e a '
+        'previsão é aproximada.',
+        '<b>Alertas</b>: parado fora de um cliente além do limite, sem sinal, fora da rota planejada (precisa do serviço de '
+        'rotas) e entrega que vai chegar depois do agendamento ou da previsão. Aparecem no cartão do veículo e na tela Hoje.',
+        '<b>Limites</b> (engrenagem): intervalo do envio, minutos para "parado" e "sem sinal", km para "fora da rota", tempo por '
+        'entrega e por quantos dias guardar as posições (depois são apagadas).',
+        'O cliente vê a hora prevista de chegada no portal (detalhe da carga) e no rastreio público, sem a posição do caminhão.',
+    ])
+    s += aviso('nota', 'O mapa de fundo e a rota planejada vêm do OpenStreetMap/OSRM pela internet do servidor (os mesmos da '
+                       'roteirização). Sem eles, os caminhões e as entregas continuam no lugar certo, sem o fundo, e o alerta de '
+                       'fora da rota fica desligado.')
     s += h2('Paletes e vale-palete (066)')
     s.append(P('Na carga paletizada os paletes vão e voltam: na <b>coleta</b> o remetente entrega os paletes carregados e '
                'recebe vazios em troca; na <b>entrega</b> o motorista deixa os paletes com a carga e recebe vazios. O sistema '

@@ -45,6 +45,8 @@ router.get('/:codigo', async (req, res) => {
         volumes_coletados: c.volumes_coletados, entregue_por: c.entregue_por, motivo: c.motivo,
       })),
       motivos_coleta: coletas.MOTIVOS,
+      // Posição do celular durante a rota (monitoramento): de quanto em quanto tempo mandar.
+      rastreio: { intervalo_s: (await require('../monitoramento').config()).intervalo_s },
     });
   } catch (err) { erro(res, err, 'Erro ao abrir o romaneio.'); }
 });
@@ -109,6 +111,14 @@ router.post('/:codigo/coletas/:id(\\d+)', upload.single('foto'), async (req, res
       detalhes: c.status === 'coletada' ? `Coleta ${c.id} feita pelo app (${c.volumes_coletados} vol.)` : `Coleta ${c.id} não coletada pelo app: ${c.motivo}` });
     res.status(201).json({ id: c.id, status: c.status });
   } catch (err) { erro(res, err, 'Erro ao registrar a coleta.'); }
+});
+
+// Posições do celular (monitoramento): { pontos: [{ lat, lon, vel, prec, t }] }, só com o romaneio em rota.
+router.post('/:codigo/posicao', express.json({ limit: '200kb' }), async (req, res) => {
+  try {
+    const r = await romaneioDoCodigo(req.params.codigo);
+    res.json(await require('../monitoramento').registrar(r, req.body?.pontos));
+  } catch (err) { erro(res, err, 'Erro ao gravar a posição.'); }
 });
 
 // "Cheguei no cliente": começa a contar a espera (estadia) desta entrega.

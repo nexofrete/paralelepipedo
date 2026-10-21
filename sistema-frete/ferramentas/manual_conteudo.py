@@ -136,6 +136,33 @@ def parte_instalacao(g):
     ])
     s += aviso('atencao', 'Nesta rede, acessar o servidor pelo <b>nome do computador</b> não funciona — use sempre o '
                           'número de IP.')
+    s += h2('Acesso de fora da empresa (internet) com o Cloudflare Tunnel')
+    s.append(P('O app do motorista na rua (4G), o portal do cliente e o rastreio precisam do sistema na internet com HTTPS. '
+               'O jeito mais simples é o <b>Cloudflare Tunnel</b> (gratuito): um programa no servidor abre uma ligação de saída '
+               'para a Cloudflare, sem abrir porta no roteador e sem IP fixo da operadora. Precisa de um <b>domínio</b> da empresa '
+               '(ex.: suaempresa.com.br, registrado no registro.br).'))
+    s += passos([
+        'Crie a conta grátis em cloudflare.com e adicione o domínio (Add a domain / Adicionar site, plano Free). A Cloudflare '
+        'mostra dois "nameservers": no registro.br, em DNS do domínio, troque os servidores DNS pelos dois da Cloudflare. A '
+        'ativação leva de minutos a algumas horas (chega um e-mail). Se o domínio já tem site ou e-mail, confira se os registros '
+        'DNS antigos foram copiados para a Cloudflare antes de trocar.',
+        'No painel da Cloudflare: Zero Trust, Networks, Tunnels (em versões novas, Networks » Tunnels no painel principal), '
+        '<b>Create a tunnel</b>, tipo <b>Cloudflared</b>, nome "nexofrete".',
+        'Escolha Windows 64-bit. Baixe e instale o cloudflared (o .msi do link mostrado). Depois abra o <b>Prompt de Comando como '
+        'administrador</b> e cole o comando que a tela mostra (cloudflared.exe service install seguido de um código longo). Ele '
+        'vira um serviço do Windows e liga sozinho com o computador. No painel, o túnel fica "Healthy".',
+        'Em <b>Public Hostname</b>: subdomínio "sistema", o seu domínio, Type <b>HTTP</b> e URL <b>localhost:3333</b>. Salve. O '
+        'endereço fica https://sistema.suaempresa.com.br (o HTTPS é da Cloudflare).',
+        'No servidor, abra o arquivo backend\\.env no Bloco de Notas, acrescente a linha <b>TRUST_PROXY=loopback</b> e reinicie o '
+        'Nexofrete. Assim o sistema sabe que o acesso veio por HTTPS pelo túnel e os limites de tentativas de senha valem por pessoa.',
+        'No Nexofrete, informe o endereço em <b>CT-e » Configuração » Endereço público</b> (app do motorista, rastreio e links dos '
+        'avisos) e em <b>Portal do cliente » Configurar</b> (portal). Teste no celular, fora do Wi-Fi: '
+        'https://sistema.suaempresa.com.br/motorista.html.',
+    ])
+    s += aviso('nota', 'Para só testar, sem domínio: no Prompt, "cloudflared tunnel --url http://localhost:3333" dá um endereço '
+                       'https://....trycloudflare.com que funciona enquanto a janela estiver aberta e muda a cada vez. Não use no dia a dia.')
+    s += aviso('atencao', 'Com o túnel, a tela de entrada do sistema também fica na internet: use senhas fortes, ligue a verificação '
+                          'em duas etapas para os administradores e mantenha o sistema atualizado.')
 
     # 6
     s += h1('6. Atalho estilo aplicativo')

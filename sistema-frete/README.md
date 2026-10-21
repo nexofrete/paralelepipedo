@@ -44,6 +44,18 @@ Por padrão, só o computador onde o sistema está ligado consegue acessar. Para
 3. Se não conectar, provavelmente é o firewall do Windows bloqueando — quando o Windows perguntar "Permitir que o Node.js se comunique em redes..." na primeira vez que rodar `iniciar.bat`, marque **Rede Privada** e clique em Permitir.
 4. Para o IP não mudar toda hora, reserve um IP fixo pra essa máquina no roteador (posso te explicar quando chegar nessa etapa).
 
+## Acesso de fora da empresa (Cloudflare Tunnel)
+
+Para o app do motorista na rua, o portal do cliente e o rastreio, o sistema precisa estar na internet com HTTPS. O mais simples é o **Cloudflare Tunnel** (grátis, sem abrir porta no roteador), com um domínio da empresa:
+
+1. Conta grátis em cloudflare.com → adicionar o domínio → trocar os nameservers no registro.br pelos da Cloudflare (copie antes os registros DNS de site/e-mail que já existam).
+2. Zero Trust → Networks → Tunnels → **Create a tunnel** (Cloudflared, nome "nexofrete") → Windows 64-bit: instale o `.msi` e rode, no Prompt **como administrador**, o comando `cloudflared.exe service install <código>` que a tela mostra (vira serviço do Windows).
+3. **Public Hostname**: `sistema` + o domínio, Type **HTTP**, URL **localhost:3333**.
+4. Em `backend/.env`, acrescente `TRUST_PROXY=loopback` e reinicie (o sistema passa a reconhecer o HTTPS do túnel e os limites de tentativas valem por pessoa, não pelo túnel).
+5. Informe `https://sistema.seudominio.com.br` em **CT-e → Configuração → Endereço público** e em **Portal do cliente → Configurar**.
+
+Só para testar, sem domínio: `cloudflared tunnel --url http://localhost:3333` (endereço `trycloudflare.com` temporário, muda a cada vez).
+
 ## Ligar o servidor sozinho ao ligar o computador
 
 Se este computador é o servidor (o que roda o `iniciar.bat`), você pode fazer isso acontecer sozinho, sem precisar clicar em nada:

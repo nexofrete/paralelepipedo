@@ -39,6 +39,12 @@
         <label for="mtVol">Volumes coletados</label><input id="mtVol" inputmode="numeric" maxlength="6" />
         <label for="mtPeso">Peso (kg) — se souber</label><input id="mtPeso" inputmode="decimal" maxlength="12" />
       </div>
+      <details id="mtPaletes" class="mt-paletes oculto"><summary>🟫 Carga paletizada? Troca de paletes</summary>
+        <label for="mtPlTipo">Tipo de palete</label><select id="mtPlTipo"><option value="pbr">PBR (madeira)</option><option value="chep">CHEP</option><option value="plastico">Plástico</option><option value="outro">Outro</option></select>
+        <div class="mt-pl-duas"><div><label for="mtPlSai" id="mtPlRotSai">Paletes deixados com a carga</label><input id="mtPlSai" inputmode="numeric" maxlength="4" /></div>
+          <div><label for="mtPlVolta" id="mtPlRotVolta">Vazios recebidos em troca</label><input id="mtPlVolta" inputmode="numeric" maxlength="4" /></div></div>
+        <p id="mtPlAviso" class="mt-pl-aviso"></p>
+      </details>
       <div id="mtCamposEntrega">
         <label for="mtRecebedor" id="mtRotuloRecebedor">Quem recebeu</label><input id="mtRecebedor" maxlength="120" placeholder="Nome de quem recebeu" />
         <div id="mtCampoDoc"><label for="mtDoc">Documento (RG/CPF) — opcional</label><input id="mtDoc" maxlength="30" inputmode="numeric" /></div>

@@ -62,7 +62,7 @@ def parte_operacao(g):
     s += tabela(['Área', 'Códigos principais'], [
         ['0xx Operação', '000 Hoje · 001 Coletas · 010 Cotações · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · '
          '040 Romaneios · 041 Ocorrências · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
-         '061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)'],
+         '061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
          'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
@@ -184,7 +184,7 @@ def parte_operacao(g):
     ])
 
     # 35
-    s += h1('35. Entregas: ocorrências, romaneio e app do motorista')
+    s += h1('35. Entregas: ocorrências, romaneio, app do motorista e paletes')
     s += lista([
         '<b>Previsão de entrega</b> na autorização, pelo prazo da tabela, contando só dias úteis e pulando os feriados '
         'nacionais e os cadastrados em <b>Feriados</b>.',
@@ -219,6 +219,32 @@ def parte_operacao(g):
         'O portal do cliente e o aviso por e-mail/WhatsApp mostram só a data e a janela: senha e doca não saem da '
         'transportadora.',
         'Filtro <b>Agendados</b> e "Entregas agendadas para hoje" na tela Hoje, para conferir se estão no caminhão.',
+    ])
+    s += h2('Paletes e vale-palete (066)')
+    s.append(P('Na carga paletizada os paletes vão e voltam: na <b>coleta</b> o remetente entrega os paletes carregados e '
+               'recebe vazios em troca; na <b>entrega</b> o motorista deixa os paletes com a carga e recebe vazios. O sistema '
+               'guarda o <b>saldo de paletes</b> de cada cliente (pelo CNPJ) e por tipo (PBR, CHEP, plástico, outro).'))
+    s += passos([
+        'Na baixa da entrega (app do motorista ou Ocorrências » lançar "Entregue"), abra <b>Carga paletizada? Troca de '
+        'paletes</b> e informe o tipo, os paletes deixados com a carga e os vazios recebidos em troca.',
+        'Se voltaram menos vazios do que os deixados, sai sozinho um <b>vale-palete</b> numerado com a diferença, em nome '
+        'de quem recebeu a carga (o recebedor do CT-e ou o destinatário), com prazo para devolver. No app, o motorista é '
+        'avisado antes de colher a assinatura. Imprima o vale (duas vias) em Paletes » Vales-palete para o cliente assinar.',
+        'Na baixa da coleta, o mesmo bloco pede os vazios deixados no cliente e os paletes carregados que o motorista levou.',
+        'Quando o cliente devolver: Paletes » <b>Devolução</b> (na linha do saldo ou do vale). Os vales dele são baixados do '
+        'que vence antes para o mais novo (ou o vale escolhido primeiro).',
+        'Vale vencido e não devolvido: marque em Vales-palete e clique em <b>Cobrar (nota de débito)</b>. Sai uma nota de '
+        'débito por cliente, com o valor do palete configurado, que entra na fatura dele (Faturamento » A faturar).',
+    ])
+    s += lista([
+        '<b>Saldos por cliente</b>: positivo = paletes nossos com o cliente; negativo = devemos paletes a ele. <b>Extrato</b> '
+        'mostra cada movimento com o saldo, os vales e permite excluir lançamentos manuais.',
+        '<b>+ Lançar</b>: devolução, envio/retorno de paletes ao cliente ou ajuste de inventário.',
+        '<b>Cancelar</b> um vale (contagem errada ou cortesia): o pendente sai do saldo, com o motivo registrado.',
+        '<b>Valores e prazo</b> (só o financeiro altera): prazo para devolver (padrão 30 dias), se o vale sai sozinho e o '
+        'valor de cobrança de cada tipo.',
+        'Apagar a ocorrência de entrega desfaz a troca e o vale (se o vale ainda não teve devolução nem cobrança).',
+        'O cliente vê o saldo e os vales (com o documento) no portal, na aba <b>Paletes</b>. A tela Hoje avisa os vales vencidos.',
     ])
 
     # 36
@@ -449,6 +475,10 @@ def parte_financeiro(g):
         'Se o documento for excluído, cancelado ou rejeitado, <b>Reabrir</b> volta a cobrança para "Aprovada".',
         'A tela Hoje avisa as cobranças para aprovar e as aprovadas sem documento.',
     ])
+    s.append(P('<b>Nota de débito</b>: a cobrança de paletes não devolvidos (Paletes, capítulo 35) sai como nota de débito, '
+               'que não é nota fiscal (é ressarcimento, não serviço). Ela aparece em <b>A faturar</b> junto com os CT-e do '
+               'cliente e entra na fatura, no boleto e no PIX como os outros documentos. Na contabilidade vai para "Outras '
+               'receitas". Para cancelar uma nota já faturada, cancele antes a fatura.'))
     s += h2('PIX com baixa automática (API Pix do banco)')
     s.append(P('Em <b>Cobrança (PIX e banco) » PIX com baixa automática</b>, ligue a cobrança pela API Pix do banco. A API é '
                'o padrão do Banco Central, igual em todos os bancos: no portal do desenvolvedor do seu banco pegue a URL da '

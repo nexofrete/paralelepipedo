@@ -67,7 +67,7 @@ ${paraEmail ? '' : '<div class="acoes"><button onclick="window.print()">Imprimir
     <div class="caixa"><span class="r">${f.status === 'paga' ? 'Valor pago' : 'Valor a pagar'}</span><span class="v" style="font-size:16px;">${moeda(f.status === 'paga' ? f.valor_pago : f.saldo)}</span></div>
   </div>
   <table><thead><tr><th>Documento</th><th>Emissão</th><th>Notas fiscais</th><th>Remetente → destinatário</th><th>Destino</th><th class="n">Valor</th></tr></thead><tbody>
-  ${f.itens.map((c) => `<tr><td>${c.tipo === 'nfse' ? `NFS-e ${esc(c.numero)}` : `CT-e ${esc(c.serie)}/${esc(c.numero)}`}${c.tp_cte === '1' ? ' <small>(complementar)</small>' : ''}${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}</td><td>${diaDoMomento(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td>
+  ${f.itens.map((c) => `<tr><td>${c.tipo === 'debito' ? `Nota de débito ${esc(c.numero)}` : c.tipo === 'nfse' ? `NFS-e ${esc(c.numero)}` : `CT-e ${esc(c.serie)}/${esc(c.numero)}`}${c.tp_cte === '1' ? ' <small>(complementar)</small>' : ''}${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}</td><td>${diaDoMomento(c.autorizado_em)}</td><td>${esc(c.nfs.filter(Boolean).join(', '))}</td>
     <td>${esc(c.remetente || '')}<br><small>→ ${esc(c.destinatario_nome || '')}</small></td><td>${esc(c.cidade_fim || '')}/${esc(c.uf_fim || '')}</td><td class="n">${moeda(c.valor)}</td></tr>`).join('')}
   </tbody></table>
   <table class="totais">

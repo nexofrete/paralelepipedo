@@ -190,6 +190,9 @@
         <div class="campo oc-receb oculto"><label for="ocRecebedor">Recebido por</label><input type="text" id="ocRecebedor" maxlength="120" placeholder="Nome de quem recebeu" /></div>
         <div class="campo oc-receb oculto"><label for="ocDoc">Documento (RG/CPF)</label><input type="text" id="ocDoc" maxlength="30" /></div>
         <div class="campo oc-prevcampo oculto"><label for="ocPrevisao">Nova previsão de entrega</label><input type="date" id="ocPrevisao" /></div>
+        <div class="campo oc-receb oculto"><label for="ocPlTipo">Paletes (carga paletizada)</label><select id="ocPlTipo"><option value="pbr">PBR (madeira)</option><option value="chep">CHEP</option><option value="plastico">Plástico</option><option value="outro">Outro</option></select></div>
+        <div class="campo oc-receb oculto" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"><div><label for="ocPlSai">Deixados com a carga</label><input type="number" min="0" id="ocPlSai" /></div>
+          <div><label for="ocPlVolta">Vazios recebidos</label><input type="number" min="0" id="ocPlVolta" /></div></div>
         <div class="campo inteiro"><label for="ocObs">Observação (fica só aqui dentro)</label><textarea id="ocObs" rows="2" maxlength="500"></textarea></div>
         <div class="campo inteiro"><label for="ocFoto">Comprovante (foto do canhoto ou PDF) — opcional</label><input type="file" id="ocFoto" accept="image/*,application/pdf" capture="environment" /></div>
       </div>
@@ -208,12 +211,13 @@
       fd.append('tipo_id', $('ocTipo').value); fd.append('data_hora', $('ocData').value); fd.append('cidade', $('ocCidade').value);
       fd.append('recebedor_nome', $('ocRecebedor').value); fd.append('recebedor_documento', $('ocDoc').value);
       fd.append('nova_previsao', $('ocPrevisao').value); fd.append('observacao', $('ocObs').value);
+      if (Number($('ocPlSai').value) > 0 || Number($('ocPlVolta').value) > 0) { fd.append('paletes_tipo', $('ocPlTipo').value); fd.append('paletes_entregues', $('ocPlSai').value || '0'); fd.append('paletes_recebidos', $('ocPlVolta').value || '0'); }
       if ($('ocFoto').files[0]) fd.append('comprovante', $('ocFoto').files[0]);
       const b = e.currentTarget; b.disabled = true;
       try {
         const r = await api(`/${id}`, { method: 'POST', body: fd });
         fecharModal();
-        mostrarAlerta(`"${r.descricao}" lançado no CT-e ${r.numero}.`, { tipo: 'sucesso' });
+        mostrarAlerta(`"${r.descricao}" lançado no CT-e ${r.numero}.${r.paletes?.vale ? ` Saiu o vale-palete nº ${r.paletes.vale.numero} (${r.paletes.vale.quantidade} palete(s)): imprima em Paletes para o cliente assinar.` : ''}`, { tipo: 'sucesso' });
         await carregar();
       } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); b.disabled = false; }
     });

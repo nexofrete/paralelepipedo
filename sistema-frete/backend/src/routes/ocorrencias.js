@@ -201,7 +201,8 @@ router.post('/lote', autenticar, emitir, async (req, res) => {
     await cliente.query('BEGIN');
     const feitos = [];
     for (const id of ids) {
-      try { feitos.push(await lancar(cliente, req, id, req.body, null)); } catch (e) { throw falha(`CT-e #${id}: ${e.message}`, e.status); }
+      // Paletes são por entrega: no lote não entram.
+      try { feitos.push(await lancar(cliente, req, id, { ...req.body, paletes_entregues: undefined, paletes_recebidos: undefined }, null)); } catch (e) { throw falha(`CT-e #${id}: ${e.message}`, e.status); }
     }
     await cliente.query('COMMIT');
     oc.depoisDeLancar(feitos);
@@ -216,6 +217,7 @@ router.delete('/ocorrencia/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
     await cliente.query('BEGIN');
     await ag.aoApagarOcorrencia(cliente, Number(req.params.id));
+    await require('../paletes').aoApagarOcorrencia(cliente, Number(req.params.id));
     const { rows } = await cliente.query(
       `DELETE FROM cte_ocorrencias o USING ctes_emitidos c WHERE o.id = $1 AND c.id = o.cte_id RETURNING o.cte_id, o.descricao, o.data_hora, o.comprovante_arquivo, c.numero`, [req.params.id]);
     if (!rows[0]) { await cliente.query('ROLLBACK'); return res.status(404).json({ erro: 'Ocorrência não encontrada.' }); }

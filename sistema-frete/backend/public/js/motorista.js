@@ -140,13 +140,28 @@
     $('mtTipo').innerHTML = tipo === 'nao_coleta'
       ? `<option value="">Escolha...</option>${(dados.motivos_coleta || []).map((m) => `<option>${esc(m)}</option>`).join('')}`
       : `<option value="">Escolha...</option>${dados.ocorrencias.filter((o) => o.tipo !== 'entrega').map((o) => `<option value="${o.id}">${esc(o.rotulo)}</option>`).join('')}`;
-    ['mtRecebedor', 'mtDoc', 'mtObs', 'mtVol', 'mtPeso'].forEach((el) => { $(el).value = ''; });
+    ['mtRecebedor', 'mtDoc', 'mtObs', 'mtVol', 'mtPeso', 'mtPlSai', 'mtPlVolta'].forEach((el) => { $(el).value = ''; });
+    // Troca de paletes: na entrega o motorista deixa os carregados e recebe vazios; na coleta, deixa vazios e leva os carregados.
+    $('mtPaletes').classList.toggle('oculto', !comAssinatura);
+    $('mtPaletes').open = false; $('mtPlAviso').textContent = '';
+    $('mtPlRotSai').textContent = tipo === 'coleta' ? 'Vazios deixados no cliente' : 'Paletes deixados com a carga';
+    $('mtPlRotVolta').textContent = tipo === 'coleta' ? 'Paletes carregados que levou' : 'Vazios recebidos em troca';
     if (tipo === 'coleta' && atual.volumes) $('mtVol').value = atual.volumes;
     $('mtFoto').value = ''; $('mtPrevia').classList.add('oculto'); $('mtErro').textContent = '';
     $('mtFolha').classList.remove('oculto');
     if (comAssinatura) requestAnimationFrame(prepararCanvas);
   }
   $('mtFechar').addEventListener('click', () => $('mtFolha').classList.add('oculto'));
+  const plNum = (id) => { const n = Number($(id).value); return Number.isInteger(n) && n > 0 ? n : 0; };
+  const avisoPaletes = () => {
+    const falta = plNum('mtPlSai') - plNum('mtPlVolta');
+    $('mtPlAviso').textContent = modo === 'entrega' && falta > 0 ? `Faltam ${falta} palete(s): vai sair um VALE-PALETE de ${falta} em nome do cliente. Quem assinar abaixo reconhece o vale.` : '';
+  };
+  ['mtPlSai', 'mtPlVolta'].forEach((id) => $(id).addEventListener('input', avisoPaletes));
+  const juntarPaletes = (fd, saiu, voltou) => {
+    if (!plNum('mtPlSai') && !plNum('mtPlVolta')) return;
+    fd.append('paletes_tipo', $('mtPlTipo').value); fd.append(saiu, String(plNum('mtPlSai'))); fd.append(voltou, String(plNum('mtPlVolta')));
+  };
 
   // Foto reduzida no próprio celular (até 1600 px, JPEG) para enviar rápido pelo 4G.
   let fotoReduzida = null;
@@ -216,11 +231,13 @@
       const fd = new FormData();
       fd.append('tipo_id', tipoId); fd.append('recebedor_nome', $('mtRecebedor').value); fd.append('recebedor_documento', $('mtDoc').value); fd.append('observacao', $('mtObs').value);
       if (modo === 'entrega' && desenhou) fd.append('assinatura', canvas.toDataURL('image/png'));
+      if (modo === 'entrega') juntarPaletes(fd, 'paletes_entregues', 'paletes_recebidos');
       const foto = fotoReduzida || $('mtFoto').files[0];
       if (foto) fd.append('foto', foto, 'foto.jpg');
       const c = await localizacao();
       if (c) { fd.append('latitude', c.latitude.toFixed(6)); fd.append('longitude', c.longitude.toFixed(6)); }
-      await api(`/entregas/${atual.cte_id}`, { method: 'POST', body: fd });
+      const r = await api(`/entregas/${atual.cte_id}`, { method: 'POST', body: fd });
+      if (r.paletes?.vale) alert(`Vale-palete nº ${r.paletes.vale.numero}: ${r.paletes.vale.quantidade} palete(s) a devolver até ${String(r.paletes.vale.vencimento).split('-').reverse().join('/')}.`);
       $('mtFolha').classList.add('oculto');
       fotoReduzida = null;
       await entrar(codigo);
@@ -242,6 +259,7 @@
       if (sim) { fd.append('volumes', $('mtVol').value); fd.append('peso', $('mtPeso').value); fd.append('entregue_por', $('mtRecebedor').value); } else fd.append('motivo', $('mtTipo').value);
       fd.append('observacao', $('mtObs').value);
       if (sim && desenhou) fd.append('assinatura', canvas.toDataURL('image/png'));
+      if (sim) juntarPaletes(fd, 'paletes_deixados', 'paletes_carregados');
       const foto = fotoReduzida || $('mtFoto').files[0];
       if (foto) fd.append('foto', foto, 'foto.jpg');
       const c = await localizacao();

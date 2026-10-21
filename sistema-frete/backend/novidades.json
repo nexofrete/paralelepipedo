@@ -78,6 +78,10 @@
           "texto": "SAC com protocolo (090): chamados do cliente pelo portal (aba Atendimento), pela caixa de e-mail do SAC, pelo WhatsApp ou registrados por telefone, cada um com protocolo, assunto, prioridade, responsável, prazo de resposta e de solução (configuráveis) e o CT-e ligado. Respostas avisam o cliente por e-mail/WhatsApp, notas internas ficam só para a equipe, o cliente avalia o atendimento e a tela Hoje mostra os chamados fora do prazo."
         },
         {
+          "area": "Entregas",
+          "texto": "Controle de paletes (066): troca de paletes na baixa da entrega e da coleta (app do motorista e Ocorrências), saldo por cliente e tipo (PBR, CHEP, plástico), vale-palete numerado para o que não voltou, devolução que baixa os vales, cobrança dos vencidos por nota de débito que entra na fatura, e a aba Paletes no portal do cliente."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

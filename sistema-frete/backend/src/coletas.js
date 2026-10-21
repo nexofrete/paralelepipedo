@@ -168,6 +168,8 @@ async function baixar(id, b, { foto, assinaturaPng, usuarioNome, romaneioId = nu
                 foto_arquivo = COALESCE($5, foto_arquivo), assinatura_arquivo = COALESCE($6, assinatura_arquivo), latitude = $7, longitude = $8,
                 obs_motorista = $9, motivo = NULL, atualizado_em = NOW() WHERE id = $1`,
         [id, volumes, numero(b.peso), entreguePor, nomeFoto, nomeAss, coord(b.latitude, 90), coord(b.longitude, 180), obsMot]);
+      // Troca de paletes com o remetente (carregados que vieram, vazios que ficaram).
+      await require('./paletes').naColeta(cliente, { coleta: c, b, romaneioId, usuarioNome });
     } else {
       await cliente.query(
         `UPDATE coletas SET status = 'nao_coletada', motivo = $2, foto_arquivo = COALESCE($3, foto_arquivo), latitude = $4, longitude = $5,

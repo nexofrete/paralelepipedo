@@ -215,6 +215,11 @@ async function lancamentos(p) {
     // ISS retido: o cliente paga menos e recolhe o ISS; sai do a receber e do a recolher.
     if (n.iss_retido) lanc(n.data, c.iss_recolher, c.clientes, n.iss_valor, `ISS retido pelo tomador ${doc}`, doc, n.tomador_doc);
   });
+  // Nota de débito (paletes não devolvidos): ressarcimento, não é frete — outras receitas.
+  const ffNd = await filtroFiscal();
+  const { rows: nds } = ffNd.demo ? { rows: [] } : await pool.query(
+    `SELECT numero, emissao::text AS data, valor::float, tomador_doc, tomador_nome, descricao FROM notas_debito WHERE status = 'emitida' AND emissao BETWEEN $1::date AND $2::date ORDER BY emissao, numero`, [de, ate]);
+  if (!caixa) nds.forEach((n) => lanc(n.data, c.clientes, c.receita_outras, n.valor, `Nota de débito ${n.numero} (paletes não devolvidos) — ${n.tomador_nome}`, `ND ${n.numero}`, n.tomador_doc));
   // Estornos de documentos de meses anteriores cancelados/substituídos neste período.
   if (!caixa) livro.ajustes.forEach((a) => {
     const hist = `Estorno: ${a.documento} de ${diaBr(a.data_original)} ${a.motivo}`;
@@ -257,6 +262,7 @@ async function lancamentos(p) {
               (f.valor_bruto - f.desconto)::float AS liquido,
               COALESCE((SELECT SUM(COALESCE((c.dados->'valores'->>'vTPrest')::numeric, c.valor_total)) FROM ctes_emitidos c WHERE c.fatura_id = f.id AND c.status = 'autorizado'), 0)::float AS docs_cte,
               COALESCE((SELECT SUM(n.valor) FROM nfse_emitidas n WHERE n.fatura_id = f.id AND n.status = 'autorizada'), 0)::float AS docs_nfse,
+              COALESCE((SELECT SUM(d.valor) FROM notas_debito d WHERE d.fatura_id = f.id AND d.status = 'emitida'), 0)::float AS docs_debito,
               COALESCE(SUM(p.valor) OVER (PARTITION BY p.fatura_id ORDER BY p.data, p.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0)::float AS anterior
          FROM faturas_transporte_pagamentos p JOIN faturas_transporte f ON f.id = p.fatura_id LEFT JOIN contas_bancarias b ON b.id = p.conta_bancaria_id) x
       WHERE x.data BETWEEN $1 AND $2 AND x.demonstracao = $3 ORDER BY x.data, x.id`, [de, ate, ff.demo]);
@@ -267,12 +273,14 @@ async function lancamentos(p) {
     const principal = centavos(Math.max(0, Math.min(r.valor, r.liquido - r.anterior)));
     if (caixa) {
       // Receita recebida, dividida entre CT-e e NFS-e na proporção dos documentos da fatura.
-      const docs = r.docs_cte + r.docs_nfse;
+      const docs = r.docs_cte + r.docs_nfse + r.docs_debito;
       const municipal = docs > 0 ? centavos((principal * r.docs_nfse) / docs) : 0;
-      const frete = centavos(principal - municipal);
+      const debito = docs > 0 ? centavos((principal * r.docs_debito) / docs) : 0;
+      const frete = centavos(principal - municipal - debito);
       const hist = `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`;
       lanc(dataLocal(r.data), disponivel(r), c.receita_frete, frete, `${hist}${municipal ? ' — parte CT-e' : ''}`, `FAT ${r.numero}`, r.tomador_doc);
       lanc(dataLocal(r.data), disponivel(r), c.receita_frete_municipal, municipal, `${hist} — parte NFS-e`, `FAT ${r.numero}`, r.tomador_doc);
+      lanc(dataLocal(r.data), disponivel(r), c.receita_outras, debito, `${hist} — nota de débito (paletes)`, `FAT ${r.numero}`, r.tomador_doc);
       receitaRecebida = { frete: centavos(receitaRecebida.frete + frete), municipal: centavos(receitaRecebida.municipal + municipal) };
     } else lanc(dataLocal(r.data), disponivel(r), c.clientes, principal, `Recebimento da fatura ${r.numero} — ${r.tomador_nome} (${r.forma})`, `FAT ${r.numero}`, r.tomador_doc);
     lanc(dataLocal(r.data), disponivel(r), c.receita_financeira, centavos(r.valor - principal), `Juros/multa recebidos na fatura ${r.numero} — ${r.tomador_nome}`, `FAT ${r.numero}`, r.tomador_doc);

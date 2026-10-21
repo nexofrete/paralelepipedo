@@ -2704,3 +2704,56 @@ CREATE TABLE IF NOT EXISTS sac_mensagens (
   criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_sac_msg ON sac_mensagens (chamado_id, criado_em);
+
+-- Controle de paletes (vale-palete): troca na coleta e na entrega, saldo por cliente/parceiro,
+-- vale-palete para o que não voltou, devolução e cobrança por nota de débito.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS paletes_config JSONB;
+CREATE TABLE IF NOT EXISTS vales_palete (
+  id SERIAL PRIMARY KEY,
+  numero INTEGER NOT NULL UNIQUE,
+  emissao DATE NOT NULL, vencimento DATE NOT NULL,
+  parte_doc VARCHAR(14), parte_nome VARCHAR(200) NOT NULL,
+  tipo_palete VARCHAR(12) NOT NULL,
+  quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+  devolvidos INTEGER NOT NULL DEFAULT 0, cobrados INTEGER NOT NULL DEFAULT 0,
+  status VARCHAR(10) NOT NULL DEFAULT 'aberto',   -- aberto | devolvido | cobrado | cancelado
+  cte_id INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL, romaneio_id INTEGER REFERENCES romaneios(id) ON DELETE SET NULL,
+  ocorrencia_id INTEGER REFERENCES cte_ocorrencias(id) ON DELETE SET NULL,
+  recebedor_nome VARCHAR(150), recebedor_documento VARCHAR(30), observacao VARCHAR(500),
+  motivo_cancelamento VARCHAR(250), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_vales_palete_parte ON vales_palete (parte_doc, tipo_palete, status);
+-- Nota de débito: cobrança que não é frete (paletes não devolvidos); entra na fatura como os CT-e.
+CREATE TABLE IF NOT EXISTS notas_debito (
+  id SERIAL PRIMARY KEY,
+  numero INTEGER NOT NULL UNIQUE,
+  emissao DATE NOT NULL,
+  tomador_doc VARCHAR(14) NOT NULL, tomador_nome VARCHAR(200), tomador_email VARCHAR(250),
+  descricao TEXT NOT NULL, valor NUMERIC(14,2) NOT NULL CHECK (valor > 0),
+  origem VARCHAR(12) NOT NULL DEFAULT 'palete',
+  status VARCHAR(10) NOT NULL DEFAULT 'emitida',  -- emitida | cancelada
+  fatura_id INTEGER REFERENCES faturas_transporte(id) ON DELETE SET NULL,
+  motivo_cancelamento VARCHAR(250), criado_por_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notas_debito_fatura ON notas_debito (fatura_id);
+-- sentido: saida = paletes saíram da empresa para a parte (a parte passa a dever);
+--          entrada = paletes vieram da parte (devolução, ou os paletes carregados que ela entregou).
+CREATE TABLE IF NOT EXISTS paletes_movimentos (
+  id SERIAL PRIMARY KEY,
+  data DATE NOT NULL,
+  parte_doc VARCHAR(14), parte_nome VARCHAR(200) NOT NULL,
+  tipo_palete VARCHAR(12) NOT NULL,
+  sentido VARCHAR(8) NOT NULL,
+  quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+  origem VARCHAR(12) NOT NULL,                   -- entrega | coleta | devolucao | envio | ajuste | cobranca
+  cte_id INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL,
+  coleta_id INTEGER REFERENCES coletas(id) ON DELETE SET NULL,
+  romaneio_id INTEGER REFERENCES romaneios(id) ON DELETE SET NULL,
+  ocorrencia_id INTEGER REFERENCES cte_ocorrencias(id) ON DELETE SET NULL,
+  vale_id INTEGER REFERENCES vales_palete(id) ON DELETE SET NULL,
+  nota_debito_id INTEGER REFERENCES notas_debito(id) ON DELETE SET NULL,
+  aplicado JSONB,                                -- entrada que baixou vales: [{ vale_id, qtd }]
+  observacao VARCHAR(500), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_paletes_mov_parte ON paletes_movimentos (parte_doc, tipo_palete, data);
+CREATE INDEX IF NOT EXISTS idx_paletes_mov_cte ON paletes_movimentos (cte_id);

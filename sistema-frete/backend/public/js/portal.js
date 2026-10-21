@@ -134,6 +134,8 @@
     if (empresa?.logo) { $('ptLogoApp').src = empresa.logo; $('ptLogoApp').classList.remove('oculto'); }
     $('ptAbaFin').classList.toggle('oculto', !eu.pode_financeiro);
     $('ptXmlLote').classList.toggle('oculto', !eu.pode_financeiro);   // o XML traz o valor do frete
+    // Aba Paletes só para quem tem paletes ou vales com a transportadora.
+    api('/paletes').then((p) => $('ptAbaPaletes').classList.toggle('oculto', !p.saldos.length && !p.vales.length)).catch(() => {});
     irPara(abaAtual);
   }
   function irPara(aba) {
@@ -141,7 +143,7 @@
     abaAtual = aba;
     document.querySelectorAll('#ptAbas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
     document.querySelectorAll('[data-pagina]').forEach((s) => s.classList.toggle('oculto', s.dataset.pagina !== aba));
-    ({ inicio: carregarInicio, cargas: carregarCargas, financeiro: carregarFaturas, coletas: carregarColetas, cotacoes: carregarCotacoes, sac: carregarChamados }[aba])().catch((err) => aviso(err.message));
+    ({ inicio: carregarInicio, cargas: carregarCargas, financeiro: carregarFaturas, coletas: carregarColetas, cotacoes: carregarCotacoes, sac: carregarChamados, paletes: carregarPaletes }[aba])().catch((err) => aviso(err.message));
   }
   $('ptAbas').addEventListener('click', (e) => { const b = e.target.closest('[data-aba]'); if (b) irPara(b.dataset.aba); });
 
@@ -395,6 +397,21 @@
       } catch (err) { if ($('pkErro')) { $('pkErro').textContent = err.message; $('pkErro').classList.remove('oculto'); b.disabled = false; } else aviso(err.message); }
     });
   });
+
+  // ---------- Paletes ----------
+  async function carregarPaletes() {
+    const r = await api('/paletes');
+    const cor = { aberto: 'laranja', devolvido: 'verde', cobrado: 'cinza' };
+    $('ptPaletes').innerHTML = `<div class="pt-numeros">${r.saldos.map((s) => `<div class="${s.saldo > 0 ? 'alerta' : 'bom'}"><span class="ico">${ic('box')}</span><span class="tit">${esc(s.tipo_nome)}</span>
+        <b>${Math.abs(s.saldo)}</b><span>${s.saldo > 0 ? 'paletes da transportadora com você' : 'paletes seus com a transportadora'}</span></div>`).join('') || '<div><span class="tit">Saldo</span><b>0</b><span>nenhum palete pendente</span></div>'}</div>
+      <div class="cartao"><h2>Vales-palete</h2>${r.vales.length ? r.vales.map((v) => `<div class="pt-item ${v.vencido ? 'vermelho' : cor[v.status] || 'azul'}">
+        <div><div class="titulo">Vale nº ${v.numero} · ${v.quantidade} palete(s) ${esc(v.tipo_nome)}</div>
+          <div class="linha">Emitido ${dia(v.emissao)}${v.cte ? ` · CT-e ${esc(v.cte)}` : ''} · devolver até <b>${dia(v.vencimento)}</b>${v.status === 'aberto' && v.pendente !== v.quantidade ? ` · faltam ${v.pendente}` : ''}</div></div>
+        <div class="dir"><span class="sit ${v.vencido ? 'vermelho' : cor[v.status] || 'azul'}">${v.vencido ? 'Vencido' : esc(v.status_nome)}</span>
+          <a class="botao sec" style="padding:4px 10px; font-size:12.5px;" href="${esc(link(`/paletes/vales/${v.id}`))}" target="_blank" rel="noopener">${ic('doc')} Ver vale</a></div></div>`).join('')
+        : '<p class="fraco">Nenhum vale-palete.</p>'}
+        <p class="fraco" style="font-size:12.5px; margin-top:10px;">Para combinar a devolução dos paletes, abra um chamado em Atendimento. Vale vencido pode ser cobrado na sua próxima fatura.</p></div>`;
+  }
 
   // ---------- Atendimento (SAC) ----------
   const SIT_SAC = { aberto: 'laranja', em_andamento: 'azul', aguardando: 'laranja', resolvido: 'verde', cancelado: 'cinza' };

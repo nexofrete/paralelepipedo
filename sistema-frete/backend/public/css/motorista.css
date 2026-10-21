@@ -48,3 +48,9 @@
 .mt-botoes [data-mt-chegada], .mt-botoes .mt-chegada { grid-column: 1 / -1; }
 .mt-botoes [data-mt-chegada] { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
 .mt-chegada { text-align: center; font-size: 13px; color: #3730a3; padding: 4px 0; }
+
+.mt-paletes { margin-top: 12px; border: 1px solid var(--borda); border-radius: 8px; padding: 8px 12px; }
+.mt-paletes summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.mt-pl-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mt-pl-aviso { font-size: 13px; margin: 8px 0 0; color: #b45309; }
+.mt-pl-aviso:empty { display: none; }

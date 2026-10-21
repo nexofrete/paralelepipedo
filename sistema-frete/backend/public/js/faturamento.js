@@ -13,7 +13,7 @@
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const moeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // CT-e (série/número) ou NFS-e do frete municipal.
-  const rotuloDoc = (c) => (c.tipo === 'nfse' ? `<span title="Frete municipal (ISS)">NFS-e ${esc(c.numero)}</span>${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}` : `${esc(c.serie)}/${esc(c.numero)}${c.tp_cte === '1' ? ' <small>(compl.)</small>' : ''}`);
+  const rotuloDoc = (c) => (c.tipo === 'debito' ? `<span title="${esc(c.descricao || '')}">Nota de débito ${esc(c.numero)}</span>` : c.tipo === 'nfse' ? `<span title="Frete municipal (ISS)">NFS-e ${esc(c.numero)}</span>${c.iss_retido ? ' <small>(ISS retido)</small>' : ''}` : `${esc(c.serie)}/${esc(c.numero)}${c.tp_cte === '1' ? ' <small>(compl.)</small>' : ''}`);
   const num = (v) => { if (v == null || v === '') return null; const n = Number(String(v).replace(/\./g, '').replace(',', '.')); return Number.isNaN(n) ? null : n; };
   const iso = (v) => String(v instanceof Date ? v.toISOString() : v || '').slice(0, 10);
   const dia = (v) => (v ? new Date(`${iso(v)}T12:00:00`).toLocaleDateString('pt-BR') : '—');
@@ -354,10 +354,11 @@
       const marcados = [...document.querySelectorAll(`[data-af-cte][data-grupo="${btn.dataset.afGerar}"]:checked`)].map((c) => c.dataset.afCte.split(':'));
       const ids = marcados.filter(([t]) => t === 'cte').map(([, id]) => Number(id));
       const nfseIds = marcados.filter(([t]) => t === 'nfse').map(([, id]) => Number(id));
-      if (!ids.length && !nfseIds.length) return mostrarAlerta('Marque os documentos da fatura.', { tipo: 'aviso' });
+      const debitoIds = marcados.filter(([t]) => t === 'debito').map(([, id]) => Number(id));
+      if (!ids.length && !nfseIds.length && !debitoIds.length) return mostrarAlerta('Marque os documentos da fatura.', { tipo: 'aviso' });
       btn.disabled = true;
       try {
-        const f = await post('/', { cteIds: ids, nfseIds, vencimento: $('afVenc').value || null });
+        const f = await post('/', { cteIds: ids, nfseIds, debitoIds, vencimento: $('afVenc').value || null });
         await carregarAFaturar();
         abrirAba('faturas');
         await abrirFatura(f.id);

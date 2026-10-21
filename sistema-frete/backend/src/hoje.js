@@ -69,6 +69,11 @@ async function montar(req) {
       add('operacao', { chave: 'parceiros_atrasados', icone: '🤝', titulo: 'Entregas atrasadas com parceiros', qtd: pa.atrasados, nivel: 'perigo', detalhe: 'cobre o parceiro (redespacho)', destino: { ir: 'parceiros' } });
     } catch (e) { console.error('[hoje]', e.message); }
     try {
+      const pl = await require('./paletes').pendencias();
+      add('operacao', { chave: 'vales_palete', icone: '🟫', titulo: 'Vales-palete vencidos', qtd: pl.vencidos, nivel: 'atencao', detalhe: `${pl.paletes_vencidos} palete(s) não devolvidos no prazo: cobre a devolução ou gere a nota de débito`,
+        destino: { ir: 'paletes', clicar: '[data-pl-vfiltro="vencidos"]' } });
+    } catch (e) { console.error('[hoje]', e.message); }
+    try {
       const sc = await require('./sac').pendencias(req.usuario.id);
       add('operacao', { chave: 'sac_atrasados', icone: '🎧', titulo: 'Chamados do SAC fora do prazo', qtd: sc.atrasados, nivel: 'perigo', detalhe: 'passaram do prazo de resposta ou de solução',
         destino: { ir: 'sac', clicar: '[data-sac-filtro="atrasados"]' } });

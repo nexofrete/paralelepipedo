@@ -168,7 +168,10 @@ async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng,
       String(corpo.recebedor_documento || '').trim() || null, novaPrevisao, obs || null, nomeArquivo, nomeAssinatura,
       coord(corpo.latitude, 90), coord(corpo.longitude, 180), origem, romaneioId, usuarioNome]);
   const situacao = await recalcularSituacao(cteId, cliente);
-  return { id: novo[0].id, cteId, numero: cte.numero, situacao, descricao: item.rotulo, tipo: item.tipo };
+  // Carga paletizada: a troca de paletes na entrega (e o vale-palete do que não voltou).
+  const paletes = ['entrega', 'devolucao'].includes(item.tipo)
+    ? await require('../paletes').naEntrega(cliente, { cteId, b: { ...corpo, recebedor_nome: recebedor }, romaneioId, ocorrenciaId: novo[0].id, usuarioNome }) : null;
+  return { id: novo[0].id, cteId, numero: cte.numero, situacao, descricao: item.rotulo, tipo: item.tipo, paletes };
 }
 
 // Depois do COMMIT: avisos ao cliente (e-mail/WhatsApp), sem atrasar a resposta.

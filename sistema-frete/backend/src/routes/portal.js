@@ -187,6 +187,14 @@ api.get('/cotacoes/:id(\\d+)/proposta', auth, pagina(async (req, res) => {
   return res.set('Content-Type', 'text/html; charset=utf-8').send(cot.propostaHtml(t, await cot.empresa()));
 }));
 
+// Paletes: saldo e vales-palete do cliente (regras em src/paletes.js).
+api.get('/paletes', auth, rota(async (req, res) => res.json(await require('../paletes').doPortal(req.portal)), 'Erro.'));
+api.get('/paletes/vales/:id(\\d+)', auth, pagina(async (req, res) => {
+  const { rows } = await pool.query('SELECT id FROM vales_palete WHERE id = $1 AND parte_doc = ANY($2::text[])', [req.params.id, req.portal.documentos]);
+  if (!rows[0]) return res.status(404).send('Vale não encontrado.');
+  return res.set('Content-Type', 'text/html; charset=utf-8').send(await require('../paletes').valeHtml(rows[0].id));
+}));
+
 // SAC: chamados do cliente (regras em src/sac.js).
 const sac = require('../sac');
 api.get('/sac', auth, rota(async (req, res) => res.json({ chamados: await sac.listarDoCliente(req.portal), assuntos: sac.ASSUNTOS }), 'Erro.'));

@@ -68,6 +68,7 @@
         <div class="nav-tsub" data-ir="filiais" data-aba="estoque">🏢 Onde está a mercadoria</div>
         <div class="nav-tsub" data-ir="filiais" data-aba="transferencias">🔀 Transferências entre filiais</div>
         <div class="nav-tsub" data-ir="parceiros">🤝 Parceiros e redespacho</div>
+        <div class="nav-tsub" data-ir="paletes">🟫 Paletes (vale-palete)</div>
         <div class="nav-tsub" data-ir="sac">🎧 SAC (chamados)</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
         <div class="nav-tsub" data-ir="portal-cliente" data-so-admin="1">🌐 Portal do cliente</div>
@@ -120,6 +121,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="ocorrencias" id="navOcorrencias" data-modulo="transportadora">📍 Ocorrências de entrega</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="edi" id="navEdi" data-modulo="transportadora">🔁 EDI</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="parceiros" id="navParceiros" data-modulo="transportadora">🤝 Parceiros e redespacho</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="paletes" id="navPaletes" data-modulo="transportadora">🟫 Paletes (vale-palete)</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="sac" id="navSac" data-modulo="transportadora">🎧 SAC (chamados)</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="portal-cliente" id="navPortalCliente" data-modulo="transportadora">🌐 Portal do cliente</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="faturamento" id="navFaturamento" data-modulo="transportadora">💰 Faturamento</div>
@@ -236,6 +238,20 @@
       </section>
       <div class="modal-overlay oculto" id="painelOcorrencia">
         <div class="painel modal-card" style="max-width:640px; width:100%; max-height:92vh; overflow-y:auto; padding:22px 24px;" id="ocModalConteudo"></div>
+      </div>
+
+      <section id="pagina-paletes" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🟫 Paletes (vale-palete)</h2>
+            <p>Troca de paletes na coleta e na entrega, saldo por cliente, vales a devolver e cobrança do que não voltou</p>
+          </div>
+          <div style="display:flex; gap:8px;"><button class="btn btn-secundario" id="plConfig" style="width:auto;">⚙ Valores e prazo</button><button class="btn btn-primario" id="plLancar" style="width:auto;">＋ Lançar</button></div>
+        </div>
+        <div id="plConteudo"></div>
+      </section>
+      <div class="modal-overlay oculto" id="modalPaletes">
+        <div class="painel modal-card" style="max-width:900px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="plModal"></div>
       </div>
 
       <section id="pagina-sac" class="oculto">
@@ -3714,6 +3730,7 @@
   <script src="js/extras.js"></script>
   <script src="js/parceiros.js"></script>
   <script src="js/sac.js"></script>
+  <script src="js/paletes.js"></script>
   <script src="js/bancos.js"></script>
   <script src="js/comissoes.js"></script>
   <script src="js/integracao.js"></script>

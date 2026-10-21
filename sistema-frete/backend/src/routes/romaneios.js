@@ -96,6 +96,14 @@ router.get('/', autenticar, emitir, async (req, res) => {
   } catch (err) { erro(res, err, 'Erro ao listar os romaneios.'); }
 });
 
+// Endereço do app do motorista: o público da empresa (o celular está na rua) ou o deste acesso.
+async function baseApp(req) {
+  const { rows } = await pool.query('SELECT endereco_publico FROM empresa WHERE id = 1');
+  return String(rows[0]?.endereco_publico || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+}
+router.get('/link-app', autenticar, emitir, async (req, res) => {
+  try { res.json({ base: await baseApp(req) }); } catch (err) { erro(res, err, 'Erro.'); }
+});
 router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM romaneios WHERE id = $1', [req.params.id]);
@@ -235,9 +243,9 @@ router.get('/:id(\\d+)/imprimir', autenticar, emitir, async (req, res) => {
     if (!r) return res.status(404).send('Romaneio não encontrado.');
     const itens = await itensDoRomaneio(r.id);
     const cols = (await coletas.coletasDoRomaneio(r.id)).filter((c) => c.status !== 'cancelada');
-    const { rows: emp } = await pool.query('SELECT razao_social, nome_fantasia, cnpj, telefone, logo, endereco_publico FROM empresa WHERE id = 1');
+    const { rows: emp } = await pool.query('SELECT razao_social, nome_fantasia, cnpj, telefone, logo FROM empresa WHERE id = 1');
     const e = emp[0] || {};
-    const base = String(e.endereco_publico || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+    const base = await baseApp(req);
     const linkMotorista = `${base}/motorista.html?c=${r.codigo_acesso}`;
     const qr = r.status !== 'fechado' && r.codigo_acesso ? await QRCode.toString(linkMotorista, { type: 'svg', margin: 0, width: 110 }) : '';
     const n = (v, c = 0) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });

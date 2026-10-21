@@ -307,7 +307,10 @@
     return corpo;
   };
   const STATUS_ROM = { aberto: ['Aguardando saída', 'pendente'], em_rota: ['Em rota', 'em_rota'], fechado: ['Fechado', 'entregue'] };
-  const linkMotorista = (codigo) => `${location.origin}/motorista.html${codigo ? `?c=${codigo}` : ''}`;
+  // O link vai para o celular do motorista: usa o endereço público da empresa (Configuração do CT-e), se houver.
+  let baseApp = location.origin;
+  apiRom('/link-app').then((r) => { baseApp = r.base || baseApp; }).catch(() => {});
+  const linkMotorista = (codigo) => `${baseApp}/motorista.html${codigo ? `?c=${codigo}` : ''}`;
   document.querySelectorAll('[data-oc-aba]').forEach((a) => a.addEventListener('click', () => {
     document.querySelectorAll('[data-oc-aba]').forEach((x) => x.classList.toggle('ativo', x === a));
     $('ocAbaEntregas').classList.toggle('oculto', a.dataset.ocAba !== 'entregas');

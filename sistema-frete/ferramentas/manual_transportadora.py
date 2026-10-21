@@ -198,6 +198,21 @@ def parte_operacao(g):
         'pagador a cada ocorrência escolhida, com o link de rastreio.',
         '<b>Rastreio público</b> (rastreio.html): o cliente consulta pela chave do CT-e ou CNPJ + NF, sem valores.',
     ])
+    s += h2('Como o celular do motorista acessa o app')
+    s.append(P('O app não se instala pela loja: é uma página (motorista.html) aberta no navegador do celular, sem login. O motorista '
+               'entra com o <b>código do romaneio</b> ou lendo o <b>QR code</b> da folha impressa. Também dá para copiar o link na tela do '
+               'romaneio e mandar pelo WhatsApp. Para o celular chegar ao sistema:'))
+    s += passos([
+        '<b>No Wi-Fi da empresa</b> (só para testar): no celular, abra http://IP-DO-SERVIDOR:3333/motorista.html. Na rede, sem HTTPS, '
+        'o navegador bloqueia o GPS; a câmera da foto do canhoto funciona.',
+        '<b>Na rua (4G)</b>: o servidor precisa estar na internet com HTTPS. Os dois jeitos: um túnel (ex.: Cloudflare Tunnel, '
+        'gratuito, sem abrir porta no roteador) ou um domínio próprio com redirecionamento de porta e certificado. Quem instala '
+        'o servidor faz isso uma vez.',
+        'Informe o endereço em <b>CT-e » Configuração » Endereço público do Nexofrete</b> (ex.: https://sistema.suaempresa.com.br). '
+        'O QR code da folha e o link da tela do romaneio passam a usar esse endereço.',
+        'No celular, depois de abrir o link, use "Adicionar à tela inicial" do navegador: fica um ícone como um aplicativo. '
+        'O código vale até o romaneio ser fechado (dá para trocar em "trocar código").',
+    ])
     s += aviso('atencao', 'GPS e câmera do celular só funcionam com HTTPS (ou no próprio servidor da rede).')
     s.append(P('<b>Agendamento de entrega</b>. Para o cliente que só recebe com hora marcada (atacadista, '
                'supermercado, centro de distribuição):'))

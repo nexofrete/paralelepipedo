@@ -135,6 +135,7 @@
     $('ptAbaFin').classList.toggle('oculto', !eu.pode_financeiro);
     $('ptXmlLote').classList.toggle('oculto', !eu.pode_financeiro);   // o XML traz o valor do frete
     // Aba Paletes só para quem tem paletes ou vales com a transportadora.
+    api('/armazem').then((a) => $('ptAbaArmazem').classList.toggle('oculto', !a.lotes.length && !a.movimentos.length && !a.pedidos.length)).catch(() => {});
     api('/paletes').then((p) => $('ptAbaPaletes').classList.toggle('oculto', !p.saldos.length && !p.vales.length)).catch(() => {});
     irPara(abaAtual);
   }
@@ -143,7 +144,7 @@
     abaAtual = aba;
     document.querySelectorAll('#ptAbas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
     document.querySelectorAll('[data-pagina]').forEach((s) => s.classList.toggle('oculto', s.dataset.pagina !== aba));
-    ({ inicio: carregarInicio, cargas: carregarCargas, financeiro: carregarFaturas, coletas: carregarColetas, cotacoes: carregarCotacoes, sac: carregarChamados, paletes: carregarPaletes }[aba])().catch((err) => aviso(err.message));
+    ({ inicio: carregarInicio, cargas: carregarCargas, financeiro: carregarFaturas, coletas: carregarColetas, cotacoes: carregarCotacoes, sac: carregarChamados, paletes: carregarPaletes, armazem: carregarArmazem }[aba])().catch((err) => aviso(err.message));
   }
   $('ptAbas').addEventListener('click', (e) => { const b = e.target.closest('[data-aba]'); if (b) irPara(b.dataset.aba); });
 
@@ -396,6 +397,51 @@
         fecharJanela(); await carregarColetas();
         aviso(`Coleta nº ${r.id} pedida${ehReversa ? ' (reversa)' : ''}. A transportadora vai programar e você acompanha a situação aqui.`);
       } catch (err) { if ($('pkErro')) { $('pkErro').textContent = err.message; $('pkErro').classList.remove('oculto'); b.disabled = false; } else aviso(err.message); }
+    });
+  });
+
+  // ---------- Armazém ----------
+  let armazem = null;
+  const qtd = (v) => num(v, Number.isInteger(Number(v)) ? 0 : 3);
+  async function carregarArmazem() {
+    armazem = await api('/armazem');
+    const SIT_P = { pendente: ['Aguardando a transportadora', 'laranja'], atendido: ['Saiu', 'verde'], cancelado: ['Recusado/cancelado', 'cinza'] };
+    $('ptArmazem').innerHTML = `
+      ${armazem.pedidos.length ? `<div class="cartao"><h2>Pedidos de saída</h2>${armazem.pedidos.map((p) => `<div class="pt-item ${SIT_P[p.status][1]}">
+          <div><div class="titulo">Pedido nº ${p.id} · ${p.itens.length} produto(s)</div><div class="linha">${p.itens.map((i) => `${qtd(i.quantidade)} ${esc(i.unidade || '')} ${esc(i.descricao)}`).join(' · ')}</div>
+            <div class="linha">${diaHora(p.criado_em)}${p.destinatario ? ` · para ${esc(p.destinatario)}` : ''}${p.motivo ? ` · ${esc(p.motivo)}` : ''}</div></div>
+          <div class="dir"><span class="sit ${SIT_P[p.status][1]}">${SIT_P[p.status][0]}</span>${p.status === 'pendente' ? `<button class="sec" data-pa-cancelar="${p.id}" style="padding:4px 10px; font-size:12.5px;">Cancelar</button>` : ''}</div></div>`).join('')}</div>` : ''}
+      <div class="cartao"><h2>Estoque</h2>${armazem.lotes.length ? `<table class="pt-tab"><thead><tr><th>Produto</th><th>Lote / validade</th><th class="n">Saldo</th><th class="n">Paletes</th><th>Entrada</th></tr></thead><tbody>
+        ${armazem.lotes.map((l) => `<tr><td><b>${esc(l.descricao)}</b><br><small>${esc(l.codigo || '')}</small></td><td>${esc(l.lote || '—')}${l.validade ? `<br><small>val. ${dia(l.validade)}</small>` : ''}</td>
+          <td class="n"><b>${qtd(l.saldo)}</b> ${esc(l.unidade || '')}</td><td class="n">${num(l.paletes, 1)}</td><td>${diaTs(l.entrada_em)}${l.entrada_nf ? ` · NF ${esc(l.entrada_nf)}` : ''}<br><small>${l.dias} dia(s)</small></td></tr>`).join('')}</tbody></table>`
+        : '<p class="fraco">Nenhuma mercadoria guardada agora.</p>'}</div>
+      <div class="cartao"><h2>Últimas entradas e saídas</h2>${armazem.movimentos.length ? `<ul class="pt-tempo">${armazem.movimentos.map((m) => `<li><b>${m.tipo === 'entrada' ? 'Entrada' : m.tipo === 'saida' ? 'Saída' : 'Ajuste de inventário'}</b>${m.nf_numero ? ` · NF ${esc(m.nf_numero)}` : ''}${m.destinatario ? ` · para ${esc(m.destinatario)}` : ''} · ${m.linhas} produto(s)
+        <small>${diaHora(m.data)}</small></li>`).join('')}</ul>` : '<p class="fraco">Nenhum movimento.</p>'}</div>`;
+    $('ptPedirSaida').classList.toggle('oculto', !armazem.lotes.length);
+  }
+  $('ptArmazem').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pa-cancelar]'); if (!b) return;
+    try { await api(`/armazem/pedidos/${b.dataset.paCancelar}/cancelar`, { method: 'POST' }); await carregarArmazem(); } catch (err) { aviso(err.message); }
+  });
+  $('ptPedirSaida').addEventListener('click', () => {
+    if (!armazem?.lotes.length) return;
+    abrirJanela(`<b style="font-size:17px;">${ic('box')} Pedir saída do armazém</b>`, `
+      <p class="fraco" style="font-size:13px;">Informe quanto sai de cada produto. A transportadora separa, dá a saída e, se combinado, já leva ao destino.</p>
+      <table class="pt-tab"><thead><tr><th>Produto</th><th class="n">Saldo</th><th class="n">Sai</th></tr></thead><tbody>
+      ${armazem.lotes.map((l) => `<tr><td>${esc(l.descricao)}${l.lote ? `<br><small>lote ${esc(l.lote)}</small>` : ''}</td><td class="n">${qtd(l.saldo)} ${esc(l.unidade || '')}</td>
+        <td class="n"><input data-ps-lote="${l.id}" type="number" min="0" max="${l.saldo}" step="any" inputmode="decimal" style="width:90px;" /></td></tr>`).join('')}</tbody></table>
+      <div class="pt-grade" style="margin-top:12px;"><div class="largo"><label for="psDest">Para quem (destinatário)</label><input id="psDest" maxlength="200" /></div>
+        <div><label for="psNf">Nº da sua NF de saída</label><input id="psNf" maxlength="20" /></div>
+        <div class="inteiro"><label for="psObs">Observação (prazo, retirada pelo cliente...)</label><textarea id="psObs" rows="2" maxlength="1000"></textarea></div></div>
+      <p id="psErro" class="erro oculto"></p>
+      <div class="pt-rodape-j"><button class="sec" data-fechar>Cancelar</button><button id="psEnviar">Pedir saída</button></div>`);
+    $('psEnviar').addEventListener('click', async (ev) => {
+      const b = ev.currentTarget; b.disabled = true;
+      try {
+        const itens = [...janela.querySelectorAll('[data-ps-lote]')].filter((i) => Number(i.value) > 0).map((i) => ({ lote_id: Number(i.dataset.psLote), quantidade: i.value }));
+        const r = await api('/armazem/pedidos', { method: 'POST', body: JSON.stringify({ itens, destinatario: $('psDest').value, nf_numero: $('psNf').value, observacao: $('psObs').value }) });
+        fecharJanela(); await carregarArmazem(); aviso(`Pedido de saída nº ${r.id} enviado. Você acompanha aqui a situação.`);
+      } catch (err) { $('psErro').textContent = err.message; $('psErro').classList.remove('oculto'); b.disabled = false; }
     });
   });
 

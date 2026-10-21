@@ -86,6 +86,10 @@
           "texto": "Monitoramento de veículos no mapa (045): o app do motorista manda a posição do GPS durante a rota; mapa da frota com situação (em movimento, no cliente, parado, sem sinal), trajeto do dia, chegada prevista em cada entrega e alertas de parado, sem sinal, fora da rota e entrega que vai atrasar (também na tela Hoje). O cliente vê a hora prevista de chegada no portal e no rastreio."
         },
         {
+          "area": "Operação",
+          "texto": "Armazém (055): contrato de armazenagem por depositante (diária por palete, m³, tonelada ou volume, taxas de entrada e saída, ad valorem e mínimo), entrada pelo XML da NF-e com endereço, lote e validade, estoque e inventário, saída com lista de separação, pedido de saída pelo portal e cobrança do mês pela ocupação de cada dia, em NFS-e."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

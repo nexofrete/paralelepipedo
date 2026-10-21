@@ -61,7 +61,7 @@ def parte_operacao(g):
                '(001 Coletas, 002 Nova coleta).'))
     s += tabela(['Área', 'Códigos principais'], [
         ['0xx Operação', '000 Hoje · 001 Coletas · 010 Cotações · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · '
-         '040 Romaneios · 041 Ocorrências · 045 Monitoramento · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
+         '040 Romaneios · 041 Ocorrências · 045 Monitoramento · 050 Conferência · 051 Etiquetas · 055 Armazém · 060 Onde está a mercadoria · '
          '061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
@@ -305,11 +305,40 @@ def parte_operacao(g):
                        'CT-e com o tipo de serviço Subcontratação/Redespacho e informe o CT-e anterior de quem contratou.')
 
     # 37
-    s += h1('37. Etiquetas de volume e conferência (bipagem)')
+    s += h1('37. Etiquetas, conferência (bipagem) e armazém')
     s.append(P('Cada volume ganha uma etiqueta com destino em letra grande, NF, peso, <b>VOL 3/12</b> e código de barras '
                '(100 × 100, 100 × 150 ou 100 × 50 mm; ZPL para impressora Zebra). Na <b>conferência</b>, bipe com leitor '
                'USB/Bluetooth ou a câmera do celular: verde quando certo, vermelho quando o volume é de outro romaneio, '
                'amarelo quando já foi lido. Faltas e sobras ficam registradas.'))
+
+    s += h2('Armazém: armazenagem de mercadoria de clientes (055)')
+    s.append(P('Para guardar a mercadoria do cliente (o <b>depositante</b>) e cobrar por mês. Comece pelo <b>Contrato</b> de cada '
+               'depositante (o financeiro cadastra): cobra por posição-palete, m³, tonelada ou volume; a <b>diária</b> por unidade, '
+               'as taxas de <b>entrada</b> e de <b>saída</b> por unidade, o <b>ad valorem</b> (% ao mês sobre o valor guardado) e '
+               'o <b>mínimo</b> do mês.'))
+    s += passos([
+        '<b>+ Entrada</b>: envie o XML da NF-e (remessa para armazenagem, ou a compra entregue no armazém): depositante, '
+        'número, produtos, quantidades, valores e o peso da nota vêm preenchidos. Informe o endereço no armazém (ex.: A-01-02), '
+        'os paletes e o m³; o sistema reparte peso, paletes e m³ entre os produtos pelo valor. Lote, validade e endereço podem '
+        'ser por produto. Sai o recibo de entrada para imprimir. A mesma NF-e não entra duas vezes.',
+        '<b>Estoque</b>: saldo de cada lote com endereço, validade (em laranja quando vence em 30 dias), paletes, peso, valor e '
+        'há quantos dias está guardado. <b>Inventário</b>: informe a contagem; a diferença vira um ajuste com o motivo.',
+        '<b>- Saída</b>: escolha o depositante, as quantidades de cada lote, o destinatário, a NF de saída e, se a transportadora '
+        'leva, o CT-e. Sai a <b>lista de separação</b> com o endereço de cada item. Saída com data passada só usa lotes que já '
+        'tinham entrado nessa data.',
+        '<b>Pedidos de saída</b>: o cliente pede pelo portal (aba Armazém); clique em <b>Atender</b> e a saída vem preenchida, ou '
+        'recuse com o motivo (o cliente vê).',
+        '<b>Cobrança mensal</b>: escolha o mês. Armazenagem = soma, dia a dia, do que estava guardado no fim de cada dia × a '
+        'diária; mais as taxas de entrada e saída, o ad valorem sobre o valor médio e, se ficar abaixo, o mínimo. "Dia a dia" '
+        'mostra a conta. Com o mês fechado, <b>Gerar NFS-e</b> cria o rascunho (serviço 11.04.01) com a memória de cálculo: '
+        'transmita em NFS-e e fature como as outras.',
+    ])
+    s += lista([
+        'Cancelar um movimento devolve o estoque como estava (entrada só sem saídas dela); mês já cobrado não deixa mexer: '
+        'cancele a cobrança antes (o rascunho da NFS-e é excluído).',
+        'A tela Hoje avisa os pedidos de saída do portal, os lotes vencendo e os depositantes com o mês passado a cobrar.',
+        'No portal, o cliente vê o estoque, as entradas e saídas e os pedidos dele.',
+    ])
 
     # 38
     s += h1('38. EDI (PROCEDA)')

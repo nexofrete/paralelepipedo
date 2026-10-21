@@ -26,7 +26,7 @@
     't:emissao-cte:lista': ['020', 'cte conhecimento emitir dacte'], 't:emissao-cte:mdfe': ['025', 'mdfe manifesto'],
     't:emissao-cte:nfse': ['030', 'nfse nota servico iss municipal'],
     't:ocorrencias:romaneios': ['040', 'romaneio saida motorista app'], 't:monitoramento:': ['045', 'monitoramento mapa gps rastreamento veiculo caminhao posicao frota'], 't:ocorrencias:entregas': ['041', 'ocorrencia entrega baixa comprovante canhoto'],
-    't:conferencia:conferir': ['050', 'bipagem conferencia leitor codigo barras'], 't:conferencia:etiquetas': ['051', 'etiqueta volume imprimir zpl'],
+    't:conferencia:conferir': ['050', 'bipagem conferencia leitor codigo barras'], 't:conferencia:etiquetas': ['051', 'etiqueta volume imprimir zpl'], 't:armazem:': ['055', 'armazem armazenagem estoque deposito depositante entrada saida separacao inventario wms'],
     't:filiais:estoque': ['060', 'estoque filial onde esta mercadoria armazem'], 't:filiais:transferencias': ['061', 'transferencia filial'], 't:parceiros:': ['065', 'parceiros agentes redespacho subcontratacao conta corrente acerto'],
     't:paletes:': ['066', 'palete pallet vale paletes troca pbr chep devolucao'],
     't:sac:': ['090', 'sac chamado protocolo atendimento reclamacao cliente suporte'],

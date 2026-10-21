@@ -220,7 +220,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Os últimos destinos usados aparecem primeiro.
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
-  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 045 Monitoramento (mapa) · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)
+  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 045 Monitoramento (mapa) · 050 Conferência (bipagem) · 051 Etiquetas · 055 Armazém · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
@@ -505,6 +505,17 @@ Em **Operação → 🤝 Parceiros e redespacho** (código **065**): agentes e t
 - **Conta-corrente:** custo (a empresa deve), pagamento ao parceiro, frete recebido pelo parceiro (fica com ele), recebido do parceiro e ajuste; saldo positivo = a empresa deve. O **CT-e do parceiro** lançado em Notas de entrada (emitente = parceiro, citando o nosso CT-e no docAnt ou as NF-e) baixa os custos desses CT-e (a conta a pagar sai da nota).
 - **Acerto** (permissão do financeiro): fecha os lançamentos até a data; saldo a favor do parceiro vira conta a pagar (Frete de terceiro) com o PIX na observação.
 - O custo do redespacho entra na **margem** por CT-e (Painel gerencial → Resultado). A tela Hoje avisa entregas atrasadas com parceiros. Código em `src/parceiros.js`.
+
+## Armazém (armazenagem)
+
+Em **Operação → 🏬 Armazém** (código **055**): mercadoria dos clientes (depositantes) guardada e cobrada por mês.
+
+- **Contrato** (financeiro): cobra por posição-palete, m³, tonelada ou volume — diária por unidade, taxa de entrada e de saída por unidade, ad valorem (% ao mês sobre o valor médio guardado) e mínimo mensal.
+- **Entrada:** XML da NF-e (remessa para armazenagem ou compra entregue no armazém; depositante = emitente quando a nota é para a empresa) ou à mão; peso/paletes/m³/volumes da nota repartidos entre os produtos pelo valor; lote, validade e endereço (rua-prédio-nível). Recibo impresso; a mesma NF-e não entra duas vezes.
+- **Estoque e inventário:** saldo por lote com endereço, validade e dias guardados; contagem física vira ajuste com motivo.
+- **Saída:** por lote (ou por produto, FEFO/FIFO), com destinatário, NF e CT-e; lista de separação impressa; saída com data passada só usa lotes que já tinham entrado. Cancelamento devolve o estoque (bloqueado em mês já cobrado).
+- **Portal:** aba Armazém com estoque, movimentos e **pedido de saída**, que a equipe atende ou recusa.
+- **Cobrança mensal:** ocupação no fim de cada dia × diária + taxas + ad valorem, com mínimo; com o mês fechado gera a NFS-e (rascunho, serviço 11.04.01) com a memória de cálculo. A tela Hoje avisa pedidos, lotes vencendo e meses a cobrar. Código em `src/armazem.js`.
 
 ## Monitoramento de veículos (mapa)
 

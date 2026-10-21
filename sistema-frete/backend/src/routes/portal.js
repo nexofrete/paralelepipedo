@@ -187,6 +187,15 @@ api.get('/cotacoes/:id(\\d+)/proposta', auth, pagina(async (req, res) => {
   return res.set('Content-Type', 'text/html; charset=utf-8').send(cot.propostaHtml(t, await cot.empresa()));
 }));
 
+// Armazém: estoque do cliente, movimentos e pedido de saída (regras em src/armazem.js).
+api.get('/armazem', auth, rota(async (req, res) => res.json(await require('../armazem').doPortal(req.portal)), 'Erro.'));
+api.post('/armazem/pedidos', auth, rota(async (req, res) => {
+  const p = await require('../armazem').pedirPeloPortal(req.portal, req.body || {});
+  logPortal(req, `Pediu a saída de ${p.itens.length} produto(s) do armazém (pedido ${p.id})`);
+  res.status(201).json({ id: p.id });
+}, 'Erro ao pedir a saída.'));
+api.post('/armazem/pedidos/:id(\\d+)/cancelar', auth, rota(async (req, res) => { await require('../armazem').cancelarPedido(Number(req.params.id), 'Cancelado pelo cliente no portal', req.portal); res.json({ ok: true }); }, 'Erro.'));
+
 // Paletes: saldo e vales-palete do cliente (regras em src/paletes.js).
 api.get('/paletes', auth, rota(async (req, res) => res.json(await require('../paletes').doPortal(req.portal)), 'Erro.'));
 api.get('/paletes/vales/:id(\\d+)', auth, pagina(async (req, res) => {

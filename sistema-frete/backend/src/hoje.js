@@ -69,6 +69,12 @@ async function montar(req) {
       add('operacao', { chave: 'parceiros_atrasados', icone: '🤝', titulo: 'Entregas atrasadas com parceiros', qtd: pa.atrasados, nivel: 'perigo', detalhe: 'cobre o parceiro (redespacho)', destino: { ir: 'parceiros' } });
     } catch (e) { console.error('[hoje]', e.message); }
     try {
+      const ar = await require('./armazem').pendencias();
+      add('operacao', { chave: 'armazem_pedidos', icone: '🏬', titulo: 'Pedidos de saída do armazém', qtd: ar.pedidos, nivel: 'atencao', detalhe: 'o cliente pediu pelo portal: separe e dê a saída', destino: { ir: 'armazem', clicar: '[data-ar-aba="pedidos"]' } });
+      add('operacao', { chave: 'armazem_validade', icone: '⏳', titulo: 'Lotes no armazém vencendo', qtd: ar.vencendo, nivel: 'info', detalhe: 'validade em até 30 dias: avise o depositante', destino: { ir: 'armazem', clicar: '[data-ar-aba="estoque"]' } });
+      if (financeiro) add('financeiro', { chave: 'armazem_cobrar', icone: '🏬', titulo: `Armazenagem de ${ar.competencia.split('-').reverse().join('/')} a cobrar`, qtd: ar.a_cobrar, nivel: 'atencao', detalhe: 'gere a NFS-e do mês de cada depositante', destino: { ir: 'armazem', clicar: '[data-ar-aba="cobranca"]' } });
+    } catch (e) { console.error('[hoje]', e.message); }
+    try {
       const mo = await require('./monitoramento').pendencias();
       add('operacao', { chave: 'veiculos_parados', icone: '🛑', titulo: 'Veículos parados fora de entrega', qtd: mo.parados, nivel: 'perigo', detalhe: 'ligue para o motorista', destino: { ir: 'monitoramento' } });
       add('operacao', { chave: 'veiculos_desvio', icone: '↪', titulo: 'Veículos fora da rota', qtd: mo.desvio, nivel: 'perigo', detalhe: 'longe do caminho planejado', destino: { ir: 'monitoramento' } });

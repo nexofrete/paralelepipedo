@@ -2775,3 +2775,70 @@ CREATE INDEX IF NOT EXISTS idx_veiculo_posicoes_data ON veiculo_posicoes (regist
 -- Paradas do romaneio já localizadas no mapa e o desenho da rota (para o "fora da rota").
 ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS rota_planejada JSONB;
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS monitor_config JSONB;
+
+-- Armazenagem (armazém geral): contrato por depositante, entrada de mercadoria (NF-e ou à mão),
+-- saldo por produto/lote com endereço, saída com separação, pedido de saída pelo portal e cobrança mensal (NFS-e).
+CREATE TABLE IF NOT EXISTS armazem_contratos (
+  id SERIAL PRIMARY KEY,
+  depositante_doc VARCHAR(14) NOT NULL UNIQUE, depositante_nome VARCHAR(200) NOT NULL,
+  base VARCHAR(8) NOT NULL DEFAULT 'palete',       -- palete | m3 | ton | volume: a unidade da diária e das taxas
+  preco_dia NUMERIC(12,4) NOT NULL DEFAULT 0,      -- R$ por unidade-base por dia
+  taxa_entrada NUMERIC(12,4) NOT NULL DEFAULT 0,   -- R$ por unidade-base recebida
+  taxa_saida NUMERIC(12,4) NOT NULL DEFAULT 0,     -- R$ por unidade-base expedida
+  ad_valorem NUMERIC(7,4) NOT NULL DEFAULT 0,      -- % ao mês sobre o valor médio armazenado (seguro)
+  minimo_mes NUMERIC(12,2) NOT NULL DEFAULT 0,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE, observacao VARCHAR(500), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS armazem_movimentos (
+  id SERIAL PRIMARY KEY,
+  tipo VARCHAR(8) NOT NULL,                        -- entrada | saida | ajuste
+  data TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  depositante_doc VARCHAR(14) NOT NULL, depositante_nome VARCHAR(200),
+  nf_numero VARCHAR(20), nf_chave VARCHAR(44), destinatario VARCHAR(200),
+  cte_id INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL,
+  pedido_id INTEGER, observacao VARCHAR(500),
+  status VARCHAR(10) NOT NULL DEFAULT 'confirmado', -- confirmado | cancelado
+  motivo_cancelamento VARCHAR(250), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_armazem_mov_dep ON armazem_movimentos (depositante_doc, data);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_armazem_mov_chave ON armazem_movimentos (nf_chave, tipo) WHERE status = 'confirmado' AND nf_chave IS NOT NULL;
+CREATE TABLE IF NOT EXISTS armazem_lotes (
+  id SERIAL PRIMARY KEY,
+  entrada_id INTEGER NOT NULL REFERENCES armazem_movimentos(id),
+  depositante_doc VARCHAR(14) NOT NULL,
+  produto_codigo VARCHAR(60), descricao VARCHAR(250) NOT NULL, unidade VARCHAR(10), ncm VARCHAR(10),
+  lote VARCHAR(40), validade DATE, endereco VARCHAR(40),
+  quantidade NUMERIC(14,4) NOT NULL,               -- recebido
+  peso_kg NUMERIC(14,3) NOT NULL DEFAULT 0, volume_m3 NUMERIC(12,4) NOT NULL DEFAULT 0, volumes NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paletes NUMERIC(10,2) NOT NULL DEFAULT 0, valor NUMERIC(14,2) NOT NULL DEFAULT 0,
+  saldo NUMERIC(14,4) NOT NULL                     -- quantidade que ainda está no armazém
+);
+CREATE INDEX IF NOT EXISTS idx_armazem_lotes_dep ON armazem_lotes (depositante_doc, saldo);
+-- Cada linha mexe num lote: na entrada, o que chegou; na saída/ajuste, o que saiu (as medidas proporcionais).
+CREATE TABLE IF NOT EXISTS armazem_mov_itens (
+  id SERIAL PRIMARY KEY,
+  movimento_id INTEGER NOT NULL REFERENCES armazem_movimentos(id) ON DELETE CASCADE,
+  lote_id INTEGER NOT NULL REFERENCES armazem_lotes(id),
+  quantidade NUMERIC(14,4) NOT NULL, peso_kg NUMERIC(14,3) NOT NULL DEFAULT 0, volume_m3 NUMERIC(12,4) NOT NULL DEFAULT 0,
+  volumes NUMERIC(12,2) NOT NULL DEFAULT 0, paletes NUMERIC(10,2) NOT NULL DEFAULT 0, valor NUMERIC(14,2) NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_armazem_itens_lote ON armazem_mov_itens (lote_id);
+CREATE TABLE IF NOT EXISTS armazem_pedidos (
+  id SERIAL PRIMARY KEY,
+  depositante_doc VARCHAR(14) NOT NULL, depositante_nome VARCHAR(200),
+  portal_usuario_id INTEGER, solicitante VARCHAR(150),
+  itens JSONB NOT NULL,                            -- [{ lote_id, descricao, quantidade }]
+  destinatario VARCHAR(200), nf_numero VARCHAR(20), observacao VARCHAR(1000),
+  status VARCHAR(10) NOT NULL DEFAULT 'pendente',  -- pendente | atendido | cancelado
+  movimento_id INTEGER REFERENCES armazem_movimentos(id) ON DELETE SET NULL, motivo VARCHAR(250),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS armazem_cobrancas (
+  id SERIAL PRIMARY KEY,
+  depositante_doc VARCHAR(14) NOT NULL, depositante_nome VARCHAR(200),
+  competencia VARCHAR(7) NOT NULL,                 -- AAAA-MM
+  memoria JSONB NOT NULL, valor NUMERIC(14,2) NOT NULL,
+  nfse_id INTEGER, status VARCHAR(10) NOT NULL DEFAULT 'gerada',   -- gerada | cancelada
+  usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_armazem_cobranca_mes ON armazem_cobrancas (depositante_doc, competencia) WHERE status = 'gerada';

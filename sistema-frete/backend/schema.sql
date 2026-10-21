@@ -2632,3 +2632,40 @@ CREATE TABLE IF NOT EXISTS cobrancas_extras (
 );
 CREATE INDEX IF NOT EXISTS idx_cobrancas_extras ON cobrancas_extras (status, cte_id);
 ALTER TABLE romaneio_itens ADD COLUMN IF NOT EXISTS chegada_em TIMESTAMPTZ;   -- "cheguei no cliente" no app (estadia)
+
+-- Parceiros (agentes / transportadoras de redespacho) e a conta-corrente com cada um.
+CREATE TABLE IF NOT EXISTS parceiros (
+  id SERIAL PRIMARY KEY,
+  documento VARCHAR(20) NOT NULL UNIQUE,
+  nome VARCHAR(200) NOT NULL, fantasia VARCHAR(120), rntrc VARCHAR(20),
+  contato_nome VARCHAR(120), telefone VARCHAR(30), email VARCHAR(250), pix VARCHAR(120),
+  ufs TEXT[] NOT NULL DEFAULT '{}',            -- estados inteiros que atende
+  cidades TEXT[] NOT NULL DEFAULT '{}',        -- "CIDADE/UF" (maiúsculas, sem acento)
+  custo_percentual NUMERIC(6,2) NOT NULL DEFAULT 0, custo_kg NUMERIC(10,4) NOT NULL DEFAULT 0,
+  custo_fixo NUMERIC(12,2) NOT NULL DEFAULT 0, custo_minimo NUMERIC(12,2) NOT NULL DEFAULT 0,
+  prazo_dias INTEGER NOT NULL DEFAULT 0,
+  observacao TEXT, ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS parceiro_id INTEGER REFERENCES parceiros(id);
+CREATE TABLE IF NOT EXISTS parceiro_acertos (
+  id SERIAL PRIMARY KEY,
+  parceiro_id INTEGER NOT NULL REFERENCES parceiros(id),
+  ate DATE NOT NULL, saldo NUMERIC(14,2) NOT NULL,
+  conta_pagar_id INTEGER REFERENCES contas_pagar(id) ON DELETE SET NULL,
+  usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- valor > 0: a empresa deve ao parceiro; < 0: o parceiro deve à empresa.
+CREATE TABLE IF NOT EXISTS parceiro_lancamentos (
+  id SERIAL PRIMARY KEY,
+  parceiro_id INTEGER NOT NULL REFERENCES parceiros(id),
+  data DATE NOT NULL, tipo VARCHAR(16) NOT NULL,   -- custo | frete_recebido | pagamento | recebimento | ajuste
+  valor NUMERIC(14,2) NOT NULL,
+  cte_id INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL, romaneio_id INTEGER REFERENCES romaneios(id) ON DELETE SET NULL,
+  descricao VARCHAR(300),
+  status VARCHAR(10) NOT NULL DEFAULT 'aberto',   -- aberto | acertado (no acerto ou pela nota do parceiro)
+  acerto_id INTEGER REFERENCES parceiro_acertos(id) ON DELETE SET NULL,
+  nota_entrada_id INTEGER REFERENCES notas_entrada(id) ON DELETE SET NULL,
+  usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_parceiro_lanc ON parceiro_lancamentos (parceiro_id, status, data);
+CREATE INDEX IF NOT EXISTS idx_parceiro_lanc_cte ON parceiro_lancamentos (cte_id);

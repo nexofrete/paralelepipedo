@@ -22,7 +22,7 @@
       guardar('motoristaCodigo', codigo);
       $('mtEntrar').classList.add('oculto'); $('mtRota').classList.remove('oculto');
       desenhar();
-      carregarJornada();
+      if (dados.romaneio.parceiro) $('mtJornada').classList.add('oculto'); else carregarJornada();
     } catch (err) {
       if (err.status === 404 || err.status === 410) guardar('motoristaCodigo', null);
       $('mtEntrar').classList.remove('oculto'); $('mtRota').classList.add('oculto');
@@ -37,7 +37,7 @@
     const feitos = dados.itens.filter((i) => ['entregue', 'devolvido'].includes(i.situacao)).length + coletas.filter((c) => ['coletada', 'nao_coletada'].includes(c.status)).length;
     const total = dados.itens.length + coletas.length;
     $('mtEmpresa').textContent = dados.empresa.nome;
-    $('mtTitulo').textContent = `Romaneio ${r.id} · ${feitos}/${total}`;
+    $('mtTitulo').textContent = `${r.parceiro ? 'Redespacho' : 'Romaneio'} ${r.id} · ${feitos}/${total}`;
     $('mtSub').textContent = [r.motorista, r.placa, r.veiculo].filter(Boolean).join(' · ');
     $('mtBarra').style.width = `${total ? Math.round((feitos / total) * 100) : 0}%`;
     $('mtAviso').innerHTML = r.status === 'aberto'
@@ -58,7 +58,7 @@
         ${feito ? '' : `<div class="mt-botoes">
           <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}" target="_blank" rel="noopener">🗺 Mapa</a>
           ${i.telefone ? `<a href="tel:${esc(String(i.telefone).replace(/[^\d+]/g, ''))}">📞 Ligar</a>` : '<span></span>'}
-          ${i.chegada_em ? `<span class="mt-chegada">📍 chegou ${new Date(i.chegada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : `<button data-mt-chegada="${i.cte_id}" title="Marca a hora da chegada: o tempo de espera vira estadia">📍 Cheguei</button>`}
+          ${dados.romaneio.parceiro ? '' : i.chegada_em ? `<span class="mt-chegada">📍 chegou ${new Date(i.chegada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : `<button data-mt-chegada="${i.cte_id}" title="Marca a hora da chegada: o tempo de espera vira estadia">📍 Cheguei</button>`}
           <button class="ok" data-mt-entregue="${i.cte_id}">✓ Entregue</button>
           <button class="ruim" data-mt-problema="${i.cte_id}">⚠ Não entregue</button></div>`}
       </article>`;

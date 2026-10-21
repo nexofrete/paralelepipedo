@@ -220,7 +220,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Os últimos destinos usados aparecem primeiro.
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
-  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
+  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
@@ -495,6 +495,16 @@ Para transportadora com mais de uma unidade (matriz e filiais), em **Operação 
    - No destino: **🔎 Conferir chegada** (bipagem) e depois **Registrar a chegada**; ou **✓ Receber** sem bipar.
    - Os CT-e passam a estar na filial, com a ocorrência "Chegada na filial" e as faltas anotadas. O CT-e de que nenhum volume chegou continua "em trânsito" até alguém clicar em **chegou depois**.
 5. **acertar** (administrador): corrige onde a mercadoria está ou qual filial entrega, para os casos fora do fluxo. Fica registrado na auditoria.
+
+## Parceiros e redespacho
+
+Em **Operação → 🤝 Parceiros e redespacho** (código **065**): agentes e transportadoras que entregam onde a empresa não tem filial.
+
+- **Cadastro:** CNPJ/CPF (nome pela Receita), contato, PIX, **estados inteiros** e **cidades** atendidas (Cidade/UF, uma por linha), custo por CT-e (% do frete + R$/kg + fixo, com mínimo) e o prazo dele (dias a mais na previsão).
+- **Repasse:** em Ocorrências de entrega, marque os CT-e → **🤝 Repassar a parceiro**. Mostra quem atende cada destino (pela cidade ou pela UF), o custo previsto e a margem do frete. Ao confirmar, cria um **romaneio de redespacho** com o parceiro: os CT-e ficam "Entregue ao redespacho" (ocorrência 52), a previsão ganha o prazo do parceiro, o custo previsto entra na conta dele e sai o **código do app** para o parceiro dar baixa nas entregas (o mesmo app do motorista, sem jornada).
+- **Conta-corrente:** custo (a empresa deve), pagamento ao parceiro, frete recebido pelo parceiro (fica com ele), recebido do parceiro e ajuste; saldo positivo = a empresa deve. O **CT-e do parceiro** lançado em Notas de entrada (emitente = parceiro, citando o nosso CT-e no docAnt ou as NF-e) baixa os custos desses CT-e (a conta a pagar sai da nota).
+- **Acerto** (permissão do financeiro): fecha os lançamentos até a data; saldo a favor do parceiro vira conta a pagar (Frete de terceiro) com o PIX na observação.
+- O custo do redespacho entra na **margem** por CT-e (Painel gerencial → Resultado). A tela Hoje avisa entregas atrasadas com parceiros. Código em `src/parceiros.js`.
 
 ## Etiquetas de volume e conferência (bipagem)
 

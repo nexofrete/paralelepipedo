@@ -33,7 +33,7 @@ router.get('/:codigo', async (req, res) => {
     const { rows: emp } = await pool.query('SELECT razao_social, nome_fantasia, telefone FROM empresa WHERE id = 1');
     const itens = (await itensDoRomaneio(r.id)).map(({ valor_frete: _v, valor_carga: _c, chave: _k, ...i }) => i);   // sem valores no celular
     res.json({
-      romaneio: { id: r.id, data: r.data, motorista: r.motorista_nome, placa: r.placa, veiculo: r.veiculo, status: r.status, observacao: r.observacao },
+      romaneio: { id: r.id, data: r.data, motorista: r.motorista_nome, placa: r.placa, veiculo: r.veiculo, status: r.status, observacao: r.observacao, parceiro: !!r.parceiro_id },
       empresa: { nome: emp[0]?.nome_fantasia || emp[0]?.razao_social || '', telefone: emp[0]?.telefone || '' },
       ocorrencias: oc.CATALOGO.filter((c) => DO_MOTORISTA.includes(c.id)).map(({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao }) => ({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao })),
       itens,

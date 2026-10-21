@@ -170,9 +170,11 @@ async function darSaida(id, usuarioNome) {
     const itens = await itensDoRomaneio(id, cliente);
     const agora = oc.agoraBrasilia();
     const lancadas = [];
+    // Romaneio de redespacho (parceiro): a carga é entregue ao parceiro, que dá baixa pelo app.
+    const tipoId = r.parceiro_id ? 'redespacho' : 'saiu';
     for (const it of itens.filter((x) => !['entregue', 'devolvido'].includes(x.situacao))) {
-      lancadas.push(await oc.lancarOcorrencia(cliente, { cteId: it.cte_id, corpo: { tipo_id: 'saiu', data_hora: agora,
-        observacao: `Romaneio ${id} · ${r.motorista_nome}${r.placa ? ` · ${r.placa}` : ''}` }, usuarioNome, romaneioId: id }));
+      lancadas.push(await oc.lancarOcorrencia(cliente, { cteId: it.cte_id, corpo: { tipo_id: tipoId, data_hora: agora,
+        observacao: r.parceiro_id ? `Entregue ao parceiro ${r.motorista_nome} (romaneio de redespacho ${id})` : `Romaneio ${id} · ${r.motorista_nome}${r.placa ? ` · ${r.placa}` : ''}` }, usuarioNome, romaneioId: id }));
     }
     await coletas.sairComColetas(cliente, id);
     await cliente.query(`UPDATE romaneios SET status = 'em_rota', saiu_em = NOW() WHERE id = $1`, [id]);
@@ -277,4 +279,4 @@ router.get('/:id(\\d+)/imprimir', autenticar, emitir, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Erro ao montar o romaneio.'); }
 });
 
-module.exports = { router, itensDoRomaneio, darSaida, itemDoCte, lerCabecalho, novoCodigo };
+module.exports = { router, itensDoRomaneio, darSaida, itemDoCte, lerCabecalho, novoCodigo, gravarItens };

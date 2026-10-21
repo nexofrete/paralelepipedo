@@ -202,7 +202,9 @@ async function lancar(b, usuarioNome) {
       }
     }
     await cliente.query('COMMIT');
-    return { id: nota.id, numero: n.numero, fornecedor: n.emitente.nome, valor: centavos(n.valor_total), credito, contas };
+    // CT-e de redespacho de um parceiro: os custos dos CT-e dele saem da conta-corrente (a nota já gerou a conta a pagar).
+    const parceiro = n.modelo === '57' ? await require('./parceiros').aoLancarNotaEntrada(nota.id, { emitenteDoc: n.emitente.doc, xml: b.xml }).catch(() => null) : null;
+    return { id: nota.id, numero: n.numero, fornecedor: n.emitente.nome, valor: centavos(n.valor_total), credito, contas, parceiro };
   } catch (err) {
     await cliente.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') throw falha('Esta nota já foi lançada.', 409);

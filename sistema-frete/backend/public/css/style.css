@@ -1676,3 +1676,8 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .fv-pneu.vazio { border-style: dashed; opacity: .7; }
 .fv-pneu.entregue { border-color: #22c55e; } .fv-pneu.ocorrencia { border-color: #f59e0b; background: rgba(245,158,11,0.1); } .fv-pneu.cancelado { border-color: #ef4444; background: rgba(239,68,68,0.12); }
 @media (max-width: 700px) { .fv-pneu { width: 64px; } .fv-barra { width: 30px; } .fv-eixo-n { width: 44px; } }
+
+/* Parceiros: estados atendidos */
+.pa-ufs { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 4px 8px; font-size: 12.5px; }
+.pa-ufs label { display: flex; align-items: center; gap: 4px; font-weight: 400; }
+.pa-ufs input { width: auto; }

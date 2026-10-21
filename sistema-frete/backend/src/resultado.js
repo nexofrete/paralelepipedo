@@ -115,6 +115,10 @@ async function calcular({ de, ate }) {
       if (itens.length) viagens.push({ rotulo: a.romaneio_id ? `Romaneio ${a.romaneio_id}` : `Transferência ${a.transferencia_id}`, custo, itens });
     }
   }
+  // --- Redespacho por parceiro: o custo de cada CT-e (conta-corrente do parceiro) ---
+  const { rows: red } = ids.length ? await pool.query(
+    `SELECT l.cte_id, l.valor::float, p.nome FROM parceiro_lancamentos l JOIN parceiros p ON p.id = l.parceiro_id WHERE l.tipo = 'custo' AND l.cte_id = ANY($1::int[])`, [ids]).catch(() => ({ rows: [] })) : { rows: [] };
+  red.forEach((x) => { const d = docs.get(x.cte_id); if (d) viagens.push({ rotulo: `Redespacho ${x.nome}`, custo: centavos(x.valor), itens: [d] }); });
   let viagemSemCte = 0;
   for (const v of viagens) {
     // Viagem sem CT-e: só a do período (as da janela de ±45 dias são de outros meses).

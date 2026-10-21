@@ -62,7 +62,7 @@ def parte_operacao(g):
     s += tabela(['Área', 'Códigos principais'], [
         ['0xx Operação', '000 Hoje · 001 Coletas · 010 Cotações · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · '
          '040 Romaneios · 041 Ocorrências · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
-         '061 Transferências · 070 EDI · 080 Portal do cliente'],
+         '061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
          'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
@@ -222,13 +222,39 @@ def parte_operacao(g):
     ])
 
     # 36
-    s += h1('36. Filiais e transferências')
+    s += h1('36. Filiais, transferências e parceiros (redespacho)')
     s += passos([
         '<b>Filiais</b> (901, administrador): cadastre cada filial com a lista de cidades que ela entrega.',
         'Cada CT-e sabe <b>onde a mercadoria está</b> e <b>qual filial entrega</b>.',
         '<b>Onde está a mercadoria</b> (060): marque os "a transferir" e crie a transferência.',
         'Na origem: manifesto, etiquetas, MDF-e, conferência e saída. No destino: conferir a chegada e registrar.',
     ])
+    s += h2('Parceiros e redespacho (065)')
+    s.append(P('Para entregar onde a empresa não tem filial, cadastre os <b>parceiros</b> (agentes e transportadoras de '
+               'redespacho) e repasse as cargas a eles.'))
+    s += passos([
+        '<b>＋ Parceiro</b>: CNPJ (o nome vem da Receita), contato, PIX, os <b>estados inteiros</b> que ele atende e as '
+        '<b>cidades</b> (uma por linha, Cidade/UF), quanto ele cobra por CT-e (% do frete, R$ por kg, valor fixo, mínimo) e o '
+        'prazo dele (dias a mais na previsão).',
+        'Em <b>Ocorrências de entrega</b>, marque os CT-e e clique em <b>Repassar a parceiro</b>. O sistema mostra quem atende '
+        'cada destino, o custo previsto e a margem que sobra do frete.',
+        'Ao repassar: os CT-e ficam como "Entregue ao redespacho", a previsão ganha o prazo do parceiro, o custo previsto '
+        'entra na conta dele e sai um <b>código do app</b>: mande o link ao parceiro para ele dar baixa nas entregas (com '
+        'foto do canhoto ou assinatura), como o motorista.',
+    ])
+    s += lista([
+        '<b>Abrir</b> o parceiro: as cargas com ele (atrasadas em vermelho), a conta-corrente e o histórico de acertos.',
+        '<b>Conta-corrente</b>: custo de cada CT-e (a pagar ao parceiro), pagamentos, frete que o parceiro recebeu do cliente e '
+        'ficou com ele, recebimentos e ajustes. O saldo diz quem deve a quem.',
+        'Quando o <b>CT-e do parceiro</b> (redespacho contra a sua empresa) é lançado em Fiscal » Notas de entrada, os custos '
+        'dos CT-e citados nele saem da conta (a conta a pagar já sai da nota).',
+        '<b>Fazer o acerto</b> (financeiro): fecha os lançamentos até a data; se a empresa deve, vira conta a pagar (categoria '
+        'Frete de terceiro) com o PIX do parceiro na observação.',
+        'O custo do redespacho entra na <b>margem</b> de cada CT-e (Painel gerencial » Resultado). A tela Hoje avisa as '
+        'entregas atrasadas com parceiros.',
+    ])
+    s += aviso('nota', 'Quando a SUA empresa é a contratada (subcontratação ou redespacho de outra transportadora), emita o '
+                       'CT-e com o tipo de serviço Subcontratação/Redespacho e informe o CT-e anterior de quem contratou.')
 
     # 37
     s += h1('37. Etiquetas de volume e conferência (bipagem)')

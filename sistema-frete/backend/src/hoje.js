@@ -64,6 +64,10 @@ async function montar(req) {
       const jo = await require('./jornada').pendencias();
       add('operacao', { chave: 'jornada_alerta', icone: '⏱', titulo: 'Jornadas abertas com alerta', qtd: jo.com_alerta, nivel: 'perigo', detalhe: 'direção contínua, excesso de jornada ou jornada esquecida aberta', destino: { ir: 'frota', aba: 'jornada' } });
     } catch (e) { console.error('[hoje]', e.message); }
+    try {
+      const pa = await require('./parceiros').pendencias();
+      add('operacao', { chave: 'parceiros_atrasados', icone: '🤝', titulo: 'Entregas atrasadas com parceiros', qtd: pa.atrasados, nivel: 'perigo', detalhe: 'cobre o parceiro (redespacho)', destino: { ir: 'parceiros' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     const col = await um(`SELECT COUNT(*) FILTER (WHERE status = 'pendente')::int AS a_programar, COUNT(*) FILTER (WHERE status = 'pendente' AND data_coleta < $1)::int AS atrasadas FROM coletas`, [h]);
     add('operacao', { chave: 'coletas', icone: '📦', titulo: 'Coletas a programar', qtd: col.a_programar, nivel: col.atrasadas ? 'perigo' : 'atencao',
       detalhe: col.atrasadas ? `${col.atrasadas} com a data já passada` : 'ponha no caminhão', destino: { ir: 'coletas', clicar: '[data-col-filtro="pendente"]' } });

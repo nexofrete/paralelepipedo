@@ -70,6 +70,10 @@
           "texto": "Cobrança de serviços extras: reentrega, devolução, estadia, armazenagem e descarga com preço padrão e por cliente; as ocorrências e o botão Cheguei do app do motorista criam as cobranças sozinhas; aprovadas viram CT-e complementar (ou NFS-e na armazenagem)."
         },
         {
+          "area": "Entregas",
+          "texto": "Parceiros e redespacho: cadastro de agentes com a área atendida e o custo; repasse das cargas pelas Ocorrências com sugestão pelo destino e margem; o parceiro dá baixa pelo app; conta-corrente com acerto que vira conta a pagar; o CT-e do parceiro em Notas de entrada baixa os custos; custo do redespacho na margem por CT-e."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

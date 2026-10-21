@@ -338,6 +338,10 @@
   const lerFormRomaneio = () => ({ motorista_nome: $('rmMotorista').value, motorista_documento: $('rmDoc').value, motorista_telefone: $('rmFone').value,
     data: $('rmData').value, placa: $('rmPlaca').value, veiculo: $('rmVeiculo').value, observacao: $('rmObs').value });
 
+  $('ocRepassar').addEventListener('click', () => {
+    if (!window.nexoParceiros) { mostrarAlerta('Sem permissão para parceiros.', { tipo: 'erro' }); return; }
+    window.nexoParceiros.repassar(marcados(), () => carregar().catch(() => {})).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+  });
   $('ocMontarRomaneio').addEventListener('click', () => {
     const ids = marcados();
     const linhas = (estado.dados?.linhas || []).filter((l) => ids.includes(l.id));

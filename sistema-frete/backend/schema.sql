@@ -2488,3 +2488,28 @@ CREATE TABLE IF NOT EXISTS cte_agendamentos (
 );
 CREATE INDEX IF NOT EXISTS idx_cte_agendamentos_cte ON cte_agendamentos (cte_id, criado_em);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cte_agendamentos_ativo ON cte_agendamentos (cte_id) WHERE status = 'ativo';
+
+-- Notas de entrada (compras): NF-e e CT-e tomados, com o crédito de ICMS e as contas a pagar.
+CREATE TABLE IF NOT EXISTS notas_entrada (
+  id SERIAL PRIMARY KEY,
+  modelo VARCHAR(2) NOT NULL,                  -- 55 (NF-e), 57 (CT-e), 01 (nota em papel / sem XML)
+  chave VARCHAR(44) UNIQUE,
+  serie VARCHAR(5), numero VARCHAR(15),
+  emissao DATE NOT NULL, entrada DATE NOT NULL,
+  emitente_doc VARCHAR(20), emitente_nome VARCHAR(200), emitente_uf CHAR(2), emitente_ie VARCHAR(30),
+  natureza VARCHAR(120),
+  valor_total NUMERIC(14,2) NOT NULL, valor_produtos NUMERIC(14,2), base_icms NUMERIC(14,2) NOT NULL DEFAULT 0, icms NUMERIC(14,2) NOT NULL DEFAULT 0,
+  icms_st NUMERIC(14,2) NOT NULL DEFAULT 0, ipi NUMERIC(14,2) NOT NULL DEFAULT 0,
+  credito_icms NUMERIC(14,2) NOT NULL DEFAULT 0,   -- o que a empresa aproveita (0 = sem crédito)
+  categoria VARCHAR(20) NOT NULL DEFAULT 'outros',
+  itens JSONB NOT NULL DEFAULT '[]',
+  duplicatas JSONB NOT NULL DEFAULT '[]',
+  xml TEXT,
+  status VARCHAR(10) NOT NULL DEFAULT 'lancada',    -- lancada | cancelada
+  motivo_cancelamento VARCHAR(200), cancelada_em TIMESTAMPTZ,
+  observacao TEXT,
+  usuario_nome VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notas_entrada_data ON notas_entrada (entrada, status);
+ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS nota_entrada_id INTEGER REFERENCES notas_entrada(id) ON DELETE SET NULL;

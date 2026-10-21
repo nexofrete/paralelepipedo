@@ -65,7 +65,7 @@ def parte_operacao(g):
          '061 Transferências · 070 EDI · 080 Portal do cliente'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
-         'contador · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
+         'contador · 142 Notas de entrada · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
         ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas'],
         ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 '
          'Relatórios · 330 Auditoria de frete'],
@@ -451,7 +451,35 @@ def parte_financeiro(g):
         '<b>Pacote do contador</b> (141): XML de CT-e, MDF-e e NFS-e, livro, lançamentos e LEIA-ME, por download ou '
         'e-mail; o envio automático manda o mês anterior no dia escolhido (o envio à mão do mês inteiro conta).',
     ])
-    s += aviso('importante', 'O SPED não é gerado aqui: o contador importa os XML do pacote junto com as notas de entrada.')
+    s.append(P('<b>Notas de entrada e apuração</b> (142): as compras da transportadora (diesel, ARLA, peças, pneus) e '
+               'os CT-e de agregados e redespacho em que a empresa é a tomadora.'))
+    s += passos([
+        '<b>Importar XML (NF-e / CT-e)</b>: escolha um ou vários arquivos. O sistema confere se a nota é para a sua '
+        'empresa e se já não foi lançada, e mostra fornecedor, itens, ICMS e as duplicatas.',
+        'Confira a <b>data de entrada</b>, a <b>categoria</b> (sugerida pelo NCM: combustível, pneus, manutenção; CT-e '
+        'vira frete de terceiro) e o <b>crédito de ICMS</b> sugerido.',
+        'Deixe marcado <b>Gerar conta(s) a pagar</b>: sai uma conta por duplicata da nota (sem duplicatas, informe o '
+        'vencimento e as parcelas), com a competência na data de entrada.',
+        'Clique em <b>Lançar</b>. Nota em papel ou sem XML: <b>Nota sem XML</b>, com fornecedor, número, valor, CFOP e '
+        'ICMS digitados.',
+    ])
+    s += lista([
+        '<b>Crédito de ICMS</b> (em Contador e plano de contas): <b>pelas notas</b> (sugere o ICMS dos combustíveis, '
+        'lubrificantes e do CT-e tomado; peças e pneus de uso e consumo ficam sem crédito), <b>crédito presumido</b> de '
+        '20% do ICMS das saídas (Convênio ICMS 106/96) ou <b>sem crédito</b> (Simples Nacional).',
+        '<b>Apuração</b>: débitos das saídas menos os créditos e o saldo credor dos meses anteriores = ICMS a recolher '
+        '(ou saldo credor para o mês seguinte). Saldo de antes da primeira nota lançada: informe em Contador e plano '
+        'de contas.',
+        '<b>Livro de entradas</b> por nota e CFOP de entrada (sugerido: 1653/2653 combustível, 1556/2556 uso e consumo, '
+        '1351/2351 frete contratado), para imprimir e em planilha.',
+        'Os lançamentos contábeis trazem o crédito (ICMS a recuperar contra a despesa) e a compensação no fim do mês; '
+        'o pacote do contador leva os XML de entrada (pasta Entradas) e o livro de entradas.',
+        '<b>Cancelar</b> uma nota lançada errada cancela junto as contas a pagar em aberto dela (com pagamento, estorne '
+        'antes). Depois dá para lançar o XML de novo.',
+    ])
+    s += aviso('importante', 'O SPED não é gerado aqui: o contador importa os XML do pacote (saídas e as entradas lançadas). '
+                             'A apuração da tela é uma prévia para conferência; o crédito de cada nota (em especial o '
+                             'diesel com ICMS monofásico) deve ser confirmado com o contador.')
     s += aviso('dica', 'Nas planilhas (CSV) geradas pelo sistema, um texto que começa com =, +, - ou @ vira texto puro, '
                        'para o Excel não executá-lo como fórmula.')
 

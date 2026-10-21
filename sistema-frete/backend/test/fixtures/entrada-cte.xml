@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?><cteProc xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00"><CTe><infCte Id="CTe35261099000111000155570010000001231000001239" versao="4.00">
+<ide><CFOP>5352</CFOP><natOp>PRESTACAO DE SERVICO DE TRANSPORTE</natOp><mod>57</mod><serie>1</serie><nCT>123</nCT><dhEmi>2026-10-10T08:00:00-03:00</dhEmi>
+<xMunIni>CAMPINAS</xMunIni><UFIni>SP</UFIni><xMunFim>SANTOS</xMunFim><UFFim>SP</UFFim><toma4><toma>4</toma><CNPJ>11222333000181</CNPJ><xNome>TRANSPORTADORA</xNome></toma4></ide>
+<emit><CNPJ>99000111000155</CNPJ><IE>111222333</IE><xNome>AGREGADO TRANSPORTES ME</xNome><enderEmit><UF>SP</UF></enderEmit></emit>
+<vPrest><vTPrest>1500.00</vTPrest><vRec>1500.00</vRec></vPrest>
+<imp><ICMS><ICMS00><CST>00</CST><vBC>1500.00</vBC><pICMS>12.00</pICMS><vICMS>180.00</vICMS></ICMS00></ICMS></imp>
+</infCte></CTe></cteProc>

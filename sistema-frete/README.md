@@ -221,7 +221,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
-  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
+  - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
@@ -426,7 +426,14 @@ Menu **Operação de Transporte → 🧮 Fiscal e contabilidade** (código **140
 - **Pacote do contador (.zip):** XML dos CT-e (autorizados, cancelados e substituídos em pastas separadas, mais os eventos), dos MDF-e e das NFS-e, junto com o livro, os lançamentos e um LEIA-ME.
   - Baixa na tela ou vai por e-mail para o contador.
   - Com o **envio automático** ligado, o pacote do mês anterior sai sozinho no dia escolhido; se falhar, tenta de novo a cada 6 horas.
-- **Contador e plano de contas:** nome, e-mail e CRC do contador, regime, separador e o código de cada conta.
+- **📥 Notas de entrada e apuração** (código **142**): compras da transportadora (diesel, ARLA, peças, pneus) e CT-e de agregados/redespacho em que a empresa é a tomadora.
+  - **Importar XML** (um ou vários): confere se a nota é para a empresa (destinatário ou tomador) e se já foi lançada; sugere a categoria pelo NCM, o CFOP de entrada (1653/2653 combustível, 1556/2556 uso e consumo, 1351/2351 frete contratado) e o crédito de ICMS. Lê o ICMS monofásico do diesel (CST 61).
+  - **Gera as contas a pagar** pelas duplicatas da nota (ou pelo vencimento e parcelas informados), com a competência na data de entrada. **Nota sem XML** para nota em papel.
+  - **Crédito de ICMS** (em Contador e plano de contas): pelas notas, crédito presumido de 20% (Convênio ICMS 106/96) ou sem crédito (Simples; é o automático quando o CRT é 1).
+  - **Apuração:** débitos das saídas − créditos − saldo credor anterior (levado mês a mês desde a primeira nota, mais o saldo inicial informado) = ICMS a recolher ou saldo credor.
+  - **Livro de entradas** por nota e CFOP (HTML e planilha). Os lançamentos contábeis trazem o crédito (ICMS a recuperar × despesa) e a compensação no fim do período; o pacote do contador leva os XML em `Entradas/` e o livro de entradas.
+  - **Cancelar** o lançamento cancela as contas a pagar em aberto da nota (com pagamento: estorne antes).
+- **Contador e plano de contas:** nome, e-mail e CRC do contador, regime, separador, modo de crédito do ICMS, saldo credor inicial e o código de cada conta.
 
 **O SPED não é gerado aqui.** A EFD ICMS/IPI e a EFD Contribuições precisam também das notas de **entrada** (diesel, peças, pneus, CT-e de subcontratação), que não passam pelo Nexofrete. O sistema do contador importa os XML do pacote junto com essas notas e apura o saldo do ICMS (débitos − créditos).
 

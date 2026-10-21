@@ -175,6 +175,7 @@ app.use('/api/cte-emissao/importar-nfe', express.json({ limit: '40mb' }));
 app.use('/api/edi', express.json({ limit: '10mb' }));
 // API para ERP: NF-e em XML no corpo.
 app.use('/api/v1/nfe', express.json({ limit: '10mb' }));
+app.use('/api/contabil/entradas', express.json({ limit: '5mb' }));
 app.use(express.json());
 
 // Licença: sem ativação (ou cópia em outro computador) o sistema não funciona;

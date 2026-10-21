@@ -42,6 +42,7 @@ const CONTAS_PADRAO = {
   despesa_adiantamento: '1.1.3.10', despesa_salarios: '4.2.1.01', despesa_impostos: '4.2.2.01', despesa_seguro: '4.2.3.01', despesa_aluguel: '4.2.4.01',
   despesa_administrativo: '4.2.5.01', despesa_outros: '4.2.9.01',
   despesa_comissao: '4.2.6.01', descontos_concedidos: '3.1.2.03', icms_outra_uf: '2.1.3.03', despesa_tarifas: '4.3.1.01', despesa_juros: '4.3.1.02', receita_financeira: '3.2.1.01', receita_outras: '3.2.9.01', socios: '2.4.1.01',
+  icms_recuperar: '1.1.3.01',
 };
 const NOMES_CONTAS = {
   clientes: 'Clientes (duplicatas a receber)', caixa: 'Caixa', banco: 'Banco (conta movimento)', iss_retido: 'ISS retido pelo tomador (a compensar)',
@@ -51,9 +52,9 @@ const NOMES_CONTAS = {
   despesa_adiantamento: 'Adiantamentos de viagem', despesa_salarios: 'Salários e encargos', despesa_impostos: 'Impostos e taxas', despesa_seguro: 'Seguros',
   despesa_aluguel: 'Aluguel', despesa_administrativo: 'Despesas administrativas', despesa_outros: 'Outras despesas',
   despesa_comissao: 'Comissões de vendedores', descontos_concedidos: 'Descontos concedidos (dedução da receita)', icms_outra_uf: 'ICMS devido a outra UF (GNRE)', despesa_tarifas: 'Tarifas bancárias', despesa_juros: 'Juros e multas pagos', receita_financeira: 'Receitas financeiras (rendimentos)', receita_outras: 'Outras receitas',
-  socios: 'Sócios (aportes e retiradas)',
+  socios: 'Sócios (aportes e retiradas)', icms_recuperar: 'ICMS a recuperar (créditos das entradas)',
 };
-const CONFIG_PADRAO = { contador_nome: '', contador_email: '', contador_crc: '', regime: 'competencia', separador: ';', envio_ativo: false, envio_dia: 5, contas: CONTAS_PADRAO, ultimo_envio: null };
+const CONFIG_PADRAO = { contador_nome: '', contador_email: '', contador_crc: '', regime: 'competencia', separador: ';', envio_ativo: false, envio_dia: 5, contas: CONTAS_PADRAO, ultimo_envio: null, icms_credito: null, icms_saldo_inicial: 0 };
 
 async function config() {
   const { rows } = await pool.query('SELECT contabil_config FROM empresa WHERE id = 1');
@@ -70,6 +71,8 @@ async function salvarConfig(b = {}) {
     ...atual, contador_nome: String(b.contador_nome || '').trim().slice(0, 120), contador_email: email.slice(0, 250), contador_crc: String(b.contador_crc || '').trim().slice(0, 30),
     regime: b.regime === 'caixa' ? 'caixa' : 'competencia', separador: b.separador === ',' ? ',' : b.separador === 'tab' ? 'tab' : ';',
     envio_ativo: !!b.envio_ativo, envio_dia: Math.min(Math.max(parseInt(b.envio_dia, 10) || 5, 1), 28), contas,
+    icms_credito: ['notas', 'presumido', 'nenhum'].includes(b.icms_credito) ? b.icms_credito : (b.icms_credito === undefined ? atual.icms_credito : null),
+    icms_saldo_inicial: b.icms_saldo_inicial === undefined ? atual.icms_saldo_inicial : Math.max(0, Math.round((Number(String(b.icms_saldo_inicial).replace(',', '.')) || 0) * 100) / 100),
   };
   if (c.envio_ativo && !c.contador_email) throw falha('Informe o e-mail do contador para ligar o envio automático.');
   // O registro do último envio é do agendador: salvar a configuração não mexe nele.
@@ -224,6 +227,23 @@ async function lancamentos(p) {
       if (a.iss_retido) lanc(a.data, c.clientes, c.iss_recolher, a.iss, `${hist} (ISS retido)`, a.documento, a.tomador_doc);
     }
   });
+  // Crédito de ICMS das entradas (competência): sai do custo da compra e vai para "ICMS a recuperar";
+  // no fim do período, compensa com o ICMS a recolher. Crédito presumido: abate direto do débito.
+  if (!caixa) {
+    const entradas = require('./entradas');
+    const ap = await entradas.apuracao({ de, ate });
+    if (ap.modo === 'notas') {
+      const { rows: ne } = await pool.query(
+        `SELECT id, modelo, serie, numero, entrada::text AS data, emitente_nome, emitente_doc, categoria, credito_icms::float FROM notas_entrada
+          WHERE status = 'lancada' AND credito_icms > 0 AND entrada BETWEEN $1::date AND $2::date ORDER BY entrada, id`, [de, ate]);
+      ne.forEach((x) => {
+        const doc = `${x.modelo === '57' ? 'CT-e' : 'NF'} ${x.numero}${x.serie ? `/${x.serie}` : ''}`;
+        lanc(x.data, c.icms_recuperar, c[`despesa_${x.categoria}`] || c.despesa_outros, x.credito_icms, `Crédito de ICMS ${doc} — ${x.emitente_nome}`, doc, x.emitente_doc || '');
+      });
+      lanc(ate, c.icms_recolher, c.icms_recuperar, ap.compensado, `Apuração do ICMS ${diaBr(de)} a ${diaBr(ate)}: créditos compensados com os débitos`, 'APURACAO ICMS');
+    }
+    if (ap.modo === 'presumido') lanc(ate, c.icms_recolher, c.icms_sobre_frete, ap.credito, `Crédito presumido de ICMS (20% do débito) ${diaBr(de)} a ${diaBr(ate)}`, 'APURACAO ICMS');
+  }
   const ff = await filtroFiscal();
   // Desconto dado na fatura: dedução da receita (sai do a receber).
   const { rows: desc } = await pool.query(
@@ -360,7 +380,7 @@ function livroHtml(l, e) {
     <div>ICMS (débitos)<b>R$ ${m(t.icms)}</b></div>${t.icms_outra_uf ? `<div>ICMS de outra UF (GNRE)<b>R$ ${m(t.icms_outra_uf)}</b></div>` : ''}<div>Isentas / outras<b>R$ ${m(t.isentas_outras)}</b></div>
     ${t.ajustes ? `<div>Ajustes de meses anteriores<b>${t.ajustes}</b>− R$ ${m(t.ajustes_valor)} · ICMS − R$ ${m(t.ajustes_icms)}</div>` : ''}
     ${t.nfse ? `<div>NFS-e<b>${t.nfse}</b>R$ ${m(t.nfse_valor)}</div><div>ISS<b>R$ ${m(t.iss)}</b>${t.iss_retido ? `retido: R$ ${m(t.iss_retido)}` : ''}</div>` : ''}</div>
-  <p style="font-size:10.5px; color:#555;">Cancelados e substituídos aparecem na lista, mas não entram nas somas (vale o CT-e substituto). Apuração do ICMS: estes são os débitos das saídas. Os créditos (entradas: combustível, peças, CT-e de subcontratação) e o saldo a recolher são apurados pelo contador no SPED, com as notas de entrada.${t.icms_outra_uf ? ' O ICMS das prestações com ICMS devido a outra UF (OUTRAUF) não entra na base nem no débito próprio: é recolhido por GNRE.' : ''}</p>
+  <p style="font-size:10.5px; color:#555;">Cancelados e substituídos aparecem na lista, mas não entram nas somas (vale o CT-e substituto). Apuração do ICMS: estes são os débitos das saídas. Os créditos (notas de entrada lançadas no sistema) e o saldo a recolher estão no livro de entradas.${t.icms_outra_uf ? ' O ICMS das prestações com ICMS devido a outra UF (OUTRAUF) não entra na base nem no débito próprio: é recolhido por GNRE.' : ''}</p>
   ${grupo('Resumo por CFOP', l.por_cfop)}${grupo('Resumo por CST e alíquota', l.por_cst)}${grupo('Resumo por UF de início → fim', l.por_uf)}
   <h3>Documentos</h3><table><thead><tr><th>Data</th><th>Série/nº</th><th>Situação</th><th>CFOP</th><th>CST</th><th class="n">Alíq.</th><th>Trajeto</th><th>Tomador</th><th class="n">Valor</th><th class="n">Base</th><th class="n">ICMS</th></tr></thead><tbody>
   ${l.ctes.map((d) => `<tr><td>${diaBr(d.data)}</td><td>${d.serie}/${d.numero}</td><td>${d.situacao}${d.tipo !== 'normal' ? ` (${d.tipo})` : ''}</td><td>${esc(d.cfop)}</td><td>${esc(d.cst)}</td><td class="n">${d.aliquota ? m(d.aliquota) : ''}${d.outra_uf ? ' (outra UF)' : ''}</td>
@@ -418,6 +438,15 @@ async function montarPacote(p) {
     if (n.no_periodo) { zip.adicionar(`NFS-e/${nome}-nfse.xml`, Buffer.from(n.xml_nfse, 'utf8')); cont.nfse += 1; }
     if (n.xml_cancelamento && (n.no_periodo || n.cancelada_no_periodo)) zip.adicionar(`NFS-e/${nome}-cancelamento.xml`, Buffer.from(n.xml_cancelamento, 'utf8'));
   });
+  // Notas de entrada lançadas no período: XML e o livro de entradas com a apuração.
+  const entradas = require('./entradas');
+  const { rows: ne } = await pool.query(`SELECT modelo, chave, xml FROM notas_entrada WHERE status = 'lancada' AND xml IS NOT NULL AND entrada BETWEEN $1::date AND $2::date`, [de, ate]);
+  ne.forEach((x) => zip.adicionar(`Entradas/${x.modelo === '57' ? 'CT-e' : 'NF-e'}/${x.chave}.xml`, Buffer.from(x.xml, 'utf8')));
+  cont.entradas = ne.length;
+  const livroEnt = await entradas.livroEntradas({ de, ate });
+  const ap = await entradas.apuracao({ de, ate });
+  zip.adicionar('livro-de-entradas.html', Buffer.from(entradas.livroHtml(livroEnt, ap, e), 'utf8'));
+  zip.adicionar('livro-de-entradas.csv', Buffer.from(entradas.csvLivro(livroEnt), 'utf8'));
   const lanc = await lancamentos({ de, ate });
   const cfg = await config();
   zip.adicionar('livro-de-saidas.html', Buffer.from(livroHtml(livro, e), 'utf8'));
@@ -428,11 +457,14 @@ async function montarPacote(p) {
     `CT-e: ${cont.cte} XML (${livro.totais.ctes} válidos, ${livro.totais.cancelados} cancelados, ${livro.totais.substituidos} substituídos) + ${cont.eventos} evento(s)`, `MDF-e: ${cont.mdfe} XML`, `NFS-e: ${cont.nfse} XML`, '',
     `Valor das prestações (CT-e): R$ ${livro.totais.valor.toFixed(2)} · base ICMS R$ ${livro.totais.base.toFixed(2)} · ICMS R$ ${livro.totais.icms.toFixed(2)}`,
     livro.totais.nfse ? `NFS-e: R$ ${livro.totais.nfse_valor.toFixed(2)} · ISS R$ ${livro.totais.iss.toFixed(2)} (retido R$ ${livro.totais.iss_retido.toFixed(2)})` : '',
+    `Notas de entrada: ${livroEnt.totais.notas} lançada(s) (${ne.length} XML em Entradas/) · valor contábil R$ ${livroEnt.totais.valor.toFixed(2)} · ICMS creditado R$ ${livroEnt.totais.credito.toFixed(2)}`,
+    `Apuração do ICMS (${ap.modo_texto}): débitos R$ ${ap.debito.toFixed(2)} − créditos R$ ${ap.credito.toFixed(2)}${ap.saldo_credor_anterior ? ` − saldo credor anterior R$ ${ap.saldo_credor_anterior.toFixed(2)}` : ''} = ${ap.a_recolher ? `a recolher R$ ${ap.a_recolher.toFixed(2)}` : `saldo credor R$ ${ap.saldo_credor.toFixed(2)}`}`,
     '', 'livro-de-saidas.html/.csv: registro de saídas com resumo por CFOP, CST/alíquota e UF.',
+    'livro-de-entradas.html/.csv: registro de entradas por nota e CFOP, com a apuração do ICMS.',
     `lancamentos-contabeis.csv: ${lanc.totais.linhas} lançamento(s) (regime de ${lanc.regime === 'caixa' ? 'caixa' : 'competência'}) — data, conta débito, conta crédito, valor, histórico, documento, CNPJ/CPF.`,
     lanc.regime === 'caixa' ? `Regime de caixa: receita lançada no recebimento das faturas — recebido no período R$ ${lanc.totais.receita_recebida.total.toFixed(2)} (CT-e R$ ${lanc.totais.receita_recebida.frete.toFixed(2)} · NFS-e R$ ${lanc.totais.receita_recebida.municipal.toFixed(2)}); despesas no pagamento.`
       : 'Regime de competência: receita na emissão; despesas pela competência informada em cada conta a pagar (contas canceladas depois do mês saem como estorno no mês do cancelamento).',
-    'Os XML importam direto nos sistemas contábeis/fiscais para gerar o SPED (EFD ICMS/IPI e Contribuições) junto com as notas de entrada.',
+    'Os XML importam direto nos sistemas contábeis/fiscais para gerar o SPED (EFD ICMS/IPI e Contribuições); as notas de entrada lançadas no Nexofrete estão na pasta Entradas.',
     livro.totais.ajustes ? `\r\nAjustes de meses anteriores (cancelados/substituídos neste período): ${livro.totais.ajustes} documento(s), R$ ${livro.totais.ajustes_valor.toFixed(2)} · ICMS a estornar R$ ${livro.totais.ajustes_icms.toFixed(2)}. Os eventos estão em CT-e/eventos.` : '',
     livro.totais.icms_outra_uf ? `ICMS devido a outra UF (GNRE, fora da apuração própria): R$ ${livro.totais.icms_outra_uf.toFixed(2)}` : '',
     livro.totais.demonstracao ? '\nATENÇÃO: o sistema está no modo demonstração — estes documentos não têm valor fiscal.' : '',

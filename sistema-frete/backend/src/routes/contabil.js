@@ -53,4 +53,40 @@ router.post('/enviar', autenticar, pode, rota(async (req, res) => {
   res.json(r);
 }, 'Erro ao enviar o pacote.'));
 
+// ---------- Notas de entrada (regras em src/entradas.js) ----------
+const entradas = require('../entradas');
+router.get('/entradas', autenticar, pode, rota(async (req, res) => {
+  const { rows: [e] } = await pool.query('SELECT crt, contabil_config FROM empresa WHERE id = 1');
+  res.json({ ...(await entradas.listar(req.query)), categorias: require('../contasPagar').CATEGORIAS, modo_credito: await entradas.modoCredito(e), modos: entradas.MODOS_CREDITO });
+}, 'Erro ao listar as notas de entrada.'));
+router.post('/entradas/previa', autenticar, pode, rota(async (req, res) => res.json(await entradas.previa(req.body?.xml)), 'Erro ao ler o XML.'));
+router.post('/entradas', autenticar, pode, rota(async (req, res) => {
+  const r = await entradas.lancar(req.body || {}, req.usuario.nome);
+  log(req, `Lançou a nota de entrada ${r.numero} de ${r.fornecedor} (R$ ${r.valor.toFixed(2)}${r.credito ? `, crédito de ICMS R$ ${r.credito.toFixed(2)}` : ''}${r.contas.length ? `, ${r.contas.length} conta(s) a pagar` : ''})`);
+  res.status(201).json(r);
+}, 'Erro ao lançar a nota.'));
+router.get('/entradas/livro', autenticar, pode, rota(async (req, res) => {
+  const p = contabil.periodo(req.query);
+  res.json({ livro: await entradas.livroEntradas(p), apuracao: await entradas.apuracao(p) });
+}, 'Erro ao montar o livro de entradas.'));
+router.get('/entradas/livro.html', autenticar, pode, rota(async (req, res) => {
+  const p = contabil.periodo(req.query);
+  res.type('html').send(entradas.livroHtml(await entradas.livroEntradas(p), await entradas.apuracao(p), await empresa()));
+}, 'Erro ao montar o livro de entradas.'));
+router.get('/entradas/livro.csv', autenticar, pode, rota(async (req, res) => {
+  const l = await entradas.livroEntradas(contabil.periodo(req.query));
+  res.attachment(`livro-de-entradas-${l.periodo.de}-a-${l.periodo.ate}.csv`).type('text/csv; charset=utf-8').send(entradas.csvLivro(l));
+}, 'Erro.'));
+router.get('/entradas/:id(\\d+)', autenticar, pode, rota(async (req, res) => res.json(await entradas.detalhe(Number(req.params.id))), 'Erro ao abrir a nota.'));
+router.get('/entradas/:id(\\d+)/xml', autenticar, pode, rota(async (req, res) => {
+  const { rows } = await pool.query('SELECT chave, xml FROM notas_entrada WHERE id = $1', [req.params.id]);
+  if (!rows[0]?.xml) return res.status(404).json({ erro: 'Esta nota não tem XML.' });
+  res.attachment(`${rows[0].chave}.xml`).type('application/xml').send(rows[0].xml);
+}, 'Erro.'));
+router.post('/entradas/:id(\\d+)/cancelar', autenticar, pode, rota(async (req, res) => {
+  const n = await entradas.cancelar(Number(req.params.id), req.body?.motivo);
+  log(req, `Cancelou a nota de entrada ${n.numero} de ${n.emitente_nome}: ${String(req.body?.motivo || '').slice(0, 200)}`);
+  res.json({ ok: true });
+}, 'Erro ao cancelar a nota.'));
+
 module.exports = router;

@@ -50,6 +50,10 @@
           "texto": "Agendamento de entrega: cliente marcado \"exige agendamento\" no cadastro (com instruções de como agendar), filtro \"A agendar\" nas Ocorrências, agendar com data, janela, senha e doca, reagendar e cancelar; a previsão segue a data marcada, e o agendamento aparece no romaneio, no app do motorista, no portal (sem a senha) e na tela Hoje."
         },
         {
+          "area": "Fiscal",
+          "texto": "Notas de entrada: importa o XML das NF-e de compra (diesel, peças, pneus) e dos CT-e de agregados, gera as contas a pagar pelas duplicatas, sugere categoria, CFOP de entrada e crédito de ICMS; livro de entradas e apuração do ICMS (débitos − créditos, saldo credor levado adiante, ou crédito presumido de 20%), também no pacote do contador."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

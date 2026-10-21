@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe35261044555666000177550010000045671000045675" versao="4.00">
+<ide><natOp>VENDA DE COMBUSTIVEL</natOp><mod>55</mod><serie>1</serie><nNF>4567</nNF><dhEmi>2026-10-05T10:00:00-03:00</dhEmi><tpNF>1</tpNF></ide>
+<emit><CNPJ>44555666000177</CNPJ><xNome>AUTO POSTO RODOVIA LTDA</xNome><enderEmit><xMun>CAMPINAS</xMun><UF>SP</UF></enderEmit><IE>123456789</IE></emit>
+<dest><CNPJ>11222333000181</CNPJ><xNome>TRANSPORTADORA</xNome></dest>
+<det nItem="1"><prod><cProd>01</cProd><xProd>OLEO DIESEL B S10</xProd><NCM>27101921</NCM><CFOP>5656</CFOP><uCom>L</uCom><qCom>2000.0000</qCom><vUnCom>6.10</vUnCom><vProd>12200.00</vProd></prod>
+<imposto><ICMS><ICMS61><orig>0</orig><CST>61</CST><qBCMonoRet>2000</qBCMonoRet><adRemICMSRet>1.1200</adRemICMSRet><vICMSMonoRet>2240.00</vICMSMonoRet></ICMS61></ICMS></imposto></det>
+<det nItem="2"><prod><cProd>02</cProd><xProd>ARLA 32</xProd><NCM>31021010</NCM><CFOP>5102</CFOP><uCom>L</uCom><qCom>100</qCom><vUnCom>3.00</vUnCom><vProd>300.00</vProd></prod>
+<imposto><ICMS><ICMS00><orig>0</orig><CST>00</CST><vBC>300.00</vBC><pICMS>18.00</pICMS><vICMS>54.00</vICMS></ICMS00></ICMS></imposto></det>
+<total><ICMSTot><vBC>300.00</vBC><vICMS>54.00</vICMS><vST>0</vST><vProd>12500.00</vProd><vIPI>0</vIPI><vNF>12500.00</vNF><vICMSMonoRet>2240.00</vICMSMonoRet></ICMSTot></total>
+<cobr><dup><nDup>001</nDup><dVenc>2026-11-04</dVenc><vDup>6250.00</vDup></dup><dup><nDup>002</nDup><dVenc>2026-11-19</dVenc><vDup>6250.00</vDup></dup></cobr>
+</infNFe></NFe></nfeProc>

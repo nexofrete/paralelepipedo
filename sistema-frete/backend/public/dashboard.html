@@ -83,6 +83,7 @@
         <div class="nav-tsub" data-ir="bancos" data-aba="conciliacao">🔗 Conciliação bancária</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="fluxo">📅 Fluxo de caixa</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="livro">🧮 Fiscal e contabilidade</div>
+        <div class="nav-tsub" data-ir="contabil" data-aba="entradas">📥 Notas de entrada</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="pacote">📦 Pacote do contador</div>
       </div>
       <div class="nav-grupo oculto" data-grupo="frota" data-modulo="transportadora">🔧 Frota <span class="nav-seta">▸</span></div>
@@ -329,7 +330,7 @@
         <div class="cabecalho-pagina">
           <div>
             <h2>🧮 Fiscal e contabilidade</h2>
-            <p>Livro de saídas com o ICMS e o ISS do mês, lançamentos contábeis para o sistema do contador e o pacote com todos os XML</p>
+            <p>Livro de saídas e de entradas, apuração do ICMS, lançamentos contábeis para o sistema do contador e o pacote com todos os XML</p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-secundario" id="cblEnviar" style="width:auto;">✉ Enviar ao contador</button>
@@ -338,6 +339,7 @@
         </div>
         <div class="cte-abas">
           <div class="cte-aba ativo" data-cbl-aba="livro">📒 Livro de saídas e apuração</div>
+          <div class="cte-aba" data-cbl-aba="entradas">📥 Notas de entrada e apuração</div>
           <div class="cte-aba" data-cbl-aba="lancamentos">📑 Lançamentos contábeis</div>
           <div class="cte-aba" data-cbl-aba="pacote">📦 Pacote do contador</div>
           <div class="cte-aba" data-cbl-aba="config">⚙ Contador e plano de contas</div>
@@ -348,6 +350,9 @@
         </div>
         <div id="cblConteudo"></div>
       </section>
+      <div class="modal-overlay oculto" id="modalEntrada">
+        <div class="painel modal-card" style="max-width:980px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="neModal"></div>
+      </div>
 
       <section id="pagina-frota" class="oculto">
         <div class="cabecalho-pagina">

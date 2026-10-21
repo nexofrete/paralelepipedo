@@ -127,7 +127,8 @@ def parte_operacao(g):
         '<b>Salvar e transmitir</b>. Autorizado, o DACTE abre para imprimir.',
     ])
     s.append(P('<b>NF-e viram rascunho de CT-e sozinhas</b>: pelo e-mail (Manutenção » Leitura automática de e-mail), '
-               'pelos arquivos (<b>Importar NF-e</b>), pelo EDI NOTFIS ou pela API do ERP (seção 53). Notas do mesmo '
+               'pelos arquivos (<b>Importar NF-e</b>), pela SEFAZ (<b>NF-e da SEFAZ</b>: as notas em que a sua empresa é a '
+               'transportadora, buscadas em NF-e contra o CNPJ, seção 49), pelo EDI NOTFIS ou pela API do ERP (seção 53). Notas do mesmo '
                'remetente para o mesmo destino viram um CT-e só; notas de outra transportadora, sem frete ou já em CT-e '
                'ficam de fora.'))
     s += h2('Casos especiais')
@@ -489,8 +490,14 @@ def parte_financeiro(g):
         '(com justificativa). É definitiva na SEFAZ; o prazo costuma ser de 180 dias da emissão.',
     ])
     s += lista([
-        'Filtros: <b>Para lançar</b>, <b>Sem manifestação final</b>, <b>Já lançadas</b>, <b>Como transportador</b> (notas '
-        'em que a sua empresa aparece como transportadora: chegam completas e não pedem manifestação) e Todas.',
+        'Filtros: <b>Para lançar</b>, <b>Sem manifestação final</b>, <b>Já lançadas</b>, <b>Carga sem CT-e</b>, <b>Como '
+        'transportador</b> (notas em que a sua empresa aparece como transportadora: chegam completas e não pedem '
+        'manifestação) e Todas.',
+        '<b>Emitir CT-e</b> na nota em que a sua empresa é a transportadora: monta o rascunho do CT-e (remetente, '
+        'destinatário, carga e o frete pela tabela), como as NF-e que chegam por e-mail. Em CT-e (020), o botão <b>NF-e '
+        'da SEFAZ</b> mostra todas essas notas para gerar os rascunhos de uma vez. Marcando <b>NF-e em que somos a '
+        'transportadora vira rascunho de CT-e sozinha</b>, a busca automática já gera os rascunhos. Nota de outra '
+        'transportadora ou sem frete fica com o motivo e não é tentada de novo.',
         'NF-e cancelada pelo emitente fica marcada como cancelada. Nota que não é compra pode ser <b>ignorada</b> (sai '
         'das pendências).',
         'A SEFAZ só aceita nova consulta 1 hora depois de responder que não há nada novo; a tela mostra o horário '

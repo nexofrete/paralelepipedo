@@ -273,12 +273,13 @@
   // ---------- NF-e contra o CNPJ (SEFAZ) ----------
   const MAN_COR = { pendente: 'pendente', ciencia: 'em_transito', confirmada: 'entregue', desconhecida: 'cancelado', nao_realizada: 'cancelado' };
   const dfe = { filtro: 'lancar', busca: '' };
+  const podeCte = usuario?.perfil === 'admin' || !!usuario?.pode_emitir_cte;
   const quando = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
   async function telaDfe() {
     const d = await api(`/dfe?filtro=${dfe.filtro}&busca=${encodeURIComponent(dfe.busca)}`);
     const e = d.estado || {}; const c = d.contagens;
     const bloqueado = e.proxima_consulta && Date.parse(e.proxima_consulta) > Date.now() && !d.demo;
-    const FILT = [['lancar', 'Para lançar'], ['manifestar', 'Sem manifestação final'], ['lancadas', 'Já lançadas'], ['terceiros', 'Como transportador'], ['todas', 'Todas']];
+    const FILT = [['lancar', 'Para lançar'], ['manifestar', 'Sem manifestação final'], ['lancadas', 'Já lançadas'], ['sem_cte', 'Carga sem CT-e'], ['terceiros', 'Como transportador'], ['todas', 'Todas']];
     $('cblConteudo').innerHTML = `
       <div class="painel" style="padding:14px 16px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start;">
@@ -292,6 +293,7 @@
         <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:8px; font-size:13px;">
           <label class="ag-check"><input type="checkbox" id="dfeAuto" ${d.config.ativo ? 'checked' : ''} /> Buscar sozinho (a cada hora)</label>
           <label class="ag-check"><input type="checkbox" id="dfeCiencia" ${d.config.ciencia_automatica ? 'checked' : ''} /> Dar ciência automaticamente às notas novas (para o XML chegar)</label>
+          <label class="ag-check"><input type="checkbox" id="dfeCte" ${d.config.cte_automatico ? 'checked' : ''} /> NF-e em que somos a transportadora vira rascunho de CT-e sozinha</label>
         </div>
       </div>
       <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
@@ -306,24 +308,26 @@
       if (n.tem_xml && destin && !n.nota_entrada_id && valida) acoes.push(`<button class="primario" data-dfe-lancar="${n.id}">Lançar</button>`);
       if (!n.tem_xml && ['ciencia', 'confirmada'].includes(n.manifestacao)) acoes.push(`<button data-dfe-baixar="${n.id}">Baixar XML</button>`);
       if (destin && valida && !final) acoes.push(`<select data-dfe-final="${n.id}" class="cte-entrada" style="padding:3px 6px; width:auto;"><option value="">Manifestar…</option><option value="confirmada">Confirmar a operação</option><option value="desconhecida">Desconhecer</option><option value="nao_realizada">Operação não realizada</option></select>`);
+      if (!destin && valida && n.tem_xml && !n.cte && podeCte) acoes.push(`<button class="primario" data-dfe-cte="${n.id}" title="Monta o rascunho do CT-e com esta NF-e">Emitir CT-e</button>`);
       if (n.tem_xml) acoes.push(`<button data-dfe-xml="${n.id}" title="Baixar o XML">⬇</button>`);
       if (!n.nota_entrada_id) acoes.push(`<button data-dfe-ignorar="${n.id}" data-v="${n.ignorada ? 'nao' : 'sim'}" title="${n.ignorada ? 'Voltar para a lista' : 'Tirar das pendências (ex.: nota que não é compra)'}">${n.ignorada ? '↺' : '🙈'}</button>`);
       return `<tr${n.ignorada || !valida ? ' style="opacity:.6;"' : ''}><td>${quando(n.emissao)}</td><td>${esc(n.numero)}<br><small style="color:var(--texto-fraco);" title="${esc(n.chave)}">…${esc(n.chave.slice(-10))}</small></td>
         <td>${esc(n.emitente_nome)}<br><small style="color:var(--texto-fraco);">${docFmt(n.emitente_doc)}${destin ? '' : ' · <b>você é o transportador</b>'}</small></td>
         <td class="n">${num(n.valor)}</td>
-        <td><span class="oc-sit ${valida ? 'entregue' : 'cancelado'}">${esc(d.situacoes[n.situacao_nfe] || n.situacao_nfe)}</span>${n.nota_entrada_id ? `<br><small>lançada em ${dia(n.lancada_em)}</small>` : n.ignorada ? '<br><small>ignorada</small>' : ''}</td>
+        <td><span class="oc-sit ${valida ? 'entregue' : 'cancelado'}">${esc(d.situacoes[n.situacao_nfe] || n.situacao_nfe)}</span>${n.nota_entrada_id ? `<br><small>lançada em ${dia(n.lancada_em)}</small>` : n.ignorada ? '<br><small>ignorada</small>' : ''}
+          ${n.cte ? `<br><small>${n.cte.status === 'rascunho' ? 'rascunho de CT-e' : `CT-e ${esc(n.cte.serie)}/${esc(n.cte.numero)} (${esc(n.cte.status)})`}</small>` : n.cte_motivo ? `<br><small style="color:var(--laranja);">sem CT-e: ${esc(n.cte_motivo)}</small>` : ''}</td>
         <td>${destin ? `<span class="oc-sit ${MAN_COR[n.manifestacao]}">${esc(n.manifestacao === 'pendente' ? 'Sem manifestação' : d.manifestacoes[n.manifestacao])}</span>${n.manifestada_em ? `<br><small>${quando(n.manifestada_em)}</small>` : ''}${n.manifestacao_erro ? `<br><small style="color:var(--vermelho);">${esc(n.manifestacao_erro)}</small>` : ''}` : '<small style="color:var(--texto-fraco);">não se aplica</small>'}</td>
         <td><div class="oc-linha-acoes">${acoes.join('')}</div></td></tr>`;
     }), dfe.filtro === 'lancar' ? 'Nenhuma NF-e esperando lançamento. Clique em "Buscar na SEFAZ agora" ou ligue a busca automática.' : 'Nada aqui.')}</div>
-      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:10px;">A SEFAZ manda primeiro o <b>resumo</b> da nota; o XML completo vem depois da <b>ciência da operação</b>. A manifestação final (confirmar, desconhecer ou operação não realizada) tem prazo: em geral até 180 dias da emissão. Notas em que a sua empresa aparece como transportadora chegam completas e não precisam de manifestação.</p>`;
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:10px;">A SEFAZ manda primeiro o <b>resumo</b> da nota; o XML completo vem depois da <b>ciência da operação</b>. A manifestação final (confirmar, desconhecer ou operação não realizada) tem prazo: em geral até 180 dias da emissão. Notas em que a sua empresa aparece como transportadora chegam completas, não precisam de manifestação e viram CT-e pelo botão "Emitir CT-e" (ou em CT-e › 📡 NF-e da SEFAZ).</p>`;
     const recarregar = () => telaDfe().catch(erro);
     $('dfeBuscar').addEventListener('click', async (ev) => {
       const b = ev.currentTarget; b.disabled = true; b.textContent = 'Consultando…';
       try { const r = await api('/dfe/consultar', { method: 'POST' }); mostrarAlerta(r.novos || r.atualizados ? `${r.novos} NF-e nova(s) e ${r.atualizados} atualizada(s).${r.ciencias ? ` Ciência dada em ${r.ciencias}.` : ''}` : 'Nenhum documento novo na SEFAZ.', { tipo: 'sucesso' }); } catch (err) { erro(err); }
       recarregar();
     });
-    const salvarCfg = () => api('/dfe/config', { method: 'PUT', body: JSON.stringify({ ativo: $('dfeAuto').checked, ciencia_automatica: $('dfeCiencia').checked }) }).then(() => mostrarAlerta('Salvo.', { tipo: 'sucesso' })).catch(erro);
-    $('dfeAuto').addEventListener('change', salvarCfg); $('dfeCiencia').addEventListener('change', salvarCfg);
+    const salvarCfg = () => api('/dfe/config', { method: 'PUT', body: JSON.stringify({ ativo: $('dfeAuto').checked, ciencia_automatica: $('dfeCiencia').checked, cte_automatico: $('dfeCte').checked }) }).then(() => mostrarAlerta('Salvo.', { tipo: 'sucesso' })).catch(erro);
+    $('dfeAuto').addEventListener('change', salvarCfg); $('dfeCiencia').addEventListener('change', salvarCfg); $('dfeCte').addEventListener('change', salvarCfg);
     document.querySelectorAll('[data-dfe-filtro]').forEach((b) => b.addEventListener('click', () => { dfe.filtro = b.dataset.dfeFiltro; recarregar(); }));
     let tm = null;
     $('dfeBusca').addEventListener('input', (ev) => { clearTimeout(tm); tm = setTimeout(() => { dfe.busca = ev.target.value.trim(); telaDfe().then(() => { const x = $('dfeBusca'); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }).catch(erro); }, 400); });
@@ -343,6 +347,16 @@
         const url = URL.createObjectURL(new Blob([x.xml], { type: 'application/xml' }));
         const a = document.createElement('a'); a.href = url; a.download = `${x.chave}.xml`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
       } catch (err) { erro(err); }
+    }));
+    document.querySelectorAll('[data-dfe-cte]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try {
+        const r = await apiFetch('/api/cte-emissao/dfe-cargas/rascunhos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [Number(b.dataset.dfeCte)] }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.erro || 'Erro ao gerar o CT-e.');
+        mostrarAlerta(j.criados.length ? `Rascunho de CT-e criado${j.criados[0].valor ? ` (frete ${brl(j.criados[0].valor)})` : ' (frete a lançar)'}. Confira e transmita em CT-e (020), filtro "Rascunho".` : `Não virou CT-e: ${j.ignoradas.map((i) => i.motivo).join('; ')}`, { tipo: j.criados.length ? 'sucesso' : 'aviso' });
+      } catch (err) { erro(err); }
+      recarregar();
     }));
     document.querySelectorAll('[data-dfe-lancar]').forEach((b) => b.addEventListener('click', async () => {
       try {

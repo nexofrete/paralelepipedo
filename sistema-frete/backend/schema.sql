@@ -2533,3 +2533,4 @@ CREATE TABLE IF NOT EXISTS dfe_recebidos (
   criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_dfe_recebidos_emissao ON dfe_recebidos (emissao DESC);
+ALTER TABLE dfe_recebidos ADD COLUMN IF NOT EXISTS cte_motivo VARCHAR(200);   -- por que a NF-e de carga não virou CT-e (outra transportadora, sem frete...)

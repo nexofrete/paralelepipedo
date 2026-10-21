@@ -49,6 +49,11 @@ async function montar(req) {
     add('operacao', { chave: 'entregas_hoje', icone: '🚚', titulo: 'Entregas previstas para hoje', qtd: e.hoje, nivel: 'info',
       destino: { ir: 'ocorrencias', aba: 'entregas', clicar: '[data-oc-filtro="hoje"]' } });
 
+    try {
+      const nf = await require('./dfe').pendencias();
+      add('operacao', { chave: 'dfe_sem_cte', icone: '📡', titulo: 'NF-e de carga na SEFAZ sem CT-e', qtd: nf.sem_cte, nivel: 'atencao', detalhe: 'a sua empresa é a transportadora: gere os rascunhos de CT-e',
+        destino: { ir: 'emissao-cte', aba: 'lista', clicar: '#btnCteSefaz' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     const col = await um(`SELECT COUNT(*) FILTER (WHERE status = 'pendente')::int AS a_programar, COUNT(*) FILTER (WHERE status = 'pendente' AND data_coleta < $1)::int AS atrasadas FROM coletas`, [h]);
     add('operacao', { chave: 'coletas', icone: '📦', titulo: 'Coletas a programar', qtd: col.a_programar, nivel: col.atrasadas ? 'perigo' : 'atencao',
       detalhe: col.atrasadas ? `${col.atrasadas} com a data já passada` : 'ponha no caminhão', destino: { ir: 'coletas', clicar: '[data-col-filtro="pendente"]' } });

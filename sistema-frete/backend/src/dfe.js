@@ -38,13 +38,13 @@ async function contexto({ semCertificado = false } = {}) {
   const demo = !!e.cte_demonstracao;
   let cert = null;
   if (!semCertificado && !demo) cert = await require('./cte/certificado').certificadoDoEmitente(pool);
-  return { cnpj, uf: e.uf, tpAmb: Number(e.cte_ambiente) === 1 ? 1 : 2, demo, cert, verificar: !!e.cte_verificar_servidor, config: { ativo: false, ciencia_automatica: false, ...(e.dfe_config || {}) }, estado: e.dfe_estado || {} };
+  return { cnpj, uf: e.uf, tpAmb: Number(e.cte_ambiente) === 1 ? 1 : 2, demo, cert, verificar: !!e.cte_verificar_servidor, config: { ativo: false, ciencia_automatica: false, cte_automatico: false, ...(e.dfe_config || {}) }, estado: e.dfe_estado || {} };
 }
 async function salvarEstado(mudancas) {
   await pool.query(`UPDATE empresa SET dfe_estado = COALESCE(dfe_estado, '{}'::jsonb) || $1::jsonb WHERE id = 1`, [JSON.stringify(mudancas)]);
 }
 async function salvarConfig(b = {}) {
-  const c = { ativo: !!b.ativo, ciencia_automatica: !!b.ciencia_automatica };
+  const c = { ativo: !!b.ativo, ciencia_automatica: !!b.ciencia_automatica, cte_automatico: !!b.cte_automatico };
   await pool.query('UPDATE empresa SET dfe_config = $1 WHERE id = 1', [JSON.stringify(c)]);
   return c;
 }
@@ -145,7 +145,13 @@ async function consultar({ automatico = false } = {}) {
   await salvarEstado({ ultima_consulta: new Date().toISOString(), ultimo_cstat: r.cStat, ultimo_motivo: r.xMotivo, proxima_consulta: fim ? new Date(Date.now() + UMA_HORA).toISOString() : null });
   let ciencias = 0;
   if (ctx.config.ciencia_automatica) ciencias = await cienciaAutomatica(ctx);
-  return { ...cont, ult_nsu: ult, max_nsu: max, cStat: r.cStat, xMotivo: r.xMotivo, ciencias, automatico };
+  // NF-e de carga nova vira rascunho de CT-e sozinha (como as que chegam por e-mail).
+  let rascunhos = 0;
+  if (ctx.config.cte_automatico) {
+    const { rows } = await pool.query(`SELECT d.id FROM dfe_recebidos d WHERE ${SEM_CTE} AND d.cte_motivo IS NULL LIMIT 200`);
+    if (rows.length) rascunhos = (await rascunhosCte(rows.map((x) => x.id), 'SEFAZ (automático)').catch((e) => { console.error('[dfe] rascunhos', e.message); return { criados: [] }; })).criados.length;
+  }
+  return { ...cont, ult_nsu: ult, max_nsu: max, cStat: r.cStat, xMotivo: r.xMotivo, ciencias, rascunhos, automatico };
 }
 
 // XML completo de uma nota (consChNFe): só vem depois da ciência (ou para o transportador/autorizado).
@@ -220,11 +226,17 @@ async function cienciaAutomatica(ctx) {
 }
 
 // ---------- Lista e estado ----------
+// NF-e de carga (a empresa é a transportadora) ainda sem CT-e.
+const SEM_CTE = `d.papel = 'terceiro' AND d.situacao_nfe = 1 AND d.xml IS NOT NULL AND NOT d.ignorada
+  AND NOT EXISTS (SELECT 1 FROM ctes_emitidos c WHERE c.dados->'nfes' ? d.chave AND c.status NOT IN ('cancelado', 'substituido'))`;
+const CTE_DA_NOTA = `(SELECT json_build_object('id', c.id, 'serie', c.serie, 'numero', c.numero, 'status', c.status) FROM ctes_emitidos c
+  WHERE c.dados->'nfes' ? d.chave AND c.status NOT IN ('cancelado', 'substituido') ORDER BY c.id DESC LIMIT 1)`;
 const FILTROS = {
   lancar: `d.papel = 'destinatario' AND d.situacao_nfe = 1 AND NOT d.ignorada AND n.id IS NULL AND d.manifestacao NOT IN ('desconhecida', 'nao_realizada')`,
   manifestar: `d.papel = 'destinatario' AND d.situacao_nfe = 1 AND NOT d.ignorada AND d.manifestacao IN ('pendente', 'ciencia')`,
   lancadas: 'n.id IS NOT NULL',
   terceiros: `d.papel = 'terceiro'`,
+  sem_cte: SEM_CTE,
   todas: 'TRUE',
 };
 async function listar({ filtro = 'lancar', busca = '' } = {}) {
@@ -236,7 +248,7 @@ async function listar({ filtro = 'lancar', busca = '' } = {}) {
   const base = `FROM dfe_recebidos d LEFT JOIN notas_entrada n ON n.chave = d.chave AND n.status = 'lancada'`;
   const { rows } = await pool.query(
     `SELECT d.id, d.chave, d.nsu, d.papel, d.emitente_doc, d.emitente_nome, d.emissao, d.valor::float, d.situacao_nfe, d.manifestacao, d.manifestada_em, d.manifestacao_erro,
-            d.ignorada, (d.xml IS NOT NULL) AS tem_xml, n.id AS nota_entrada_id, n.entrada::text AS lancada_em,
+            d.ignorada, (d.xml IS NOT NULL) AS tem_xml, n.id AS nota_entrada_id, n.entrada::text AS lancada_em, d.cte_motivo, ${CTE_DA_NOTA} AS cte,
             SUBSTRING(d.chave FROM 26 FOR 9)::bigint AS numero
        ${base} WHERE ${cond.join(' AND ')} ORDER BY d.emissao DESC NULLS LAST, d.id DESC LIMIT 500`, val);
   const { rows: [c] } = await pool.query(`SELECT ${Object.entries(FILTROS).map(([k, w]) => `COUNT(*) FILTER (WHERE ${w})::int AS ${k}`).join(', ')} ${base}`);
@@ -260,10 +272,39 @@ async function xmlDa(id) {
   return d;
 }
 
+// ---------- NF-e de carga → rascunho de CT-e ----------
+// As NF-e em que a empresa é a transportadora, ainda sem CT-e (para a tela de CT-e).
+async function cargasSemCte() {
+  const { rows } = await pool.query(`SELECT d.id, d.chave, d.emissao, d.valor::float, d.emitente_nome, d.emitente_doc, d.cte_motivo, d.xml FROM dfe_recebidos d WHERE ${SEM_CTE} ORDER BY d.emissao DESC LIMIT 300`);
+  const { lerNfe } = require('./cte/lerNfe');
+  return rows.map(({ xml, ...r }) => {
+    let n = {}; try { n = lerNfe(xml); } catch { /* fica sem os detalhes */ }
+    const fim = n.entrega?.xMun ? n.entrega : n.destinatario?.endereco || {};
+    return { ...r, numero: n.numero, destinatario: n.destinatario?.xNome || '', destino: fim.xMun ? `${fim.xMun}/${fim.UF}` : '', volumes: n.volumes || null, peso: n.pesoBruto || null, frete: { 0: 'CIF', 1: 'FOB' }[String(n.modFrete)] || '' };
+  });
+}
+
+// Monta os rascunhos de CT-e (o mesmo caminho das NF-e que chegam por e-mail: agrupa por remetente e destino,
+// calcula o frete pela tabela). O que não pode virar CT-e fica com o motivo e sai da busca automática.
+async function rascunhosCte(ids, usuario) {
+  const lista = [...new Set((ids || []).map(Number).filter(Number.isInteger))];
+  if (!lista.length) throw falha('Escolha pelo menos uma NF-e.');
+  const { rows } = await pool.query(`SELECT d.id, d.chave, d.xml FROM dfe_recebidos d WHERE d.id = ANY($1::int[]) AND ${SEM_CTE}`, [lista]);
+  if (!rows.length) throw falha('Estas NF-e já têm CT-e (ou não são de carga sua).', 409);
+  const xmls = rows.map((r) => ({ nome: `NF-e ${r.chave}`, buffer: Buffer.from(r.xml, 'utf8') }));
+  const r = await require('./cte/rascunhoDaNfe').rascunhosDosXml(xmls, { tipo: 'sefaz', usuario });
+  for (const i of r.ignoradas || []) {
+    const chave = String(i.arquivo || '').replace(/^NF-e /, '');
+    if (/^\d{44}$/.test(chave) && !/já está no CT-e/.test(i.motivo)) await pool.query('UPDATE dfe_recebidos SET cte_motivo = $2 WHERE chave = $1', [chave, String(i.motivo).slice(0, 200)]);
+  }
+  return r;
+}
+
 // Para a tela Hoje.
 async function pendencias() {
   const { rows: [c] } = await pool.query(
-    `SELECT COUNT(*) FILTER (WHERE ${FILTROS.lancar} AND d.xml IS NOT NULL)::int AS lancar,
+    `SELECT COUNT(*) FILTER (WHERE ${SEM_CTE} AND d.cte_motivo IS NULL)::int AS sem_cte,
+            COUNT(*) FILTER (WHERE ${FILTROS.lancar} AND d.xml IS NOT NULL)::int AS lancar,
             COUNT(*) FILTER (WHERE d.papel = 'destinatario' AND d.situacao_nfe = 1 AND NOT d.ignorada AND d.manifestacao = 'pendente')::int AS sem_manifestacao
        FROM dfe_recebidos d LEFT JOIN notas_entrada n ON n.chave = d.chave AND n.status = 'lancada'`);
   return c;
@@ -315,11 +356,14 @@ const simulador = (() => {
       }
       return `<det nItem="${k + 1}"><prod><cProd>${k + 1}</cProd><xProd>${i.x}</xProd><NCM>${i.ncm}</NCM><CFOP>${i.cfop}</CFOP><uCom>UN</uCom><qCom>${i.q}</qCom><vUnCom>${i.v.toFixed(2)}</vUnCom><vProd>${vp.toFixed(2)}</vProd></prod><imposto><ICMS>${imp}</ICMS></imposto></det>`;
     }).join('');
-    const dest = n.terceiro ? '<dest><CNPJ>55666777000188</CNPJ><xNome>LOJA DESTINO DEMONSTRACAO</xNome></dest>' : `<dest><CNPJ>${ctx.cnpj}</CNPJ><xNome>SUA EMPRESA</xNome></dest>`;
-    const transp = n.terceiro ? `<transp><modFrete>0</modFrete><transporta><CNPJ>${ctx.cnpj}</CNPJ></transporta></transp>` : '';
+    const dest = n.terceiro
+      ? '<dest><CNPJ>55666777000188</CNPJ><xNome>LOJA DESTINO DEMONSTRACAO</xNome><enderDest><xLgr>RUA DAS FLORES</xLgr><nro>200</nro><xBairro>CENTRO</xBairro><cMun>3550308</cMun><xMun>SAO PAULO</xMun><UF>SP</UF><CEP>01310100</CEP></enderDest><indIEDest>1</indIEDest><IE>633000000111</IE></dest>'
+      : `<dest><CNPJ>${ctx.cnpj}</CNPJ><xNome>SUA EMPRESA</xNome></dest>`;
+    const transp = n.terceiro ? `<transp><modFrete>0</modFrete><transporta><CNPJ>${ctx.cnpj}</CNPJ></transporta><vol><qVol>30</qVol><esp>CAIXA</esp><pesoL>420.000</pesoL><pesoB>450.000</pesoB></vol></transp>` : '';
+    const ender = n.terceiro ? '<enderEmit><xLgr>AV INDUSTRIAL</xLgr><nro>1000</nro><xBairro>DISTRITO</xBairro><cMun>3509502</cMun><xMun>CAMPINAS</xMun><UF>SP</UF><CEP>13050000</CEP></enderEmit>' : `<enderEmit><xMun>CAMPINAS</xMun><UF>${ctx.uf}</UF></enderEmit>`;
     const venc = new Date(Date.now() + 28 * 86400000).toISOString().slice(0, 10);
     return `<nfeProc xmlns="${NS}" versao="4.00"><NFe><infNFe Id="NFe${ch}" versao="4.00"><ide><cUF>${CODIGO_UF[ctx.uf]}</cUF><natOp>VENDA</natOp><mod>55</mod><serie>1</serie><nNF>${n.numero}</nNF><dhEmi>${emissao(n)}</dhEmi><tpNF>1</tpNF><tpAmb>2</tpAmb></ide>`
-      + `<emit><CNPJ>${n.cnpj}</CNPJ><xNome>${n.nome}</xNome><enderEmit><xMun>CAMPINAS</xMun><UF>${ctx.uf}</UF></enderEmit><IE>123456789</IE></emit>${dest}${det}`
+      + `<emit><CNPJ>${n.cnpj}</CNPJ><xNome>${n.nome}</xNome>${ender}<IE>123456789</IE></emit>${dest}${det}`
       + `<total><ICMSTot><vBC>${vBC.toFixed(2)}</vBC><vICMS>${vICMS.toFixed(2)}</vICMS><vST>0.00</vST><vProd>${total.toFixed(2)}</vProd><vIPI>0.00</vIPI><vNF>${total.toFixed(2)}</vNF>${mono ? `<vICMSMonoRet>${mono.toFixed(2)}</vICMSMonoRet>` : ''}</ICMSTot></total>${transp}`
       + `${n.terceiro ? '' : `<cobr><dup><nDup>001</nDup><dVenc>${venc}</dVenc><vDup>${total.toFixed(2)}</vDup></dup></cobr>`}</infNFe></NFe>`
       + `<protNFe versao="4.00"><infProt><chNFe>${ch}</chNFe><nProt>1350000${n.numero}0000</nProt><cStat>100</cStat></infProt></protNFe></nfeProc>`;
@@ -346,4 +390,4 @@ const simulador = (() => {
   };
 })();
 
-module.exports = { MANIFESTACOES, SITUACOES_NFE, contexto, salvarConfig, consultar, baixarXml, manifestar, listar, estado, ignorar, xmlDa, pendencias, agendar, lerRetornoDist, processarDoc, montarEvento, corpoDist };
+module.exports = { MANIFESTACOES, SITUACOES_NFE, contexto, salvarConfig, consultar, baixarXml, manifestar, listar, estado, ignorar, xmlDa, pendencias, agendar, cargasSemCte, rascunhosCte, lerRetornoDist, processarDoc, montarEvento, corpoDist };

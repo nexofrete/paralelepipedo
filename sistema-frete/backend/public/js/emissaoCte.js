@@ -121,6 +121,7 @@
         ${seloAverbacao(c)}
         ${c.origem_coleta ? `<div class="cte-tipo">📦 coleta nº ${esc(c.origem_coleta)}</div>` : ''}
         ${c.status === 'rascunho' && c.origem_tipo === 'email' ? `<div class="cte-tipo" title="${esc(c.origem_remetente || '')}">✉ chegou por e-mail</div>` : ''}
+        ${c.status === 'rascunho' && c.origem_tipo === 'sefaz' ? '<div class="cte-tipo" title="NF-e buscada na SEFAZ (a empresa é a transportadora)">📡 veio da SEFAZ</div>' : ''}
         ${c.status === 'rascunho' && (c.avisos_importacao || []).length ? `<div class="cte-tipo alerta">⚠ ${esc(c.avisos_importacao.join('; '))}</div>` : ''}</td>
       <td>${esc(c.tomador_nome || '—')}</td>
       <td style="font-size:12.5px;">${esc(c.remetente_nome || '—')}<br><span style="color:var(--texto-fraco);">→ ${esc(c.destinatario_nome || '—')}</span></td>
@@ -262,6 +263,39 @@
       $('cteFiltroStatus').value = 'rascunho'; carregarLista();
     } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
     b.disabled = false;
+  });
+  // NF-e de carga que chegaram da SEFAZ (a empresa é a transportadora) -> escolhe e gera os rascunhos.
+  $('btnCteSefaz').addEventListener('click', async () => {
+    let lista;
+    try { lista = await api('/dfe-cargas'); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); return; }
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay';
+    const fechar = () => fundo.remove();
+    const dia = (v) => (v ? new Date(v).toLocaleDateString('pt-BR') : '—');
+    fundo.innerHTML = `<div class="painel modal-card" style="max-width:980px; width:100%; max-height:92vh; overflow-y:auto; padding:22px 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">📡 NF-e da SEFAZ em que você é a transportadora</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
+      <p class="edi-dica">Chegam pela busca de NF-e contra o CNPJ (Fiscal e contabilidade › NF-e contra o CNPJ). Notas do mesmo remetente para o mesmo destino viram um CT-e só, com o frete pela tabela.</p>
+      ${lista.length ? `<div style="overflow-x:auto;"><table class="edi-tabela"><thead><tr><th><input type="checkbox" id="sfTodas" checked /></th><th>Emissão</th><th>NF</th><th>Remetente</th><th>Destinatário</th><th>Destino</th><th class="n">Vol.</th><th class="n">Peso</th><th class="n">Valor</th><th>Frete</th></tr></thead><tbody>
+        ${lista.map((n) => `<tr${n.cte_motivo ? ' style="opacity:.6;"' : ''}><td><input type="checkbox" data-sf="${n.id}" ${n.cte_motivo ? '' : 'checked'} /></td><td>${dia(n.emissao)}</td><td>${esc(n.numero || '')}</td>
+          <td>${esc(n.emitente_nome)}</td><td>${esc(n.destinatario)}</td><td>${esc(n.destino)}</td><td class="n">${n.volumes ?? ''}</td><td class="n">${n.peso != null ? Number(n.peso).toLocaleString('pt-BR') : ''}</td>
+          <td class="n">${moeda(n.valor)}</td><td>${esc(n.frete)}${n.cte_motivo ? `<br><small style="color:var(--laranja);">${esc(n.cte_motivo)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+    : '<div class="kanban-vazio">Nenhuma NF-e de carga sem CT-e. Busque na SEFAZ em Fiscal e contabilidade › NF-e contra o CNPJ (ou ligue a busca automática).</div>'}
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;"><button class="btn btn-secundario" data-fechar style="width:auto;">Fechar</button>
+        ${lista.length ? '<button class="btn btn-primario" id="sfGerar" style="width:auto;">Gerar rascunhos de CT-e</button>' : ''}</div></div>`;
+    document.body.appendChild(fundo);
+    fundo.addEventListener('click', (ev) => { if (ev.target === fundo || ev.target.closest('[data-fechar]')) fechar(); });
+    fundo.querySelector('#sfTodas')?.addEventListener('change', (ev) => fundo.querySelectorAll('[data-sf]').forEach((x) => { x.checked = ev.target.checked; }));
+    fundo.querySelector('#sfGerar')?.addEventListener('click', async (ev) => {
+      const ids = [...fundo.querySelectorAll('[data-sf]:checked')].map((x) => Number(x.dataset.sf));
+      if (!ids.length) { mostrarAlerta('Marque pelo menos uma NF-e.', { tipo: 'aviso' }); return; }
+      ev.currentTarget.disabled = true;
+      try {
+        const r = await api('/dfe-cargas/rascunhos', { method: 'POST', body: JSON.stringify({ ids }) });
+        fechar();
+        mostrarAlerta(resumoImportacao(r), { tipo: r.criados.length ? 'sucesso' : 'aviso', titulo: 'NF-e da SEFAZ' });
+        $('cteFiltroStatus').value = 'rascunho'; carregarLista();
+      } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); ev.currentTarget.disabled = false; }
+    });
   });
   $('btnCteBuscarEmail').addEventListener('click', async (e) => {
     const b = e.currentTarget; b.disabled = true;

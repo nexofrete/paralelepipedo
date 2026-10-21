@@ -199,6 +199,18 @@ router.post('/importar-nfe', autenticar, emitir, async (req, res) => {
   } catch (err) { responderErro(res, err, 'Erro ao importar as NF-e.'); }
 });
 
+// NF-e em que a empresa é a transportadora, buscadas na SEFAZ (Distribuição DF-e, src/dfe.js) -> rascunhos de CT-e.
+router.get('/dfe-cargas', autenticar, emitir, async (req, res) => {
+  try { res.json(await require('../dfe').cargasSemCte()); } catch (err) { responderErro(res, err, 'Erro ao listar as NF-e da SEFAZ.'); }
+});
+router.post('/dfe-cargas/rascunhos', autenticar, emitir, async (req, res) => {
+  try {
+    const r = await require('../dfe').rascunhosCte(req.body?.ids, req.usuario.nome);
+    log(req, 'cte_rascunho', `Gerou ${r.criados.length} rascunho(s) de CT-e das NF-e da SEFAZ`);
+    res.status(201).json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao gerar os rascunhos.'); }
+});
+
 router.post('/ler-cte', autenticar, emitir, (req, res) => {
   try { res.json(lerCteAnterior(req.body?.xml)); } catch (err) { responderErro(res, err, 'Não consegui ler o CT-e.'); }
 });

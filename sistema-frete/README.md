@@ -437,7 +437,7 @@ Menu **Operação de Transporte → 🧮 Fiscal e contabilidade** (código **140
   - Busca à mão ou **automática** (a cada hora); respeita a regra da SEFAZ de 1 hora de espera quando não há nada novo (evita o bloqueio 656) e mostra o horário liberado.
   - Chega o **resumo**; com a **ciência da operação** (à mão ou automática) vem o XML completo (ou "Baixar XML" pela chave). **Lançar** abre o lançamento das Notas de entrada com o XML.
   - **Manifestação do destinatário** assinada (evento no Ambiente Nacional): ciência, confirmação, desconhecimento e operação não realizada (com justificativa). Cancelamento da NF-e pelo emitente marca a nota como cancelada.
-  - Notas em que a empresa é a **transportadora** chegam completas (filtro "Como transportador"). Nota que não é compra pode ser ignorada. A tela Hoje avisa as que estão para lançar e sem manifestação. No modo demonstração há um simulador com três notas.
+  - Notas em que a empresa é a **transportadora** chegam completas (filtros "Carga sem CT-e" e "Como transportador") e viram rascunho de CT-e pelo botão **Emitir CT-e** (ou sozinhas, com a opção ligada). Nota que não é compra pode ser ignorada. A tela Hoje avisa as que estão para lançar e sem manifestação. No modo demonstração há um simulador com três notas.
 - **Contador e plano de contas:** nome, e-mail e CRC do contador, regime, separador, modo de crédito do ICMS, saldo credor inicial e o código de cada conta.
 
 **O SPED não é gerado aqui.** A EFD ICMS/IPI e a EFD Contribuições precisam também das notas de **entrada** (diesel, peças, pneus, CT-e de subcontratação), que não passam pelo Nexofrete. O sistema do contador importa os XML do pacote junto com essas notas e apura o saldo do ICMS (débitos − créditos).
@@ -603,6 +603,7 @@ O submenu **📄 CT-e** monta, transmite e imprime o CT-e (modelo 57, modal rodo
 **NF-e dos clientes viram rascunho de CT-e sozinhas.** Há dois jeitos de fazer:
 - **Pelo e-mail:** em Manutenção → Leitura automática de e-mail, cadastre a caixa que recebe as notas dos clientes (por exemplo nfe@suaempresa.com.br, pasta INBOX) e escolha "NF-e dos clientes viram rascunho de CT-e". A caixa é lida no intervalo configurado, ou na hora pelo botão **📥 Buscar NF-e no e-mail**.
 - **Pelos arquivos:** em **📄 Importar NF-e**, escolha vários XML ou ZIP.
+- **Pela SEFAZ:** em **📡 NF-e da SEFAZ**, as NF-e em que a empresa é a transportadora, buscadas em Fiscal e contabilidade → NF-e contra o CNPJ (Distribuição DF-e), viram rascunhos de CT-e (marque quais). Com "NF-e em que somos a transportadora vira rascunho de CT-e sozinha", a busca automática já gera os rascunhos; o rascunho aparece com o selo "📡 veio da SEFAZ". A tela Hoje avisa as NF-e de carga sem CT-e.
 
 O que o sistema faz com cada nota:
 - Notas do mesmo remetente para o mesmo destino, no mesmo e-mail, viram um CT-e só.

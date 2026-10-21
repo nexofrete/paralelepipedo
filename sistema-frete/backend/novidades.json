@@ -58,6 +58,10 @@
           "texto": "NF-e contra o CNPJ: busca na SEFAZ (Distribuição DF-e) as notas emitidas para a empresa, com o certificado do CT-e, sozinho a cada hora; ciência, confirmação, desconhecimento e operação não realizada pela manifestação do destinatário; o XML completo vai direto para o lançamento da nota de entrada."
         },
         {
+          "area": "Fiscal",
+          "texto": "NF-e da SEFAZ vira CT-e: as notas em que a empresa é a transportadora, buscadas na SEFAZ, viram rascunho de CT-e com o frete pela tabela (botão Emitir CT-e, NF-e da SEFAZ na tela de CT-e ou automático)."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

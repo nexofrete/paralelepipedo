@@ -65,7 +65,7 @@ def parte_operacao(g):
          '061 Transferências · 070 EDI · 080 Portal do cliente'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
-         'contador · 142 Notas de entrada · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
+         'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
         ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas'],
         ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 '
          'Relatórios · 330 Auditoria de frete'],
@@ -476,6 +476,26 @@ def parte_financeiro(g):
         'o pacote do contador leva os XML de entrada (pasta Entradas) e o livro de entradas.',
         '<b>Cancelar</b> uma nota lançada errada cancela junto as contas a pagar em aberto dela (com pagamento, estorne '
         'antes). Depois dá para lançar o XML de novo.',
+    ])
+    s.append(P('<b>NF-e contra o CNPJ</b> (143): o sistema busca na SEFAZ (Ambiente Nacional), com o mesmo certificado do '
+               'CT-e, todas as NF-e emitidas para a sua empresa, sem pedir o XML ao fornecedor.'))
+    s += passos([
+        'Clique em <b>Buscar na SEFAZ agora</b> (ou marque <b>Buscar sozinho</b>, a cada hora). Primeiro chega o '
+        '<b>resumo</b> de cada nota: fornecedor, valor e situação.',
+        'Dê <b>Ciência</b> na nota (ou marque <b>Dar ciência automaticamente</b>): com a ciência, a SEFAZ libera o XML '
+        'completo. Se ele não vier na hora, use <b>Baixar XML</b> mais tarde.',
+        'Clique em <b>Lançar</b>: abre o mesmo lançamento das Notas de entrada (categoria, crédito, contas a pagar).',
+        'Faça a <b>manifestação final</b>: Confirmar a operação, Desconhecer (não comprou) ou Operação não realizada '
+        '(com justificativa). É definitiva na SEFAZ; o prazo costuma ser de 180 dias da emissão.',
+    ])
+    s += lista([
+        'Filtros: <b>Para lançar</b>, <b>Sem manifestação final</b>, <b>Já lançadas</b>, <b>Como transportador</b> (notas '
+        'em que a sua empresa aparece como transportadora: chegam completas e não pedem manifestação) e Todas.',
+        'NF-e cancelada pelo emitente fica marcada como cancelada. Nota que não é compra pode ser <b>ignorada</b> (sai '
+        'das pendências).',
+        'A SEFAZ só aceita nova consulta 1 hora depois de responder que não há nada novo; a tela mostra o horário '
+        'liberado. No modo demonstração aparecem três notas de exemplo.',
+        'A tela Hoje avisa as NF-e de compra prontas para lançar e as que estão sem manifestação.',
     ])
     s += aviso('importante', 'O SPED não é gerado aqui: o contador importa os XML do pacote (saídas e as entradas lançadas). '
                              'A apuração da tela é uma prévia para conferência; o crédito de cada nota (em especial o '

@@ -32,7 +32,7 @@
     't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:resumo': ['101', 'contas receber receber'],
     't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:faturamento:regua': ['103', 'regua cobranca lembrete vencimento atraso inadimplencia'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],
     't:pagar:acertos': ['120', 'acerto viagem motorista ciot vale pedagio agregado'], 't:comissoes:apuracao': ['125', 'comissao vendedor representante carteira'], 'p:financeiro': ['130', 'financeiro'],
-    't:contabil:livro': ['140', 'fiscal contabilidade contador livro saidas apuracao icms iss cfop sped lancamentos'], 't:contabil:pacote': ['141', 'pacote contador xml zip mensal enviar'], 't:contabil:entradas': ['142', 'notas de entrada compras livro de entradas credito icms apuracao diesel fornecedor xml'],
+    't:contabil:livro': ['140', 'fiscal contabilidade contador livro saidas apuracao icms iss cfop sped lancamentos'], 't:contabil:pacote': ['141', 'pacote contador xml zip mensal enviar'], 't:contabil:entradas': ['142', 'notas de entrada compras livro de entradas credito icms apuracao diesel fornecedor xml'], 't:contabil:dfe': ['143', 'nfe contra cnpj sefaz distribuicao dfe manifestacao destinatario ciencia baixar xml compras'],
     't:bancos:contas': ['150', 'caixa banco saldo conta bancaria tesouraria'], 't:bancos:conciliacao': ['151', 'conciliacao extrato ofx banco'], 't:bancos:fluxo': ['152', 'fluxo caixa previsao projecao'],
     't:frota:painel': ['200', 'frota custo km'], 't:frota:abastecimentos': ['201', 'abastecimento combustivel diesel consumo'],
     't:frota:manutencoes': ['210', 'manutencao oficina preventiva'], 't:emissao-cte:frota': ['220', 'veiculo motorista placa cadastro'],

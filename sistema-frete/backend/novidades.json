@@ -54,6 +54,10 @@
           "texto": "Notas de entrada: importa o XML das NF-e de compra (diesel, peças, pneus) e dos CT-e de agregados, gera as contas a pagar pelas duplicatas, sugere categoria, CFOP de entrada e crédito de ICMS; livro de entradas e apuração do ICMS (débitos − créditos, saldo credor levado adiante, ou crédito presumido de 20%), também no pacote do contador."
         },
         {
+          "area": "Fiscal",
+          "texto": "NF-e contra o CNPJ: busca na SEFAZ (Distribuição DF-e) as notas emitidas para a empresa, com o certificado do CT-e, sozinho a cada hora; ciência, confirmação, desconhecimento e operação não realizada pela manifestação do destinatário; o XML completo vai direto para o lançamento da nota de entrada."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

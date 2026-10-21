@@ -41,13 +41,13 @@
   function mostrarAba(nome) {
     aba = nome;
     document.querySelectorAll('[data-cbl-aba]').forEach((x) => x.classList.toggle('ativo', x.dataset.cblAba === nome));
-    $('cblBarra').classList.toggle('oculto', nome === 'config');
+    $('cblBarra').classList.toggle('oculto', nome === 'config' || nome === 'dfe');
   }
   async function carregar() {
     mostrarPeriodo();
     if (!cfg) cfg = await api('/config');
     $('cblConteudo').innerHTML = '<div class="kanban-vazio">Carregando…</div>';
-    await ({ livro: telaLivro, entradas: telaEntradas, lancamentos: telaLancamentos, pacote: telaPacote, config: telaConfig }[aba])();
+    await ({ livro: telaLivro, entradas: telaEntradas, dfe: telaDfe, lancamentos: telaLancamentos, pacote: telaPacote, config: telaConfig }[aba])();
   }
   document.querySelectorAll('[data-cbl-aba]').forEach((a) => a.addEventListener('click', () => { mostrarAba(a.dataset.cblAba); carregar().catch(erro); }));
   nav.addEventListener('click', () => { mostrarAba(aba); carregar().catch(erro); });
@@ -163,14 +163,20 @@
   // Lê os XML escolhidos, mostra a prévia de cada um e lança os que estiverem certos.
   async function importar(arquivos) {
     if (!arquivos.length) return;
+    const xmls = [];
+    for (const f of arquivos) xmls.push({ nome: f.name, xml: await f.text() });
+    return importarXmls(xmls);
+  }
+  // xmls: [{ nome, xml }] (dos arquivos ou das NF-e que chegaram da SEFAZ).
+  async function importarXmls(xmls) {
     const lidos = [];
-    for (const f of arquivos) {
-      const xml = await f.text();
+    for (const f of xmls) {
+      const { xml } = f;
       try { lidos.push({ nome: f.name, xml, p: await api('/entradas/previa', { method: 'POST', body: JSON.stringify({ xml }) }) }); } catch (err) { lidos.push({ nome: f.name, erro: err.message }); }
     }
     const ok = lidos.filter((x) => x.p);
     const semCredito = ne.dados?.modo_credito !== 'notas';
-    $('neModal').innerHTML = `${cabModal(`📥 Importar ${arquivos.length} arquivo(s)`)}
+    $('neModal').innerHTML = `${cabModal(`📥 Lançar ${xmls.length} nota(s)`)}
       ${lidos.map((x, k) => (x.erro ? `<div class="cte-aviso erro" style="margin-bottom:10px;"><b>${esc(x.nome)}</b>: ${esc(x.erro)}</div>` : `
       <div class="painel ne-item" data-k="${k}" style="padding:12px 14px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
@@ -204,7 +210,7 @@
         } catch (err) { q('.ne-res').innerHTML = `<div class="cte-aviso erro" style="margin-top:6px;">${esc(err.message)}</div>`; }
       }
       b.disabled = false;
-      if (feitas) { mostrarAlerta(`${feitas} nota(s) lançada(s).`, { tipo: 'sucesso' }); telaEntradas().catch(erro); }
+      if (feitas) { mostrarAlerta(`${feitas} nota(s) lançada(s).`, { tipo: 'sucesso' }); carregar().catch(erro); }
       if (![...document.querySelectorAll('#neModal .ne-item')].some((el) => !el.dataset.feito)) b.remove();
     });
   }
@@ -262,6 +268,89 @@
       const url = URL.createObjectURL(await r.blob());
       const a = document.createElement('a'); a.href = url; a.download = `${n.chave || `nota-${id}`}.xml`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
     });
+  }
+
+  // ---------- NF-e contra o CNPJ (SEFAZ) ----------
+  const MAN_COR = { pendente: 'pendente', ciencia: 'em_transito', confirmada: 'entregue', desconhecida: 'cancelado', nao_realizada: 'cancelado' };
+  const dfe = { filtro: 'lancar', busca: '' };
+  const quando = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+  async function telaDfe() {
+    const d = await api(`/dfe?filtro=${dfe.filtro}&busca=${encodeURIComponent(dfe.busca)}`);
+    const e = d.estado || {}; const c = d.contagens;
+    const bloqueado = e.proxima_consulta && Date.parse(e.proxima_consulta) > Date.now() && !d.demo;
+    const FILT = [['lancar', 'Para lançar'], ['manifestar', 'Sem manifestação final'], ['lancadas', 'Já lançadas'], ['terceiros', 'Como transportador'], ['todas', 'Todas']];
+    $('cblConteudo').innerHTML = `
+      <div class="painel" style="padding:14px 16px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+          <div style="font-size:13px; line-height:1.7;">
+            <b>Busca na SEFAZ</b> (Ambiente Nacional, com o certificado do CT-e) · ${d.demo ? '<span class="oc-sit em_transito">demonstração: notas de exemplo</span>' : d.ambiente === 1 ? 'produção' : '<span class="oc-sit pendente">homologação</span>'}<br>
+            Última consulta: <b>${quando(e.ultima_consulta)}</b>${e.ultimo_cstat ? ` · ${esc(e.ultimo_cstat)} — ${esc(e.ultimo_motivo || '')}` : ''} · NSU ${e.ult_nsu || 0}${e.max_nsu ? ` de ${e.max_nsu}` : ''}<br>
+            ${bloqueado ? `A SEFAZ só aceita nova consulta às <b>${quando(e.proxima_consulta)}</b> (1 hora depois de não haver nada novo).` : 'Pode consultar agora.'}
+          </div>
+          <button class="btn btn-primario" id="dfeBuscar" style="width:auto;" ${bloqueado ? 'disabled' : ''}>🔄 Buscar na SEFAZ agora</button>
+        </div>
+        <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:8px; font-size:13px;">
+          <label class="ag-check"><input type="checkbox" id="dfeAuto" ${d.config.ativo ? 'checked' : ''} /> Buscar sozinho (a cada hora)</label>
+          <label class="ag-check"><input type="checkbox" id="dfeCiencia" ${d.config.ciencia_automatica ? 'checked' : ''} /> Dar ciência automaticamente às notas novas (para o XML chegar)</label>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+        <div class="oc-filtros">${FILT.map(([k, t]) => `<button class="oc-filtro ${dfe.filtro === k ? 'ativo' : ''}" data-dfe-filtro="${k}">${t}<span class="n">${c[k]}</span></button>`).join('')}</div>
+        <input type="text" id="dfeBusca" class="cte-entrada" placeholder="Fornecedor, chave ou CNPJ" value="${esc(dfe.busca)}" style="max-width:280px;" /></div>
+      <div class="painel" style="padding:12px 14px;">${tabela('<th>Emissão</th><th>NF-e</th><th>Emitente</th><th class="n">Valor</th><th>Situação</th><th>Manifestação</th><th></th>',
+    d.notas.map((n) => {
+      const destin = n.papel === 'destinatario'; const valida = n.situacao_nfe === 1;
+      const final = ['confirmada', 'desconhecida', 'nao_realizada'].includes(n.manifestacao);
+      const acoes = [];
+      if (destin && valida && n.manifestacao === 'pendente') acoes.push(`<button class="primario" data-dfe-man="ciencia" data-id="${n.id}" title="Ciência da operação: libera o XML completo">Ciência</button>`);
+      if (n.tem_xml && destin && !n.nota_entrada_id && valida) acoes.push(`<button class="primario" data-dfe-lancar="${n.id}">Lançar</button>`);
+      if (!n.tem_xml && ['ciencia', 'confirmada'].includes(n.manifestacao)) acoes.push(`<button data-dfe-baixar="${n.id}">Baixar XML</button>`);
+      if (destin && valida && !final) acoes.push(`<select data-dfe-final="${n.id}" class="cte-entrada" style="padding:3px 6px; width:auto;"><option value="">Manifestar…</option><option value="confirmada">Confirmar a operação</option><option value="desconhecida">Desconhecer</option><option value="nao_realizada">Operação não realizada</option></select>`);
+      if (n.tem_xml) acoes.push(`<button data-dfe-xml="${n.id}" title="Baixar o XML">⬇</button>`);
+      if (!n.nota_entrada_id) acoes.push(`<button data-dfe-ignorar="${n.id}" data-v="${n.ignorada ? 'nao' : 'sim'}" title="${n.ignorada ? 'Voltar para a lista' : 'Tirar das pendências (ex.: nota que não é compra)'}">${n.ignorada ? '↺' : '🙈'}</button>`);
+      return `<tr${n.ignorada || !valida ? ' style="opacity:.6;"' : ''}><td>${quando(n.emissao)}</td><td>${esc(n.numero)}<br><small style="color:var(--texto-fraco);" title="${esc(n.chave)}">…${esc(n.chave.slice(-10))}</small></td>
+        <td>${esc(n.emitente_nome)}<br><small style="color:var(--texto-fraco);">${docFmt(n.emitente_doc)}${destin ? '' : ' · <b>você é o transportador</b>'}</small></td>
+        <td class="n">${num(n.valor)}</td>
+        <td><span class="oc-sit ${valida ? 'entregue' : 'cancelado'}">${esc(d.situacoes[n.situacao_nfe] || n.situacao_nfe)}</span>${n.nota_entrada_id ? `<br><small>lançada em ${dia(n.lancada_em)}</small>` : n.ignorada ? '<br><small>ignorada</small>' : ''}</td>
+        <td>${destin ? `<span class="oc-sit ${MAN_COR[n.manifestacao]}">${esc(n.manifestacao === 'pendente' ? 'Sem manifestação' : d.manifestacoes[n.manifestacao])}</span>${n.manifestada_em ? `<br><small>${quando(n.manifestada_em)}</small>` : ''}${n.manifestacao_erro ? `<br><small style="color:var(--vermelho);">${esc(n.manifestacao_erro)}</small>` : ''}` : '<small style="color:var(--texto-fraco);">não se aplica</small>'}</td>
+        <td><div class="oc-linha-acoes">${acoes.join('')}</div></td></tr>`;
+    }), dfe.filtro === 'lancar' ? 'Nenhuma NF-e esperando lançamento. Clique em "Buscar na SEFAZ agora" ou ligue a busca automática.' : 'Nada aqui.')}</div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:10px;">A SEFAZ manda primeiro o <b>resumo</b> da nota; o XML completo vem depois da <b>ciência da operação</b>. A manifestação final (confirmar, desconhecer ou operação não realizada) tem prazo: em geral até 180 dias da emissão. Notas em que a sua empresa aparece como transportadora chegam completas e não precisam de manifestação.</p>`;
+    const recarregar = () => telaDfe().catch(erro);
+    $('dfeBuscar').addEventListener('click', async (ev) => {
+      const b = ev.currentTarget; b.disabled = true; b.textContent = 'Consultando…';
+      try { const r = await api('/dfe/consultar', { method: 'POST' }); mostrarAlerta(r.novos || r.atualizados ? `${r.novos} NF-e nova(s) e ${r.atualizados} atualizada(s).${r.ciencias ? ` Ciência dada em ${r.ciencias}.` : ''}` : 'Nenhum documento novo na SEFAZ.', { tipo: 'sucesso' }); } catch (err) { erro(err); }
+      recarregar();
+    });
+    const salvarCfg = () => api('/dfe/config', { method: 'PUT', body: JSON.stringify({ ativo: $('dfeAuto').checked, ciencia_automatica: $('dfeCiencia').checked }) }).then(() => mostrarAlerta('Salvo.', { tipo: 'sucesso' })).catch(erro);
+    $('dfeAuto').addEventListener('change', salvarCfg); $('dfeCiencia').addEventListener('change', salvarCfg);
+    document.querySelectorAll('[data-dfe-filtro]').forEach((b) => b.addEventListener('click', () => { dfe.filtro = b.dataset.dfeFiltro; recarregar(); }));
+    let tm = null;
+    $('dfeBusca').addEventListener('input', (ev) => { clearTimeout(tm); tm = setTimeout(() => { dfe.busca = ev.target.value.trim(); telaDfe().then(() => { const x = $('dfeBusca'); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }).catch(erro); }, 400); });
+    const manifestar = async (id, tipo) => {
+      let justificativa;
+      if (tipo === 'nao_realizada') { justificativa = await pedirTexto('Por que a operação não foi realizada? (15 a 255 caracteres)', { titulo: 'Operação não realizada', textoOk: 'Manifestar' }); if (!justificativa) return; } else if (tipo !== 'ciencia' && !await confirmar(`Manifestar "${d.manifestacoes[tipo]}"? É definitivo na SEFAZ.`, { textoOk: 'Manifestar' })) return;
+      try { const r = await api(`/dfe/${id}/manifestar`, { method: 'POST', body: JSON.stringify({ tipo, justificativa }) }); mostrarAlerta(`${r.rotulo} registrada na SEFAZ${r.protocolo ? ` (protocolo ${r.protocolo})` : ''}.`, { tipo: 'sucesso' }); } catch (err) { erro(err); }
+      recarregar();
+    };
+    document.querySelectorAll('[data-dfe-man]').forEach((b) => b.addEventListener('click', () => manifestar(Number(b.dataset.id), b.dataset.dfeMan)));
+    document.querySelectorAll('[data-dfe-final]').forEach((sel) => sel.addEventListener('change', () => { if (sel.value) manifestar(Number(sel.dataset.dfeFinal), sel.value); }));
+    document.querySelectorAll('[data-dfe-baixar]').forEach((b) => b.addEventListener('click', async () => { try { await api(`/dfe/${b.dataset.dfeBaixar}/baixar`, { method: 'POST' }); mostrarAlerta('XML baixado da SEFAZ.', { tipo: 'sucesso' }); } catch (err) { erro(err); } recarregar(); }));
+    document.querySelectorAll('[data-dfe-ignorar]').forEach((b) => b.addEventListener('click', async () => { try { await api(`/dfe/${b.dataset.dfeIgnorar}/ignorar`, { method: 'POST', body: JSON.stringify({ ignorar: b.dataset.v === 'sim' }) }); } catch (err) { erro(err); } recarregar(); }));
+    document.querySelectorAll('[data-dfe-xml]').forEach((b) => b.addEventListener('click', async () => {
+      try {
+        const x = await api(`/dfe/${b.dataset.dfeXml}/xml`);
+        const url = URL.createObjectURL(new Blob([x.xml], { type: 'application/xml' }));
+        const a = document.createElement('a'); a.href = url; a.download = `${x.chave}.xml`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+      } catch (err) { erro(err); }
+    }));
+    document.querySelectorAll('[data-dfe-lancar]').forEach((b) => b.addEventListener('click', async () => {
+      try {
+        if (!ne.dados) ne.dados = await api(`/entradas?${qs()}`);   // categorias e o modo de crédito
+        const x = await api(`/dfe/${b.dataset.dfeLancar}/xml`);
+        await importarXmls([{ nome: `NF-e ${x.chave}`, xml: x.xml }]);
+      } catch (err) { erro(err); }
+    }));
   }
 
   // ---------- Lançamentos ----------

@@ -77,6 +77,13 @@ async function montar(req) {
       add('financeiro', { chave: 'atraso_30', icone: '🧨', titulo: 'Faturas vencidas há mais de 30 dias', qtd: antigas.length, valor: centavos(antigas.reduce((t, x) => t + x.saldo, 0)), nivel: 'perigo',
         detalhe: antigas.slice(0, 3).map((x) => x.cliente).filter((v, i, a) => a.indexOf(v) === i).join(', '), destino: { ir: 'faturamento', aba: 'faturas', selecionar: ['fatStatus', 'vencidas'] } });
     } catch (e) { console.error('[hoje]', e.message); }
+    try {
+      const nf = await require('./dfe').pendencias();
+      add('financeiro', { chave: 'dfe_lancar', icone: '📥', titulo: 'NF-e de compra para lançar', qtd: nf.lancar, nivel: 'atencao', detalhe: 'chegaram da SEFAZ com o XML: lance em Notas de entrada',
+        destino: { ir: 'contabil', aba: 'dfe', clicar: '[data-dfe-filtro="lancar"]' } });
+      add('financeiro', { chave: 'dfe_manifestar', icone: '📨', titulo: 'NF-e contra o CNPJ sem manifestação', qtd: nf.sem_manifestacao, nivel: 'info', detalhe: 'dê ciência para receber o XML (ou desconheça)',
+        destino: { ir: 'contabil', aba: 'dfe', clicar: '[data-dfe-filtro="manifestar"]' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     add('financeiro', { chave: 'faturas_semana', icone: '📥', titulo: 'A receber nos próximos 7 dias', qtd: f.semana, valor: centavos(f.semana_valor), nivel: 'info',
       destino: { ir: 'faturamento', aba: 'faturas', selecionar: ['fatStatus', 'abertas'] } });
     add('financeiro', { chave: 'boletos_rejeitados', icone: '🏦', titulo: 'Boletos rejeitados pelo banco', qtd: f.boletos_rejeitados, nivel: 'perigo', detalhe: 'veja o motivo no retorno',

@@ -89,4 +89,26 @@ router.post('/entradas/:id(\\d+)/cancelar', autenticar, pode, rota(async (req, r
   res.json({ ok: true });
 }, 'Erro ao cancelar a nota.'));
 
+// ---------- NF-e contra o CNPJ (SEFAZ: Distribuição DF-e e manifestação; regras em src/dfe.js) ----------
+const dfe = require('../dfe');
+router.get('/dfe', autenticar, pode, rota(async (req, res) => res.json({ ...(await dfe.estado()), ...(await dfe.listar(req.query)) }), 'Erro ao listar as NF-e recebidas.'));
+router.put('/dfe/config', autenticar, pode, rota(async (req, res) => {
+  const c = await dfe.salvarConfig(req.body || {});
+  log(req, `Busca automática de NF-e na SEFAZ ${c.ativo ? 'ligada' : 'desligada'}${c.ciencia_automatica ? ', com ciência automática' : ''}`);
+  res.json(c);
+}, 'Erro ao salvar.'));
+router.post('/dfe/consultar', autenticar, pode, rota(async (req, res) => {
+  const r = await dfe.consultar();
+  log(req, `Buscou NF-e na SEFAZ: ${r.novos} nova(s), ${r.atualizados} atualizada(s) (NSU ${r.ult_nsu}/${r.max_nsu})`);
+  res.json(r);
+}, 'Erro ao consultar a SEFAZ.'));
+router.post('/dfe/:id(\\d+)/manifestar', autenticar, pode, rota(async (req, res) => {
+  const r = await dfe.manifestar(Number(req.params.id), req.body?.tipo, { justificativa: req.body?.justificativa });
+  log(req, `Manifestou "${r.rotulo}" na NF-e ${r.chave}${r.protocolo ? ` (protocolo ${r.protocolo})` : ''}`);
+  res.json(r);
+}, 'Erro ao manifestar.'));
+router.post('/dfe/:id(\\d+)/baixar', autenticar, pode, rota(async (req, res) => res.json(await dfe.baixarXml(Number(req.params.id))), 'Erro ao baixar o XML.'));
+router.post('/dfe/:id(\\d+)/ignorar', autenticar, pode, rota(async (req, res) => { await dfe.ignorar(Number(req.params.id), req.body?.ignorar !== false); res.json({ ok: true }); }, 'Erro.'));
+router.get('/dfe/:id(\\d+)/xml', autenticar, pode, rota(async (req, res) => res.json(await dfe.xmlDa(Number(req.params.id))), 'Erro.'));
+
 module.exports = router;

@@ -2513,3 +2513,23 @@ CREATE TABLE IF NOT EXISTS notas_entrada (
 );
 CREATE INDEX IF NOT EXISTS idx_notas_entrada_data ON notas_entrada (entrada, status);
 ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS nota_entrada_id INTEGER REFERENCES notas_entrada(id) ON DELETE SET NULL;
+
+-- NF-e emitidas contra o CNPJ da empresa (Distribuição DF-e do Ambiente Nacional) e a manifestação do destinatário.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS dfe_config JSONB;     -- { ativo, ciencia_automatica }
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS dfe_estado JSONB;     -- { ult_nsu, max_nsu, ultima_consulta, proxima_consulta, ultimo_cstat, ultimo_motivo }
+CREATE TABLE IF NOT EXISTS dfe_recebidos (
+  id SERIAL PRIMARY KEY,
+  chave VARCHAR(44) NOT NULL UNIQUE,
+  nsu BIGINT,
+  papel VARCHAR(12) NOT NULL DEFAULT 'destinatario',  -- destinatario | terceiro (transportador, autorizado no XML)
+  emitente_doc VARCHAR(20), emitente_nome VARCHAR(200), emitente_ie VARCHAR(30),
+  emissao TIMESTAMPTZ, valor NUMERIC(14,2), tp_nf SMALLINT,
+  situacao_nfe SMALLINT NOT NULL DEFAULT 1,           -- 1 autorizada, 2 denegada, 3 cancelada
+  protocolo VARCHAR(20),
+  xml TEXT,                                           -- procNFe completo (depois da ciência)
+  manifestacao VARCHAR(14) NOT NULL DEFAULT 'pendente', -- pendente | ciencia | confirmada | desconhecida | nao_realizada
+  manifestada_em TIMESTAMPTZ, manifestacao_protocolo VARCHAR(20), manifestacao_erro VARCHAR(300), justificativa VARCHAR(255),
+  ignorada BOOLEAN NOT NULL DEFAULT FALSE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_dfe_recebidos_emissao ON dfe_recebidos (emissao DESC);

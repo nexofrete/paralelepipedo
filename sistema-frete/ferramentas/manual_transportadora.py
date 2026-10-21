@@ -66,7 +66,7 @@ def parte_operacao(g):
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
          'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
-        ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas'],
+        ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada'],
         ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 '
          'Relatórios · 330 Auditoria de frete'],
         ['4xx Notas e fretes', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros'],
@@ -278,7 +278,7 @@ def parte_operacao(g):
                           'Informe o endereço em Configurar (só aceita https:// ou http:// sem aspas e símbolos).')
 
     # 40
-    s += h1('40. Frota: abastecimento e manutenção')
+    s += h1('40. Frota: abastecimento, manutenção, documentos, pneus e jornada')
     s += lista([
         '<b>Abastecimentos</b>: km, combustível, litros, valor, posto (o nome entra pelo CNPJ) e tanque cheio. O consumo '
         'é medido de tanque cheio a tanque cheio. O km aceita "123.456" (milhar) ou "123,5" (decimal).',
@@ -290,6 +290,50 @@ def parte_operacao(g):
     ])
     s += aviso('importante', 'Uma conta de frota já paga não é desfeita se o pagamento foi conciliado com o extrato do '
                              'banco, ou se tiver mais de um pagamento: estorne no Caixa e bancos antes.')
+    s += h2('Documentos com vencimento (230)')
+    s += lista([
+        'Cada veículo e motorista mostra os documentos com a validade: do veículo, CRLV/licenciamento, RNTRC, aferição '
+        'do tacógrafo, seguro, CIV/CIPP, AET e vistoria; do motorista, CNH, exame toxicológico, MOPP, exame médico e cursos.',
+        'Clique no documento para informar número, emissão, validade e com quantos dias de antecedência avisar (padrão 30). '
+        'Os obrigatórios que faltam aparecem tracejados ("não cadastrado").',
+        'Vencido fica vermelho, vencendo fica amarelo. A tela Hoje avisa os dois.',
+        'Documento vencido do veículo ou do motorista (CRLV, RNTRC, tacógrafo, CIV, CNH, toxicológico, MOPP) '
+        '<b>barra a transmissão do MDF-e</b> e aparece em vermelho no romaneio.',
+        'A CNH continua no cadastro do motorista: atualizar aqui atualiza lá.',
+    ])
+    s += h2('Pneus (240)')
+    s += passos([
+        '<b>＋ Pneu</b>: número de fogo (a marcação na lateral), marca, medida, DOT, valor e sulco. O pneu entra no estoque.',
+        'Escolha o veículo e o número de eixos: aparece o mapa com as posições (1º eixo simples, os outros duplos: '
+        'esquerdo externo/interno, direito interno/externo, e os estepes).',
+        'Clique numa posição vazia para <b>montar</b> um pneu do estoque, com o km do veículo.',
+        'Clique num pneu montado para <b>rodízio</b> (se a posição de destino tiver pneu, os dois trocam), <b>medir o sulco</b>, '
+        '<b>desmontar</b>, mandar para a <b>recapagem</b> ou para a <b>sucata</b> (com o motivo).',
+        'Na volta da recapagem, informe o valor (e o vencimento, se quiser gerar a conta a pagar): o pneu ganha mais uma vida.',
+    ])
+    s += lista([
+        'Os km de cada pneu somam o que ele rodou em cada montagem; o custo é compra + recapagens; a lista mostra o R$/km.',
+        'Sulco até 3 mm fica amarelo (programe a troca); abaixo de 1,6 mm, vermelho (limite legal). A tela Hoje avisa os montados com sulco baixo.',
+        '<b>Histórico</b> mostra cada movimento: onde estava, km, sulco, valor e quem lançou.',
+    ])
+    s += h2('Jornada do motorista (250)')
+    s.append(P('Pela Lei 13.103/2015: jornada de 8h com até 2h extras, no máximo 5h30 dirigindo sem 30 minutos de '
+               'descanso (pode ser fracionado), 1h de refeição em jornada acima de 6h e 11h de descanso entre jornadas. '
+               'O tempo de espera (carga, descarga, fiscalização) não conta como jornada.'))
+    s += lista([
+        '<b>No app do motorista</b> (o mesmo do romaneio): o cartão de jornada mostra o que ele está fazendo e os tempos, '
+        'e tem os botões Dirigindo, Carga/descarga, Esperando, Pausa, Refeição e Encerrar jornada. Cada marcação '
+        'guarda a hora do servidor e a localização.',
+        'O app avisa quando falta menos de 30 minutos para as 5h30 dirigindo.',
+        '<b>No sistema</b> (Frota › Jornada): a lista do período com direção, trabalho, espera, refeição, jornada, horas '
+        'extras e os alertas. <b>Ver</b> mostra cada marcação; dá para incluir ou apagar uma marcação (fica o nome de '
+        'quem ajustou e o motivo).',
+        '<b>Lançar marcação</b>: para quem não usa o app (o escritório lança a jornada do dia).',
+        '<b>Espelho do mês</b>: escolha o motorista no filtro; sai o espelho para imprimir e assinar.',
+        'A tela Hoje avisa as jornadas abertas com alerta (inclusive jornada esquecida aberta).',
+    ])
+    s += aviso('nota', 'A identificação do motorista no app é pelo CPF informado no romaneio (campo Documento). Sem o CPF, '
+                       'vale o nome; use o CPF para o espelho juntar todas as jornadas dele.')
     return s
 
 

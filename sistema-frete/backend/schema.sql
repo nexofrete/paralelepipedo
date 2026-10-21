@@ -2534,3 +2534,69 @@ CREATE TABLE IF NOT EXISTS dfe_recebidos (
 );
 CREATE INDEX IF NOT EXISTS idx_dfe_recebidos_emissao ON dfe_recebidos (emissao DESC);
 ALTER TABLE dfe_recebidos ADD COLUMN IF NOT EXISTS cte_motivo VARCHAR(200);   -- por que a NF-e de carga não virou CT-e (outra transportadora, sem frete...)
+
+-- ===== Frota completa: documentos com vencimento, pneus e jornada do motorista =====
+CREATE TABLE IF NOT EXISTS frota_documentos (
+  id SERIAL PRIMARY KEY,
+  dono_tipo VARCHAR(10) NOT NULL,              -- veiculo | motorista
+  dono_id INTEGER NOT NULL,
+  tipo VARCHAR(20) NOT NULL,                   -- ver src/frotaDocumentos.js (TIPOS)
+  numero VARCHAR(60), emissao DATE, validade DATE,
+  aviso_dias INTEGER NOT NULL DEFAULT 30,
+  observacao VARCHAR(300),
+  arquivo VARCHAR(200),
+  atualizado_por VARCHAR(150), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_frota_documentos ON frota_documentos (dono_tipo, dono_id, tipo);
+-- A validade da CNH que já estava no cadastro do motorista vira documento.
+INSERT INTO frota_documentos (dono_tipo, dono_id, tipo, numero, validade, atualizado_por)
+  SELECT 'motorista', m.id, 'cnh', m.cnh, m.cnh_validade, 'cadastro do motorista' FROM motoristas m
+   WHERE m.cnh_validade IS NOT NULL ON CONFLICT DO NOTHING;
+
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS eixos SMALLINT;   -- para o mapa de pneus (padrão: 3 na tração, 3 no reboque)
+CREATE TABLE IF NOT EXISTS pneus (
+  id SERIAL PRIMARY KEY,
+  numero_fogo VARCHAR(20) NOT NULL UNIQUE,
+  marca VARCHAR(60), modelo VARCHAR(60), medida VARCHAR(30), dot VARCHAR(10),
+  vida SMALLINT NOT NULL DEFAULT 0,            -- 0 = novo; 1, 2... = recapagens
+  valor_compra NUMERIC(12,2), data_compra DATE, fornecedor VARCHAR(150),
+  status VARCHAR(10) NOT NULL DEFAULT 'estoque',  -- estoque | montado | recapagem | sucata
+  veiculo_id INTEGER REFERENCES veiculos(id) ON DELETE SET NULL, posicao VARCHAR(8),
+  km_montagem INTEGER,                         -- km do veículo quando foi montado na posição atual
+  km_acumulado INTEGER NOT NULL DEFAULT 0,     -- km rodados nas montagens anteriores
+  sulco_mm NUMERIC(4,1), sulco_em DATE,
+  custo_recapagens NUMERIC(12,2) NOT NULL DEFAULT 0,
+  observacao VARCHAR(300), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pneu_posicao ON pneus (veiculo_id, posicao) WHERE status = 'montado';
+CREATE TABLE IF NOT EXISTS pneu_movimentos (
+  id SERIAL PRIMARY KEY,
+  pneu_id INTEGER NOT NULL REFERENCES pneus(id) ON DELETE CASCADE,
+  data DATE NOT NULL, tipo VARCHAR(12) NOT NULL,  -- cadastro, montagem, desmontagem, recapagem, retorno, sucata, medicao
+  veiculo_id INTEGER REFERENCES veiculos(id) ON DELETE SET NULL, posicao VARCHAR(8),
+  km_veiculo INTEGER, km_rodados INTEGER, sulco_mm NUMERIC(4,1), valor NUMERIC(12,2), fornecedor VARCHAR(150),
+  observacao VARCHAR(300), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_pneu_mov ON pneu_movimentos (pneu_id, data, id);
+
+CREATE TABLE IF NOT EXISTS jornadas (
+  id SERIAL PRIMARY KEY,
+  motorista_id INTEGER REFERENCES motoristas(id) ON DELETE SET NULL,
+  motorista_nome VARCHAR(120) NOT NULL, motorista_cpf VARCHAR(11),
+  inicio TIMESTAMPTZ NOT NULL, fim TIMESTAMPTZ,
+  status VARCHAR(8) NOT NULL DEFAULT 'aberta',    -- aberta | fechada
+  romaneio_id INTEGER, placa VARCHAR(10),
+  observacao VARCHAR(300), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_jornadas_mot ON jornadas (motorista_cpf, inicio);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jornada_aberta ON jornadas (COALESCE(motorista_cpf, motorista_nome)) WHERE status = 'aberta';
+CREATE TABLE IF NOT EXISTS jornada_eventos (
+  id SERIAL PRIMARY KEY,
+  jornada_id INTEGER NOT NULL REFERENCES jornadas(id) ON DELETE CASCADE,
+  tipo VARCHAR(10) NOT NULL,                   -- trabalho, direcao, pausa, refeicao, espera, fim
+  em TIMESTAMPTZ NOT NULL,
+  latitude NUMERIC(10,7), longitude NUMERIC(10,7),
+  origem VARCHAR(10) NOT NULL DEFAULT 'app',   -- app | sistema
+  usuario_nome VARCHAR(150), observacao VARCHAR(300)
+);
+CREATE INDEX IF NOT EXISTS idx_jornada_eventos ON jornada_eventos (jornada_id, em);

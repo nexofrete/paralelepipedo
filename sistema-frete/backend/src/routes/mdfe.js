@@ -121,7 +121,8 @@ const acao = (nome, fn, msg) => router.post(`/:id(\\d+)/${nome}`, autenticar, em
   } catch (err) { erro(res, err, `Erro ao ${nome}.`); }
 });
 // Gerenciamento de risco: com o bloqueio ligado, só transmite com motorista/veículo liberados e as regras da apólice cumpridas.
-acao('transmitir', async (id) => { await require('../gr/gr').conferirParaTransmitir(id); return emissao.transmitir(id); }, 'Transmitiu');
+// Documento vencido do veículo ou do motorista (Frota › Documentos) também barra.
+acao('transmitir', async (id) => { await require('../frotaDocumentos').conferirMdfe(id); await require('../gr/gr').conferirParaTransmitir(id); return emissao.transmitir(id); }, 'Transmitiu');
 acao('consultar', (id) => emissao.consultar(id), 'Consultou');
 acao('cancelar', (id, b) => emissao.cancelar(id, b.justificativa), 'Cancelou');
 acao('encerrar', (id, b) => emissao.encerrar(id, b), 'Encerrou');

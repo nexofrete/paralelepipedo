@@ -88,4 +88,68 @@ router.post('/planos', autenticar, pode, rota(async (req, res) => {
 router.put('/planos/:id(\\d+)', autenticar, pode, rota(async (req, res) => res.json(await frota.alterarPlano(Number(req.params.id), req.body || {})), 'Erro ao salvar o plano.'));
 router.delete('/planos/:id(\\d+)', autenticar, pode, rota(async (req, res) => { await frota.excluirPlano(Number(req.params.id)); res.json({ ok: true }); }, 'Erro.'));
 
+// ---------- Documentos com vencimento (src/frotaDocumentos.js) ----------
+const docs = require('../frotaDocumentos');
+router.get('/documentos', autenticar, pode, rota(async (req, res) => res.json(await docs.quadro()), 'Erro ao listar os documentos.'));
+router.post('/documentos', autenticar, pode, rota(async (req, res) => {
+  const r = await docs.salvar(req.body || {}, req.usuario.nome);
+  log(req, `Atualizou o documento "${r.nome}" (${req.body?.dono_tipo} #${req.body?.dono_id}): validade ${req.body?.validade || '—'}`);
+  res.status(201).json(r);
+}, 'Erro ao salvar o documento.'));
+router.delete('/documentos/:id(\\d+)', autenticar, pode, rota(async (req, res) => {
+  const r = await docs.excluir(Number(req.params.id));
+  log(req, `Apagou o documento ${r.tipo} (${r.dono_tipo} #${r.dono_id})`);
+  res.json({ ok: true });
+}, 'Erro.'));
+
+// ---------- Pneus (src/pneus.js) ----------
+const pneus = require('../pneus');
+router.get('/pneus', autenticar, pode, rota(async (req, res) => res.json(await pneus.listar(req.query)), 'Erro ao listar os pneus.'));
+router.post('/pneus', autenticar, pode, rota(async (req, res) => {
+  const p = await pneus.cadastrar(req.body || {}, req.usuario.nome);
+  log(req, `Cadastrou o pneu ${p.numero_fogo}`);
+  res.status(201).json(p);
+}, 'Erro ao cadastrar o pneu.'));
+router.put('/pneus/:id(\\d+)', autenticar, pode, rota(async (req, res) => res.json(await pneus.alterar(Number(req.params.id), req.body || {})), 'Erro ao salvar o pneu.'));
+router.get('/pneus/:id(\\d+)', autenticar, pode, rota(async (req, res) => res.json(await pneus.historico(Number(req.params.id))), 'Erro.'));
+const ACOES_PNEU = { montar: 'Montou', desmontar: 'Desmontou', rodizio: 'Fez rodízio do', recapagem: 'Mandou para recapagem o', retorno: 'Recebeu da recapagem o', sucata: 'Mandou para a sucata o', medir: 'Mediu o sulco do' };
+const FUNCOES_PNEU = { montar: pneus.montar, desmontar: pneus.desmontar, rodizio: pneus.rodizio, recapagem: pneus.enviarRecapagem, retorno: pneus.retornoRecapagem, sucata: pneus.sucata, medir: pneus.medir };
+router.post('/pneus/:id(\\d+)/:acao(montar|desmontar|rodizio|recapagem|retorno|sucata|medir)', autenticar, pode, rota(async (req, res) => {
+  if (req.params.acao === 'retorno' && req.body?.vencimento && !temAlguma(req, 'pode_ver_financeiro')) return res.status(403).json({ erro: 'Gerar a conta a pagar da recapagem precisa da permissão do financeiro.' });
+  const r = await FUNCOES_PNEU[req.params.acao](Number(req.params.id), req.body || {}, req.usuario.nome);
+  const { rows } = await pool.query('SELECT numero_fogo FROM pneus WHERE id = $1', [req.params.id]);
+  log(req, `${ACOES_PNEU[req.params.acao]} pneu ${rows[0]?.numero_fogo || req.params.id}${r?.placa ? ` (${r.placa} ${r.posicao})` : ''}${r?.trocou_com ? `, trocando com o ${r.trocou_com}` : ''}`);
+  res.json(r || { ok: true });
+}, 'Erro no pneu.'));
+router.get('/veiculos/:id(\\d+)/pneus', autenticar, pode, rota(async (req, res) => res.json(await pneus.mapa(Number(req.params.id))), 'Erro.'));
+router.put('/veiculos/:id(\\d+)/eixos', autenticar, pode, rota(async (req, res) => { await pneus.definirEixos(Number(req.params.id), req.body?.eixos); res.json({ ok: true }); }, 'Erro.'));
+
+// ---------- Jornada do motorista (src/jornada.js) ----------
+const jornada = require('../jornada');
+router.get('/jornadas', autenticar, pode, rota(async (req, res) => res.json(await jornada.listar(req.query)), 'Erro ao listar as jornadas.'));
+router.get('/jornadas/:id(\\d+)', autenticar, pode, rota(async (req, res) => res.json(await jornada.detalhe(Number(req.params.id))), 'Erro.'));
+// Lança pelo escritório: nova jornada (motorista + primeira marcação) ou marcação numa jornada.
+router.post('/jornadas', autenticar, pode, rota(async (req, res) => {
+  const b = req.body || {};
+  const { rows } = await pool.query('SELECT nome, cpf FROM motoristas WHERE id = $1', [Number(b.motorista_id)]);
+  if (!rows[0]) return res.status(400).json({ erro: 'Escolha o motorista.' });
+  const r = await jornada.marcar({ cpf: rows[0].cpf, nome: rows[0].nome }, { tipo: b.tipo, em: b.em, origem: 'sistema', usuario: req.usuario.nome, observacao: b.observacao });
+  log(req, `Lançou na jornada de ${rows[0].nome}: ${jornada.TIPOS[b.tipo]} em ${b.em}`);
+  res.status(201).json(r);
+}, 'Erro ao lançar a jornada.'));
+router.post('/jornadas/:id(\\d+)/eventos', autenticar, pode, rota(async (req, res) => {
+  const r = await jornada.incluirEvento(Number(req.params.id), req.body || {}, req.usuario.nome);
+  log(req, `Ajustou a jornada ${req.params.id} de ${r.motorista_nome}: incluiu ${jornada.TIPOS[req.body?.tipo]} em ${req.body?.em}`);
+  res.status(201).json(r);
+}, 'Erro ao ajustar a jornada.'));
+router.delete('/jornadas/eventos/:id(\\d+)', autenticar, pode, rota(async (req, res) => {
+  const r = await jornada.excluirEvento(Number(req.params.id));
+  log(req, `Apagou a marcação "${jornada.TIPOS[r.tipo]}" de ${new Date(r.em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} da jornada ${r.jornada_id}`);
+  res.json(r);
+}, 'Erro.'));
+router.get('/jornadas/espelho', autenticar, pode, rota(async (req, res) => {
+  const { rows: [e] } = await pool.query('SELECT razao_social, cnpj FROM empresa WHERE id = 1');
+  res.type('html').send(await jornada.espelho(req.query, e || {}));
+}, 'Erro ao montar o espelho.'));
+
 module.exports = router;

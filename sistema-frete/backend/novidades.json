@@ -62,6 +62,10 @@
           "texto": "NF-e da SEFAZ vira CT-e: as notas em que a empresa é a transportadora, buscadas na SEFAZ, viram rascunho de CT-e com o frete pela tabela (botão Emitir CT-e, NF-e da SEFAZ na tela de CT-e ou automático)."
         },
         {
+          "area": "Frota",
+          "texto": "Frota completa: documentos com vencimento do veículo e do motorista (CRLV, RNTRC, tacógrafo, CNH, toxicológico, MOPP) com alerta e bloqueio do MDF-e; pneus por número de fogo com mapa do veículo, rodízio, recapagem, sulco e custo por km; jornada do motorista pelo app (Lei 13.103) com horas extras, alertas e espelho do mês."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

@@ -54,6 +54,16 @@ async function montar(req) {
       add('operacao', { chave: 'dfe_sem_cte', icone: '📡', titulo: 'NF-e de carga na SEFAZ sem CT-e', qtd: nf.sem_cte, nivel: 'atencao', detalhe: 'a sua empresa é a transportadora: gere os rascunhos de CT-e',
         destino: { ir: 'emissao-cte', aba: 'lista', clicar: '#btnCteSefaz' } });
     } catch (e) { console.error('[hoje]', e.message); }
+    try {
+      const d = await require('./frotaDocumentos').pendencias();
+      add('operacao', { chave: 'docs_vencidos', icone: '📄', titulo: 'Documentos da frota vencidos', qtd: d.vencidos, nivel: 'perigo', detalhe: 'CRLV, RNTRC, tacógrafo, CNH, toxicológico… (barram o MDF-e)',
+        destino: { ir: 'frota', aba: 'documentos' } });
+      add('operacao', { chave: 'docs_vencendo', icone: '🗓', titulo: 'Documentos da frota vencendo', qtd: d.vencendo, nivel: 'atencao', detalhe: 'renove antes de vencer', destino: { ir: 'frota', aba: 'documentos' } });
+      const pn = await require('./pneus').pendencias();
+      add('operacao', { chave: 'pneus_sulco', icone: '🛞', titulo: 'Pneus com sulco baixo', qtd: pn.sulco_baixo, nivel: 'atencao', detalhe: 'programe a troca ou a recapagem', destino: { ir: 'frota', aba: 'pneus' } });
+      const jo = await require('./jornada').pendencias();
+      add('operacao', { chave: 'jornada_alerta', icone: '⏱', titulo: 'Jornadas abertas com alerta', qtd: jo.com_alerta, nivel: 'perigo', detalhe: 'direção contínua, excesso de jornada ou jornada esquecida aberta', destino: { ir: 'frota', aba: 'jornada' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     const col = await um(`SELECT COUNT(*) FILTER (WHERE status = 'pendente')::int AS a_programar, COUNT(*) FILTER (WHERE status = 'pendente' AND data_coleta < $1)::int AS atrasadas FROM coletas`, [h]);
     add('operacao', { chave: 'coletas', icone: '📦', titulo: 'Coletas a programar', qtd: col.a_programar, nivel: col.atrasadas ? 'perigo' : 'atencao',
       detalhe: col.atrasadas ? `${col.atrasadas} com a data já passada` : 'ponha no caminhão', destino: { ir: 'coletas', clicar: '[data-col-filtro="pendente"]' } });

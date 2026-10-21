@@ -50,7 +50,7 @@
       $('fvConteudo').innerHTML = '<div class="kanban-vazio">Cadastre os veículos primeiro em Operação de Transporte → 🚛 Veículos e motoristas.</div>';
       return;
     }
-    await ({ painel: telaPainel, abastecimentos: telaAbastecimentos, manutencoes: telaManutencoes, planos: telaPlanos }[aba])();
+    await ({ painel: telaPainel, abastecimentos: telaAbastecimentos, manutencoes: telaManutencoes, planos: telaPlanos, documentos: telaDocumentos, pneus: telaPneus, jornada: telaJornada }[aba])();
   }
   document.querySelectorAll('[data-fv-aba]').forEach((a) => a.addEventListener('click', () => { mostrarAba(a.dataset.fvAba); carregar().catch(erro); }));
   nav.addEventListener('click', () => { mostrarAba(aba); carregarCatalogo().then(carregar).catch(erro); });
@@ -399,5 +399,234 @@
         estado.veiculo = String(vid); fechar(); mostrarAba('planos'); await recarregar();
       } catch (err) { erro(err); }
     });
+  }
+  // ======================= Documentos com vencimento =======================
+  const SIT_DOC = { vencido: ['Vencido', 'cancelado'], vencendo: ['Vencendo', 'ocorrencia'], em_dia: ['Em dia', 'entregue'], sem_validade: ['Sem validade', 'pendente'], falta: ['Falta documento', 'pendente'] };
+  const docs = { filtro: 'problemas' };
+  async function telaDocumentos() {
+    const q = await api('/documentos');
+    const linhas = q.linhas.filter((l) => docs.filtro === 'todos' || (docs.filtro === 'problemas' ? l.situacao !== 'em_dia' : l.dono_tipo === docs.filtro));
+    const chip = (l, d) => `<button class="fv-doc ${SIT_DOC[d.situacao][1]}" data-doc-editar="${l.dono_tipo}|${l.id}|${d.tipo}" title="${esc(d.numero ? `nº ${d.numero} · ` : '')}${d.atualizado_por ? `atualizado por ${esc(d.atualizado_por)}` : ''}">
+      <b>${esc(d.nome)}</b><span>${d.validade ? dia(d.validade) : 'sem validade'}${d.situacao === 'vencido' ? ` · venceu há ${-d.dias} dia(s)` : d.situacao === 'vencendo' ? ` · vence em ${d.dias} dia(s)` : ''}</span></button>`;
+    $('fvConteudo').innerHTML = `<div class="oc-barra" style="flex-wrap:wrap; gap:8px; align-items:center;">
+        <div class="oc-filtros">${[['problemas', 'Com pendência'], ['veiculo', 'Veículos'], ['motorista', 'Motoristas'], ['todos', 'Todos']].map(([k, t]) => `<button class="oc-filtro ${docs.filtro === k ? 'ativo' : ''}" data-doc-filtro="${k}">${t}</button>`).join('')}</div>
+        <span style="flex:1;"></span><span style="font-size:12.5px;"><b style="color:#ef4444;">${q.contagens.vencidos}</b> vencido(s) · <b style="color:#d97706;">${q.contagens.vencendo}</b> vencendo · ${q.contagens.faltando} obrigatório(s) sem cadastro</span></div>
+      <p class="edi-dica" style="margin:8px 0;">Documento vencido do veículo (CRLV, RNTRC, tacógrafo, CIV) ou do motorista (CNH, toxicológico, MOPP) <b>barra a transmissão do MDF-e</b> e aparece no romaneio. O aviso começa ${'30'} dias antes (ajuste em cada documento).</p>
+      <div class="painel oc-painel"><div class="edi-rolagem">${linhas.length ? `<table class="edi-tabela"><thead><tr><th>Veículo / motorista</th><th>Documentos</th><th></th></tr></thead><tbody>
+        ${linhas.map((l) => `<tr><td style="white-space:nowrap;">${l.dono_tipo === 'veiculo' ? '🚛' : '👤'} <b>${esc(l.nome)}</b><br><small style="color:var(--texto-fraco);">${l.dono_tipo === 'veiculo' ? esc(l.tipo === 'reboque' ? 'reboque' : 'tração') + (l.descricao ? ` · ${esc(l.descricao)}` : '') : 'motorista'}</small></td>
+          <td><div class="fv-docs">${l.documentos.map((d) => chip(l, d)).join('')}${l.faltam.map((f) => `<button class="fv-doc falta" data-doc-novo="${l.dono_tipo}|${l.id}|${f.tipo}"><b>${esc(f.nome)}</b><span>não cadastrado</span></button>`).join('')}</div></td>
+          <td><div class="oc-linha-acoes"><button class="primario" data-doc-novo="${l.dono_tipo}|${l.id}|">＋ Documento</button></div></td></tr>`).join('')}</tbody></table>`
+    : '<div class="kanban-vazio">Nada pendente: todos os documentos obrigatórios estão em dia. 👏</div>'}</div></div>`;
+    document.querySelectorAll('[data-doc-filtro]').forEach((b) => b.addEventListener('click', () => { docs.filtro = b.dataset.docFiltro; telaDocumentos().catch(erro); }));
+    const abrir = (chave) => { const [tipoDono, id, tipo] = chave.split('|'); const l = q.linhas.find((x) => x.dono_tipo === tipoDono && x.id === Number(id)); formDocumento(q, l, l.documentos.find((d) => d.tipo === tipo) || { tipo }); };
+    document.querySelectorAll('[data-doc-editar]').forEach((b) => b.addEventListener('click', () => abrir(b.dataset.docEditar)));
+    document.querySelectorAll('[data-doc-novo]').forEach((b) => b.addEventListener('click', () => abrir(b.dataset.docNovo)));
+  }
+  function formDocumento(q, l, d) {
+    const tipos = q.tipos[l.dono_tipo];
+    $('fvModalConteudo').innerHTML = `${titulo(`📄 ${esc(l.nome)} — documento`)}
+      <div class="oc-form" style="margin-top:12px;">
+        <div class="campo"><label for="dcTipo">Documento</label><select id="dcTipo" class="cte-entrada">${Object.entries(tipos).map(([k, t]) => `<option value="${k}" ${k === d.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+        ${campo('dcNumero', 'Número', d.numero || '')}
+        ${campo('dcEmissao', 'Emissão', d.emissao || '', 'type="date"')}
+        ${campo('dcValidade', 'Validade', d.validade || '', 'type="date"')}
+        ${campo('dcAviso', 'Avisar quantos dias antes', d.aviso_dias || 30, 'type="number" min="1" max="180"')}
+        ${campo('dcObs', 'Observação', d.observacao || '', 'maxlength="300"', 'inteiro')}
+      </div>
+      <div style="display:flex; justify-content:space-between; gap:10px; margin-top:10px;">${d.id ? `<button class="btn btn-secundario" id="dcExcluir" style="width:auto; color:var(--vermelho);">Apagar</button>` : '<span></span>'}
+        <div style="display:flex; gap:10px;"><button class="btn btn-secundario" data-fv-fechar style="width:auto;">Fechar</button><button class="btn btn-primario" id="dcSalvar" style="width:auto;">Salvar</button></div></div>`;
+    modal.classList.remove('oculto');
+    $('dcSalvar').addEventListener('click', async () => {
+      try {
+        await enviar('/documentos', 'POST', { dono_tipo: l.dono_tipo, dono_id: l.id, tipo: $('dcTipo').value, numero: $('dcNumero').value, emissao: $('dcEmissao').value, validade: $('dcValidade').value, aviso_dias: $('dcAviso').value, observacao: $('dcObs').value });
+        fechar(); mostrarAlerta('Documento salvo.', { tipo: 'sucesso' }); telaDocumentos().catch(erro);
+      } catch (err) { erro(err); }
+    });
+    $('dcExcluir')?.addEventListener('click', async () => {
+      if (!await confirmar('Apagar este documento?', { tipo: 'perigo', textoOk: 'Apagar' })) return;
+      try { await enviar(`/documentos/${d.id}`, 'DELETE'); fechar(); telaDocumentos().catch(erro); } catch (err) { erro(err); }
+    });
+  }
+
+  // ======================= Pneus =======================
+  const pn = { veiculo: '', status: '' };
+  const corSulco = (p) => (p?.alerta === 'ilegal' ? 'cancelado' : p?.alerta === 'baixo' ? 'ocorrencia' : 'entregue');
+  async function telaPneus() {
+    if (!pn.veiculo) pn.veiculo = String(cat.veiculos.find((v) => v.ativo)?.id || '');
+    const [lista, mapa] = await Promise.all([api(`/pneus?${new URLSearchParams({ status: pn.status })}`), pn.veiculo ? api(`/veiculos/${pn.veiculo}/pneus`) : null]);
+    const caixa = (l) => `<button class="fv-pneu ${l.pneu ? corSulco(l.pneu) : 'vazio'}" data-pos="${l.posicao}" title="${esc(l.nome)}">
+      <small>${esc(l.posicao)}</small>${l.pneu ? `<b>${esc(l.pneu.numero_fogo)}</b><span>${l.pneu.sulco_mm != null ? `${n(l.pneu.sulco_mm, 1)} mm` : 'sem medição'}</span>` : '<span>vazio</span>'}</button>`;
+    const c = lista.contagens;
+    $('fvConteudo').innerHTML = `<div class="oc-barra" style="flex-wrap:wrap; gap:8px; align-items:center;">
+        <select id="pnVeic" class="cte-entrada" style="width:auto;">${opcoesVeiculos(pn.veiculo)}</select>
+        ${mapa ? `<label style="font-size:12.5px;">Eixos <input id="pnEixos" type="number" min="1" max="9" value="${mapa.veiculo.eixos}" class="cte-entrada" style="width:64px; padding:4px 6px;" /></label>` : ''}
+        <span style="flex:1;"></span><button class="btn btn-primario" id="pnNovo" style="width:auto;">＋ Pneu</button></div>
+      ${mapa ? `<div class="painel" style="padding:14px; margin:10px 0;"><h4 style="margin:0 0 10px;">🚛 ${esc(mapa.veiculo.placa)} ${mapa.veiculo.km_atual != null ? `<small style="color:var(--texto-fraco); font-weight:400;">· km ${n(mapa.veiculo.km_atual)}</small>` : ''}</h4>
+        <div class="fv-eixos">${mapa.eixos.map((e) => `<div class="fv-eixo"><span class="fv-eixo-n">${e.eixo}º eixo</span><div class="fv-lado">${e.lados.slice(0, e.lados.length / 2).map(caixa).join('')}</div><div class="fv-barra"></div><div class="fv-lado">${e.lados.slice(e.lados.length / 2).map(caixa).join('')}</div></div>`).join('')}
+          <div class="fv-eixo"><span class="fv-eixo-n">Estepe</span><div class="fv-lado">${mapa.estepe.map(caixa).join('')}</div></div></div>
+        <p class="edi-dica" style="margin:8px 0 0;">Clique numa posição vazia para montar um pneu do estoque; num pneu, para rodízio, medir o sulco ou desmontar. Verde: sulco bom · amarelo: até ${n(lista.sulco_alerta, 0)} mm · vermelho: abaixo de ${n(lista.sulco_minimo, 1)} mm (ilegal).</p></div>` : ''}
+      <div class="oc-filtros" style="margin:6px 0 10px;">${[['', 'Em uso e estoque'], ['montado', `Montados (${c.montado})`], ['estoque', `Estoque (${c.estoque})`], ['recapagem', `Na recapagem (${c.recapagem})`], ['sucata', `Sucata (${c.sucata})`], ['todos', 'Todos']]
+    .map(([k, t]) => `<button class="oc-filtro ${pn.status === k ? 'ativo' : ''}" data-pn-filtro="${k}">${t}</button>`).join('')}</div>
+      <div class="painel oc-painel"><div class="edi-rolagem">${lista.pneus.length ? `<table class="edi-tabela"><thead><tr><th>Fogo</th><th>Pneu</th><th class="n">Vida</th><th>Onde está</th><th class="n">Sulco</th><th class="n">Km rodados</th><th class="n">Custo</th><th class="n">R$/km</th><th></th></tr></thead><tbody>
+        ${lista.pneus.map((p) => `<tr><td><b>${esc(p.numero_fogo)}</b></td><td>${esc([p.marca, p.modelo].filter(Boolean).join(' '))}<br><small style="color:var(--texto-fraco);">${esc(p.medida || '')}${p.dot ? ` · DOT ${esc(p.dot)}` : ''}</small></td>
+          <td class="n">${p.vida ? `${p.vida}ª recapagem` : 'novo'}</td>
+          <td>${p.status === 'montado' ? `<b>${esc(p.placa)}</b> · ${esc(p.posicao_texto)}` : `<span class="oc-sit ${{ estoque: 'pendente', recapagem: 'em_transito', sucata: 'cancelado' }[p.status]}">${esc(p.status_texto)}</span>`}</td>
+          <td class="n">${p.sulco_mm != null ? `<span class="oc-sit ${corSulco(p)}">${n(p.sulco_mm, 1)} mm</span>` : '—'}</td><td class="n">${n(p.km_total)}</td><td class="n">${brl(p.custo_total)}</td><td class="n">${p.custo_km != null ? n(p.custo_km, 4) : '—'}</td>
+          <td><div class="oc-linha-acoes">${{ estoque: `<button class="primario" data-pn="montar|${p.id}">Montar</button><button data-pn="recapagem|${p.id}">Recapar</button><button data-pn="sucata|${p.id}">Sucata</button>`,
+    montado: `<button class="primario" data-pn="acoes|${p.id}">Ações</button>`, recapagem: `<button class="primario" data-pn="retorno|${p.id}">Voltou da recapagem</button>`, sucata: '' }[p.status]}<button data-pn="historico|${p.id}">Histórico</button></div></td></tr>`).join('')}</tbody></table>`
+    : '<div class="kanban-vazio">Nenhum pneu aqui. Cadastre os pneus com o número de fogo (a marcação a fogo na lateral).</div>'}</div></div>`;
+    $('pnVeic').addEventListener('change', () => { pn.veiculo = $('pnVeic').value; telaPneus().catch(erro); });
+    $('pnEixos')?.addEventListener('change', async (e) => { try { await enviar(`/veiculos/${pn.veiculo}/eixos`, 'PUT', { eixos: e.target.value }); telaPneus().catch(erro); } catch (err) { erro(err); } });
+    $('pnNovo').addEventListener('click', () => formPneu());
+    document.querySelectorAll('[data-pn-filtro]').forEach((b) => b.addEventListener('click', () => { pn.status = b.dataset.pnFiltro; telaPneus().catch(erro); }));
+    const achar = (id) => lista.pneus.find((p) => p.id === Number(id));
+    document.querySelectorAll('[data-pn]').forEach((b) => b.addEventListener('click', () => { const [acao, id] = b.dataset.pn.split('|'); acaoPneu(acao, achar(id) || { id: Number(id) }, mapa).catch(erro); }));
+    document.querySelectorAll('.fv-pneu').forEach((b) => b.addEventListener('click', () => {
+      const pos = b.dataset.pos; const lado = [...mapa.eixos.flatMap((e) => e.lados), ...mapa.estepe].find((l) => l.posicao === pos);
+      if (lado.pneu) acaoPneu('acoes', lado.pneu, mapa).catch(erro); else acaoPneu('montar_aqui', { posicao: pos }, mapa, lista).catch(erro);
+    }));
+  }
+  function formPneu() {
+    $('fvModalConteudo').innerHTML = `${titulo('🛞 Novo pneu')}<div class="oc-form" style="margin-top:12px;">
+      ${campo('pnFogo', 'Número de fogo', '', 'maxlength="20" style="text-transform:uppercase;"')}${campo('pnMarca', 'Marca', '')}${campo('pnModelo', 'Modelo', '')}${campo('pnMedida', 'Medida', '', 'placeholder="295/80 R22.5"')}
+      ${campo('pnDot', 'DOT (semana/ano)', '', 'maxlength="10" placeholder="2526"')}${campo('pnVida', 'Vida', '0', 'type="number" min="0" max="9" title="0 = novo; 1 = já recapado uma vez..."')}
+      ${campo('pnValor', 'Valor de compra (R$)', '')}${campo('pnData', 'Data da compra', hoje(), 'type="date"')}${campo('pnForn', 'Fornecedor', '')}${campo('pnSulco', 'Sulco (mm)', '', 'placeholder="16"')}</div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-fv-fechar style="width:auto;">Fechar</button><button class="btn btn-primario" id="pnSalvar" style="width:auto;">Cadastrar</button></div>`;
+    modal.classList.remove('oculto');
+    $('pnSalvar').addEventListener('click', async () => {
+      try {
+        await enviar('/pneus', 'POST', { numero_fogo: $('pnFogo').value, marca: $('pnMarca').value, modelo: $('pnModelo').value, medida: $('pnMedida').value, dot: $('pnDot').value, vida: $('pnVida').value,
+          valor_compra: $('pnValor').value, data_compra: $('pnData').value, fornecedor: $('pnForn').value, sulco_mm: $('pnSulco').value });
+        fechar(); mostrarAlerta('Pneu cadastrado.', { tipo: 'sucesso' }); pn.status = 'estoque'; telaPneus().catch(erro);
+      } catch (err) { erro(err); }
+    });
+  }
+  async function acaoPneu(acao, p, mapa, lista) {
+    const kmVeic = mapa?.veiculo?.km_atual ?? '';
+    const formulario = (tituloTxt, campos, botao, fn) => {
+      $('fvModalConteudo').innerHTML = `${titulo(tituloTxt)}<div class="oc-form" style="margin-top:12px;">${campos}</div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-fv-fechar style="width:auto;">Fechar</button><button class="btn btn-primario" id="pnOk" style="width:auto;">${botao}</button></div>`;
+      modal.classList.remove('oculto');
+      $('pnOk').addEventListener('click', async (e) => { e.currentTarget.disabled = true; try { const r = await fn(); fechar(); mostrarAlerta(r || 'Feito.', { tipo: 'sucesso' }); telaPneus().catch(erro); } catch (err) { erro(err); e.currentTarget.disabled = false; } });
+    };
+    const posicoesDe = (m) => [...m.eixos.flatMap((e) => e.lados), ...m.estepe];
+    if (acao === 'historico') {
+      const h = await api(`/pneus/${p.id}`);
+      $('fvModalConteudo').innerHTML = `${titulo(`🛞 Pneu ${esc(h.pneu.numero_fogo)}`)}<p style="font-size:13px;">${esc([h.pneu.marca, h.pneu.modelo, h.pneu.medida].filter(Boolean).join(' · '))} · ${h.pneu.vida ? `${h.pneu.vida}ª recapagem` : 'novo'} · ${n(h.pneu.km_total)} km · custo ${brl(h.pneu.custo_total)}${h.pneu.custo_km != null ? ` (${n(h.pneu.custo_km, 4)} R$/km)` : ''}</p>
+        <table class="edi-tabela"><thead><tr><th>Data</th><th>Movimento</th><th>Onde</th><th class="n">Km do veículo</th><th class="n">Km rodados</th><th class="n">Sulco</th><th class="n">Valor</th><th>Por</th></tr></thead><tbody>
+        ${h.movimentos.map((m) => `<tr><td>${dia(m.data)}</td><td>${esc({ cadastro: 'Cadastro', montagem: 'Montagem', desmontagem: 'Desmontagem', recapagem: 'Foi para recapagem', retorno: 'Voltou da recapagem', sucata: 'Sucata', medicao: 'Medição de sulco' }[m.tipo] || m.tipo)}${m.observacao ? `<br><small>${esc(m.observacao)}</small>` : ''}</td>
+          <td>${m.placa ? `${esc(m.placa)} · ${esc(m.posicao_texto)}` : esc(m.fornecedor || '')}</td><td class="n">${m.km_veiculo != null ? n(m.km_veiculo) : ''}</td><td class="n">${m.km_rodados != null ? n(m.km_rodados) : ''}</td>
+          <td class="n">${m.sulco_mm != null ? `${n(m.sulco_mm, 1)} mm` : ''}</td><td class="n">${m.valor != null ? brl(m.valor) : ''}</td><td><small>${esc(m.usuario_nome || '')}</small></td></tr>`).join('')}</tbody></table>`;
+      modal.classList.remove('oculto');
+      return;
+    }
+    if (acao === 'montar_aqui') {
+      const estoque = (await api('/pneus?status=estoque')).pneus;
+      if (!estoque.length) { mostrarAlerta('Não há pneu no estoque. Cadastre o pneu primeiro (＋ Pneu).', { tipo: 'aviso' }); return; }
+      formulario(`🛞 Montar no ${esc(mapa.veiculo.placa)} — ${esc(p.posicao)}`, `<div class="campo inteiro"><label for="pnEsc">Pneu do estoque</label><select id="pnEsc" class="cte-entrada">${estoque.map((x) => `<option value="${x.id}">${esc(x.numero_fogo)} · ${esc([x.marca, x.medida].filter(Boolean).join(' '))} · ${x.sulco_mm != null ? `${n(x.sulco_mm, 1)} mm` : ''}</option>`).join('')}</select></div>
+        ${campo('pnKm', 'Km do veículo agora', kmVeic)}${campo('pnDataM', 'Data', hoje(), 'type="date"')}`, 'Montar',
+      async () => { await enviar(`/pneus/${$('pnEsc').value}/montar`, 'POST', { veiculo_id: mapa.veiculo.id, posicao: p.posicao, km: $('pnKm').value, data: $('pnDataM').value }); return 'Pneu montado.'; });
+      return;
+    }
+    if (acao === 'montar') {
+      formulario(`🛞 Montar o pneu ${esc(p.numero_fogo)}`, `<div class="campo"><label for="pnV">Veículo</label><select id="pnV" class="cte-entrada">${opcoesVeiculos(pn.veiculo)}</select></div>
+        <div class="campo"><label for="pnP">Posição</label><select id="pnP" class="cte-entrada"></select></div>${campo('pnKm', 'Km do veículo agora', '')}${campo('pnDataM', 'Data', hoje(), 'type="date"')}`, 'Montar',
+      async () => { await enviar(`/pneus/${p.id}/montar`, 'POST', { veiculo_id: $('pnV').value, posicao: $('pnP').value, km: $('pnKm').value, data: $('pnDataM').value }); return 'Pneu montado.'; });
+      const preencher = async () => { const m = await api(`/veiculos/${$('pnV').value}/pneus`); $('pnP').innerHTML = posicoesDe(m).map((l) => `<option value="${l.posicao}" ${l.pneu ? 'disabled' : ''}>${esc(l.nome)}${l.pneu ? ` (ocupada: ${esc(l.pneu.numero_fogo)})` : ''}</option>`).join(''); $('pnKm').value = m.veiculo.km_atual ?? ''; };
+      $('pnV').addEventListener('change', () => preencher().catch(erro)); await preencher();
+      return;
+    }
+    if (acao === 'acoes') {
+      const m = mapa && mapa.veiculo.id === p.veiculo_id ? mapa : await api(`/veiculos/${p.veiculo_id}/pneus`);
+      formulario(`🛞 Pneu ${esc(p.numero_fogo)} — ${esc(m.veiculo.placa)} ${esc(p.posicao_texto || p.posicao)}`, `
+        <div class="campo"><label for="pnAcao">O que fazer</label><select id="pnAcao" class="cte-entrada"><option value="rodizio">Rodízio (trocar de posição)</option><option value="medir">Medir o sulco</option><option value="desmontar">Desmontar para o estoque</option><option value="recapagem">Desmontar e mandar recapar</option><option value="sucata">Desmontar e mandar para a sucata</option></select></div>
+        <div class="campo pn-rod"><label for="pnDest">Nova posição</label><select id="pnDest" class="cte-entrada">${posicoesDe(m).filter((l) => l.posicao !== p.posicao).map((l) => `<option value="${l.posicao}">${esc(l.nome)}${l.pneu ? ` (troca com ${esc(l.pneu.numero_fogo)})` : ''}</option>`).join('')}</select></div>
+        ${campo('pnKm', 'Km do veículo agora', m.veiculo.km_atual ?? '', '', 'pn-km')}${campo('pnSul', 'Sulco medido (mm)', '', 'placeholder="ex.: 7,5"', 'pn-sul')}${campo('pnObs', 'Motivo / recapadora', '', '', 'pn-obs')}${campo('pnDataA', 'Data', hoje(), 'type="date"')}`, 'Confirmar',
+      async () => {
+        const a = $('pnAcao').value;
+        const corpo = { km: $('pnKm').value, sulco_mm: $('pnSul').value, observacao: $('pnObs').value, fornecedor: $('pnObs').value, data: $('pnDataA').value };
+        if (a === 'rodizio') { const r = await enviar(`/pneus/${p.id}/rodizio`, 'POST', { ...corpo, posicao: $('pnDest').value }); return `Rodízio feito${r.trocou_com ? `: trocou de lugar com o ${r.trocou_com}` : ''}.`; }
+        if (a === 'medir') { await enviar(`/pneus/${p.id}/medir`, 'POST', corpo); return 'Sulco registrado.'; }
+        if (a === 'desmontar') { const r = await enviar(`/pneus/${p.id}/desmontar`, 'POST', { ...corpo, destino: 'estoque' }); return `Desmontado: rodou ${n(r.rodados)} km nesta montagem.`; }
+        if (a === 'recapagem') { await enviar(`/pneus/${p.id}/recapagem`, 'POST', corpo); return 'Pneu enviado para a recapagem.'; }
+        await enviar(`/pneus/${p.id}/sucata`, 'POST', corpo); return 'Pneu na sucata.';
+      });
+      const mostrar = () => { const a = $('pnAcao').value; document.querySelector('.pn-rod').classList.toggle('oculto', a !== 'rodizio'); document.querySelector('.pn-sul').classList.toggle('oculto', a === 'rodizio');
+        document.querySelector('.pn-obs').classList.toggle('oculto', !['sucata', 'recapagem'].includes(a)); document.querySelector('.pn-km').classList.toggle('oculto', a === 'medir'); };
+      $('pnAcao').addEventListener('change', mostrar); mostrar();
+      return;
+    }
+    if (acao === 'recapagem') { formulario(`🛞 Mandar recapar o ${esc(p.numero_fogo)}`, `${campo('pnObs', 'Recapadora', '')}${campo('pnDataA', 'Data', hoje(), 'type="date"')}`, 'Enviar', async () => { await enviar(`/pneus/${p.id}/recapagem`, 'POST', { fornecedor: $('pnObs').value, data: $('pnDataA').value }); return 'Pneu na recapagem.'; }); return; }
+    if (acao === 'sucata') { formulario(`🛞 Sucata — ${esc(p.numero_fogo)}`, `${campo('pnObs', 'Motivo', '', 'placeholder="corte lateral, desgaste irregular..."', 'inteiro')}${campo('pnDataA', 'Data', hoje(), 'type="date"')}`, 'Mandar para a sucata', async () => { await enviar(`/pneus/${p.id}/sucata`, 'POST', { observacao: $('pnObs').value, data: $('pnDataA').value }); return 'Pneu na sucata.'; }); return; }
+    if (acao === 'retorno') {
+      formulario(`🛞 ${esc(p.numero_fogo)} voltou da recapagem`, `${campo('pnValor', 'Valor da recapagem (R$)', '')}${campo('pnObs', 'Recapadora', '')}${campo('pnSul', 'Sulco novo (mm)', '')}${campo('pnDataA', 'Data', hoje(), 'type="date"')}
+        ${campo('pnVenc', 'Vencimento (para gerar a conta a pagar — opcional)', '', 'type="date"')}${campo('pnDoc', 'Nota / documento', '')}`, 'Registrar',
+      async () => { const r = await enviar(`/pneus/${p.id}/retorno`, 'POST', { valor: $('pnValor').value, fornecedor: $('pnObs').value, sulco_mm: $('pnSul').value, data: $('pnDataA').value, vencimento: $('pnVenc').value, documento: $('pnDoc').value }); return `Pneu de volta ao estoque (${r.vida}ª vida)${r.conta ? ' e conta a pagar lançada' : ''}.`; });
+    }
+  }
+
+  // ======================= Jornada do motorista =======================
+  const jo = { motorista: '' };
+  const hhmm = (m) => `${Math.floor((m || 0) / 60)}h${String(Math.round((m || 0) % 60)).padStart(2, '0')}`;
+  const hora = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+  const agoraLocal = () => { const d = new Date(); return `${hoje()}T${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+  async function telaJornada() {
+    const r = await api(`/jornadas?${new URLSearchParams({ de: estado.de, ate: estado.ate, motorista: jo.motorista })}`);
+    $('fvConteudo').innerHTML = `${barraPeriodo(`<select id="joMot" class="cte-entrada" style="width:auto;"><option value="">Todos os motoristas</option>${r.motoristas.map((m) => `<option value="${esc(m.chave)}" ${jo.motorista === m.chave ? 'selected' : ''}>${esc(m.nome)}</option>`).join('')}</select>
+        <span style="flex:1;"></span><button class="btn btn-secundario" id="joEspelho" style="width:auto;">🖨 Espelho do mês</button><button class="btn btn-primario" id="joNova" style="width:auto;">＋ Lançar marcação</button>`)}
+      <p class="edi-dica" style="margin:8px 0;">O motorista marca no app (o mesmo do romaneio): dirigindo, carga/descarga, espera, pausa, refeição e o fim. Lei 13.103: jornada de 8h + até 2h extras, no máximo 5h30 dirigindo sem 30 min de descanso, 1h de refeição e 11h de descanso entre jornadas. O tempo de espera não conta como jornada.</p>
+      <div class="painel oc-painel"><div class="edi-rolagem">${r.jornadas.length ? `<table class="edi-tabela"><thead><tr><th>Motorista</th><th>Início</th><th>Fim</th><th class="n">Direção</th><th class="n">Trabalho</th><th class="n">Espera</th><th class="n">Refeição</th><th class="n">Jornada</th><th class="n">Extras</th><th>Alertas</th><th></th></tr></thead><tbody>
+        ${r.jornadas.map((j) => { const c = j.calculo; return `<tr><td><b>${esc(j.motorista_nome)}</b>${j.placa ? `<br><small style="color:var(--texto-fraco);">${esc(j.placa)}</small>` : ''}</td><td>${hora(j.inicio)}</td>
+          <td>${j.status === 'aberta' ? `<span class="oc-sit em_transito">Aberta</span><br><small>${esc(r.tipos[c.estado] || '')}</small>` : hora(j.fim)}</td>
+          <td class="n">${hhmm(c.totais.direcao)}</td><td class="n">${hhmm(c.totais.trabalho)}</td><td class="n">${hhmm(c.totais.espera)}</td><td class="n">${hhmm(c.totais.refeicao)}</td><td class="n"><b>${hhmm(c.jornada)}</b></td><td class="n">${c.extras ? hhmm(c.extras) : '—'}</td>
+          <td>${c.alertas.map((a) => `<small style="display:block; color:#dc2626;">⚠ ${esc(a.texto)}</small>`).join('') || '<small style="color:var(--verde);">ok</small>'}</td>
+          <td><div class="oc-linha-acoes"><button class="primario" data-jo-ver="${j.id}">Ver</button></div></td></tr>`; }).join('')}</tbody></table>`
+    : '<div class="kanban-vazio">Nenhuma jornada no período. O motorista marca pelo app do romaneio, ou lance aqui em "＋ Lançar marcação".</div>'}</div></div>`;
+    ligarPeriodo(telaJornada);
+    $('joMot').addEventListener('change', () => { jo.motorista = $('joMot').value; telaJornada().catch(erro); });
+    $('joNova').addEventListener('click', () => formMarcacao(null, r.tipos));
+    $('joEspelho').addEventListener('click', () => {
+      if (!jo.motorista) { mostrarAlerta('Escolha o motorista no filtro.', { tipo: 'aviso' }); return; }
+      const mes = (estado.de || hoje()).slice(0, 7);
+      window.open(`/api/frota/jornadas/espelho?motorista=${encodeURIComponent(jo.motorista)}&mes=${mes}&token=${encodeURIComponent(token)}`, '_blank');
+    });
+    document.querySelectorAll('[data-jo-ver]').forEach((b) => b.addEventListener('click', () => verJornada(Number(b.dataset.joVer)).catch(erro)));
+  }
+  function formMarcacao(j, tipos) {
+    $('fvModalConteudo').innerHTML = `${titulo(j ? `⏱ Incluir marcação — ${esc(j.motorista_nome)}` : '⏱ Lançar marcação de jornada')}<div class="oc-form" style="margin-top:12px;">
+      ${j ? '' : `<div class="campo"><label for="joM">Motorista</label><select id="joM" class="cte-entrada"><option value="">— escolha —</option>${cat.motoristas.map((m) => `<option value="${m.id}">${esc(m.nome)}</option>`).join('')}</select></div>`}
+      <div class="campo"><label for="joT">Marcação</label><select id="joT" class="cte-entrada">${Object.entries(tipos).map(([k, t]) => `<option value="${k}">${esc(t)}</option>`).join('')}</select></div>
+      ${campo('joEm', 'Data e hora', agoraLocal(), 'type="datetime-local"')}${campo('joObs', 'Motivo do ajuste', '', 'maxlength="300"', 'inteiro')}</div>
+      <p class="edi-dica">Marcação lançada pelo escritório fica registrada com o seu nome (o espelho mostra o que veio do app e o que foi ajustado).</p>
+      <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-fv-fechar style="width:auto;">Fechar</button><button class="btn btn-primario" id="joSalvar" style="width:auto;">Lançar</button></div>`;
+    modal.classList.remove('oculto');
+    $('joSalvar').addEventListener('click', async () => {
+      const em = new Date($('joEm').value).toISOString();
+      try {
+        if (j) await enviar(`/jornadas/${j.id}/eventos`, 'POST', { tipo: $('joT').value, em, observacao: $('joObs').value });
+        else await enviar('/jornadas', 'POST', { motorista_id: $('joM').value, tipo: $('joT').value, em, observacao: $('joObs').value });
+        if (j) await verJornada(j.id); else fechar();
+        telaJornada().catch(erro);
+      } catch (err) { erro(err); }
+    });
+  }
+  async function verJornada(id) {
+    const j = await api(`/jornadas/${id}`); const c = j.calculo;
+    $('fvModalConteudo').innerHTML = `${titulo(`⏱ ${esc(j.motorista_nome)} — ${hora(j.inicio)}`)}
+      <div class="oc-resumo" style="margin-top:10px;"><div>Jornada<b>${hhmm(c.jornada)}</b><span>extras ${hhmm(c.extras)}</span></div><div>Direção<b>${hhmm(c.totais.direcao)}</b><span>máx. contínua ${hhmm(c.direcao_continua_max)}</span></div>
+        <div>Espera<b>${hhmm(c.totais.espera)}</b><span>não conta na jornada</span></div><div>Refeição / pausas<b>${hhmm(c.totais.refeicao)}</b><span>pausas ${hhmm(c.totais.pausa)}</span></div></div>
+      ${c.alertas.length ? `<div class="cte-aviso erro" style="margin:8px 0;">${c.alertas.map((a) => `⚠ ${esc(a.texto)}`).join('<br>')}</div>` : ''}
+      <table class="edi-tabela"><thead><tr><th>Hora</th><th>Marcação</th><th>Origem</th><th></th></tr></thead><tbody>
+      ${j.eventos.map((e) => `<tr><td>${hora(e.em)}</td><td>${esc(j.tipos[e.tipo])}${e.observacao ? `<br><small>${esc(e.observacao)}</small>` : ''}</td>
+        <td><small>${e.origem === 'app' ? '📱 app' : `🖥 ${esc(e.usuario_nome || 'escritório')}`}${e.latitude != null ? ` · <a href="https://www.google.com/maps?q=${e.latitude},${e.longitude}" target="_blank" rel="noopener">📍</a>` : ''}</small></td>
+        <td><a href="#" data-jo-apagar="${e.id}" style="color:var(--vermelho);">apagar</a></td></tr>`).join('')}</tbody></table>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;"><button class="btn btn-secundario" data-fv-fechar style="width:auto;">Fechar</button><button class="btn btn-primario" id="joIncluir" style="width:auto;">＋ Incluir marcação</button></div>`;
+    modal.classList.remove('oculto');
+    $('joIncluir').addEventListener('click', () => formMarcacao(j, j.tipos));
+    document.querySelectorAll('[data-jo-apagar]').forEach((a) => a.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      if (!await confirmar('Apagar esta marcação? Fica no registro de auditoria quem apagou.', { tipo: 'perigo', textoOk: 'Apagar' })) return;
+      try { const r = await enviar(`/jornadas/eventos/${a.dataset.joApagar}`, 'DELETE'); if (r.apagou_jornada) fechar(); else await verJornada(id); telaJornada().catch(erro); } catch (err) { erro(err); }
+    }));
   }
 })();

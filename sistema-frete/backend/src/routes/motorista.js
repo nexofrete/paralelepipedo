@@ -109,4 +109,19 @@ router.post('/:codigo/coletas/:id(\\d+)', upload.single('foto'), async (req, res
   } catch (err) { erro(res, err, 'Erro ao registrar a coleta.'); }
 });
 
+// Jornada (Lei 13.103): o motorista do romaneio marca o que está fazendo (src/jornada.js).
+const jornada = require('../jornada');
+const motoristaDo = (r) => ({ cpf: r.motorista_documento, nome: r.motorista_nome });
+router.get('/:codigo/jornada', async (req, res) => {
+  try { res.json(await jornada.estado(motoristaDo(await romaneioDoCodigo(req.params.codigo)))); } catch (err) { erro(res, err, 'Erro ao ler a jornada.'); }
+});
+router.post('/:codigo/jornada', express.json(), async (req, res) => {
+  try {
+    const r = await romaneioDoCodigo(req.params.codigo);
+    const b = req.body || {};
+    await jornada.marcar(motoristaDo(r), { tipo: b.tipo, latitude: b.latitude, longitude: b.longitude, origem: 'app', usuario: `Motorista ${r.motorista_nome}`, romaneio_id: r.id, placa: r.placa });
+    res.status(201).json(await jornada.estado(motoristaDo(r)));
+  } catch (err) { erro(res, err, 'Erro ao marcar a jornada.'); }
+});
+
 module.exports = router;

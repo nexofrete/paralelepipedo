@@ -22,6 +22,7 @@
       guardar('motoristaCodigo', codigo);
       $('mtEntrar').classList.add('oculto'); $('mtRota').classList.remove('oculto');
       desenhar();
+      carregarJornada();
     } catch (err) {
       if (err.status === 404 || err.status === 410) guardar('motoristaCodigo', null);
       $('mtEntrar').classList.remove('oculto'); $('mtRota').classList.add('oculto');
@@ -152,6 +153,42 @@
     } catch { fotoReduzida = f; }
     $('mtPrevia').src = URL.createObjectURL(fotoReduzida || f); $('mtPrevia').classList.remove('oculto');
   });
+
+  // ---------- Jornada (Lei 13.103) ----------
+  const hhmm = (m) => `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, '0')}`;
+  const BOTOES = [['direcao', '🚚 Dirigindo'], ['trabalho', '📦 Carga/descarga'], ['espera', '⏳ Esperando'], ['pausa', '☕ Pausa'], ['refeicao', '🍽 Refeição']];
+  const NOME = { trabalho: 'Carga/descarga', direcao: 'Dirigindo', pausa: 'Em pausa', refeicao: 'Refeição', espera: 'Esperando' };
+  let jornadaEstado = null; let relogio = null;
+  async function carregarJornada() {
+    try { jornadaEstado = await api('/jornada'); desenharJornada(); } catch { $('mtJornada').innerHTML = ''; }
+  }
+  function desenharJornada() {
+    const j = jornadaEstado?.aberta;
+    clearInterval(relogio);
+    if (!j) {
+      $('mtJornada').innerHTML = `<b>⏱ Jornada</b><p class="mt-fraco">Marque o início do trabalho. ${jornadaEstado?.ultima ? `Última jornada terminou ${new Date(jornadaEstado.ultima.fim).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.` : ''}</p>
+        <div class="mt-jbotoes"><button data-jor="trabalho">▶ Iniciar jornada</button><button data-jor="direcao">🚚 Iniciar dirigindo</button></div>`;
+    } else {
+      const c = j.calculo;
+      const desde = Math.round((Date.now() - new Date(c.desde)) / 60000);
+      const cont = c.direcao_continua_atual;
+      $('mtJornada').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:baseline;"><b>⏱ ${esc(NOME[c.estado] || c.estado)}</b><span class="mt-fraco">há ${hhmm(desde)}</span></div>
+        <div class="mt-jnum"><div><b>${hhmm(c.jornada)}</b>jornada</div><div><b>${hhmm(c.totais.direcao)}</b>direção</div><div><b>${hhmm(cont)}</b>dirigindo sem parar</div><div><b>${hhmm(c.totais.refeicao)}</b>refeição</div></div>
+        ${c.alertas.length ? `<div class="mt-jalerta">${c.alertas.map((a) => `⚠ ${esc(a.texto)}`).join('<br>')}</div>` : cont > 300 ? '<div class="mt-jalerta">⚠ Faltam menos de 30 min para o limite de 5h30 dirigindo: programe uma pausa de 30 min.</div>' : ''}
+        <div class="mt-jbotoes">${BOTOES.filter(([t]) => t !== c.estado).map(([t, r]) => `<button data-jor="${t}">${r}</button>`).join('')}<button class="fim" data-jor="fim">⏹ Encerrar jornada</button></div>`;
+      relogio = setInterval(() => carregarJornada(), 60000);
+    }
+    $('mtJornada').querySelectorAll('[data-jor]').forEach((b) => b.addEventListener('click', async () => {
+      const tipo = b.dataset.jor;
+      if (tipo === 'fim' && !confirm('Encerrar a jornada de hoje?')) return;
+      b.disabled = true;
+      const p = await localizacao();
+      try {
+        jornadaEstado = await api('/jornada', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo, latitude: p?.latitude, longitude: p?.longitude }) });
+        desenharJornada();
+      } catch (err) { alert(err.message); b.disabled = false; }
+    }));
+  }
 
   const localizacao = () => new Promise((res) => {
     if (!navigator.geolocation) { res(null); return; }

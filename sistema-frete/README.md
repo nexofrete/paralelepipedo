@@ -222,7 +222,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 070 EDI · 080 Portal do cliente
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
-  - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas
+  - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
@@ -251,7 +251,7 @@ Em **Painel gerencial → 💹 Margem por CT-e e cliente** (mesmo período escol
 - **⬇ Planilha:** abre no Excel com a margem de cada documento.
 - **⚙ Percentuais e meta** (administrador): impostos sobre o faturamento (peça ao contador), seguro e meta de margem.
 
-## Frota: abastecimento e manutenção
+## Frota: abastecimento, manutenção, documentos, pneus e jornada
 
 Em **Operação de Transporte → 🔧 Frota** (quem emite CT-e ou vê o financeiro). Usa os veículos de **🚛 Veículos e motoristas**.
 
@@ -272,6 +272,23 @@ Em **Operação de Transporte → 🔧 Frota** (quem emite CT-e ou vê o finance
 **Plano preventivo:** cada item vence por km e/ou por tempo, o que vier primeiro, com aviso antes.
 - Exemplos: troca de óleo a cada 20.000 km ou 180 dias, licenciamento a cada 365 dias, aferição do tacógrafo a cada 2 anos.
 - "✨ Plano sugerido" cria os itens mais comuns num veículo. Ajuste pelo manual do fabricante.
+
+**📄 Documentos** (código **230**): validade dos documentos de cada veículo (CRLV/licenciamento, RNTRC, aferição do tacógrafo, seguro, CIV/CIPP, AET, vistoria) e de cada motorista (CNH, exame toxicológico, MOPP, exame médico, cursos).
+- Situação: vencido (vermelho), vencendo dentro do aviso (amarelo, padrão 30 dias, ajustável por documento) e os obrigatórios ainda não cadastrados (tracejado). A tela Hoje avisa vencidos e vencendo.
+- Documento vencido do veículo ou do motorista (CRLV, RNTRC, tacógrafo, CIV, CNH, toxicológico, MOPP) **barra a transmissão do MDF-e** e aparece em vermelho no romaneio.
+- A CNH segue sincronizada com o cadastro do motorista (a validade que já existia virou documento).
+
+**🛞 Pneus** (código **240**): cada pneu pelo **número de fogo**, com marca, medida, DOT, vida (recapagens), valor e sulco.
+- **Mapa do veículo** por eixo (1º eixo simples, os demais duplos; reboque todo duplo; estepes) — ajuste o número de eixos. Clique na posição vazia para montar, no pneu para rodízio, medir sulco, desmontar, recapar ou sucata.
+- **Rodízio** troca os dois pneus quando a posição de destino está ocupada. Montagem e desmontagem pedem o km do veículo: os km rodados de cada montagem somam no pneu.
+- **Recapagem**: na volta, o valor soma no custo do pneu (com vencimento, vira conta a pagar na categoria Pneus) e o pneu ganha uma vida.
+- **Custo por km** = (compra + recapagens) ÷ km rodados. Sulco até 3 mm em amarelo e abaixo de 1,6 mm (limite legal) em vermelho; a tela Hoje avisa os montados com sulco baixo. Histórico de cada pneu com todos os movimentos.
+
+**⏱ Jornada** (código **250**), pela Lei 13.103/2015:
+- O motorista marca no **app do romaneio**: Dirigindo, Carga/descarga, Esperando, Pausa, Refeição e Encerrar (com a hora do servidor e a localização). O app mostra jornada, direção, direção contínua e refeição, e avisa perto das 5h30 dirigindo.
+- O sistema soma direção, trabalho, espera (não conta na jornada), refeição e pausas, calcula as **horas extras** (acima de 8h) e avisa: direção contínua acima de 5h30 sem 30 min de descanso (o descanso pode ser fracionado), jornada acima de 10h, refeição menor que 1h em jornada acima de 6h, menos de 11h entre jornadas e jornada esquecida aberta.
+- O escritório pode lançar a jornada de quem não usa o app e incluir/apagar marcações (fica o nome de quem ajustou). **Espelho do mês** por motorista para imprimir e assinar. A tela Hoje avisa jornadas abertas com alerta.
+- O motorista é identificado pelo CPF do romaneio (campo documento); sem CPF, pelo nome.
 
 **Custos e alertas:** por veículo e no período, mostra km rodados, litros, média km/l, combustível, manutenção e **custo por km**. Também lista o que está vencido ou vencendo no plano, os veículos na oficina, as manutenções agendadas para a semana, o consumo alto e as CNH vencendo.
 

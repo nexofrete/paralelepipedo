@@ -1657,3 +1657,22 @@ body.tem-aviso .btn-recolher-menu { top: 116px; }
 /* Módulos da empresa (js/modulos.js): some o que a empresa não usa. */
 html[data-modulos="transportadora"] [data-modulo="embarcador"],
 html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !important; }
+
+/* Frota: documentos e mapa de pneus */
+.fv-docs { display: flex; flex-wrap: wrap; gap: 6px; }
+.fv-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--borda); background: var(--bg-elevado); cursor: pointer; font-size: 11.5px; color: var(--texto); text-align: left; }
+.fv-doc b { font-size: 12px; } .fv-doc span { color: var(--texto-fraco); }
+.fv-doc.cancelado { border-color: #ef4444; background: rgba(239,68,68,0.1); } .fv-doc.cancelado span { color: #ef4444; }
+.fv-doc.ocorrencia { border-color: #f59e0b; background: rgba(245,158,11,0.1); } .fv-doc.ocorrencia span { color: #d97706; }
+.fv-doc.entregue { border-color: rgba(34,197,94,0.5); }
+.fv-doc.falta, .fv-doc.pendente { border-style: dashed; opacity: .85; }
+.fv-eixos { display: flex; flex-direction: column; gap: 10px; }
+.fv-eixo { display: flex; align-items: center; gap: 10px; }
+.fv-eixo-n { width: 62px; font-size: 11.5px; color: var(--texto-fraco); }
+.fv-lado { display: flex; gap: 6px; }
+.fv-barra { width: 90px; height: 6px; border-radius: 3px; background: var(--borda); }
+.fv-pneu { width: 86px; min-height: 58px; padding: 4px; border-radius: 9px; border: 2px solid var(--borda); background: var(--bg-elevado); color: var(--texto); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; }
+.fv-pneu small { color: var(--texto-fraco); font-size: 10px; } .fv-pneu b { font-size: 13px; } .fv-pneu span { font-size: 10.5px; color: var(--texto-fraco); }
+.fv-pneu.vazio { border-style: dashed; opacity: .7; }
+.fv-pneu.entregue { border-color: #22c55e; } .fv-pneu.ocorrencia { border-color: #f59e0b; background: rgba(245,158,11,0.1); } .fv-pneu.cancelado { border-color: #ef4444; background: rgba(239,68,68,0.12); }
+@media (max-width: 700px) { .fv-pneu { width: 64px; } .fv-barra { width: 30px; } .fv-eixo-n { width: 44px; } }

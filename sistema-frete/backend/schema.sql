@@ -2669,3 +2669,38 @@ CREATE TABLE IF NOT EXISTS parceiro_lancamentos (
 );
 CREATE INDEX IF NOT EXISTS idx_parceiro_lanc ON parceiro_lancamentos (parceiro_id, status, data);
 CREATE INDEX IF NOT EXISTS idx_parceiro_lanc_cte ON parceiro_lancamentos (cte_id);
+
+-- SAC com protocolo: chamados do cliente (portal, e-mail, WhatsApp, telefone) com prazo e histórico.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS sac_config JSONB;
+CREATE TABLE IF NOT EXISTS sac_chamados (
+  id SERIAL PRIMARY KEY,
+  protocolo VARCHAR(20) NOT NULL UNIQUE,         -- AAAAMMDD-NNNN
+  origem VARCHAR(10) NOT NULL DEFAULT 'interno', -- portal | email | whatsapp | telefone | interno
+  assunto VARCHAR(16) NOT NULL DEFAULT 'outros',
+  prioridade VARCHAR(8) NOT NULL DEFAULT 'normal',  -- baixa | normal | alta | urgente
+  status VARCHAR(12) NOT NULL DEFAULT 'aberto',     -- aberto | em_andamento | aguardando | resolvido | cancelado
+  titulo VARCHAR(200) NOT NULL,
+  cliente_doc VARCHAR(20), cliente_nome VARCHAR(200),
+  contato_nome VARCHAR(120), contato_email VARCHAR(250), contato_fone VARCHAR(30),
+  cte_id INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL, nf VARCHAR(20),
+  responsavel_id INTEGER, responsavel_nome VARCHAR(150),
+  portal_acesso_id INTEGER,
+  prazo_resposta TIMESTAMPTZ, prazo_solucao TIMESTAMPTZ,
+  respondido_em TIMESTAMPTZ, resolvido_em TIMESTAMPTZ,
+  avaliacao SMALLINT, avaliacao_comentario VARCHAR(500),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sac_status ON sac_chamados (status, prazo_solucao);
+CREATE INDEX IF NOT EXISTS idx_sac_cliente ON sac_chamados (cliente_doc);
+CREATE TABLE IF NOT EXISTS sac_mensagens (
+  id SERIAL PRIMARY KEY,
+  chamado_id INTEGER NOT NULL REFERENCES sac_chamados(id) ON DELETE CASCADE,
+  autor VARCHAR(8) NOT NULL,                     -- cliente | equipe | sistema
+  autor_nome VARCHAR(150),
+  texto TEXT NOT NULL,
+  interna BOOLEAN NOT NULL DEFAULT FALSE,        -- nota interna: o cliente não vê
+  canal VARCHAR(10),                             -- por onde chegou / foi avisado
+  enviado VARCHAR(200),                          -- resultado do aviso ao cliente
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sac_msg ON sac_mensagens (chamado_id, criado_em);

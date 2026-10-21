@@ -141,7 +141,7 @@
     abaAtual = aba;
     document.querySelectorAll('#ptAbas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
     document.querySelectorAll('[data-pagina]').forEach((s) => s.classList.toggle('oculto', s.dataset.pagina !== aba));
-    ({ inicio: carregarInicio, cargas: carregarCargas, financeiro: carregarFaturas, coletas: carregarColetas, cotacoes: carregarCotacoes }[aba])().catch((err) => aviso(err.message));
+    ({ inicio: carregarInicio, cargas: carregarCargas, financeiro: carregarFaturas, coletas: carregarColetas, cotacoes: carregarCotacoes, sac: carregarChamados }[aba])().catch((err) => aviso(err.message));
   }
   $('ptAbas').addEventListener('click', (e) => { const b = e.target.closest('[data-aba]'); if (b) irPara(b.dataset.aba); });
 
@@ -213,6 +213,7 @@
         <div class="pt-rodape-j">
           <a class="botao sec" href="${esc(link(`/cargas/${c.id}/dacte`))}" target="_blank" rel="noopener">${ic('doc')} DACTE</a>
           ${c.tem_xml ? `<a class="botao sec" href="${esc(link(`/cargas/${c.id}/xml`))}">${ic('baixar')} XML</a>` : ''}
+          <button class="sec" data-chamado-carga="${esc(c.cte)}">${ic('chat')} Falar sobre esta carga</button>
           <button data-fechar>Fechar</button></div>
         ${c.ve_valor ? '' : '<p class="fraco" style="font-size:12.5px; margin:8px 0 0;">Valores do frete não exibidos neste acesso (só quem paga o frete e tem acesso ao financeiro): o DACTE sai sem os valores e o XML não fica disponível.</p>'}`);
     } catch (err) { aviso(err.message); }
@@ -394,6 +395,72 @@
       } catch (err) { if ($('pkErro')) { $('pkErro').textContent = err.message; $('pkErro').classList.remove('oculto'); b.disabled = false; } else aviso(err.message); }
     });
   });
+
+  // ---------- Atendimento (SAC) ----------
+  const SIT_SAC = { aberto: 'laranja', em_andamento: 'azul', aguardando: 'laranja', resolvido: 'verde', cancelado: 'cinza' };
+  const TEXTO_SAC = { aguardando: 'Respondido · aguardando você' };
+  let assuntosSac = null;
+  async function carregarChamados() {
+    const r = await api('/sac');
+    assuntosSac = r.assuntos;
+    $('ptChamados').innerHTML = r.chamados.length ? r.chamados.map((c) => `<div class="pt-item clicavel ${SIT_SAC[c.status] || 'azul'}" data-chamado="${c.id}">
+        <div><div class="titulo">${esc(c.titulo)}</div>
+          <div class="linha">Protocolo <b>${esc(c.protocolo)}</b> · ${esc(c.assunto_nome)} · aberto ${diaHora(c.criado_em)} · ${c.mensagens} mensagem(ns)</div></div>
+        <div class="dir"><span class="sit ${SIT_SAC[c.status] || 'azul'}">${esc(TEXTO_SAC[c.status] || c.status_nome)}</span>
+          <div class="linha">${c.status === 'resolvido' && !c.avaliacao ? 'avalie o atendimento' : c.avaliacao ? '★'.repeat(c.avaliacao) : c.ultimo_autor === 'equipe' ? 'nova resposta' : `atualizado ${diaHora(c.atualizado_em)}`}</div></div>
+      </div>`).join('') : vazio('chat', 'Nenhum chamado. Para atraso, avaria, comprovante, 2ª via de boleto ou qualquer dúvida, clique em "Abrir chamado".');
+  }
+  $('ptChamados').addEventListener('click', (e) => { const b = e.target.closest('[data-chamado]'); if (b) abrirChamado(Number(b.dataset.chamado)); });
+  janela.addEventListener('click', (e) => { const b = e.target.closest('[data-chamado-carga]'); if (b) novoChamado(b.dataset.chamadoCarga); });
+  async function novoChamado(cte = '') {
+    try { if (!assuntosSac) assuntosSac = (await api('/sac')).assuntos; } catch (err) { aviso(err.message); return; }
+    abrirJanela(`<b style="font-size:17px;">${ic('chat')} Abrir chamado</b>`, `
+      <div class="pt-grade">
+        <div><label for="scAssunto">Assunto</label><select id="scAssunto">${Object.entries(assuntosSac).map(([k, t]) => `<option value="${k}" ${k === (cte ? 'atraso' : 'outros') ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+        <div><label for="scCte">Nº da NF ou do CT-e (se for sobre uma carga)</label><input id="scCte" maxlength="44" value="${esc(cte)}" /></div>
+        <div class="inteiro"><label for="scTitulo">Resumo</label><input id="scTitulo" maxlength="200" placeholder="Ex.: Carga da NF 1234 não chegou" /></div>
+        <div class="inteiro"><label for="scTexto">Conte o que aconteceu</label><textarea id="scTexto" rows="5" maxlength="10000"></textarea></div>
+      </div><p id="scErro" class="erro oculto"></p>
+      <p class="fraco" style="font-size:12.5px;">Você recebe o número do protocolo e as respostas por e-mail (${esc(eu.email)}) e aqui no portal.</p>
+      <div class="pt-rodape-j"><button class="sec" data-fechar>Cancelar</button><button id="scEnviar">Abrir chamado</button></div>`);
+    $('scEnviar').addEventListener('click', async (ev) => {
+      const b = ev.currentTarget; b.disabled = true;
+      try {
+        if (!$('scTexto').value.trim()) throw new Error('Conte o que aconteceu.');
+        const r = await api('/sac', { method: 'POST', body: JSON.stringify({ assunto: $('scAssunto').value, cte: $('scCte').value, titulo: $('scTitulo').value, texto: $('scTexto').value }) });
+        if (abaAtual === 'sac') await carregarChamados();
+        aviso(`Chamado aberto com o protocolo ${r.protocolo}. A transportadora responde até ${diaHora(r.prazo_resposta)}.`);
+      } catch (err) { $('scErro').textContent = err.message; $('scErro').classList.remove('oculto'); b.disabled = false; }
+    });
+  }
+  $('ptNovoChamado').addEventListener('click', () => novoChamado());
+  async function abrirChamado(id) {
+    let c;
+    try { c = await api(`/sac/${id}`); } catch (err) { aviso(err.message); return; }
+    const estrelas = (n) => [1, 2, 3, 4, 5].map((i) => `<button type="button" class="pt-estrela ${i <= n ? 'ativa' : ''}" data-nota="${i}" aria-label="${i} estrela(s)">★</button>`).join('');
+    abrirJanela(`<b style="font-size:17px;">Protocolo ${esc(c.protocolo)}</b> <span class="sit ${SIT_SAC[c.status] || 'azul'}">${esc(TEXTO_SAC[c.status] || c.status_nome)}</span><div class="fraco" style="font-size:12.5px;">${esc(c.titulo)} · ${esc(c.assunto_nome)}${c.cte?.numero ? ` · CT-e ${esc(c.cte.numero)}` : ''}${c.responsavel_nome ? ` · atendimento: ${esc(c.responsavel_nome)}` : ''}</div>`, `
+      <div class="pt-conversa">${c.mensagens.map((m) => `<div class="pt-msg ${m.autor === 'equipe' ? 'equipe' : ''}"><small><b>${esc(m.autor === 'equipe' ? `${m.autor_nome} (transportadora)` : m.autor_nome || 'Você')}</b> · ${diaHora(m.criado_em)}</small>${esc(m.texto)}</div>`).join('')}</div>
+      ${c.status === 'resolvido' ? `<div class="pt-avaliar"><b>${c.avaliacao ? 'Sua avaliação' : 'Como foi o atendimento?'}</b><div id="scEstrelas">${estrelas(c.avaliacao || 0)}</div>
+        <input id="scComentario" maxlength="500" placeholder="Comentário (opcional)" value="${esc(c.avaliacao_comentario || '')}" /><button id="scAvaliar" class="sec">${c.avaliacao ? 'Mudar avaliação' : 'Enviar avaliação'}</button></div>` : ''}
+      ${c.status === 'cancelado' ? '<p class="fraco">Este chamado foi cancelado. Se precisar, abra um novo.</p>' : `<div class="pt-grade" style="margin-top:12px;"><div class="inteiro"><label for="scResposta">${c.status === 'resolvido' ? 'Ainda precisa de algo? Escreva e o chamado é reaberto' : 'Escrever para a transportadora'}</label><textarea id="scResposta" rows="3" maxlength="10000"></textarea></div></div>`}
+      <p id="scErro" class="erro oculto"></p>
+      <div class="pt-rodape-j"><button class="sec" data-fechar>Fechar</button>${c.status === 'cancelado' ? '' : '<button id="scMandar">Enviar</button>'}</div>`);
+    let nota = c.avaliacao || 0;
+    $('scEstrelas')?.addEventListener('click', (e) => { const b = e.target.closest('[data-nota]'); if (!b) return; nota = Number(b.dataset.nota); $('scEstrelas').querySelectorAll('[data-nota]').forEach((x) => x.classList.toggle('ativa', Number(x.dataset.nota) <= nota)); });
+    const falha = (err) => { $('scErro').textContent = err.message; $('scErro').classList.remove('oculto'); };
+    $('scAvaliar')?.addEventListener('click', async () => {
+      try { if (!nota) throw new Error('Escolha de 1 a 5 estrelas.'); await api(`/sac/${id}/avaliar`, { method: 'POST', body: JSON.stringify({ nota, comentario: $('scComentario').value }) }); await carregarChamados(); abrirChamado(id); } catch (err) { falha(err); }
+    });
+    $('scMandar')?.addEventListener('click', async (ev) => {
+      const b = ev.currentTarget;
+      try {
+        if (!$('scResposta').value.trim()) throw new Error('Escreva a mensagem.');
+        b.disabled = true;
+        await api(`/sac/${id}/mensagem`, { method: 'POST', body: JSON.stringify({ texto: $('scResposta').value }) });
+        await carregarChamados(); abrirChamado(id);
+      } catch (err) { b.disabled = false; falha(err); }
+    });
+  }
 
   // ---------- Cotações ----------
   const SIT_COT = { solicitada: ['Em cálculo', 'azul'], aberta: ['Aguardando sua resposta', 'laranja'], enviada: ['Aguardando sua resposta', 'laranja'], aprovada: ['Aprovada', 'verde'],

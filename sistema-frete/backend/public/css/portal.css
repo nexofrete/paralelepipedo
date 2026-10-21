@@ -228,3 +228,13 @@ table.pt-tab .n { text-align: right; }
   .pt-ficha { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pt-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Atendimento (SAC) */
+.pt-conversa { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 4px; max-height: 46vh; overflow-y: auto; }
+.pt-msg { align-self: flex-start; max-width: 85%; background: var(--fundo, #f2f4f7); border: 1px solid var(--borda); border-radius: 12px; padding: 9px 12px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+.pt-msg small { display: block; font-size: 11.5px; margin-bottom: 3px; white-space: normal; }
+.pt-msg.equipe { align-self: flex-end; background: var(--azul-fraco); border-color: transparent; }
+.pt-avaliar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; padding: 12px; border: 1px solid var(--borda); border-radius: var(--raio); }
+.pt-avaliar input { flex: 1; min-width: 160px; }
+.pt-estrela { background: none !important; border: none !important; box-shadow: none !important; padding: 0 2px !important; font-size: 24px; color: var(--borda-forte); cursor: pointer; }
+.pt-estrela.ativa { color: #f59e0b; }

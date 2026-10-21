@@ -68,6 +68,13 @@ async function montar(req) {
       const pa = await require('./parceiros').pendencias();
       add('operacao', { chave: 'parceiros_atrasados', icone: '🤝', titulo: 'Entregas atrasadas com parceiros', qtd: pa.atrasados, nivel: 'perigo', detalhe: 'cobre o parceiro (redespacho)', destino: { ir: 'parceiros' } });
     } catch (e) { console.error('[hoje]', e.message); }
+    try {
+      const sc = await require('./sac').pendencias(req.usuario.id);
+      add('operacao', { chave: 'sac_atrasados', icone: '🎧', titulo: 'Chamados do SAC fora do prazo', qtd: sc.atrasados, nivel: 'perigo', detalhe: 'passaram do prazo de resposta ou de solução',
+        destino: { ir: 'sac', clicar: '[data-sac-filtro="atrasados"]' } });
+      add('operacao', { chave: 'sac_sem_responsavel', icone: '🙋', titulo: 'Chamados do SAC sem responsável', qtd: sc.sem_responsavel, nivel: 'atencao', detalhe: 'assuma ou passe para alguém da equipe',
+        destino: { ir: 'sac', clicar: '[data-sac-filtro="sem_responsavel"]' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     const col = await um(`SELECT COUNT(*) FILTER (WHERE status = 'pendente')::int AS a_programar, COUNT(*) FILTER (WHERE status = 'pendente' AND data_coleta < $1)::int AS atrasadas FROM coletas`, [h]);
     add('operacao', { chave: 'coletas', icone: '📦', titulo: 'Coletas a programar', qtd: col.a_programar, nivel: col.atrasadas ? 'perigo' : 'atencao',
       detalhe: col.atrasadas ? `${col.atrasadas} com a data já passada` : 'ponha no caminhão', destino: { ir: 'coletas', clicar: '[data-col-filtro="pendente"]' } });

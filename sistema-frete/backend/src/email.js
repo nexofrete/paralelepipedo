@@ -236,4 +236,15 @@ async function enviarFatura({ destinatarioEmail, copia, assunto, html, anexos = 
   return true;
 }
 
-module.exports = { buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega, enviarFatura };
+// SAC: aviso ao cliente/equipe; "responderPara" faz a resposta cair na caixa do SAC.
+async function enviarSac({ para, assunto, html, responderPara }) {
+  const config = await buscarConfiguracao();
+  if (!config.ativo || !config.smtp_host || !config.smtp_usuario) throw new Error('E-mail (SMTP) não está configurado.');
+  await criarTransportador(config).sendMail({
+    from: `"${config.nome_remetente || 'Nexofrete'}" <${config.email_remetente || config.smtp_usuario}>`,
+    to: para, replyTo: responderPara || undefined, subject: assunto, html,
+  });
+  return true;
+}
+
+module.exports = { enviarSac, buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega, enviarFatura };

@@ -45,7 +45,7 @@ async function salvarConta(d, id = null) {
   const valores = [String(d.nome || d.usuario || '').trim() || null, d.ativo !== false && d.ativo !== 'false',
     String(d.servidor || '').trim() || null, Number(d.porta) || 993, String(d.usuario || '').trim() || null, senha,
     String(d.pasta || '').trim() || 'INBOX', listaRemetentes(d.remetentes).join(', ') || null,
-    Math.min(Math.max(Number(d.intervalo_minutos) || 15, 5), 1440), d.finalidade === 'cte' ? 'cte' : (d.finalidade ? 'auditoria' : atual?.finalidade || 'auditoria')];
+    Math.min(Math.max(Number(d.intervalo_minutos) || 15, 5), 1440), ['cte', 'sac'].includes(d.finalidade) ? d.finalidade : (d.finalidade ? 'auditoria' : atual?.finalidade || 'auditoria')];
   const { rows } = id
     ? await pool.query(`UPDATE contas_email SET nome = $1, ativo = $2, servidor = $3, porta = $4, usuario = $5, senha = $6, pasta = $7,
                           remetentes = $8, intervalo_minutos = $9, finalidade = $10 WHERE id = $11 RETURNING *`, [...valores, id])
@@ -123,6 +123,7 @@ async function processarMensagem(fonte, conta = {}) {
     [idMsg.slice(0, 500), (email.subject || '').slice(0, 300), (email.from?.text || '').slice(0, 300), email.date || null]);
   if (!rowCount) return { repetido: true };
   if (conta.finalidade === 'cte') return { ...(await processarParaCte(email, conta)), finalidade: 'cte' };
+  if (conta.finalidade === 'sac') return { ...(await require('./sac').doEmail(email)), finalidade: 'sac', assunto: email.subject || '(sem assunto)' };
 
   const resultado = { troca: null, xml: 0, xmlErros: 0, assunto: email.subject || '(sem assunto)' };
   // 1) Texto no modelo de devolução / troca
@@ -176,6 +177,12 @@ async function executarConta(c, motivo = 'agendado') {
         const r = await processarMensagem(msg.source, c);
         if (r.repetido) continue;
         resumo.mensagens += 1;
+        if (r.finalidade === 'sac') {
+          if (r.novo) { resumo.sacNovos = (resumo.sacNovos || 0) + 1; resumo.detalhes.push(`"${r.assunto}": chamado ${r.novo}`); }
+          else if (r.resposta) { resumo.sacRespostas = (resumo.sacRespostas || 0) + 1; resumo.detalhes.push(`resposta no chamado ${r.resposta}`); }
+          else resumo.ignoradas += 1;
+          continue;
+        }
         if (r.finalidade === 'cte') {
           resumo.cte += r.cte; resumo.nfes += r.nfes;
           if (r.cte) resumo.detalhes.push(`"${r.assunto}": ${r.cte} rascunho(s) com NF ${r.criados.flatMap((x) => x.nfs).join(', ')}`);
@@ -190,7 +197,9 @@ async function executarConta(c, motivo = 'agendado') {
     } finally {
       trava.release();
     }
-    const texto = c.finalidade === 'cte'
+    const texto = c.finalidade === 'sac'
+      ? `${resumo.mensagens} e-mail(s) novo(s): ${resumo.sacNovos || 0} chamado(s) aberto(s) no SAC, ${resumo.sacRespostas || 0} resposta(s) de cliente${resumo.ignoradas ? `, ${resumo.ignoradas} sem texto` : ''}.`
+      : c.finalidade === 'cte'
       ? `${resumo.mensagens} e-mail(s) novo(s): ${resumo.cte} rascunho(s) de CT-e com ${resumo.nfes} NF-e${resumo.ignoradas ? `, ${resumo.ignoradas} sem NF-e anexada` : ''}.`
       : `${resumo.mensagens} e-mail(s) novo(s): ${resumo.trocas} devolução(ões)/troca(s), ${resumo.xml} XML importado(s)`
       + `${resumo.xmlErros ? `, ${resumo.xmlErros} XML com erro` : ''}${resumo.ignoradas ? `, ${resumo.ignoradas} sem dados reconhecidos` : ''}.`;

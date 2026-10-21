@@ -187,6 +187,25 @@ api.get('/cotacoes/:id(\\d+)/proposta', auth, pagina(async (req, res) => {
   return res.set('Content-Type', 'text/html; charset=utf-8').send(cot.propostaHtml(t, await cot.empresa()));
 }));
 
+// SAC: chamados do cliente (regras em src/sac.js).
+const sac = require('../sac');
+api.get('/sac', auth, rota(async (req, res) => res.json({ chamados: await sac.listarDoCliente(req.portal), assuntos: sac.ASSUNTOS }), 'Erro.'));
+api.get('/sac/:id(\\d+)', auth, rota(async (req, res) => res.json(await sac.doPortal(req.portal, Number(req.params.id))), 'Erro.'));
+api.post('/sac', auth, rota(async (req, res) => {
+  const ch = await sac.abrirPeloPortal(req.portal, req.body || {});
+  logPortal(req, `Abriu o chamado ${ch.protocolo} no SAC`);
+  res.status(201).json({ id: ch.id, protocolo: ch.protocolo, prazo_resposta: ch.prazo_resposta });
+}, 'Erro ao abrir o chamado.'));
+api.post('/sac/:id(\\d+)/mensagem', auth, rota(async (req, res) => {
+  await sac.doPortal(req.portal, Number(req.params.id));
+  await sac.doCliente(Number(req.params.id), { texto: req.body?.texto, canal: 'portal', autorNome: req.portal.nome });
+  res.json(await sac.doPortal(req.portal, Number(req.params.id)));
+}, 'Erro ao enviar.'));
+api.post('/sac/:id(\\d+)/avaliar', auth, rota(async (req, res) => {
+  await sac.avaliar(req.portal, Number(req.params.id), req.body?.nota, req.body?.comentario);
+  res.json({ ok: true });
+}, 'Erro ao avaliar.'));
+
 // ======================= Administração (equipe interna) =======================
 const admin = express.Router();
 

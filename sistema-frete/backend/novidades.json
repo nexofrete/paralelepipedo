@@ -74,6 +74,10 @@
           "texto": "Parceiros e redespacho: cadastro de agentes com a área atendida e o custo; repasse das cargas pelas Ocorrências com sugestão pelo destino e margem; o parceiro dá baixa pelo app; conta-corrente com acerto que vira conta a pagar; o CT-e do parceiro em Notas de entrada baixa os custos; custo do redespacho na margem por CT-e."
         },
         {
+          "area": "Entregas",
+          "texto": "SAC com protocolo (090): chamados do cliente pelo portal (aba Atendimento), pela caixa de e-mail do SAC, pelo WhatsApp ou registrados por telefone, cada um com protocolo, assunto, prioridade, responsável, prazo de resposta e de solução (configuráveis) e o CT-e ligado. Respostas avisam o cliente por e-mail/WhatsApp, notas internas ficam só para a equipe, o cliente avalia o atendimento e a tela Hoje mostra os chamados fora do prazo."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

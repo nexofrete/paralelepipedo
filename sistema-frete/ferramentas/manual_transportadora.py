@@ -62,7 +62,7 @@ def parte_operacao(g):
     s += tabela(['Área', 'Códigos principais'], [
         ['0xx Operação', '000 Hoje · 001 Coletas · 010 Cotações · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · '
          '040 Romaneios · 041 Ocorrências · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
-         '061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente'],
+         '061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
          'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
@@ -270,7 +270,7 @@ def parte_operacao(g):
                'NOTFIS e lê o que ela devolve.'))
 
     # 39
-    s += h1('39. Portal do cliente')
+    s += h1('39. Portal do cliente e SAC (atendimento com protocolo)')
     s.append(P('Página própria para o cliente (portal.html, funciona no celular), com login separado do sistema. '
                'Libere em <b>Portal do cliente » Novo acesso</b>: escolha o cliente, os CNPJ/CPF dele, o nome e o e-mail. '
                'A senha provisória aparece uma vez só.'))
@@ -302,6 +302,46 @@ def parte_operacao(g):
                'Segue o tema claro ou escuro do aparelho e funciona no celular.'))
     s += aviso('atencao', 'Para o cliente acessar de fora, o servidor precisa estar publicado na internet com HTTPS. '
                           'Informe o endereço em Configurar (só aceita https:// ou http:// sem aspas e símbolos).')
+
+    s += h2('SAC: chamados com protocolo (090)')
+    s.append(P('Cada pedido do cliente (atraso, avaria, comprovante, 2ª via, coleta, cotação, reclamação) vira um '
+               '<b>chamado</b> com número de protocolo (AAAAMMDD-0001), assunto, prioridade, responsável, prazo de resposta e '
+               'de solução, o CT-e ligado e a conversa inteira. O chamado chega por quatro caminhos:'))
+    s += lista([
+        '<b>Portal do cliente</b>: aba <b>Atendimento</b> » Abrir chamado (ou "Falar sobre esta carga" no detalhe da carga). '
+        'O CT-e citado só é ligado se for do cliente.',
+        '<b>E-mail</b>: em Manutenção » Leitura automática de e-mail, cadastre a caixa do SAC com "Chamados do SAC". Cada '
+        'e-mail novo abre um chamado (o assunto é adivinhado pelo texto: "não chegou" é atraso, "amassada" é avaria...). '
+        'A resposta com [SAC protocolo] no assunto entra no mesmo chamado, sem o texto citado, desde que venha do e-mail de '
+        'contato do chamado (de outro endereço vira chamado novo).',
+        '<b>WhatsApp</b>: no painel da Twilio, em "A message comes in", ponha o endereço público da empresa seguido de '
+        '/api/sac/whatsapp. A mensagem abre um chamado e o cliente recebe o protocolo na hora; as próximas mensagens do '
+        'mesmo número entram no chamado aberto. O sistema confere a assinatura da Twilio.',
+        '<b>Telefone</b>: <b>+ Chamado</b> » Telefone. Com o nº do CT-e ou da NF, o cliente vem sozinho.',
+    ])
+    s += aviso('nota', 'Por e-mail e WhatsApp qualquer pessoa escreve: o CT-e citado só é ligado ao chamado quando quem '
+                       'escreveu é parte dele (remetente, destinatário, tomador...). Senão o número fica anotado ("citou: 1234") '
+                       'e a equipe confere antes de ligar.')
+    s += passos([
+        'A fila abre em <b>Em aberto</b>; os filtros <b>Meus</b>, <b>Sem responsável</b>, <b>Fora do prazo</b>, '
+        '<b>Aguardando o cliente</b> e <b>Encerrados</b> mostram a contagem. Busque por protocolo, cliente, e-mail ou nº do CT-e/NF.',
+        'Clique no chamado: à esquerda a conversa, à direita situação, prioridade, responsável, assunto e o CT-e (com a '
+        'previsão, a entrega e a última ocorrência).',
+        '<b>Responder</b>: o cliente recebe por e-mail (e pelo WhatsApp, se veio de lá) e vê no portal; o chamado fica '
+        '"Aguardando o cliente". <b>Responder e resolver</b> encerra. <b>Nota interna</b> só a equipe vê.',
+        'Quando o cliente escreve de novo, o chamado volta para "Em andamento" (ou reabre, se estava resolvido) e o prazo de '
+        'resposta recomeça.',
+        'No fim, o cliente avalia o atendimento no portal (1 a 5 estrelas e comentário).',
+    ])
+    s += tabela(['Prioridade', '1ª resposta', 'Solução'], [
+        ['Urgente', '1 h', '4 h'], ['Alta (atraso, avaria, reclamação)', '4 h', '24 h'],
+        ['Normal', '8 h', '48 h'], ['Baixa', '24 h', '120 h'],
+    ], [220, 110, 110])
+    s.append(P('Os prazos acima são o padrão, em horas corridas, e mudam em <b>Prazos e avisos</b>, junto com o e-mail '
+               'de resposta (o "responder para" dos avisos, que deve ser a caixa do SAC), o e-mail da equipe que recebe '
+               'cada chamado novo e se o cliente é avisado por e-mail e WhatsApp. Mudar a prioridade de um chamado recalcula '
+               'os prazos. No alto da tela: chamados em aberto, tempo médio da 1ª resposta, % resolvidos no prazo, nota média '
+               'e os assuntos mais pedidos. A tela <b>Hoje</b> avisa os chamados fora do prazo e os sem responsável.'))
 
     # 40
     s += h1('40. Frota: abastecimento, manutenção, documentos, pneus e jornada')

@@ -28,6 +28,7 @@
     't:ocorrencias:romaneios': ['040', 'romaneio saida motorista app'], 't:ocorrencias:entregas': ['041', 'ocorrencia entrega baixa comprovante canhoto'],
     't:conferencia:conferir': ['050', 'bipagem conferencia leitor codigo barras'], 't:conferencia:etiquetas': ['051', 'etiqueta volume imprimir zpl'],
     't:filiais:estoque': ['060', 'estoque filial onde esta mercadoria armazem'], 't:filiais:transferencias': ['061', 'transferencia filial'], 't:parceiros:': ['065', 'parceiros agentes redespacho subcontratacao conta corrente acerto'],
+    't:sac:': ['090', 'sac chamado protocolo atendimento reclamacao cliente suporte'],
     't:edi:': ['070', 'edi notfis conemb ocoren doccob'], 't:portal-cliente:': ['080', 'portal cliente embarcador acesso'],
     't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:resumo': ['101', 'contas receber receber'],
     't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:faturamento:regua': ['103', 'regua cobranca lembrete vencimento atraso inadimplencia'], 't:faturamento:extras': ['104', 'servicos extras reentrega devolucao estadia armazenagem descarga cobranca complementar'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],

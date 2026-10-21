@@ -9201,7 +9201,7 @@ function emAbrirForm(c) {
 }
 // Para NF-e de clientes a pasta é a caixa de entrada (não a de enviados).
 function emAjustarFinalidade() {
-  const cte = document.getElementById('emFinalidade')?.value === 'cte';
+  const cte = ['cte', 'sac'].includes(document.getElementById('emFinalidade')?.value);
   document.getElementById('emPasta').placeholder = cte ? 'INBOX (Caixa de entrada)' : 'INBOX.Sent (Enviados)';
   document.getElementById('emRemetentes').placeholder = cte ? 'Em branco = NF-e de qualquer cliente' : 'Ex.: maria@imporiente.com.br, joao@imporiente.com.br';
 }

@@ -220,7 +220,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - Os últimos destinos usados aparecem primeiro.
   - Cada usuário só vê as telas que tem permissão de abrir.
 - **Como os códigos são formados:** o primeiro número é a **área**. Na mesma área, o número logo depois do da tela abre o formulário de **novo** (001 Coletas → 002 Nova coleta).
-  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente
+  - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 050 Conferência (bipagem) · 051 Etiquetas · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
@@ -505,6 +505,16 @@ Em **Operação → 🤝 Parceiros e redespacho** (código **065**): agentes e t
 - **Conta-corrente:** custo (a empresa deve), pagamento ao parceiro, frete recebido pelo parceiro (fica com ele), recebido do parceiro e ajuste; saldo positivo = a empresa deve. O **CT-e do parceiro** lançado em Notas de entrada (emitente = parceiro, citando o nosso CT-e no docAnt ou as NF-e) baixa os custos desses CT-e (a conta a pagar sai da nota).
 - **Acerto** (permissão do financeiro): fecha os lançamentos até a data; saldo a favor do parceiro vira conta a pagar (Frete de terceiro) com o PIX na observação.
 - O custo do redespacho entra na **margem** por CT-e (Painel gerencial → Resultado). A tela Hoje avisa entregas atrasadas com parceiros. Código em `src/parceiros.js`.
+
+## SAC com protocolo
+
+Em **Operação → 🎧 SAC (chamados)** (código **090**): cada pedido do cliente vira um chamado com **protocolo** (AAAAMMDD-0001), assunto, prioridade, responsável, **prazo de resposta e de solução** e o CT-e ligado, com a conversa inteira.
+
+- **Por onde chega:** portal do cliente (aba **Atendimento**, ou "Falar sobre esta carga" no detalhe da carga); **e-mail** (caixa em Manutenção → Leitura automática de e-mail com a finalidade "Chamados do SAC": e-mail novo abre chamado, a resposta com `[SAC protocolo]` no assunto entra no mesmo, só se vier do e-mail de contato); **WhatsApp** (webhook da Twilio em `/api/sac/whatsapp`, com a assinatura conferida; o cliente recebe o protocolo na hora); **telefone** (＋ Chamado).
+- O assunto de e-mail/WhatsApp é adivinhado pelo texto e a NF/CT-e citada é procurada; por e-mail/WhatsApp o CT-e só é ligado se quem escreveu é parte dele (senão fica anotado para a equipe conferir).
+- **Atendimento:** filtros (em aberto, meus, sem responsável, fora do prazo, aguardando o cliente, encerrados), resposta (avisa o cliente por e-mail e, se veio de lá, WhatsApp), responder e resolver, **nota interna**, mudar situação/prioridade (recalcula os prazos)/responsável/assunto/CT-e. Quando o cliente escreve de novo, o chamado volta para "em andamento" e o prazo de resposta recomeça.
+- **Prazos padrão** (⚙ Prazos e avisos): urgente 1 h/4 h, alta 4 h/24 h (atraso, avaria e reclamação), normal 8 h/48 h, baixa 24 h/120 h; e-mail "responder para", e-mail da equipe para chamado novo e os avisos ao cliente.
+- **Indicadores:** em aberto, tempo médio da 1ª resposta, % resolvidos no prazo, nota média (o cliente avalia de 1 a 5 no portal) e assuntos mais pedidos. A tela Hoje avisa os chamados fora do prazo e sem responsável. Código em `src/sac.js`.
 
 ## Etiquetas de volume e conferência (bipagem)
 

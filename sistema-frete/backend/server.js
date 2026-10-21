@@ -182,7 +182,7 @@ app.use(express.json());
 // licença vencida deixa só consultar (GET), sem emitir nem alterar nada.
 const licenca = require('./src/licenca');
 // Entrar e trocar a senha no portal do cliente continuam valendo com a licença vencida.
-const PORTAL_LIVRE = ['/portal/entrar', '/portal/esqueci', '/portal/redefinir', '/portal/senha', '/pix/webhook', '/pix/webhook/pix'];
+const PORTAL_LIVRE = ['/portal/entrar', '/portal/esqueci', '/portal/redefinir', '/portal/senha', '/pix/webhook', '/pix/webhook/pix', '/sac/whatsapp'];
 app.use('/api/licenca', require('./src/routes/licenca'));
 app.use('/api', (req, res, next) => {
   if (req.path === '/status') return next();
@@ -243,6 +243,24 @@ app.post(['/api/pix/webhook', '/api/pix/webhook/pix'], express.json({ limit: '20
   try { await require('./src/faturamento/pixApi').aviso(req.body || {}); } catch (err) { console.error('[pix webhook]', err.message); }
   res.status(200).json({ ok: true });
 });
+// WhatsApp do SAC (webhook da Twilio: "A message comes in"). Sem login: vale a assinatura
+// X-Twilio-Signature, conferida com o token da conta e o endereço público da empresa.
+app.post('/api/sac/whatsapp', express.urlencoded({ extended: false, limit: '100kb' }), require('express-rate-limit')({ windowMs: 60 * 1000, max: 120 }), async (req, res) => {
+  try {
+    const sac = require('./src/sac');
+    const zap = await require('./src/whatsapp').buscarConfiguracao();
+    const { rows } = await require('./src/db').query('SELECT endereco_publico FROM empresa WHERE id = 1');
+    const url = `${String(rows[0]?.endereco_publico || '').replace(/\/+$/, '')}/api/sac/whatsapp`;
+    const esperada = zap.twilio_auth_token ? sac.assinaturaTwilio(zap.twilio_auth_token, url, req.body || {}) : null;
+    const veio = String(req.headers['x-twilio-signature'] || '');
+    if (!esperada || esperada.length !== veio.length || !require('crypto').timingSafeEqual(Buffer.from(esperada), Buffer.from(veio))) return res.status(403).send('assinatura inválida');
+    const r = await sac.doWhatsapp({ de: req.body.From, texto: req.body.Body, nome: req.body.ProfileName });
+    const msg = r?.novo ? `Recebemos a sua mensagem. Protocolo do atendimento: ${r.novo}. Respondemos por aqui.` : '';
+    const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?><Response>${msg ? `<Message>${esc(msg)}</Message>` : ''}</Response>`);
+  } catch (err) { console.error('[sac whatsapp]', err.message); res.type('text/xml').send('<Response></Response>'); }
+});
+app.use('/api/sac', require('./src/routes/sac'));
 app.use('/api/mdfe', mdfeRoutes);
 app.use('/api/nfse', require('./src/routes/nfse'));
 app.use('/api/contabil', require('./src/routes/contabil'));

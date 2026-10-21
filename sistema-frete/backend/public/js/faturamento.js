@@ -38,10 +38,12 @@
   function abrirAba(nome) {
     abaAtual = nome;
     document.querySelectorAll('[data-fat-aba]').forEach((a) => a.classList.toggle('ativo', a.dataset.fatAba === nome));
-    ['resumo', 'faturas', 'afaturar', 'boletos', 'regua', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
+    ['resumo', 'faturas', 'afaturar', 'boletos', 'regua', 'extras', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
     // Régua de cobrança: tela em js/regua.js.
     const regua = () => (window.telaRegua ? window.telaRegua($('fat-aba-regua'), { abrirFatura }) : Promise.resolve());
-    ({ resumo: resumo, faturas: faturas, afaturar: aFaturar, boletos: boletos, regua, config: configuracao })[nome]().catch(erro);
+    // Serviços extras: tela em js/extras.js.
+    const extras = () => (window.telaExtras ? window.telaExtras($('fat-aba-extras')) : Promise.resolve());
+    ({ resumo: resumo, faturas: faturas, afaturar: aFaturar, boletos: boletos, regua, extras, config: configuracao })[nome]().catch(erro);
   }
 
   // ---------------- Contas a receber ----------------

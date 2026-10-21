@@ -63,7 +63,7 @@ def parte_operacao(g):
         ['0xx Operação', '000 Hoje · 001 Coletas · 010 Cotações · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · '
          '040 Romaneios · 041 Ocorrências · 050 Conferência · 051 Etiquetas · 060 Onde está a mercadoria · '
          '061 Transferências · 070 EDI · 080 Portal do cliente'],
-        ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · '
+        ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
          'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
         ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada'],
@@ -325,6 +325,8 @@ def parte_operacao(g):
         'e tem os botões Dirigindo, Carga/descarga, Esperando, Pausa, Refeição e Encerrar jornada. Cada marcação '
         'guarda a hora do servidor e a localização.',
         'O app avisa quando falta menos de 30 minutos para as 5h30 dirigindo.',
+        'Em cada entrega, o botão <b>Cheguei</b> marca a hora da chegada no cliente: a espera acima da franquia vira estadia '
+        'a cobrar (Faturamento » Serviços extras).',
         '<b>No sistema</b> (Frota › Jornada): a lista do período com direção, trabalho, espera, refeição, jornada, horas '
         'extras e os alertas. <b>Ver</b> mostra cada marcação; dá para incluir ou apagar uma marcação (fica o nome de '
         'quem ajustou e o motivo).',
@@ -357,6 +359,30 @@ def parte_financeiro(g):
     ])
     s += aviso('nota', 'Dois cliques na baixa, ou a baixa manual junto com o retorno do banco ou a conciliação, não '
                        'geram dois recebimentos: a fatura fica travada enquanto um recebimento é gravado.')
+    s += h2('Serviços extras: reentrega, devolução, estadia, armazenagem e descarga (104)')
+    s.append(P('Em <b>Faturamento » Serviços extras</b> a transportadora cobra o que vai além do frete. Primeiro, em '
+               '<b>Preços</b>, defina o padrão da empresa e, se quiser, o preço de cada cliente (quem paga o frete).'))
+    s += tabela(['Serviço', 'Como cobra (exemplo)', 'Documento'], [
+        ['Reentrega', '% do frete (50%) ou valor fixo, com mínimo', 'CT-e complementar'],
+        ['Devolução', '% do frete (100%) ou valor fixo', 'CT-e complementar'],
+        ['Estadia', 'R$ por hora depois da franquia (R$ 80/h depois de 5h)', 'CT-e complementar'],
+        ['Armazenagem', 'R$ por dia ou % da mercadoria por dia, depois da franquia', 'NFS-e'],
+        ['Descarga / ajudante', 'valor fixo ou % do frete', 'CT-e complementar'],
+    ], [0.24, 0.5, 0.26])
+    s += lista([
+        '<b>Sozinho</b>: a ocorrência de entrega não feita por motivo do cliente (fechado, ausente, horário, reentrega '
+        'pedida, balanço, endereço, mudou) cria a <b>reentrega</b> a cobrar; "Devolvido ao remetente" cria a '
+        '<b>devolução</b>; no app do motorista, o botão <b>Cheguei</b> marca a hora da chegada e, na baixa, a espera acima da '
+        'franquia vira <b>estadia</b>. Falha da transportadora (avaria, veículo quebrado) não gera cobrança.',
+        '<b>À mão</b>: Lançar serviço, com o número do CT-e, o serviço, as horas/dias e o valor (vazio = pelo preço).',
+        '<b>Para aprovar</b>: confira, ajuste o valor ou as horas (Ajustar) e aprove; ou cancele com o motivo (cortesia, '
+        'falha nossa). Cobrança com valor zero não é aprovada.',
+        '<b>Aprovadas</b>: marque e clique em <b>Gerar CT-e complementar / NFS-e</b>. Sai um CT-e complementar por CT-e, '
+        'com um componente por serviço e o ICMS na mesma alíquota do original, e uma NFS-e para a armazenagem, como '
+        'rascunho. Confira, transmita e fature como os outros documentos.',
+        'Se o documento for excluído, cancelado ou rejeitado, <b>Reabrir</b> volta a cobrança para "Aprovada".',
+        'A tela Hoje avisa as cobranças para aprovar e as aprovadas sem documento.',
+    ])
     s += h2('PIX com baixa automática (API Pix do banco)')
     s.append(P('Em <b>Cobrança (PIX e banco) » PIX com baixa automática</b>, ligue a cobrança pela API Pix do banco. A API é '
                'o padrão do Banco Central, igual em todos os bancos: no portal do desenvolvedor do seu banco pegue a URL da '

@@ -34,13 +34,13 @@ function itemDoCte(c) {
     nfs: (d.nfes || []).map(nfDaChave).filter(Boolean), volumes: q(/VOLUME/i), peso: q(/PESO/), valor_carga: Number(d.carga?.vCarga) || 0, valor_frete: Number(c.valor_total) || 0,
     previsao: c.previsao_entrega, situacao: c.situacao_entrega, data_entrega: c.data_entrega, recebedor: c.recebedor_nome,
     ultima: c.ultima || null,
-    agendamento: c.agendamento || null, exige_agendamento: !!c.exige_agendamento,
+    agendamento: c.agendamento || null, exige_agendamento: !!c.exige_agendamento, chegada_em: c.chegada_em || null,
   };
 }
 
 async function itensDoRomaneio(id, cliente = pool) {
   const { rows } = await cliente.query(
-    `SELECT c.id, c.serie, c.numero, c.chave, c.dados, c.valor_total, c.destinatario_nome, c.previsao_entrega, c.situacao_entrega, c.data_entrega, c.recebedor_nome, i.ordem,
+    `SELECT c.id, c.serie, c.numero, c.chave, c.dados, c.valor_total, c.destinatario_nome, c.previsao_entrega, c.situacao_entrega, c.data_entrega, c.recebedor_nome, i.ordem, i.chegada_em,
             (SELECT json_build_object('descricao', o.descricao, 'data_hora', o.data_hora, 'tipo', o.tipo) FROM cte_ocorrencias o
               WHERE o.cte_id = c.id ORDER BY o.data_hora DESC, o.id DESC LIMIT 1) AS ultima,
             ${ag.SQL_JSON('c')} AS agendamento, ${ag.SQL_EXIGE('c')} AS exige_agendamento

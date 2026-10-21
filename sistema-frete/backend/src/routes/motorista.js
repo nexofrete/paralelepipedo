@@ -84,6 +84,8 @@ router.post('/:codigo/entregas/:cteId(\\d+)', upload.single('foto'), async (req,
     });
     await cliente.query('COMMIT');
     oc.depoisDeLancar([lancada]);
+    // Marcou "cheguei" antes: a espera acima da franquia vira estadia a cobrar.
+    if (['entrega', 'problema', 'devolucao'].includes(lancada.tipo)) require('../servicosExtras').estadiaNaBaixa(r.id, Number(req.params.cteId)).catch(() => {});
     res.status(201).json(lancada);
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao registrar.'); } finally { cliente.release(); }
 });
@@ -107,6 +109,15 @@ router.post('/:codigo/coletas/:id(\\d+)', upload.single('foto'), async (req, res
       detalhes: c.status === 'coletada' ? `Coleta ${c.id} feita pelo app (${c.volumes_coletados} vol.)` : `Coleta ${c.id} não coletada pelo app: ${c.motivo}` });
     res.status(201).json({ id: c.id, status: c.status });
   } catch (err) { erro(res, err, 'Erro ao registrar a coleta.'); }
+});
+
+// "Cheguei no cliente": começa a contar a espera (estadia) desta entrega.
+router.post('/:codigo/chegada/:cteId(\\d+)', async (req, res) => {
+  try {
+    const r = await romaneioDoCodigo(req.params.codigo);
+    await require('../servicosExtras').marcarChegada(r.id, Number(req.params.cteId));
+    res.json({ ok: true, chegada_em: new Date().toISOString() });
+  } catch (err) { erro(res, err, 'Erro ao marcar a chegada.'); }
 });
 
 // Jornada (Lei 13.103): o motorista do romaneio marca o que está fazendo (src/jornada.js).

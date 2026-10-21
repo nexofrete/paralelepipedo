@@ -2600,3 +2600,35 @@ CREATE TABLE IF NOT EXISTS jornada_eventos (
   usuario_nome VARCHAR(150), observacao VARCHAR(300)
 );
 CREATE INDEX IF NOT EXISTS idx_jornada_eventos ON jornada_eventos (jornada_id, em);
+
+-- Cobrança de serviços extras: reentrega, devolução, estadia, armazenagem e descarga.
+CREATE TABLE IF NOT EXISTS servicos_extras_regras (
+  id SERIAL PRIMARY KEY,
+  cliente_doc VARCHAR(20),                    -- NULL = preço padrão da empresa
+  cliente_nome VARCHAR(200),
+  servico VARCHAR(12) NOT NULL,               -- reentrega | devolucao | estadia | armazenagem | descarga
+  modo VARCHAR(20) NOT NULL,                  -- percentual (do frete) | fixo | por_hora | por_dia | mercadoria_dia (% da mercadoria por dia)
+  valor NUMERIC(12,4) NOT NULL DEFAULT 0,
+  minimo NUMERIC(12,2) NOT NULL DEFAULT 0,
+  franquia NUMERIC(8,2) NOT NULL DEFAULT 0,   -- horas (estadia) ou dias (armazenagem) sem cobrança
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_servicos_extras_regras ON servicos_extras_regras (COALESCE(cliente_doc, ''), servico);
+CREATE TABLE IF NOT EXISTS cobrancas_extras (
+  id SERIAL PRIMARY KEY,
+  cte_id INTEGER NOT NULL REFERENCES ctes_emitidos(id) ON DELETE CASCADE,
+  servico VARCHAR(12) NOT NULL,
+  origem VARCHAR(10) NOT NULL DEFAULT 'manual',   -- ocorrencia | app | manual
+  ocorrencia_id INTEGER UNIQUE REFERENCES cte_ocorrencias(id) ON DELETE SET NULL,
+  quantidade NUMERIC(10,2),                    -- horas (estadia) ou dias (armazenagem)
+  valor_calculado NUMERIC(12,2) NOT NULL DEFAULT 0,
+  valor NUMERIC(12,2) NOT NULL DEFAULT 0,
+  status VARCHAR(10) NOT NULL DEFAULT 'pendente', -- pendente | aprovada | cobrada | cancelada
+  documento_tipo VARCHAR(5), documento_id INTEGER,   -- cte (complementar) | nfse
+  descricao VARCHAR(300), motivo_cancelamento VARCHAR(200),
+  criado_por VARCHAR(150), aprovado_por VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cobrancas_extras ON cobrancas_extras (status, cte_id);
+ALTER TABLE romaneio_itens ADD COLUMN IF NOT EXISTS chegada_em TIMESTAMPTZ;   -- "cheguei no cliente" no app (estadia)

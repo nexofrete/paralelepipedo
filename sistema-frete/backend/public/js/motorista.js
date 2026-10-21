@@ -58,6 +58,7 @@
         ${feito ? '' : `<div class="mt-botoes">
           <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}" target="_blank" rel="noopener">🗺 Mapa</a>
           ${i.telefone ? `<a href="tel:${esc(String(i.telefone).replace(/[^\d+]/g, ''))}">📞 Ligar</a>` : '<span></span>'}
+          ${i.chegada_em ? `<span class="mt-chegada">📍 chegou ${new Date(i.chegada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : `<button data-mt-chegada="${i.cte_id}" title="Marca a hora da chegada: o tempo de espera vira estadia">📍 Cheguei</button>`}
           <button class="ok" data-mt-entregue="${i.cte_id}">✓ Entregue</button>
           <button class="ruim" data-mt-problema="${i.cte_id}">⚠ Não entregue</button></div>`}
       </article>`;
@@ -89,6 +90,14 @@
   $('mtLista').addEventListener('click', (e) => {
     const ok = e.target.closest('[data-mt-entregue]'); const ruim = e.target.closest('[data-mt-problema]');
     const col = e.target.closest('[data-mt-coletou]'); const naoCol = e.target.closest('[data-mt-naocoletou]');
+    const chegou = e.target.closest('[data-mt-chegada]');
+    if (chegou) {
+      chegou.disabled = true;
+      api(`/chegada/${chegou.dataset.mtChegada}`, { method: 'POST' })
+        .then((r) => { const item = dados.itens.find((i) => i.cte_id === Number(chegou.dataset.mtChegada)); if (item) item.chegada_em = r.chegada_em; desenhar(); })
+        .catch((err) => { alert(err.message); chegou.disabled = false; });
+      return;
+    }
     if (ok) abrirFolha(Number(ok.dataset.mtEntregue), 'entrega');
     if (ruim) abrirFolha(Number(ruim.dataset.mtProblema), 'problema');
     if (col) abrirFolha(Number(col.dataset.mtColetou), 'coleta');

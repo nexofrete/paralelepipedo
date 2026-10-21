@@ -66,6 +66,10 @@
           "texto": "Frota completa: documentos com vencimento do veículo e do motorista (CRLV, RNTRC, tacógrafo, CNH, toxicológico, MOPP) com alerta e bloqueio do MDF-e; pneus por número de fogo com mapa do veículo, rodízio, recapagem, sulco e custo por km; jornada do motorista pelo app (Lei 13.103) com horas extras, alertas e espelho do mês."
         },
         {
+          "area": "Financeiro",
+          "texto": "Cobrança de serviços extras: reentrega, devolução, estadia, armazenagem e descarga com preço padrão e por cliente; as ocorrências e o botão Cheguei do app do motorista criam as cobranças sozinhas; aprovadas viram CT-e complementar (ou NFS-e na armazenagem)."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

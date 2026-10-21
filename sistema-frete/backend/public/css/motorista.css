@@ -44,3 +44,7 @@
 .mt-jbotoes button { padding: 11px 8px; border-radius: 10px; border: 1px solid #cfd6e4; background: #f4f6fb; font-size: 14px; font-weight: 600; color: #1f2937; }
 .mt-jbotoes button.fim { grid-column: 1 / -1; background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
 .mt-jalerta { margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: #fef3c7; color: #92400e; font-size: 13px; }
+
+.mt-botoes [data-mt-chegada], .mt-botoes .mt-chegada { grid-column: 1 / -1; }
+.mt-botoes [data-mt-chegada] { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+.mt-chegada { text-align: center; font-size: 13px; color: #3730a3; padding: 4px 0; }

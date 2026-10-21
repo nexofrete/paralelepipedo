@@ -175,6 +175,8 @@ async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng,
 function depoisDeLancar(lancadas) {
   setImmediate(() => {
     require('./avisosEntrega').avisar(lancadas).catch((e) => console.error('[avisos de entrega]', e.message));
+    // Reentrega (falha por motivo do cliente) e devolução viram cobrança de serviço extra pendente.
+    require('../servicosExtras').aoLancarOcorrencias(lancadas).catch((e) => console.error('[servicos extras]', e.message));
   });
 }
 

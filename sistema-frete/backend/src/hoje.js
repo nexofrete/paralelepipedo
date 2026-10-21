@@ -99,6 +99,13 @@ async function montar(req) {
       add('financeiro', { chave: 'dfe_manifestar', icone: '📨', titulo: 'NF-e contra o CNPJ sem manifestação', qtd: nf.sem_manifestacao, nivel: 'info', detalhe: 'dê ciência para receber o XML (ou desconheça)',
         destino: { ir: 'contabil', aba: 'dfe', clicar: '[data-dfe-filtro="manifestar"]' } });
     } catch (e) { console.error('[hoje]', e.message); }
+    try {
+      const se = await require('./servicosExtras').pendencias();
+      add('financeiro', { chave: 'extras_aprovar', icone: '➕', titulo: 'Serviços extras para aprovar', qtd: se.pendentes, nivel: 'atencao', detalhe: 'reentrega, devolução, estadia: confira o valor e aprove',
+        destino: { ir: 'faturamento', aba: 'extras', clicar: '[data-ex-filtro="pendente"]' } });
+      add('financeiro', { chave: 'extras_cobrar', icone: '💰', titulo: 'Serviços extras aprovados sem cobrança', qtd: se.aprovadas, nivel: 'atencao', detalhe: 'gere o CT-e complementar / NFS-e',
+        destino: { ir: 'faturamento', aba: 'extras', clicar: '[data-ex-filtro="aprovada"]' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     add('financeiro', { chave: 'faturas_semana', icone: '📥', titulo: 'A receber nos próximos 7 dias', qtd: f.semana, valor: centavos(f.semana_valor), nivel: 'info',
       destino: { ir: 'faturamento', aba: 'faturas', selecionar: ['fatStatus', 'abertas'] } });
     add('financeiro', { chave: 'boletos_rejeitados', icone: '🏦', titulo: 'Boletos rejeitados pelo banco', qtd: f.boletos_rejeitados, nivel: 'perigo', detalhe: 'veja o motivo no retorno',

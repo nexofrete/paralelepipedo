@@ -10,6 +10,7 @@ componentes novos ou alterados estão marcados com ★ nas listas.
 
 | Arquivo | Conteúdo |
 |---|---|
+| `esquema_eletrico.pdf` | **Esquema elétrico** da versão com melhorias (3 folhas: pré, potência, fonte); também em PNG (`esquema_*.png`) |
 | `meteoro_cb150.cir` | Netlist SPICE completa (pré + potência), com modelos, pronta para o ngspice |
 | `fonte.cir` | Fonte de alimentação (trafo, ponte KBPC606, filtros, reguladores ±12 V) |
 | `pcb/meteoro_cb150_pcb.pdf` | **Placa de circuito impresso em PDF** (dupla face: as duas faces em 1:1 para transferência, montagem) |
@@ -21,6 +22,7 @@ componentes novos ou alterados estão marcados com ★ nas listas.
 ```sh
 ngspice -b meteoro_cb150.cir   # ponto de operação, resposta AC e transiente 1 kHz
 ngspice -b fonte.cir           # tensões da fonte
+esquema/gerar.sh               # redesenha o esquema elétrico (precisa de schemdraw e matplotlib)
 ```
 
 ## Melhorias aplicadas

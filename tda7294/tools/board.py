@@ -29,13 +29,27 @@ def label(text, x, y, size=1.3):
     b.silk.append(Silk('text', (text, x, y), size))
 
 
+def value(text, x, y, size=1.0):
+    """Valor do componente na serigrafia (letra menor, abaixo da referência)."""
+    b.silk.append(Silk('text', (text, x, y), size))
+
+
+# texto mais curto na serigrafia quando o valor completo não cabe
+SILK_VALUE = {'C7': '100nF', 'C9': '100nF', 'C10': '100nF'}
+
+
+def place_labels(ref, val, lx, ly, vx, vy):
+    label(ref, lx, ly)
+    value(SILK_VALUE.get(ref, val), lx if vx is None else vx, ly + 1.5 if vy is None else vy)
+
+
 def track(net, width, *pts):
     b.tracks.append(Track(net, width, list(pts)))
 
 
 # ------------------------------------------------------------ footprints
-def resistor(ref, value, p1, p2, n1, n2, drill=0.8, size=1.9, body=(6.3, 2.5),
-             lx=None, ly=None, descr=''):
+def resistor(ref, val, p1, p2, n1, n2, drill=0.8, size=1.9, body=(6.3, 2.5),
+             lx=None, ly=None, descr='', vx=None, vy=None):
     (x1, y1), (x2, y2) = p1, p2
     pads(ref, [(1, x1, y1, n1), (2, x2, y2, n2)], size, drill)
     cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
@@ -48,11 +62,11 @@ def resistor(ref, value, p1, p2, n1, n2, drill=0.8, size=1.9, body=(6.3, 2.5),
         b.silk.append(Silk('rect', (cx - D / 2, cy - L / 2, D, L)))
         b.silk.append(Silk('line', (x1, y1 + size / 2 + .3, cx, cy - L / 2)))
         b.silk.append(Silk('line', (cx, cy + L / 2, x2, y2 - size / 2 - .3)))
-    label(ref, lx if lx is not None else cx, ly if ly is not None else cy)
-    part(ref, value, descr)
+    place_labels(ref, val, lx if lx is not None else cx, ly if ly is not None else cy, vx, vy)
+    part(ref, val, descr)
 
 
-def diode(ref, value, pa, pk, na, nk, descr=''):
+def diode(ref, val, pa, pk, na, nk, descr='', lx=None, ly=None, vx=None, vy=None):
     """pa = anodo, pk = catodo (faixa desenhada do lado do catodo)."""
     (xa, ya), (xk, yk) = pa, pk
     pads(ref, [('A', xa, ya, na), ('K', xk, yk, nk)], 1.9, 0.8)
@@ -66,11 +80,13 @@ def diode(ref, value, pa, pk, na, nk, descr=''):
         s = 1 if yk > ya else -1
         b.silk.append(Silk('rect', (cx - 1, cy - 2, 2, 4)))
         b.silk.append(Silk('line', (cx - 1, cy + 1.3 * s, cx + 1, cy + 1.3 * s)))
-    label(ref, cx - 2.2, cy)
-    part(ref, value, descr)
+    place_labels(ref, val, lx if lx is not None else cx - 2.2,
+                 ly if ly is not None else cy, vx, vy)
+    part(ref, val, descr)
 
 
-def film(ref, value, p1, p2, n1, n2, box=(7.2, 3.0), descr='', lx=None, ly=None):
+def film(ref, val, p1, p2, n1, n2, box=(7.2, 3.0), descr='', lx=None, ly=None,
+         vx=None, vy=None):
     (x1, y1), (x2, y2) = p1, p2
     pads(ref, [(1, x1, y1, n1), (2, x2, y2, n2)], 1.9, 0.9)
     cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
@@ -79,12 +95,12 @@ def film(ref, value, p1, p2, n1, n2, box=(7.2, 3.0), descr='', lx=None, ly=None)
         b.silk.append(Silk('rect', (cx - L / 2, cy - D / 2, L, D)))
     else:
         b.silk.append(Silk('rect', (cx - D / 2, cy - L / 2, D, L)))
-    label(ref, lx if lx is not None else cx, ly if ly is not None else cy)
-    part(ref, value, descr)
+    place_labels(ref, val, lx if lx is not None else cx, ly if ly is not None else cy, vx, vy)
+    part(ref, val, descr)
 
 
-def elec(ref, value, pplus, pminus, nplus, nminus, dia, size=2.0, drill=0.9,
-         descr='', lx=None, ly=None):
+def elec(ref, val, pplus, pminus, nplus, nminus, dia, size=2.0, drill=0.9,
+         descr='', lx=None, ly=None, vx=None, vy=None):
     (xp, yp), (xm, ym) = pplus, pminus
     b.pads.append(Pad(ref, '+', xp, yp, size, drill, nplus, square=True))
     b.pads.append(Pad(ref, '-', xm, ym, size, drill, nminus))
@@ -97,12 +113,13 @@ def elec(ref, value, pplus, pminus, nplus, nminus, dia, size=2.0, drill=0.9,
     # desloca o + para fora do eixo dos terminais
     ox, oy = -dy / n * 1.6, dx / n * 1.6
     b.silk.append(Silk('text', ('+', px + ox, py + oy), 1.6))
-    label(ref, lx if lx is not None else cx, ly if ly is not None else cy - 0.2)
-    part(ref, value, descr)
+    place_labels(ref, val, lx if lx is not None else cx,
+                 ly if ly is not None else cy - 0.2, vx, vy)
+    part(ref, val, descr)
 
 
 def terminal(ref, value, lst, pitch, horizontal, descr='', size=2.4, drill=1.3,
-             depth=7.6, side=+1, lx=None, ly=None):
+             depth=7.6, side=+1, lx=None, ly=None, lab_off=None):
     """Borne de parafuso. side indica para que lado fica a entrada do fio."""
     pads(ref, lst, size, drill, square_first=True)
     xs = [p[1] for p in lst]
@@ -116,8 +133,11 @@ def terminal(ref, value, lst, pitch, horizontal, descr='', size=2.4, drill=1.3,
         x0 = xs[0] - 3.2 if side > 0 else xs[0] - (depth - 3.2)
         b.silk.append(Silk('rect', (x0, y0, depth, y1 - y0)))
     for (num, x, y, net) in lst:
-        b.silk.append(Silk('text', (net_label(net), x + (0 if horizontal else -3.9 * side),
-                                    y + (3.9 * -side if horizontal else 0)), 1.1))
+        if lab_off is None:
+            dx, dy = (0, 3.9 * -side) if horizontal else (-3.9 * side, 0)
+        else:
+            dx, dy = lab_off
+        b.silk.append(Silk('text', (net_label(net), x + dx, y + dy), 1.1))
     label(ref, lx if lx is not None else sum(xs) / len(xs),
           ly if ly is not None else sum(ys) / len(ys))
     part(ref, value, descr)
@@ -185,7 +205,7 @@ resistor('R3', '22k', (OUTX, 24.0), (OUTX + 10.16, 24.0), 'OUT', 'INN',
          descr='Realimentação (ganho = 1 + R3/R2 ≈ 33 = 30 dB)', ly=26.4)
 track('INN', SIG, (OUTX + 10.16, 24.0), (INNX, 24.0))
 resistor('R2', '680R', (INNX, 29.0), (INNX, 39.16), 'INN', 'FB',
-         descr='Realimentação (ganho)', lx=INNX - 2.6)
+         descr='Realimentação (ganho)', lx=INNX - 3.0)
 elec('C2', '47µF/25V', (INNX, 43.0), (INNX + 2.5, 43.0), 'FB', 'GND', 6.3,
      descr='Desacoplamento DC da realimentação (radial 6,3 mm, passo 2,5)',
      lx=INNX + 1.25, ly=47.6)
@@ -202,14 +222,14 @@ W1A = (px(7), 19.6)
 W1B = (px(13), 19.6)
 track('VP', MID, (px(7), YO), W1A, (px(7), 22.4))
 jumper('W1', W1A, W1B, 'VP', 'Leva +V ao pino 7 (+Vs sinal); fio rígido nu ou encapado')
-diode('D1', '1N4148', (px(7), 30.02), (px(7), 22.4), 'MUTE', 'VP',
+diode('D1', '1N4148', (px(7), 30.02), (px(7), 22.4), 'MUTE', 'VP', lx=41.4, vx=45.3, vy=32.4,
       descr='Descarga rápida do MUTE ao desligar (anti-"plop")')
 track('MUTE', SIG, (px(7), 30.02), (MUTEX, 30.02))
 resistor('R4', '22k', (48.6, 22.4), (48.6, 32.56), 'VP', 'MUTE',
          descr='Constante de tempo MUTE/ST-BY', lx=50.3, ly=35.2)
 track('MUTE', SIG, (48.6, 32.56), (MUTEX, 32.56))
 elec('C3', '22µF/50V', (MUTEX, 37.0), (MUTEX - 2.5, 37.0), 'MUTE', 'GND', 6.3,
-     descr='Constante de tempo MUTE/ST-BY (radial 6,3 mm)', lx=MUTEX - 1.25, ly=41.6)
+     descr='Constante de tempo MUTE/ST-BY (radial 6,3 mm)', lx=40.0, ly=38.0)
 
 # ======================================================== entrada
 # GND dos pinos 4 e 1 pelo canal entre as fileiras e saída para a esquerda
@@ -239,19 +259,19 @@ track('VN', PWR, (px(15), YO), (px(15), 18.0), (61.4, 25.6), (61.4, 31.0),
       (67.0, 36.6), (67.0, 46.0))
 STARX = 56.32
 film('C7', '100nF/100V', (VPX, 27.0), (STARX, 27.0), 'VP', 'GND',
-     descr='Desacoplamento +V junto ao CI')
+     descr='Desacoplamento +V junto ao CI', vy=24.4)
 film('C9', '100nF/100V', (STARX, 31.0), (61.4, 31.0), 'GND', 'VN',
-     descr='Desacoplamento -V junto ao CI')
+     descr='Desacoplamento -V junto ao CI', vy=33.6)
 track('GND', PWR, (STARX, 27.0), (STARX, 60.5))
 elec('C6', '1000µF/50V', (49.0, 46.0), (54.0, 46.0), 'VP', 'GND', 12.5, size=2.2,
-     drill=1.0, descr='Filtro +V (radial 12,5 mm, passo 5)', lx=51.5, ly=49.5)
+     drill=1.0, descr='Filtro +V (radial 12,5 mm, passo 5)', lx=51.5, ly=48.6)
 elec('C8', '1000µF/50V', (62.0, 46.0), (67.0, 46.0), 'GND', 'VN', 12.5, size=2.2,
-     drill=1.0, descr='Filtro -V (radial 12,5 mm, passo 5)', lx=64.5, ly=49.5)
+     drill=1.0, descr='Filtro -V (radial 12,5 mm, passo 5)', lx=64.5, ly=48.6)
 track('VP', PWR, (VPX, 46.0), (49.0, 46.0))
 track('GND', PWR, (54.0, 46.0), (62.0, 46.0))
 terminal('J2', 'Alimentação', [(1, 51.24, 56.0, 'VP'), (2, 56.32, 56.0, 'GND'),
                                (3, 61.40, 56.0, 'VN')], 5.08, True,
-         descr='Borne 3 vias passo 5,08 mm: +V / GND / -V', side=+1, ly=53.9)
+         descr='Borne 3 vias passo 5,08 mm: +V / GND / -V', side=+1, ly=53.9, lab_off=(0, 2.6))
 track('VP', PWR, (49.0, 46.0), (49.0, 52.0), (51.24, 54.24), (51.24, 56.0))
 track('VN', PWR, (67.0, 46.0), (67.0, 52.0), (63.0, 56.0), (61.40, 56.0))
 # trilha de terra principal (estrela no borne J2)
@@ -263,14 +283,14 @@ OUTR = 74.0
 track('OUT', PWR, (px(14), L_OUT), (OUTR, L_OUT), (OUTR, 38.0), (77.5, 38.0))
 terminal('J3', 'Alto-falante', [(1, 77.5, 38.0, 'OUT'), (2, 77.5, 43.08, 'GND')],
          5.08, False, descr='Borne 2 vias passo 5,08 mm para o alto-falante',
-         side=-1, lx=72.6, ly=40.5)
+         side=-1, lx=76.0, ly=47.6, lab_off=(-4.3, 0))
 track('GND', PWR, (77.5, 43.08), (77.5, 60.5))
 # Zobel / Boucherot (opcional)
 resistor('R6', '2R7 1W', (70.0, 8.0), (70.0, 23.24), 'OUT', 'ZOB', drill=1.0,
-         size=2.2, body=(10.0, 4.0), descr='Rede Zobel (opcional), 1 W', lx=67.2)
+         size=2.2, body=(10.0, 4.0), descr='Rede Zobel (opcional), 1 W', lx=66.4, vx=65.6)
 track('OUT', MID, (70.0, 8.0), (OUTR, 8.0))
 film('C10', '100nF/100V', (70.0, 26.5), (70.0, 31.58), 'ZOB', 'GND',
-     descr='Rede Zobel (opcional)', lx=67.6)
+     descr='Rede Zobel (opcional)', lx=66.6)
 track('ZOB', SIG, (70.0, 23.24), (70.0, 26.5))
 track('GND', MID, (70.0, 31.58), (70.0, 60.5))
 

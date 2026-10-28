@@ -114,12 +114,20 @@ class G:
         for key, d in self.ap.items():
             if key[0] == 'C':
                 s.append(f'%ADD{d}C,{key[1]:.3f}*%')
+            elif key[0] == 'O':
+                s.append(f'%ADD{d}O,{key[1]:.3f}X{key[2]:.3f}*%')
             else:
                 s.append(f'%ADD{d}R,{key[1]:.3f}X{key[1]:.3f}*%')
         s.append('G01*')
         s += self.body
         s.append('M02*')
         return '\n'.join(s) + '\n'
+
+
+def _ap(p, grow):
+    if p.h > p.size:
+        return ('O', round(p.size + grow, 3), round(p.h + grow, 3))
+    return ('R' if p.square else 'C', round(p.size + grow, 3))
 
 
 def export(b, outdir):
@@ -130,12 +138,12 @@ def export(b, outdir):
     for t in b.tracks:
         cu.line(t.pts, t.width)
     for p in b.pads:
-        cu.flash(p.x, p.y, ('R' if p.square else 'C', round(p.size, 3)))
+        cu.flash(p.x, p.y, _ap(p, 0))
     files[f'{NAME}-B_Cu.gbl'] = cu.text()
 
     mk = G(b.h, 'Soldermask,Bot')
     for p in b.pads:
-        mk.flash(p.x, p.y, ('R' if p.square else 'C', round(p.size + 0.1, 3)))
+        mk.flash(p.x, p.y, _ap(p, 0.1))
     files[f'{NAME}-B_Mask.gbs'] = mk.text()
 
     sk = G(b.h, 'Legend,Top')

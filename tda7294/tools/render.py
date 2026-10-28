@@ -2,6 +2,18 @@
 import math
 
 
+def _pad(p, fill, grow=0.0):
+    w = p.size + 2 * grow
+    if p.h > p.size:
+        h = p.h + 2 * grow
+        return (f'<rect x="{p.x - w / 2:.3f}" y="{p.y - h / 2:.3f}" width="{w:.3f}" height="{h:.3f}" '
+                f'rx="{w / 2:.3f}" fill="{fill}"/>\n')
+    if p.square:
+        return (f'<rect x="{p.x - w / 2:.3f}" y="{p.y - w / 2:.3f}" width="{w:.3f}" height="{w:.3f}" '
+                f'fill="{fill}"/>\n')
+    return f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{w / 2:.3f}" fill="{fill}"/>\n'
+
+
 def _hdr(w, h, margin=0.0, title=''):
     W, H = w + 2 * margin, h + 2 * margin
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}mm" height="{H}mm" '
@@ -26,11 +38,7 @@ def copper_layer(b, fg, hole_fill, mirror=False, margin=0.0, title='', drill_sca
         s += (f'<path d="{_path(t.pts)}" fill="none" stroke="{fg}" '
               f'stroke-width="{t.width}" stroke-linecap="round" stroke-linejoin="round"/>\n')
     for p in b.pads:
-        if p.square:
-            h = p.size / 2
-            s += f'<rect x="{p.x - h:.3f}" y="{p.y - h:.3f}" width="{p.size}" height="{p.size}" fill="{fg}"/>\n'
-        else:
-            s += f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{p.size / 2}" fill="{fg}"/>\n'
+        s += _pad(p, fg)
     # furos (marca de broca menor que o furo real, ajuda a centralizar)
     for p in b.pads:
         s += f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{p.drill / 2 * drill_scale:.3f}" fill="{hole_fill}"/>\n'
@@ -70,7 +78,7 @@ def silk_layer(b, mirror=False, title=''):
     s += f'<rect x="0" y="0" width="{b.w}" height="{b.h}" fill="none" stroke="#000" stroke-width="0.15"/>\n'
     s += _silk_items(b, '#000')
     for p in b.pads:
-        s += f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{p.size / 2 + 0.25}" fill="#fff" stroke="none"/>\n'
+        s += _pad(p, '#fff', 0.25)
         s += f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{p.drill / 2}" fill="none" stroke="#000" stroke-width="0.15"/>\n'
     for (x, y, d) in b.holes:
         s += f'<circle cx="{x}" cy="{y}" r="{d / 2}" fill="none" stroke="#000" stroke-width="0.2"/>\n'
@@ -88,11 +96,7 @@ def preview(b, title='', scale_note=True):
         s += (f'<path d="{_path(t.pts)}" fill="none" stroke="#d9a05b" stroke-opacity="0.85" '
               f'stroke-width="{t.width}" stroke-linecap="round" stroke-linejoin="round"/>\n')
     for p in b.pads:
-        if p.square:
-            h = p.size / 2
-            s += f'<rect x="{p.x - h:.3f}" y="{p.y - h:.3f}" width="{p.size}" height="{p.size}" fill="#e8b46c"/>\n'
-        else:
-            s += f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{p.size / 2}" fill="#e8b46c"/>\n'
+        s += _pad(p, '#e8b46c')
         s += f'<circle cx="{p.x:.3f}" cy="{p.y:.3f}" r="{p.drill / 2}" fill="#111"/>\n'
     for (x, y, d) in b.holes:
         s += f'<circle cx="{x}" cy="{y}" r="{d / 2}" fill="#111" stroke="#bbb" stroke-width="0.2"/>\n'

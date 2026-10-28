@@ -46,21 +46,37 @@
 <path d="M165,124 L165,126.5" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M162,126.5 L168,126.5" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <text x="165" y="129" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">-V</text>
-<rect x="21" y="61" width="7" height="16" fill="#fff" stroke="#111" stroke-width="0.45"/>
-<circle cx="25.8" cy="65" r="1.1" fill="none" stroke="#111" stroke-width="0.45"/>
-<text x="19.8" y="65" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="end" dominant-baseline="central" fill="#111">IN</text>
-<circle cx="25.8" cy="73" r="1.1" fill="none" stroke="#111" stroke-width="0.45"/>
-<text x="19.8" y="73" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="end" dominant-baseline="central" fill="#111">GND</text>
-<text x="24.5" y="58.5" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">J1</text>
-<text x="24.5" y="80" font-family="Arial, Helvetica, sans-serif" font-size="2.4" text-anchor="middle" dominant-baseline="central" fill="#111" font-style="italic">entrada</text>
-<path d="M28,65 L50,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M50,65 L57.1,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M58.9,65 L66,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M57.1,62 L57.1,68" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M58.9,62 L58.9,68" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<text x="58.0" y="58.8" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">C1</text>
-<text x="58.0" y="70.6" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="middle" dominant-baseline="central" fill="#111">1µF MKT</text>
-<path d="M66,65 L120,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<rect x="13" y="61" width="7" height="16" fill="#fff" stroke="#111" stroke-width="0.45"/>
+<circle cx="17.8" cy="65" r="1.1" fill="none" stroke="#111" stroke-width="0.45"/>
+<text x="11.8" y="65" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="end" dominant-baseline="central" fill="#111">IN</text>
+<circle cx="17.8" cy="73" r="1.1" fill="none" stroke="#111" stroke-width="0.45"/>
+<text x="11.8" y="73" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="end" dominant-baseline="central" fill="#111">GND</text>
+<text x="16.5" y="58.5" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">J1</text>
+<text x="16.5" y="80" font-family="Arial, Helvetica, sans-serif" font-size="2.4" text-anchor="middle" dominant-baseline="central" fill="#111" font-style="italic">entrada</text>
+<path d="M20,65 L26.0,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M36.0,65 L42,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<rect x="26.0" y="63.4" width="10" height="3.2" fill="#fff" stroke="#111" stroke-width="0.45"/>
+<text x="31.0" y="61" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">R5</text>
+<text x="31.0" y="69.2" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="middle" dominant-baseline="central" fill="#111">100R</text>
+<circle cx="46" cy="65" r="0.9" fill="#111"/>
+<path d="M46,65 L46,71.6" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M46,73.4 L46,80" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M43,71.6 L49,71.6" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M43,73.4 L49,73.4" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<text x="41.8" y="70.9" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="end" dominant-baseline="central" fill="#111" font-weight="bold">C11</text>
+<text x="41.8" y="74.3" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="end" dominant-baseline="central" fill="#111">470pF</text>
+<path d="M46,80 L46,82" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M43,82 L49,82" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M44,83 L48,83" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M45,84 L47,84" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M42,65 L52,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M52,65 L59.1,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M60.9,65 L68,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M59.1,62 L59.1,68" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M60.9,62 L60.9,68" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<text x="60.0" y="58.8" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">C1</text>
+<text x="60.0" y="70.6" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="middle" dominant-baseline="central" fill="#111">1µF MKT</text>
+<path d="M68,65 L120,65" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <circle cx="85" cy="65" r="0.9" fill="#111"/>
 <path d="M85,65 L85,75.0" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M85,85.0 L85,95" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
@@ -71,11 +87,11 @@
 <path d="M82,97 L88,97" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M83,98 L87,98" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M84,99 L86,99" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M28,73 L36,73" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M36,73 L36,75" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M33,75 L39,75" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M34,76 L38,76" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
-<path d="M35,77 L37,77" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M20,73 L28,73" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M28,73 L28,75" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M25,75 L31,75" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M26,76 L30,76" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
+<path d="M27,77 L29,77" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M120,80 L100,80" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <circle cx="100" cy="80" r="0.9" fill="#111"/>
 <path d="M100,80 L100,85.0" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
@@ -170,7 +186,7 @@
 <rect x="87" y="146.4" width="6" height="1" fill="#111"/>
 <text x="93.4" y="143.0" font-family="Arial, Helvetica, sans-serif" font-size="3" text-anchor="middle" dominant-baseline="central" fill="#111">+</text>
 <text x="85.8" y="144.4" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="end" dominant-baseline="central" fill="#111" font-weight="bold">C3</text>
-<text x="85.8" y="147.8" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="end" dominant-baseline="central" fill="#111">22µF/50V</text>
+<text x="85.8" y="147.8" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="end" dominant-baseline="central" fill="#111">100µF/50V</text>
 <path d="M90,156 L90,158" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M87,158 L93,158" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M88,159 L92,159" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
@@ -185,8 +201,8 @@
 <path d="M70,160 L70,164" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M67,164 L73,164" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <text x="70" y="167.5" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="middle" dominant-baseline="central" fill="#111" font-weight="bold">+V</text>
-<text x="70" y="128" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="start" dominant-baseline="central" fill="#555" font-style="italic">MUTE / ST-BY: o CI só sai do mudo depois que a fonte sobe;</text>
-<text x="70" y="131.5" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="start" dominant-baseline="central" fill="#555" font-style="italic">D1 descarrega C3 ao desligar (corta o "plop")</text>
+<text x="12" y="128" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="start" dominant-baseline="central" fill="#555" font-style="italic">MUTE / ST-BY: o CI só sai do mudo depois que a fonte sobe;</text>
+<text x="12" y="131.5" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="start" dominant-baseline="central" fill="#555" font-style="italic">D1 descarrega C3 ao desligar (corta o "plop")</text>
 <rect x="189" y="146" width="7" height="28" fill="#fff" stroke="#111" stroke-width="0.45"/>
 <circle cx="193.8" cy="150" r="1.1" fill="none" stroke="#111" stroke-width="0.45"/>
 <text x="187.8" y="150" font-family="Arial, Helvetica, sans-serif" font-size="2.3" text-anchor="end" dominant-baseline="central" fill="#111">+V</text>
@@ -241,7 +257,7 @@
 <text x="234.5" y="165.0" font-family="Arial, Helvetica, sans-serif" font-size="2.2" text-anchor="start" dominant-baseline="central" fill="#111">C9 100nF</text>
 <path d="M248,160 L262,160" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <text x="262" y="157.5" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="end" dominant-baseline="central" fill="#111" font-weight="bold">GND</text>
-<text x="228" y="178" font-family="Arial, Helvetica, sans-serif" font-size="2.2" text-anchor="middle" dominant-baseline="central" fill="#555" font-style="italic">C7/C9 junto aos pinos 13 e 15; W1 leva +V ao pino 7</text>
+<text x="228" y="178" font-family="Arial, Helvetica, sans-serif" font-size="2.2" text-anchor="middle" dominant-baseline="central" fill="#555" font-style="italic">C7/C9 ficam junto aos pinos 13 e 15; W1 leva +V ao pino 7</text>
 <text x="10" y="8" font-family="Arial, Helvetica, sans-serif" font-size="5" text-anchor="start" dominant-baseline="central" fill="#111" font-weight="bold">Amplificador TDA7294 — mono, placa de face simples</text>
 <text x="10" y="14.5" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="start" dominant-baseline="central" fill="#333">Ganho = 1 + R3/R2 = 33,4 (30,5 dB)  •  ±35 V máx. p/ 8 Ω, ±27 V máx. p/ 4 Ω  •  baseado na Fig. 1 do datasheet ST</text>
 </svg>

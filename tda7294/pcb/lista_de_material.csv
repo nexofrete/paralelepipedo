@@ -1,13 +1,14 @@
 Ref;Valor;Descricao
 C1;1µF;Acoplamento da entrada (poliéster MKT, passo 5 mm)
 C2;47µF/25V;Desacoplamento DC da realimentação (radial 6,3 mm, passo 2,5)
-C3;22µF/50V;Constante de tempo MUTE/ST-BY (radial 6,3 mm)
+C3;100µF/50V;Atraso do MUTE/ST-BY ao ligar (radial 8 mm, passo 3,5)
 C5;47µF/63V;Bootstrap (eletrolítico radial 8 mm, passo 3,5)
 C6;1000µF/50V;Filtro +V (radial 12,5 mm, passo 5)
-C7;100nF/100V;Desacoplamento +V junto ao CI
+C7;100nF/100V;Desacoplamento +V junto ao pino 13
 C8;1000µF/50V;Filtro -V (radial 12,5 mm, passo 5)
-C9;100nF/100V;Desacoplamento -V junto ao CI
+C9;100nF/100V;Desacoplamento -V junto ao pino 15
 C10;100nF/100V;Rede Zobel (opcional)
+C11;470pF;Filtro de RF da entrada (cerâmico C0G/NP0, passo 2,5 mm)
 D1;1N4148;Descarga rápida do MUTE ao desligar (anti-"plop")
 J1;Entrada;Entrada de áudio (barra de pinos 2,54 mm ou cabo blindado)
 J2;Alimentação;Borne 3 vias passo 5,08 mm: +V / GND / -V
@@ -16,6 +17,7 @@ R1;22k;Resistência de entrada / polarização
 R2;680R;Realimentação (ganho)
 R3;22k;Realimentação (ganho = 1 + R3/R2 ≈ 33 = 30 dB)
 R4;22k;Constante de tempo MUTE/ST-BY
+R5;100R;Filtro de RF da entrada
 R6;2R7 1W;Rede Zobel (opcional), 1 W
 U1;TDA7294V;Amplificador DMOS 100 V / 100 W, Multiwatt15V (vertical)
 W1;fio;Leva +V ao pino 7 (+Vs sinal); fio rígido nu ou encapado

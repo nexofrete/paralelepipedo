@@ -6,8 +6,12 @@ jumper**, as trilhas são largas e a isolação mínima é de 0,45 mm, então d�
 fazer a placa em casa por transferência térmica ou mandar fabricar.
 
 O circuito segue a **Figura 1 (Typical Application) do datasheet da ST**, com
-três pequenas mudanças: C1 e C2 maiores (graves mais firmes), MUTE e ST-BY ligados
-juntos (auto-liga com a fonte) e um diodo anti-"plop" no desligamento.
+algumas mudanças:
+
+- C1 e C2 maiores, para graves mais firmes.
+- MUTE e ST-BY ligados juntos: o CI liga sozinho com a fonte.
+- C3 de 100 µF, para atrasar a saída do mudo, e diodo D1 que corta o "plop" ao desligar.
+- Filtro de RF na entrada (R5 e C11).
 
 ![Prévia da placa](img/previa_placa.png)
 
@@ -18,6 +22,7 @@ juntos (auto-liga com a fonte) e um diodo anti-"plop" no desligamento.
 | Ganho | 1 + R3/R2 = 1 + 22k/680 ≈ **33,4× (30,5 dB)** |
 | Sensibilidade | ≈ 0,7 V RMS para potência máxima em 8 Ω (nível de linha) |
 | Impedância de entrada | 22 kΩ (R1) |
+| Filtro de RF na entrada | 100 Ω + 470 pF, corte em ≈ 3,4 MHz |
 | Corte inferior | ≈ 7 Hz (C1/R1) e ≈ 5 Hz (C2/R2) |
 | Alimentação | simétrica, **±35 V máx. para 8 Ω** ou **±27 V máx. para 4 Ω** |
 | Potência | cerca de 70 W (THD 10 %) em qualquer um dos dois casos acima, ≈ 50 W com baixa distorção |
@@ -32,9 +37,9 @@ Arquivo vetorial: [`esquema.svg`](esquema.svg).
 Ligações que não aparecem no desenho do CI:
 
 - **Pino 4 (SVR)** e **pino 1 (ST-BY GND)** vão direto ao terra, como na Fig. 1 do datasheet.
-- **Pinos 9 e 10** ficam unidos. R4 os puxa para +V e C3 segura o CI em mudo
-  enquanto a fonte sobe. Ao desligar, D1 descarrega C3 pelo +V e o CI volta a
-  mudo antes que as tensões caiam (sem "plop").
+- **Pinos 9 e 10** ficam unidos. R4 os puxa para +V e C3 (100 µF) segura o CI em
+  mudo por cerca de 0,25–0,3 s enquanto a fonte sobe. Ao desligar, D1 descarrega C3
+  pelo +V e o CI volta a mudo antes que as tensões caiam (sem "plop").
 - **Pinos 5, 11 e 12 são N.C.** O pad do pino 12 serve só de passagem para a trilha
   de -V (veja *Montagem*).
 
@@ -45,16 +50,18 @@ Ligações que não aparecem no desenho do CI:
 | U1 | **TDA7294V** | Multiwatt15 vertical, em dissipador |
 | R1, R3, R4 | 22 kΩ 1/4 W | filme metálico 1 % de preferência |
 | R2 | 680 Ω 1/4 W | define o ganho com R3 |
+| R5 | 100 Ω 1/4 W | filtro de RF da entrada |
 | R6 | 2,7 Ω 1 W | Zobel, **opcional** |
 | C1 | 1 µF poliéster (MKT) | passo 5 mm |
 | C2 | 47 µF / 25 V | eletrolítico radial 6,3 mm, passo 2,5 |
-| C3 | 22 µF / 50 V | eletrolítico radial 6,3 mm, passo 2,5 |
+| C3 | 100 µF / 50 V | eletrolítico radial 8 mm, passo 3,5 |
 | C5 | 47 µF / 63 V | bootstrap, radial 8 mm, passo 3,5 |
 | C6, C8 | 1000 µF / 50 V | radial 12,5 mm, passo 5 |
 | C7, C9 | 100 nF / 100 V | poliéster, passo 5 mm |
 | C10 | 100 nF / 100 V | Zobel, **opcional**, passo 5 mm |
+| C11 | 470 pF / 50 V | cerâmico C0G/NP0, passo 2,5 mm (filtro de RF) |
 | D1 | 1N4148 | |
-| J1 | barra de pinos 2 vias 2,54 mm | ou solde direto o cabo blindado |
+| J1 | barra de pinos 2 vias 2,54 mm | na borda de baixo; ou solde direto o cabo blindado |
 | J2 | borne KF301 3 vias 5,08 mm | +V / GND / -V |
 | J3 | borne KF301 2 vias 5,08 mm | alto-falante |
 | W1 | jumper de fio rígido | ~8 mm |
@@ -94,8 +101,9 @@ serigrafia em cima.
 
 1. **W1**: solde primeiro o jumper de fio. Ele leva +V ao pino 7 e passa por cima
    da trilha do MUTE.
-2. Resistores, D1 (a faixa do catodo fica do lado do quadrado, voltado para cima)
-   e a barra de pinos J1.
+2. Resistores, D1 (a faixa do catodo fica do lado do quadrado, voltado para cima),
+   C11 e a barra de pinos J1. O cabo blindado da entrada chega pela borda de baixo
+   da placa, sem passar por cima da parte de potência.
 3. Capacitores de poliéster e depois os eletrolíticos. **Atenção à polaridade:** o
    pad quadrado é o **+**.
    - C8 tem o **+ no GND** e o **− no -V**. Isso é o certo para o lado negativo.
@@ -161,6 +169,15 @@ jumpers, o layout usa dois recursos:
 Com isso, sobra apenas o jumper **W1** (+V do pino 7). O terra é em estrela: a trilha
 grossa de baixo junta a terra de sinal (esquerda), a do mudo, a dos filtros e a do
 alto-falante no borne J2.
+
+Outros cuidados do layout:
+
+- **Pads ovais** (1,8 × 2,6 mm) no TDA7294, para sobrar mais cobre em volta do furo
+  de 1,0 mm. O pino 1 é indicado pelo "1" na serigrafia.
+- **C7 e C9** (100 nF) ficam a cerca de 5–6 mm dos pinos 13 e 15.
+- **+V e -V** saem do CI em direções opostas: a trilha +V é mais estreita nos primeiros
+  milímetros e a -V sai em diagonal. Assim os dois trilhos ficam bem afastados, sem o
+  risco de curto que existia na revisão A.
 
 ### Regenerar os arquivos
 

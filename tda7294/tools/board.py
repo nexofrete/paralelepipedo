@@ -111,7 +111,7 @@ def elec(ref, val, pplus, pminus, nplus, nminus, dia, size=2.0, drill=0.9,
     n = max((dx * dx + dy * dy) ** .5, 1e-6)
     px, py = cx + dx / n * (dia / 2 - 1.1), cy + dy / n * (dia / 2 - 1.1)
     # desloca o + para fora do eixo dos terminais
-    ox, oy = -dy / n * 1.6, dx / n * 1.6
+    ox, oy = -dy / n * 2.2, dx / n * 2.2
     b.silk.append(Silk('text', ('+', px + ox, py + oy), 1.6))
     place_labels(ref, val, lx if lx is not None else cx,
                  ly if ly is not None else cy - 0.2, vx, vy)
@@ -119,7 +119,7 @@ def elec(ref, val, pplus, pminus, nplus, nminus, dia, size=2.0, drill=0.9,
 
 
 def terminal(ref, value, lst, pitch, horizontal, descr='', size=2.4, drill=1.3,
-             depth=7.6, side=+1, lx=None, ly=None, lab_off=None):
+             depth=7.6, side=+1, lx=None, ly=None, lab_off=None, centered=False):
     """Borne de parafuso. side indica para que lado fica a entrada do fio."""
     pads(ref, lst, size, drill, square_first=True)
     xs = [p[1] for p in lst]
@@ -127,6 +127,8 @@ def terminal(ref, value, lst, pitch, horizontal, descr='', size=2.4, drill=1.3,
     if horizontal:
         x0, x1 = min(xs) - pitch / 2, max(xs) + pitch / 2
         y0 = ys[0] - (depth - 3.2) if side < 0 else ys[0] - 3.2
+        if centered:
+            y0 = ys[0] - depth / 2
         b.silk.append(Silk('rect', (x0, y0, x1 - x0, depth)))
     else:
         y0, y1 = min(ys) - pitch / 2, max(ys) + pitch / 2
@@ -144,7 +146,8 @@ def terminal(ref, value, lst, pitch, horizontal, descr='', size=2.4, drill=1.3,
 
 
 def net_label(n):
-    return {'VP': '+V', 'VN': '-V', 'GND': 'GND', 'OUT': 'OUT', 'IN': 'IN'}.get(n, n)
+    return {'VP': '+V', 'VN': '-V', 'GND': 'GND', 'OUT': 'OUT', 'IN': 'IN',
+            'INJ': 'IN'}.get(n, n)
 
 
 def jumper(ref, pa, pb, net, descr):
@@ -174,12 +177,14 @@ def py(n):
 
 
 for n in range(1, 16):
+    # pads ovais 1,8 x 2,6 mm: mais cobre em volta do furo sem fechar os canais
     b.pads.append(Pad('U1', str(n), px(n), py(n), 1.8, 1.0,
-                      PIN_NET[n] if PIN_NET[n] else 'NC%d' % n, square=(n == 1)))
+                      PIN_NET[n] if PIN_NET[n] else 'NC%d' % n, h=2.6))
 # contorno do corpo (Multiwatt15 vertical) e aba metálica
 b.silk.append(Silk('rect', (X0 - 1.21, YE - 4.5, 20.2, 5.0)))
 b.silk.append(Silk('line', (X0 - 1.21, YE - 3.1, X0 + 18.99, YE - 3.1)))
-label('U1  TDA7294', X0 + 8.9, YE - 1.6, 1.4)
+label('U1', X0 - 4.0, YE - 1.2, 1.4)
+value('TDA7294', X0 - 4.4, YE + 0.6, 1.1)
 b.silk.append(Silk('text', ('1', X0 - 2.3, YO), 1.1))
 b.silk.append(Silk('text', ('15', X0 + 17.78 + 2.5, YO), 1.1))
 part('U1', 'TDA7294V', 'Amplificador DMOS 100 V / 100 W, Multiwatt15V (vertical)')
@@ -228,8 +233,9 @@ track('MUTE', SIG, (px(7), 30.02), (MUTEX, 30.02))
 resistor('R4', '22k', (48.6, 22.4), (48.6, 32.56), 'VP', 'MUTE',
          descr='Constante de tempo MUTE/ST-BY', lx=50.3, ly=35.2)
 track('MUTE', SIG, (48.6, 32.56), (MUTEX, 32.56))
-elec('C3', '22µF/50V', (MUTEX, 37.0), (MUTEX - 2.5, 37.0), 'MUTE', 'GND', 6.3,
-     descr='Constante de tempo MUTE/ST-BY (radial 6,3 mm)', lx=40.0, ly=38.0)
+C3M = MUTEX - 3.5
+elec('C3', '100µF/50V', (MUTEX, 37.0), (C3M, 37.0), 'MUTE', 'GND', 8.0,
+     descr='Atraso do MUTE/ST-BY ao ligar (radial 8 mm, passo 3,5)', lx=38.6, ly=40.6)
 
 # ======================================================== entrada
 # GND dos pinos 4 e 1 pelo canal entre as fileiras e saída para a esquerda
@@ -240,29 +246,44 @@ film('C1', '1µF', (33.46, 20.0), (38.54, 20.0), 'IN', 'INP',
 track('INP', SIG, (px(3), YO), (px(3), 20.0), (px(3), 25.0))
 resistor('R1', '22k', (px(3), 25.0), (px(3), 35.16), 'INP', 'GND',
          descr='Resistência de entrada / polarização', lx=px(3) + 2.6)
-track('GND', MID, (px(3), 35.16), (GNDX, 35.16))
-terminal('J1', 'Entrada', [(1, 34.0, 26.0, 'IN'), (2, 34.0, 28.54, 'GND')], 2.54,
-         False, descr='Entrada de áudio (barra de pinos 2,54 mm ou cabo blindado)',
-         size=1.8, drill=1.0, depth=3.2, side=+1, lx=34.0, ly=31.4)
-track('IN', SIG, (33.46, 20.0), (34.0, 21.0), (34.0, 26.0))
-track('GND', MID, (34.0, 28.54), (GNDX, 28.54))
+# o terra de R1 desce junto com o do borne de entrada
+INX = 33.5
+track('GND', MID, (px(3), 35.16), (px(3), 48.0), (36.04, 50.5), (36.04, 60.5))
+# filtro de RF: R5 em série e C11 para o terra, antes de C1
+track('IN', SIG, (33.46, 20.0), (INX, 20.0), (INX, 36.0))
+film('C11', '470pF', (GNDX, 30.0), (INX, 30.0), 'GND', 'IN', box=(3.6, 2.4),
+     descr='Filtro de RF da entrada (cerâmico C0G/NP0, passo 2,5 mm)', lx=GNDX - 2.9,
+     ly=29.3, vx=GNDX - 2.9, vy=30.8)
+resistor('R5', '100R', (INX, 36.0), (INX, 46.16), 'IN', 'INJ',
+         descr='Filtro de RF da entrada', lx=INX - 2.4, ly=40.3, vx=INX - 2.4, vy=41.8)
+terminal('J1', 'Entrada', [(1, INX, 50.5, 'INJ'), (2, 36.04, 50.5, 'GND')], 2.54,
+         True, descr='Entrada de áudio (barra de pinos 2,54 mm ou cabo blindado)',
+         size=1.8, drill=1.0, depth=2.6, side=+1, lx=34.77, ly=55.4,
+         lab_off=(0, 2.6), centered=True)
+track('INJ', SIG, (INX, 46.16), (INX, 50.5))
 
 # ======================================================== alimentação
 VPX = px(13)
-track('VP', PWR, (px(13), YO), (VPX, 46.0))
+# trecho estreito junto ao CI: mantém > 1 mm do pino 15 (70 V de diferença)
+track('VP', MID, (px(13), YO), (VPX, 19.6))
+track('VP', PWR, (VPX, 19.6), (VPX, 46.0))
 track('VP', MID, (VPX, 22.4), (48.6, 22.4))
 # -V: pino 8 sobe, passa por cima do pino 10, entra no pad 12 (N.C.), desce para
 # o canal entre as fileiras e chega ao pino 15
 track('VN', MID, (px(8), YE), (px(8), L_VN), (px(12), L_VN), (px(12), YB),
       (px(15), YB), (px(15), YO))
-track('VN', PWR, (px(15), YO), (px(15), 18.0), (61.4, 25.6), (61.4, 31.0),
-      (67.0, 36.6), (67.0, 46.0))
+# -V sai do pino 15 já em diagonal, para longe da trilha +V
+C9X = 59.4
+track('VN', PWR, (px(15), YO), (55.6, 17.9), (C9X, 17.9), (C9X, 19.6),
+      (62.4, 22.6), (62.4, 31.0), (67.0, 35.6), (67.0, 46.0))
 STARX = 56.32
-film('C7', '100nF/100V', (VPX, 27.0), (STARX, 27.0), 'VP', 'GND',
-     descr='Desacoplamento +V junto ao CI', vy=24.4)
-film('C9', '100nF/100V', (STARX, 31.0), (61.4, 31.0), 'GND', 'VN',
-     descr='Desacoplamento -V junto ao CI', vy=33.6)
-track('GND', PWR, (STARX, 27.0), (STARX, 60.5))
+film('C7', '100nF/100V', (VPX, 22.9), (STARX, 22.9), 'VP', 'GND',
+     descr='Desacoplamento +V junto ao pino 13', lx=53.78, ly=26.0, vx=53.78, vy=27.4)
+film('C9', '100nF/100V', (C9X, 19.6), (C9X, 24.68), 'VN', 'GND',
+     descr='Desacoplamento -V junto ao pino 15', lx=C9X + 3.0, ly=21.4,
+     vx=C9X + 3.2, vy=22.9)
+track('GND', MID, (C9X, 24.68), (STARX, 24.68))
+track('GND', PWR, (STARX, 22.9), (STARX, 60.5))
 elec('C6', '1000µF/50V', (49.0, 46.0), (54.0, 46.0), 'VP', 'GND', 12.5, size=2.2,
      drill=1.0, descr='Filtro +V (radial 12,5 mm, passo 5)', lx=51.5, ly=48.6)
 elec('C8', '1000µF/50V', (62.0, 46.0), (67.0, 46.0), 'GND', 'VN', 12.5, size=2.2,
@@ -276,7 +297,7 @@ track('VP', PWR, (49.0, 46.0), (49.0, 52.0), (51.24, 54.24), (51.24, 56.0))
 track('VN', PWR, (67.0, 46.0), (67.0, 52.0), (63.0, 56.0), (61.40, 56.0))
 # trilha de terra principal (estrela no borne J2)
 track('GND', PWR, (GNDX, 60.5), (77.5, 60.5))
-track('GND', MID, (MUTEX - 2.5, 37.0), (MUTEX - 2.5, 60.5))
+track('GND', MID, (C3M, 37.0), (C3M, 60.5))
 
 # ======================================================== saída
 OUTR = 74.0
@@ -303,4 +324,4 @@ for i in range(0, 80, 3):
     b.silk.append(Silk('line', (i + 0.5, YE - 4.5, i + 2.0, YE - 4.5)))
 label('DISSIPADOR (ABA = -V)', 22.0, 1.4, 1.1)
 label('TDA7294 MONO', 15.0, 54.0, 1.8)
-label('FACE SIMPLES  REV A', 15.0, 57.0, 1.2)
+label('FACE SIMPLES  REV B', 15.0, 57.0, 1.2)

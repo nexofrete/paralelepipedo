@@ -17,6 +17,7 @@ class Pad:
     drill: float
     net: str
     square: bool = False
+    h: float = 0.0       # altura > size => pad oval (oblongo) na vertical
 
 
 @dataclass
@@ -79,6 +80,11 @@ def copper_items(board):
     items = []
     for i, p in enumerate(board.pads):
         if p.net is None:
+            continue
+        if p.h > p.size:
+            d = (p.h - p.size) / 2
+            items.append((p.net, 'seg', ((p.x, p.y - d), (p.x, p.y + d)), p.size / 2,
+                          f"{p.ref}.{p.num}", None))
             continue
         r = p.size / 2 * (math.sqrt(2) if p.square else 1.0)
         items.append((p.net, 'pad', (p.x, p.y), r, f"{p.ref}.{p.num}", p))

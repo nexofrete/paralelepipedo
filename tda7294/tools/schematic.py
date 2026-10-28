@@ -180,14 +180,18 @@ def build():
     w((165, Y2), (165, 124)); flag(165, 124, '-V', up=False)
 
     # ------------------------------------------------ entrada
-    connector(28, 65, 'J1', 'entrada', [(0, 'IN'), (8, 'GND')])
-    w((28, 65), (50, 65))
-    cap_h(50, 66, 65, 'C1', '1µF MKT')
-    w((66, 65), (X1, 65))
+    connector(20, 65, 'J1', 'entrada', [(0, 'IN'), (8, 'GND')])
+    res_h(20, 42, 65, 'R5', '100R')
+    dot(46, 65)
+    cap_v(46, 65, 80, 'C11', '470pF', side=-1)
+    gnd(46, 80)
+    w((42, 65), (52, 65))
+    cap_h(52, 68, 65, 'C1', '1µF MKT')
+    w((68, 65), (X1, 65))
     dot(85, 65)
     res_v(85, 65, 95, 'R1', '22k', side=-1)
     gnd(85, 95)
-    w((28, 73), (36, 73)); gnd(36, 73)
+    w((20, 73), (28, 73)); gnd(28, 73)
 
     # ------------------------------------------------ realimentação
     w((X1, 80), (100, 80))
@@ -225,13 +229,13 @@ def build():
     # R4 vai ao +V: desenha a bandeira acima? mantém em baixo com rótulo
     t(110, 167.5, '+V', 2.8, bold=True)
     w((107, 164), (113, 164))
-    cap_v(90, 136, 156, 'C3', '22µF/50V', polar=True, plus_top=True, side=-1)
+    cap_v(90, 136, 156, 'C3', '100µF/50V', polar=True, plus_top=True, side=-1)
     gnd(90, 156)
     diode_v(70, 140, 160, 'D1', '1N4148', side=-1)
     w((70, 136), (70, 140))
     w((70, 160), (70, 164)); w((67, 164), (73, 164)); t(70, 167.5, '+V', 2.8, bold=True)
-    t(70, 128, 'MUTE / ST-BY: o CI só sai do mudo depois que a fonte sobe;', 2.3, anchor='start', italic=True, color='#555')
-    t(70, 131.5, 'D1 descarrega C3 ao desligar (corta o "plop")', 2.3, anchor='start', italic=True, color='#555')
+    t(12, 128, 'MUTE / ST-BY: o CI só sai do mudo depois que a fonte sobe;', 2.3, anchor='start', italic=True, color='#555')
+    t(12, 131.5, 'D1 descarrega C3 ao desligar (corta o "plop")', 2.3, anchor='start', italic=True, color='#555')
     # observação do diodo (catodo no +V)
 
     # ------------------------------------------------ fonte
@@ -251,7 +255,7 @@ def build():
     t(234.5, 155.0, 'C7 100nF', 2.2, anchor='start'); t(234.5, 165.0, 'C9 100nF', 2.2, anchor='start')
     w((248, 160), (262, 160)); gnd(256, 160) if False else None
     t(262, 157.5, 'GND', 2.8, anchor='end', bold=True)
-    t(228, 178, 'C7/C9 junto aos pinos 13 e 15; W1 leva +V ao pino 7', 2.2,
+    t(228, 178, 'C7/C9 ficam junto aos pinos 13 e 15; W1 leva +V ao pino 7', 2.2,
       italic=True, color='#555')
 
     # ------------------------------------------------ título

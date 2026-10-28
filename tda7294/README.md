@@ -26,6 +26,7 @@ algumas mudanças:
 | Corte inferior | ≈ 7 Hz (C1/R1) e ≈ 5 Hz (C2/R2) |
 | Alimentação | simétrica, **±35 V máx. para 8 Ω** ou **±27 V máx. para 4 Ω** |
 | Potência | cerca de 70 W (THD 10 %) em qualquer um dos dois casos acima, ≈ 50 W com baixa distorção |
+| Trilhas de potência | 2 mm: bastam para **8 Ω** (≈ 4,2 A de pico a 70 W). Para 4 Ω, estanhe as trilhas grossas |
 | Proteções (internas do CI) | curto-circuito na saída, térmica, mute/stand-by |
 
 ## Esquema

@@ -8,7 +8,7 @@ fazer a placa em casa por transferência térmica ou mandar fabricar.
 O circuito segue a **Figura 1 (Typical Application) do datasheet da ST**, com
 algumas mudanças:
 
-- C1 e C2 maiores, para graves mais firmes.
+- C1, C2 e C5 maiores, para grave firme e com pouca distorção (veja *Grave*).
 - MUTE e ST-BY ligados juntos: o CI liga sozinho com a fonte.
 - C3 de 100 µF, para atrasar a saída do mudo, e diodo D1 que corta o "plop" ao desligar.
 - Filtro de RF na entrada (R5 e C11).
@@ -23,7 +23,7 @@ algumas mudanças:
 | Sensibilidade | ≈ 0,7 V RMS para potência máxima em 8 Ω (nível de linha) |
 | Impedância de entrada | 22 kΩ (R1) |
 | Filtro de RF na entrada | 100 Ω + 470 pF, corte em ≈ 3,4 MHz |
-| Corte inferior | ≈ 7 Hz (C1/R1) e ≈ 5 Hz (C2/R2) |
+| Corte inferior | ≈ 7 Hz (C1/R1) e ≈ 2,3 Hz (C2/R2) |
 | Alimentação | simétrica, **±35 V máx. para 8 Ω** ou **±27 V máx. para 4 Ω** |
 | Potência | cerca de 70 W (THD 10 %) em qualquer um dos dois casos acima, ≈ 50 W com baixa distorção |
 | Trilhas de potência | 2 mm: bastam para **8 Ω** (≈ 4,2 A de pico a 70 W). Para 4 Ω, estanhe as trilhas grossas |
@@ -54,9 +54,9 @@ Ligações que não aparecem no desenho do CI:
 | R5 | 100 Ω 1/4 W | filtro de RF da entrada |
 | R6 | 2,7 Ω 1 W | Zobel, **opcional** |
 | C1 | 1 µF poliéster (MKT) | passo 5 mm |
-| C2 | 47 µF / 25 V | eletrolítico radial 6,3 mm, passo 2,5 |
+| C2 | 100 µF / 25 V | eletrolítico radial 6,3 mm, passo 2,5 |
 | C3 | 100 µF / 50 V | eletrolítico radial 8 mm, passo 3,5 |
-| C5 | 47 µF / 63 V | bootstrap, radial 8 mm, passo 3,5 |
+| C5 | 100 µF / 63 V | bootstrap, radial 8 mm, passo 3,5 (procure a versão de 8 × 11,5 mm) |
 | C6, C8 | 1000 µF / 50 V | radial 12,5 mm, passo 5 |
 | C7, C9 | 100 nF / 100 V | poliéster, passo 5 mm |
 | C10 | 100 nF / 100 V | Zobel, **opcional**, passo 5 mm |
@@ -122,6 +122,25 @@ serigrafia em cima.
 > chassi (terra), use mica ou silicone isolante e bucha no parafuso. Antes de ligar,
 > meça com o multímetro que a aba não está em curto com o dissipador.
 
+## Grave
+
+O amplificador é plano até poucos hertz. Quem define o grave que você ouve é principalmente
+**o alto-falante e a caixa**. Do lado do amplificador, o que faz diferença é:
+
+- **C5 = 100 µF (bootstrap).** Mantém o estágio de saída com força total em 30–40 Hz na
+  potência máxima. Com valor pequeno, o grave "afina" justamente quando você aumenta o volume.
+- **C2 = 100 µF.** Com ele, a tensão sobre esse eletrolítico em 20 Hz é muito pequena, e
+  o capacitor praticamente não gera distorção no grave.
+- **C1 = 1 µF de poliéster (MKT).** Corte em ≈ 7 Hz, sem eletrolítico no caminho do sinal.
+- **Fonte com reserva.** Um bumbo forte puxa vários ampères por poucos milissegundos. Use
+  **10000 µF por trilho** na fonte e um transformador folgado (≈ 120 VA por canal). Fonte
+  fraca é a causa mais comum de grave "mole" ou que distorce cedo.
+- **Fios curtos e grossos** da fonte até J2 e de J3 até o alto-falante (1,5 mm² ou mais).
+
+Se quiser **mais** grave do que a gravação tem (reforço tipo *loudness*), isso se faz antes
+do amplificador: no pré, no equalizador ou na fonte de som. Um reforço no próprio amplificador
+faz ele saturar mais cedo exatamente nas notas graves.
+
 ## Fonte de alimentação (fora da placa)
 
 A placa recebe ±V já retificado e filtrado no borne J2. Uma fonte simples:
@@ -131,7 +150,7 @@ A placa recebe ±V já retificado e filtrado no borne J2. Uma fonte simples:
   - alto-falante de **4 Ω**: 2 × 18–19 V AC → cerca de ±26 V DC;
   - potência: ~120 VA para um canal, 200–250 VA para estéreo.
 - Ponte retificadora de **25 A** (ex.: KBPC2510).
-- **2 × 4700 µF a 10000 µF / 50 V** (um em +V e outro em -V), com a terra central
+- **2 × 10000 µF / 50 V** (um em +V e outro em -V; 4700 µF funciona, mas segura menos o grave), com a terra central
   ligada ao centro do transformador.
 - **Fusível** no primário (lento: 1 A em 220 V ou 2 A em 127 V, para ~200 VA).
 

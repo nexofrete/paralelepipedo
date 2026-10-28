@@ -197,7 +197,7 @@ def build():
     w((X1, 80), (100, 80))
     dot(100, 80)
     res_v(100, 80, 100, 'R2', '680R', side=-1)
-    cap_v(100, 100, 116, 'C2', '47µF/25V', polar=True, plus_top=True, side=-1)
+    cap_v(100, 100, 116, 'C2', '100µF/25V', polar=True, plus_top=True, side=-1)
     gnd(100, 116)
     S.append(f'<path d="M100,80 L100,67 A2,2 0 0 1 100,63 L100,30" fill="none" '
              f'stroke="#111" stroke-width="{LW}"/>')
@@ -209,7 +209,7 @@ def build():
 
     # ------------------------------------------------ bootstrap e saída
     w((X2, 68), (188, 68))
-    cap_v(188, 68, 90, 'C5', '47µF/63V', polar=True, plus_top=True, side=1)
+    cap_v(188, 68, 90, 'C5', '100µF/63V', polar=True, plus_top=True, side=1)
     w((X2, 90), (250, 90))
     dot(188, 90); dot(200, 90); dot(222, 90)
     res_v(222, 90, 112, 'R6', '2R7 1W', side=1)

@@ -1,8 +1,8 @@
 Ref;Valor;Descricao
 C1;1µF;Acoplamento da entrada (poliéster MKT, passo 5 mm)
-C2;47µF/25V;Desacoplamento DC da realimentação (radial 6,3 mm, passo 2,5)
+C2;100µF/25V;Desacoplamento DC da realimentação (radial 6,3 mm, passo 2,5)
 C3;100µF/50V;Atraso do MUTE/ST-BY ao ligar (radial 8 mm, passo 3,5)
-C5;47µF/63V;Bootstrap (eletrolítico radial 8 mm, passo 3,5)
+C5;100µF/63V;Bootstrap (eletrolítico radial 8 mm, passo 3,5)
 C6;1000µF/50V;Filtro +V (radial 12,5 mm, passo 5)
 C7;100nF/100V;Desacoplamento +V junto ao pino 13
 C8;1000µF/50V;Filtro -V (radial 12,5 mm, passo 5)

@@ -105,7 +105,7 @@
 <rect x="97" y="108.4" width="6" height="1" fill="#111"/>
 <text x="103.4" y="105.0" font-family="Arial, Helvetica, sans-serif" font-size="3" text-anchor="middle" dominant-baseline="central" fill="#111">+</text>
 <text x="95.8" y="106.4" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="end" dominant-baseline="central" fill="#111" font-weight="bold">C2</text>
-<text x="95.8" y="109.8" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="end" dominant-baseline="central" fill="#111">47µF/25V</text>
+<text x="95.8" y="109.8" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="end" dominant-baseline="central" fill="#111">100µF/25V</text>
 <path d="M100,116 L100,118" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M97,118 L103,118" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <path d="M98,119 L102,119" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
@@ -132,7 +132,7 @@
 <rect x="185" y="79.4" width="6" height="1" fill="#111"/>
 <text x="184.6" y="76.0" font-family="Arial, Helvetica, sans-serif" font-size="3" text-anchor="middle" dominant-baseline="central" fill="#111">+</text>
 <text x="192.2" y="77.4" font-family="Arial, Helvetica, sans-serif" font-size="2.8" text-anchor="start" dominant-baseline="central" fill="#111" font-weight="bold">C5</text>
-<text x="192.2" y="80.8" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="start" dominant-baseline="central" fill="#111">47µF/63V</text>
+<text x="192.2" y="80.8" font-family="Arial, Helvetica, sans-serif" font-size="2.6" text-anchor="start" dominant-baseline="central" fill="#111">100µF/63V</text>
 <path d="M175,90 L250,90" fill="none" stroke="#111" stroke-width="0.45" stroke-linejoin="round"/>
 <circle cx="188" cy="90" r="0.9" fill="#111"/>
 <circle cx="200" cy="90" r="0.9" fill="#111"/>

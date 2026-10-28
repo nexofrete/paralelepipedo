@@ -201,7 +201,7 @@ track('OUT', 1.0, (px(14), YE), (px(14), L_OUT), (OUTX, L_OUT), (OUTX, 24.0))
 # bootstrap: pino 6 -> C5(+); C5(-) -> saída
 track('BOOT', SIG, (px(6), YE), (px(6), L_BOOT), (BOOTX, L_BOOT), (BOOTX, 15.0),
       (15.5, 15.0))
-elec('C5', '47µF/63V', (15.5, 15.0), (12.0, 15.0), 'BOOT', 'OUT', 8.0,
+elec('C5', '100µF/63V', (15.5, 15.0), (12.0, 15.0), 'BOOT', 'OUT', 8.0,
      descr='Bootstrap (eletrolítico radial 8 mm, passo 3,5)', lx=13.75, ly=20.2)
 track('OUT', 1.0, (OUTX, 15.0), (12.0, 15.0))
 # entrada inversora: pino 2 -> R3 / R2
@@ -211,7 +211,7 @@ resistor('R3', '22k', (OUTX, 24.0), (OUTX + 10.16, 24.0), 'OUT', 'INN',
 track('INN', SIG, (OUTX + 10.16, 24.0), (INNX, 24.0))
 resistor('R2', '680R', (INNX, 29.0), (INNX, 39.16), 'INN', 'FB',
          descr='Realimentação (ganho)', lx=INNX - 3.0)
-elec('C2', '47µF/25V', (INNX, 43.0), (INNX + 2.5, 43.0), 'FB', 'GND', 6.3,
+elec('C2', '100µF/25V', (INNX, 43.0), (INNX + 2.5, 43.0), 'FB', 'GND', 6.3,
      descr='Desacoplamento DC da realimentação (radial 6,3 mm, passo 2,5)',
      lx=INNX + 1.25, ly=47.6)
 track('FB', SIG, (INNX, 39.16), (INNX, 43.0))

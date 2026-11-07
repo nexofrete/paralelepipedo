@@ -164,6 +164,10 @@
         {
           "area": "EDI",
           "texto": "EDI dos parceiros (EDI » Dos parceiros): a transportadora lê o OCOREN, o CONEMB e o DOCCOB da transportadora parceira do redespacho. As ocorrências entram nos nossos CT-e (achados pelas notas) e o cliente é avisado; o CONEMB confere e ajusta o custo previsto; a fatura vira acerto do parceiro e conta a pagar."
+        },
+        {
+          "area": "Parceiros",
+          "texto": "Gestão completa dos parceiros (065): cadastro com IE, endereço, vários contatos, banco e serviços; tabela de frete por região e faixa de peso com prazo por região; documentos com vencimento (RNTRC e RCTR-C vencidos travam o repasse); desempenho com pontualidade, atrasos e ranking; avaliação com estrelas; bloqueio e liberação com histórico."
         }
       ]
     },

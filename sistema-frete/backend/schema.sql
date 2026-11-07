@@ -2874,3 +2874,60 @@ CREATE INDEX IF NOT EXISTS idx_gnre_guia_ctes_cte ON gnre_guia_ctes (cte_id);
 ALTER TABLE parceiro_acertos ADD COLUMN IF NOT EXISTS documento VARCHAR(40);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_parceiro_acertos_documento ON parceiro_acertos (parceiro_id, documento) WHERE documento IS NOT NULL;
 ALTER TABLE parceiro_lancamentos ADD COLUMN IF NOT EXISTS cte_parceiro VARCHAR(60);
+
+-- Gestão dos parceiros (transportadoras do redespacho): cadastro completo, tabela de frete
+-- por região e faixa de peso (com o prazo), serviços, documentos com vencimento,
+-- avaliações e bloqueio com histórico.
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS ie VARCHAR(30);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS cep VARCHAR(10);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS logradouro VARCHAR(200);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS numero VARCHAR(20);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS complemento VARCHAR(100);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS bairro VARCHAR(120);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS uf CHAR(2);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS contatos JSONB NOT NULL DEFAULT '[]';   -- [{ nome, funcao, telefone, email }]
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS banco VARCHAR(100);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS agencia VARCHAR(20);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS conta VARCHAR(30);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS tipo_conta VARCHAR(20);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS servicos TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS bloqueio_motivo VARCHAR(300);
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS bloqueado_em TIMESTAMPTZ;
+ALTER TABLE parceiros ADD COLUMN IF NOT EXISTS bloqueado_por VARCHAR(150);
+CREATE TABLE IF NOT EXISTS parceiro_tabela (
+  id SERIAL PRIMARY KEY,
+  parceiro_id INTEGER NOT NULL REFERENCES parceiros(id) ON DELETE CASCADE,
+  uf CHAR(2) NOT NULL,
+  cidade VARCHAR(140),                         -- "CIDADE/UF"; vazia = o estado todo
+  peso_ate NUMERIC(12,2),                      -- faixa: até este peso (kg); vazia = qualquer peso
+  custo_percentual NUMERIC(6,2) NOT NULL DEFAULT 0, custo_kg NUMERIC(10,4) NOT NULL DEFAULT 0,
+  custo_fixo NUMERIC(12,2) NOT NULL DEFAULT 0, custo_minimo NUMERIC(12,2) NOT NULL DEFAULT 0,
+  prazo_dias INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_parceiro_tabela ON parceiro_tabela (parceiro_id, uf);
+CREATE TABLE IF NOT EXISTS parceiro_documentos (
+  id SERIAL PRIMARY KEY,
+  parceiro_id INTEGER NOT NULL REFERENCES parceiros(id) ON DELETE CASCADE,
+  tipo VARCHAR(20) NOT NULL,                   -- ver src/parceiros.js (DOCUMENTOS)
+  numero VARCHAR(60), validade DATE, aviso_dias INTEGER NOT NULL DEFAULT 30, observacao VARCHAR(300),
+  atualizado_por VARCHAR(150), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_parceiro_documentos ON parceiro_documentos (parceiro_id, tipo);
+CREATE TABLE IF NOT EXISTS parceiro_avaliacoes (
+  id SERIAL PRIMARY KEY,
+  parceiro_id INTEGER NOT NULL REFERENCES parceiros(id) ON DELETE CASCADE,
+  cte_id INTEGER REFERENCES ctes_emitidos(id) ON DELETE SET NULL,
+  nota SMALLINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
+  comentario VARCHAR(500), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_parceiro_avaliacao_cte ON parceiro_avaliacoes (parceiro_id, cte_id) WHERE cte_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS parceiro_bloqueios (
+  id SERIAL PRIMARY KEY,
+  parceiro_id INTEGER NOT NULL REFERENCES parceiros(id) ON DELETE CASCADE,
+  acao VARCHAR(10) NOT NULL,                   -- bloqueio | liberacao
+  motivo VARCHAR(300), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Data que o parceiro prometeu para a entrega (a maior entre a previsão do CT-e e o dia do repasse, + o prazo dele).
+ALTER TABLE romaneio_itens ADD COLUMN IF NOT EXISTS prometido_parceiro DATE;

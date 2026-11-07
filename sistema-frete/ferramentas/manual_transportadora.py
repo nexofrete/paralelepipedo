@@ -311,10 +311,38 @@ def parte_operacao(g):
         '<b>cidades</b> (uma por linha, Cidade/UF), quanto ele cobra por CT-e (% do frete, R$ por kg, valor fixo, mínimo) e o '
         'prazo dele (dias a mais na previsão).',
         'Em <b>Ocorrências de entrega</b>, marque os CT-e e clique em <b>Repassar a parceiro</b>. O sistema mostra quem atende '
-        'cada destino, o custo previsto e a margem que sobra do frete.',
+        'cada destino, o custo previsto (pela tabela da região, quando houver), a margem que sobra do frete, o prazo, os '
+        'serviços, a pontualidade e a nota. Bloqueados e com documento vencido aparecem travados.',
         'Ao repassar: os CT-e ficam como "Entregue ao redespacho", a previsão ganha o prazo do parceiro, o custo previsto '
         'entra na conta dele e sai um <b>código do app</b>: mande o link ao parceiro para ele dar baixa nas entregas (com '
         'foto do canhoto ou assinatura), como o motorista.',
+    ])
+    s.append(P('<b>Cadastro completo</b> (Editar): CNPJ (nome, inscrição estadual e endereço vêm da Receita), RNTRC, endereço, '
+               'o contato principal e outros contatos (financeiro, operação...), dados bancários (banco, agência, conta, tipo) e '
+               'PIX, e os <b>serviços</b> que ele oferece (fracionado, lotação, veículo dedicado, coleta, entrega agendada, '
+               'expressa, refrigerada, produtos perigosos, reversa, reentrega, armazenagem). Os serviços aparecem na escolha do repasse.'))
+    s += lista([
+        '<b>Tabela de frete</b> (Abrir » Tabela de frete): uma linha por estado ou cidade, com faixa de peso ("até" kg, vazio = '
+        'qualquer peso), % do frete, R$/kg, R$ fixo, mínimo e o <b>prazo daquela região</b>. Vale a linha da cidade antes da do '
+        'estado; na mesma região, a menor faixa de peso em que o CT-e cabe. Destino sem linha usa o custo padrão do cadastro. '
+        'Ter linha num estado ou cidade também conta como área atendida.',
+        '<b>Documentos</b> (Abrir » Documentos): RNTRC e seguro RCTR-C (obrigatórios), RCF-DC, contrato, CND, alvará e licença, '
+        'com a validade e quantos dias antes avisar. <b>Renovar</b> preenche o formulário com o documento. RNTRC ou RCTR-C '
+        '<b>vencido trava o repasse</b>: o administrador pode liberar aquele repasse (fica na auditoria). A tela Hoje avisa '
+        'os documentos de parceiros vencidos e vencendo.',
+        '<b>Desempenho</b> (Abrir » Desempenho): no período escolhido, a pontualidade, as cargas, os atrasos (e o atraso médio), '
+        'as ocorrências de problema, as devolvidas e as notas, por mês e por estado, com a lista das entregas atrasadas. '
+        'Pontualidade = entregues no prazo do parceiro dividido pelas entregues mais as em aberto que já passaram do prazo. '
+        'O prazo do parceiro conta do dia do repasse (ou da previsão do CT-e, se for depois) mais os dias dele: CT-e que já '
+        'chegou atrasado não conta contra ele.',
+        '<b>Ranking de desempenho</b> (no alto da tela): todos os parceiros no período, do melhor para o pior pela nota geral. '
+        'A lista de parceiros mostra a pontualidade e a nota dos últimos 90 dias.',
+        '<b>Avaliação</b>: na aba Cargas, <b>Avaliar</b> cada entrega (1 a 5 estrelas, comentário obrigatório em nota 1 ou 2), '
+        'ou Abrir » Avaliações » Avaliar o parceiro em geral. A <b>nota geral</b> junta a pontualidade (100% = 5 estrelas) e a '
+        'média das avaliações, metade cada.',
+        '<b>Bloqueio</b> (Abrir » Bloqueio): bloqueie com o motivo (extravio, documento irregular, pendência...). O parceiro '
+        'bloqueado some da sugestão e não recebe cargas; as que já estão com ele continuam. Só o <b>administrador</b> libera, '
+        'também com motivo. O histórico de bloqueios e liberações fica na aba.',
     ])
     s += lista([
         '<b>Abrir</b> o parceiro: as cargas com ele (atrasadas em vermelho), a conta-corrente e o histórico de acertos.',

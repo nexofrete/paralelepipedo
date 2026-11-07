@@ -42,7 +42,7 @@
     'r:indicadores': ['309', 'indicadores kpi dashboard painel pago pendente contratado economia auditoria regiao estado modalidade modal pontualidade ocorrencias entregas'], 'r:graficos': ['310', 'relatorio grafico'], 'r:entregas': ['311', 'entregas previstas'], 'r:semMapa': ['312', 'mapa'],
     'r:melhorTransp': ['313', 'melhor transportadora'], 'r:consolidacao': ['314', 'consolidar rotas'], 'r:roteirizar': ['315', 'roteirizar rota'],
     'r:bi': ['316', 'bi relatorio montar'], 'r:comparador': ['317', 'comparar cotacoes'], 'r:anomalias': ['318', 'anomalias'],
-    'r:scorecard': ['319', 'scorecard'], 'r:nfeCte': ['320', 'nfe cte'], 'r:auditoriaFrete': ['321', 'conferencia cte'], 'r:nfeCteInc': ['322', 'inconsistencias nfe cte vinculo nota sem cte cte sem nota peso valor destinatario religar pesquisa nf'],
+    'r:scorecard': ['319', 'scorecard'], 'r:nfeCte': ['320', 'nfe cte'], 'r:auditoriaFrete': ['321', 'conferencia cte'], 'r:cobIndevidas': ['323', 'cobrancas indevidas cobrado a mais componente taxa nao autorizada pedagio gris ad valorem icms base cfop peso volumes'], 'r:nfeCteInc': ['322', 'inconsistencias nfe cte vinculo nota sem cte cte sem nota peso valor destinatario religar pesquisa nf'],
     'p:auditoria-frete': ['330', 'auditoria frete'],
     'p:visao-geral': ['400', 'inicio'], 'p:upload': ['401', 'xml importar nota'], 'p:registros': ['402', 'registros fretes notas'],
     'p:sinistros': ['410', 'sinistro avaria'],

@@ -482,7 +482,10 @@ function extrairComposicaoCTe(xmlString) {
     vTotTrib: num(imp.vTotTrib),
     vTotDFe: num(imp.vTotDFe),
     vCarga: num(infCarga.vCarga),
-    quantidades: lista(infCarga.infQ).map((q) => ({ tipo: q.tpMed || '—', qtd: num(q.qCarga) })),
+    quantidades: lista(infCarga.infQ).map((q) => ({ tipo: q.tpMed || '—', qtd: num(q.qCarga), unidade: q.cUnid != null ? String(q.cUnid).padStart(2, '0') : null })),
+    cfop: infCte.ide?.CFOP != null ? String(infCte.ide.CFOP) : null,
+    ufIni: infCte.ide?.UFIni ? String(infCte.ide.UFIni).toUpperCase() : null,
+    ufFim: infCte.ide?.UFFim ? String(infCte.ide.UFFim).toUpperCase() : null,
   };
 }
 

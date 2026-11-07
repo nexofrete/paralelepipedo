@@ -373,6 +373,25 @@ def parte_uso(g):
                'custar. No topo ficam os totais: registros comparados, pago a mais que a tabela, pago a menos e a '
                'diferença líquida. Dá para filtrar por transportadora, status (OK, divergente, carga direta) e buscar '
                'por CT-e, pedido ou cliente.'))
+    s += h2('Conferência em detalhe (no detalhe do frete)')
+    s.append(P('Abaixo do cálculo, o detalhe do frete mostra a <b>conferência em detalhe</b>: cada componente lado a lado, '
+               '<b>tabela × CT-e</b>, com a diferença e a situação (confere, cobrado a mais, cobrado a menos, não prevista na '
+               'tabela). Os componentes são frete peso, ad valorem (ou "frete valor"), GRIS, pedágio, TDE, TDA, TRT, despacho '
+               '(taxa de emissão, SEC/CAT) e descarga; o sistema reconhece o nome que cada transportadora usa no CT-e.'))
+    s += lista([
+        '<b>Taxa não prevista</b>: componente cobrado no CT-e que a tabela não tem (ou tem zero) aparece como "não '
+        'prevista na tabela".',
+        '<b>Cobrado a mais</b>: a soma do que as parcelas passam da tabela, até o quanto o total do CT-e passa do total '
+        'da tabela. Se o total confere e só a divisão entre as parcelas está diferente ("parcelas trocadas"), o '
+        'apontamento aparece, mas não conta como cobrado a mais.',
+        '<b>Peso e volumes</b>: o que está no CT-e contra o das notas (peso com tolerância de 5% ou 1 kg; volumes exatos).',
+        '<b>ICMS</b>: CST, CFOP e a rota (UF inicial e final); a base (o valor da prestação, com a redução quando houver), a '
+        'alíquota esperada pela rota, o valor (base × alíquota) e o CFOP (5xxx dentro do estado, 6xxx entre estados).',
+        '<b>Histórico deste frete</b>: a linha do tempo com a importação, os cálculos pela tabela, a liberação automática, '
+        'a aprovação ou reprovação (com a justificativa), a glosa, o cancelamento, a fatura e o pagamento, com quem fez.',
+    ])
+    s.append(P('Os mesmos apontamentos (componente a mais, taxa não prevista, peso, volumes, base e valor do ICMS, CFOP) '
+               'aparecem no relatório <b>Auditoria de Frete</b> e no relatório <b>Cobranças indevidas</b> (capítulo 19).'))
     s += h2('Conferência automática')
     s.append(P('Toda vez que um frete tem o valor do CT-e e o valor calculado, o sistema compara os dois:'))
     s += lista([
@@ -734,6 +753,12 @@ def parte_uso(g):
     s += h2('NF-e × CT-e')
     s.append(P('Cada nota com todos os CT-e vinculados (principal, reentrega, outra transportadora...), valor da nota, '
                'soma dos fretes e situação. Nota coberta pelo CT-e de outra nota mostra o CT-e e a parte do frete dela.'))
+    s += h2('Cobranças indevidas (323)')
+    s.append(P('No período (pela emissão do CT-e) e, se quiser, de uma transportadora: cada CT-e conferido componente por '
+               'componente com a tabela. Mostra o total <b>cobrado a mais</b>, quantos CT-e têm apontamento, quantos de cada '
+               'tipo (componente a mais, taxa não prevista, peso, volumes, base, valor e alíquota do ICMS, CFOP), o cobrado a '
+               'mais por componente, por transportadora e por mês, e a lista dos CT-e com os apontamentos. Exporta para Excel. '
+               'CT-e que não detalha os componentes é conferido só pelo total, na Auditoria de Frete.'))
     s += h2('Inconsistências NF-e × CT-e (322)')
     s.append(P('<b>Pesquisa</b> no alto: digite o número da NF, do CT-e ou a chave de 44 dígitos e veja cada CT-e com todas '
                'as notas dele (valor, peso, parte do frete, entrega) e os CT-e a mais (reentrega, complementar). Embaixo, a '

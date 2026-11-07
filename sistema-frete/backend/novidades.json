@@ -184,6 +184,10 @@
         {
           "area": "Auditoria",
           "texto": "NF-e × CT-e: o CT-e que leva várias notas passa a valer para todas (o frete é dividido entre elas e a conferência soma o peso de todas); conferência do CT-e com as notas (valor da mercadoria, peso, destinatário e cidade); tela de inconsistências (322) com nota sem CT-e, CT-e sem nota e vínculos suspeitos, religar, desligar, aceitar e Excel; pesquisa por NF, CT-e ou chave."
+        },
+        {
+          "area": "Auditoria",
+          "texto": "Auditoria em detalhe: cada componente do CT-e lado a lado com a tabela (frete peso, ad valorem, GRIS, pedágio, TDE, TDA, TRT, despacho, descarga), taxa não prevista, peso e volumes, ICMS completo (base, alíquota, valor e CFOP), histórico de cada frete e o relatório Cobranças indevidas (323) com Excel."
         }
       ]
     },

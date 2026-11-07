@@ -240,7 +240,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 045 Monitoramento (mapa) · 050 Conferência (bipagem) · 051 Etiquetas · 055 Armazém · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
-  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 322 Relatórios · 330 Auditoria de frete
+  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 323 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
   - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos
@@ -812,6 +812,17 @@ Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a rec
    - **Aprovar** (ajustando valor/horas) ou cancelar com motivo; **Gerar CT-e complementar / NFS-e** das aprovadas: um CT-e complementar por CT-e com um componente por serviço (REENTREGA, DEVOLUCAO, ESTADIA, DESCARGA) e o ICMS na alíquota do original; armazenagem em NFS-e (cTribNac 11.04.01). Os documentos saem como rascunho; documento excluído/cancelado/rejeitado → "Reabrir". A tela Hoje avisa o que está para aprovar e para cobrar. Código em `src/servicosExtras.js`.
 
 O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento pelo PIX é conferido no extrato (Caixa e bancos → Conciliação) ou baixado aqui. Para boleto registrado, veja "Boleto registrado (CNAB 240)".
+
+## Auditoria de frete em detalhe (embarcador)
+
+Regras em `src/auditoriaDetalhada.js`. Além do total do CT-e × tabela (conferência automática, `trg_calcular_dif_frete`):
+
+- **Componentes lado a lado** (`GET /api/fretes/:id/auditoria-detalhada`, no detalhe do frete): frete peso, ad valorem, GRIS, pedágio, TDE, TDA, TRT, despacho e descarga — o nome livre de cada componente do CT-e (`vPrest/Comp/xNome`) é classificado e comparado com a parcela gravada no cálculo (`auditoria_calculo.componentes`), com a tolerância da auditoria. **Taxa não prevista**: cobrada no CT-e e zero/ausente na tabela.
+- **Cobrado a mais** = soma das parcelas acima da tabela, limitada ao excesso do total do CT-e sobre o total da tabela (parcelas trocadas com o total certo não contam).
+- **Peso e volumes** do CT-e (`infQ` 01/02 e 03) × os das notas (inclui as cobertas pelo mesmo CT-e).
+- **ICMS**: base (vTPrest com redução), alíquota pela rota (`icmsCte.conferirIcms`), valor (base × alíquota) e CFOP (5xxx no estado, 6xxx entre estados).
+- **Histórico do frete** (`GET /api/fretes/:id/historico`): importação, cálculo, liberação/aprovação/reprovação, glosa, cancelamento, registro de atividades (`auditoria.registro_id`), fatura e pagamento.
+- Os apontamentos entram no relatório **Auditoria de Frete** e no relatório **Cobranças indevidas** (Relatórios → 💸, código **323**, `GET /api/fretes/relatorios/cobrancas-indevidas`): cobrado a mais por componente, transportadora e mês, com Excel.
 
 ## NF-e × CT-e (embarcador)
 

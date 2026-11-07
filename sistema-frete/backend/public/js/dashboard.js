@@ -3926,6 +3926,42 @@ const formatoPercentualCte = (v) =>
 
 // Busca no servidor a composição do CT-e (lida do XML) e preenche a coluna
 // da direita do Detalhe do Frete.
+// Conferência em detalhe: cada componente (tabela × CT-e), taxa não prevista, peso, volumes, ICMS completo e o histórico do frete.
+const SIT_COMP = { ok: ['✓', 'var(--verde)', 'confere'], a_mais: ['▲', 'var(--vermelho)', 'cobrado a mais'], a_menos: ['▼', '#d97706', 'cobrado a menos'], nao_autorizada: ['⛔', 'var(--vermelho)', 'não prevista na tabela'], sem_tabela: ['—', 'var(--texto-fraco)', 'sem tabela'] };
+async function carregarAuditoriaDetalhada(id) {
+  const alvo = document.getElementById('detalheAuditoriaDetalhada');
+  if (!alvo) return;
+  let a; let h;
+  try {
+    const [ra, rh] = await Promise.all([apiFetch(`/api/fretes/${id}/auditoria-detalhada`), apiFetch(`/api/fretes/${id}/historico`)]);
+    a = await ra.json(); h = await rh.json();
+  } catch { return; }
+  if (document.getElementById('detalheAuditoriaDetalhada') !== alvo) return;
+  const m = (v) => (v == null ? '—' : formatoMoeda(v));
+  let html = '';
+  if (a && !a.sem_xml) {
+    html += `<hr style="border-color:var(--borda); margin:4px 0 14px;" /><p style="margin:0 0 8px;"><strong>🔍 Conferência em detalhe (tabela × CT-e)</strong>${a.a_mais > 0 ? ` <span style="color:var(--vermelho); font-weight:700;">· cobrado a mais: ${m(a.a_mais)}</span>` : ''}</p>`;
+    html += a.sem_detalhe ? '<p style="font-size:12.5px; color:var(--texto-fraco);">O CT-e não detalha os componentes (só o total): a conferência é pelo total, acima.</p>'
+      : !a.tem_tabela ? '<p style="font-size:12.5px; color:var(--texto-fraco);">Sem cálculo pela tabela de preço: não há com o que comparar os componentes.</p>'
+        : `<table style="width:100%; font-size:12.5px;"><thead><tr><th style="text-align:left;">Componente</th><th style="text-align:left;">Nome no CT-e</th><th style="text-align:right;">Tabela</th><th style="text-align:right;">Cobrado</th><th style="text-align:right;">Diferença</th><th style="text-align:left;">Situação</th></tr></thead><tbody>
+        ${a.componentes.map((c) => { const s = SIT_COMP[c.situacao] || SIT_COMP.ok; return `<tr><td>${cfEsc(c.nome)}</td><td style="color:var(--texto-fraco);">${cfEsc(c.nomes_cte.join(', ') || '—')}</td><td style="text-align:right;">${m(c.tabela)}</td><td style="text-align:right;">${m(c.cobrado)}</td>
+          <td style="text-align:right; color:${s[1]};">${c.diferenca == null ? '—' : `${c.diferenca > 0 ? '+' : ''}${m(c.diferenca)}`}</td><td style="color:${s[1]};">${s[0]} ${s[2]}</td></tr>`; }).join('')}</tbody></table>`;
+    const p = a.peso; const v = a.volumes; const i = a.icms;
+    html += `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:10px; font-size:12.5px;">
+      <div class="painel" style="padding:8px 10px;"><b>Peso</b><br>CT-e ${p.cte != null ? `${Number(p.cte).toLocaleString('pt-BR')} kg` : '—'} · nota(s) ${p.nota != null ? `${Number(p.nota).toLocaleString('pt-BR')} kg` : '—'}<br><span style="color:${p.ok ? 'var(--verde)' : 'var(--vermelho)'};">${p.ok ? '✓ confere' : '✗ diferente'}</span></div>
+      <div class="painel" style="padding:8px 10px;"><b>Volumes</b><br>CT-e ${v.cte ?? '—'} · nota(s) ${v.nota ?? '—'}<br><span style="color:${v.ok ? 'var(--verde)' : 'var(--vermelho)'};">${v.ok ? '✓ confere' : '✗ diferente'}</span></div>
+      <div class="painel" style="padding:8px 10px;"><b>ICMS</b> ${i.cst ? `CST ${cfEsc(i.cst)}` : ''} · CFOP ${cfEsc(i.cfop || '—')} · ${cfEsc(i.uf_ini || '')}→${cfEsc(i.uf_fim || '')}<br>Base ${m(i.base)} · ${i.aliquota != null ? `${i.aliquota}%` : '—'}${i.aliquota_esperada != null ? ` (esperada ${i.aliquota_esperada}%)` : ''} · valor ${m(i.valor)}${i.valor_esperado != null ? ` (base × alíquota ${m(i.valor_esperado)})` : ''}<br>
+        <span style="color:${i.checagens.length ? 'var(--vermelho)' : 'var(--verde)'};">${i.checagens.length ? `✗ confira: ${i.checagens.join(', ')}` : '✓ base, alíquota, valor e CFOP conferem'}</span></div></div>`;
+    if (a.apontamentos.length) html += `<ul style="font-size:12.5px; color:var(--vermelho); margin:10px 0 0 18px;">${a.apontamentos.map((x) => `<li>${cfEsc(x.texto)}</li>`).join('')}</ul>`;
+  }
+  const ev = h?.historico || [];
+  if (ev.length) {
+    html += `<hr style="border-color:var(--borda); margin:14px 0;" /><p style="margin:0 0 8px;"><strong>🕘 Histórico deste frete</strong></p>
+      <table style="width:100%; font-size:12px;"><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap; color:var(--texto-fraco);">${formatoDataHora(e.quando)}</td><td>${cfEsc(e.texto)}</td><td style="color:var(--texto-fraco); white-space:nowrap;">${cfEsc(e.quem || '')}</td></tr>`).join('')}</tbody></table>`;
+  }
+  alvo.innerHTML = html;
+}
+
 async function carregarComposicaoCte(id) {
   const alvo = document.getElementById('detalheComposicaoCte');
   if (!alvo) return;
@@ -4284,6 +4320,7 @@ function abrirDetalheAuditoria(id) {
         <p style="color:var(--texto-fraco);">Carregando o XML do CT-e…</p>
       </div>
     </div>
+    <div id="detalheAuditoriaDetalhada" style="margin-top:16px;"></div>
   `;
 
   // ---- Conferência de taxas (GRIS/TDE/TDA/TRT/Pedágio): cobrado x esperado ----
@@ -4350,6 +4387,7 @@ function abrirDetalheAuditoria(id) {
   ].join('');
 
   carregarComposicaoCte(linha.id);
+  carregarAuditoriaDetalhada(linha.id);
   carregarCtesDaNota(linha.id);
 
   document.getElementById('painelDetalheAuditoria').classList.remove('oculto');
@@ -6335,7 +6373,7 @@ document.getElementById('listaCamposBI').innerHTML = CAMPOS_BI.map((g) => `
 `).join('');
 
 // Relatórios: mostra uma sub-tela (gráficos, entregas, notas sem mapa, BI...).
-const SUBABAS_RELATORIO = { nfeCteInc: 'subabaNfeCteInc', indicadores: 'subabaIndicadores', graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
+const SUBABAS_RELATORIO = { cobIndevidas: 'subabaCobIndevidas', nfeCteInc: 'subabaNfeCteInc', indicadores: 'subabaIndicadores', graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
   comparador: 'subabaComparador', anomalias: 'subabaAnomalias', scorecard: 'subabaScorecard', nfeCte: 'subabaNfeCte', auditoriaFrete: 'subabaAuditoriaFrete' };
 function mostrarSubabaRelatorio(nome) {
   if (!SUBABAS_RELATORIO[nome]) nome = 'graficos';
@@ -6348,6 +6386,7 @@ function mostrarSubabaRelatorio(nome) {
   if (nome === 'graficos') setTimeout(carregarRelatorios, 60);
   if (nome === 'indicadores') window.carregarIndicadores?.();
   if (nome === 'nfeCteInc') window.carregarNfeCteInc?.();
+  if (nome === 'cobIndevidas') window.carregarCobIndevidas?.();
   if (nome === 'entregas') carregarEntregasPrevistas();
   if (nome === 'semMapa') carregarSemMapa();
   if (nome === 'melhorTransp') carregarMelhorTransp();

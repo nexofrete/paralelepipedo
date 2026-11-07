@@ -2089,6 +2089,7 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
              f.tabela_preco_id_usada, f.prazo_dias_tabela,
              f.status, f.status_aprovacao, f.cte_cancelado, f.cte_cancelado_motivo,
              f.frete_principal_id, f.vinculo_cte, f.carga_direta,
+             f.xml_cte_original, f.auditoria_calculo, f.peso_kg, f.qtd_volumes, f.tipo_cte,
              ${icmsCte.camposSql('f')},
              -- Duplicidade: o mesmo CT-e (número + transportadora) em mais de um registro
              -- ativo; a mesma NF em mais de um registro PRINCIPAL (CT-e a mais da nota
@@ -2109,6 +2110,9 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
     `, valores);
 
     const { rows: cfg } = await pool.query('SELECT tolerancia_valor, tolerancia_percentual FROM configuracao_auditoria WHERE id = 1');
+    const auditoriaDetalhada = require('../auditoriaDetalhada');
+    const tolDetalhe = await auditoriaDetalhada.tolerancia();
+    const somasDet = await auditoriaDetalhada.somasCobertas(rows.map((x) => x.id));
     const toleranciaValor = Number(cfg[0]?.tolerancia_valor || 0);
     const toleranciaPercentual = Number(cfg[0]?.tolerancia_percentual || 0);
 
@@ -2141,9 +2145,15 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
 
       const icms = icmsCte.conferirIcms(r);
       if (icms?.divergente) problemas.push({ codigo: 'ICMS', texto: `ICMS ${icms.cobrada}% — esperado ${icms.esperada}% (${icms.ini}→${icms.fim}${icms.motivo ? ', trecho até o redespacho' : ''})` });
-      delete r.icms_nota; delete r.icms_uf_recebedor;
+      // Em detalhe: componente a mais, taxa não prevista, peso, volumes, base/valor do ICMS e CFOP.
+      let aMais = 0;
+      if (!r.cte_cancelado && r.vinculo_cte !== 'complementar' && Number(r.tipo_cte) !== 1) {
+        const det = auditoriaDetalhada.conferirFrete(r, tolDetalhe, somasDet.get(r.id));
+        if (det) { aMais = det.a_mais; det.apontamentos.filter((p) => p.codigo !== 'ICMS_ALIQUOTA').forEach((p) => problemas.push(p)); }
+      }
+      delete r.icms_nota; delete r.icms_uf_recebedor; delete r.xml_cte_original; delete r.auditoria_calculo;
 
-      return { ...r, diferenca, diferenca_percentual: diferencaPercentual, problemas, qtd_problemas: problemas.length,
+      return { ...r, diferenca, diferenca_percentual: diferencaPercentual, problemas, qtd_problemas: problemas.length, cobrado_a_mais: aMais,
         situacao: problemas.length ? 'Divergência' : 'Conferido' };
     });
     res.json({ dados: resultado, tolerancia_valor: toleranciaValor, tolerancia_percentual: toleranciaPercentual });
@@ -2151,6 +2161,18 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
     console.error(err);
     res.status(500).json({ erro: 'Erro ao gerar auditoria de frete.' });
   }
+});
+
+// Auditoria em detalhe de um frete (componentes, taxas, peso, volumes, ICMS) e o histórico dele.
+router.get('/:id(\\d+)/auditoria-detalhada', autenticar, freteDoCliente(), async (req, res) => {
+  try { res.json(await require('../auditoriaDetalhada').doFrete(Number(req.params.id)) || { sem_xml: true }); } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao conferir o frete.' }); }
+});
+router.get('/:id(\\d+)/historico', autenticar, freteDoCliente(), async (req, res) => {
+  try { res.json({ historico: await require('../auditoriaDetalhada').historico(Number(req.params.id)) || [] }); } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao montar o histórico.' }); }
+});
+// Cobranças indevidas: componentes cobrados a mais, taxas não previstas, peso, volumes e ICMS, no período.
+router.get('/relatorios/cobrancas-indevidas', autenticar, permitirAlguma('pode_ver_relatorios', 'pode_ver_auditoria'), async (req, res) => {
+  try { res.json(await require('../auditoriaDetalhada').cobrancasIndevidas(req, req.query)); } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao montar o relatório de cobranças indevidas.' }); }
 });
 
 // GET /api/fretes/relatorios/duplicidades

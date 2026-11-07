@@ -177,6 +177,8 @@ app.use('/api/edi', express.json({ limit: '10mb' }));
 app.use('/api/v1/nfe', express.json({ limit: '10mb' }));
 app.use('/api/contabil/entradas', express.json({ limit: '5mb' }));
 app.use(express.json());
+// Respostas da API em JSON comprimidas (src/estaticos.js).
+app.use('/api', require('./src/estaticos').comprimirJson);
 
 // Licença: sem ativação (ou cópia em outro computador) o sistema não funciona;
 // licença vencida deixa só consultar (GET), sem emitir nem alterar nada.
@@ -325,6 +327,8 @@ app.get('/instalar-atalho-nexofrete.bat', (req, res) => {
   res.send(gerarInstalador({ endereco: `http://${host}`, enderecos, teste }));
 });
 
+// Telas comprimidas e com cache por versão (src/estaticos.js); o resto pelo express.static.
+app.use(require('./src/estaticos').criar(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {

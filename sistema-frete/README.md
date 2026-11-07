@@ -130,6 +130,10 @@ O sistema grava sempre no horário de Brasília, qualquer que seja o fuso do Pos
 
 Em **Manutenção → 🕒 Fuso do banco** o sistema mostra o fuso do PostgreSQL, o da sessão e compara a hora de autorização de cada CT-e/MDF-e com a hora do **protocolo da SEFAZ** (`dhRecbto`, que vem com fuso no XML). Se achar diferença, o botão **Corrigir pelo protocolo da SEFAZ** faz um backup e acerta só esses documentos, cada um pela hora do próprio protocolo. A conferência roda ao ligar; havendo documento errado, o aviso aparece no sino dos administradores. Depois de corrigir, gere de novo o livro dos meses já mandados ao contador e confira com ele.
 
+## Telas leves (compressão e cache)
+
+O servidor manda as telas comprimidas (brotli/gzip) e as páginas `.html` saem com cada script, estilo e imagem do sistema versionado pela impressão do conteúdo (`js/x.js?v=<hash>`), com cache de um ano; a própria página vai sem cache (confere a cada abertura). Ao atualizar o sistema, a impressão muda e o navegador baixa só o que mudou. As respostas JSON grandes da API também vão comprimidas. A lista de fretes do embarcador e a Visão geral só carregam quando a tela é aberta. Medido com internet de 4 Mbps/150 ms: 1ª abertura de 2,4 MB e 5,0 s para ~0,6 MB e 2,3 s; aberturas seguintes de 2,0 s para 0,3 s. Código em `src/estaticos.js`.
+
 ## Backup (faça antes de começar a usar)
 
 Fica em **Manutenção → Backup automático**. Ligue o backup diário e preencha a **pasta de cópia**. O recomendado é uma pasta do OneDrive ou do Google Drive para computador, para a cópia subir sozinha para a nuvem. Se o computador do servidor queimar, o backup continua lá.

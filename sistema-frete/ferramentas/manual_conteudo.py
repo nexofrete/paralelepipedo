@@ -236,6 +236,10 @@ def parte_instalacao(g):
         'entrega. Se a versão nova trouxer bibliotecas novas, ele mesmo as instala.',
         'O servidor reinicia sozinho. Todos os usuários só precisam recarregar a tela (F5).',
     ])
+    s.append(P('<b>Telas mais leves:</b> o navegador de cada computador guarda os arquivos das telas e só baixa de novo o '
+               'que mudou; o servidor manda tudo comprimido. A primeira abertura depois de uma atualização baixa as telas '
+               'novas sozinha (não é preciso limpar o cache do navegador), e as aberturas seguintes ficam quase '
+               'instantâneas, também pela internet.'))
     s += aviso('dica', 'Para versões com mudanças grandes, teste primeiro no ambiente de teste (seção 8). A versão '
                        'atual aparece no mesmo quadro de Manutenção.')
     s += aviso('atencao', 'Antes de diagnosticar qualquer problema depois de uma atualização, confirme que existe '

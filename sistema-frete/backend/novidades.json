@@ -15,6 +15,10 @@
         },
         {
           "area": "Menu",
+          "texto": "Sistema mais leve para abrir: telas comprimidas e guardadas no navegador (só baixa de novo o que mudou numa atualização) e listas grandes carregadas só ao abrir a tela. A primeira abertura ficou duas vezes mais rápida e as seguintes, quase instantâneas (de 2 s para 0,3 s numa internet de 4 Mbps)."
+        },
+        {
+          "area": "Menu",
           "texto": "Filtro de período igual em todas as telas (Este mês, Mês passado, Últimos 30 dias...), lembrado em cada tela."
         },
         {

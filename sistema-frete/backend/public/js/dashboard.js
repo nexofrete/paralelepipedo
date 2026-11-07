@@ -467,7 +467,11 @@ async function carregarResumo() {
     console.error(err);
   }
 }
-carregarResumo();
+// Na abertura, só carrega a Visão geral se ela for a tela que ficou aberta (na parte TMS a primeira tela é a
+// Hoje, e o menu carrega a Visão geral quando ela é aberta). Espera os outros scripts escolherem a tela.
+window.addEventListener('load', () => setTimeout(() => {
+  if (!document.getElementById('pagina-visao-geral')?.classList.contains('oculto')) carregarResumo();
+}, 0));
 
 // Tolerância de auditoria: buscada uma vez e guardada aqui, pra usar tanto
 // na Auditoria de Frete quanto em qualquer conferência de taxas.
@@ -502,7 +506,7 @@ async function carregarRegistros(filtroBusca = null, pagina = null) {
     console.error(err);
   }
 }
-carregarRegistros();
+// "Todos os registros" carrega quando a tela é aberta (menu), não na abertura do sistema.
 
 // ---------- Filtro de período (Data Emissão NF), com atalhos rápidos ----------
 function formatarDataISO(data) { return data.toISOString().slice(0, 10); }

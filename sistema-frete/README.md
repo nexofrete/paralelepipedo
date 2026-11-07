@@ -240,7 +240,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 045 Monitoramento (mapa) · 050 Conferência (bipagem) · 051 Etiquetas · 055 Armazém · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
-  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 321 Relatórios · 330 Auditoria de frete
+  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 322 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
   - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos
@@ -812,6 +812,17 @@ Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a rec
    - **Aprovar** (ajustando valor/horas) ou cancelar com motivo; **Gerar CT-e complementar / NFS-e** das aprovadas: um CT-e complementar por CT-e com um componente por serviço (REENTREGA, DEVOLUCAO, ESTADIA, DESCARGA) e o ICMS na alíquota do original; armazenagem em NFS-e (cTribNac 11.04.01). Os documentos saem como rascunho; documento excluído/cancelado/rejeitado → "Reabrir". A tela Hoje avisa o que está para aprovar e para cobrar. Código em `src/servicosExtras.js`.
 
 O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento pelo PIX é conferido no extrato (Caixa e bancos → Conciliação) ou baixado aqui. Para boleto registrado, veja "Boleto registrado (CNAB 240)".
+
+## NF-e × CT-e (embarcador)
+
+Regras em `src/nfeCte.js`, rotas em `src/routes/nfeCte.js` (`/api/nfe-cte`), tela em **Relatórios → 🔗 Inconsistências NF-e × CT-e** (322).
+
+- **Vinculação:** pela chave da NF-e citada no CT-e (infDoc); sem ela, pedido, número da NF dentro da chave (posições 26–34) ou das observações. CT-e que chega antes da nota é juntado quando a nota chega.
+- **Um CT-e para várias notas:** o CT-e fica no registro de uma nota e as outras citadas ficam **cobertas** (`fretes.cte_coberto_por`, com o número do CT-e); nenhuma fica "aguardando CT-e". O frete é **rateado** (`fretes.frete_rateado`) pelo peso, senão pelo valor, senão em partes iguais. A conferência pela tabela soma peso, volumes, cubagem e valor de todas as notas. A data de entrega do CT-e passa para as cobertas (gatilho `trg_nf_entrega_notas_cobertas`). Nota que chega depois é coberta na reconciliação após cada importação.
+- **Conferência campo a campo** (CT-e × notas dele): valor da mercadoria (`vCarga`, tolerância 0,5% ou R$ 1), peso (5% ou 1 kg), destinatário (CNPJ) e cidade/UF de destino (`xMunFim`/`UFFim`; com redespacho, vale a cidade do redespacho na 1ª perna).
+- **Lista única de inconsistências:** nota sem CT-e há N dias, CT-e sem nota, valor, peso, destinatário e cidade diferentes (vínculo suspeito), transportadora diferente, CT-e cancelado cobrado e cobrança em dobro; **aceitar** com motivo (`nfe_cte_aceites`) e Excel.
+- **Religar / desligar:** passa o CT-e para a nota certa (candidatas: as citadas e as sem CT-e do mesmo destinatário) ou tira da nota (vira CT-e sem nota); CT-e em fatura não muda. O desligamento fica em `nfe_cte_desvinculos` e a reconciliação não religa sozinha.
+- **Pesquisa** por número da NF, do CT-e ou chave: cada CT-e com todas as notas (valor, peso, parte do frete, entrega) e os CT-e a mais da nota.
 
 ## Faturas das transportadoras (embarcador)
 

@@ -296,6 +296,8 @@ const tratar_cte = async (req, res) => {
         registroId: idExistente,
       });
       await ctesVinculados.gravarDadosCte(dados.chave_cte, dados).catch(() => {});
+      // CT-e que leva várias notas: liga as outras notas citadas a ele (e divide o frete).
+      await require('../nfeCte').cobrirNotas(idExistente).catch((e) => console.error('[nfe-cte]', e.message));
       const calc = await calcularEGravar(idExistente, 'importacao-cte').catch(() => null);
       await require('../trocasNota').verificarCobrancaDuplaPorFrete(idExistente).catch(() => {});   // nota devolvida/refaturada com 2 CT-e?
       return res.json({ mensagem: `CT-e vinculado ao pedido existente${calc?.ok ? ' e calculado pela tabela' : ''}.`, frete: resultado.rows[0] });

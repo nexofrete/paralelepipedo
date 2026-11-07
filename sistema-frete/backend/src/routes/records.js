@@ -846,7 +846,7 @@ router.get('/relatorios/melhor-transportadora', autenticar, permitirAlguma('pode
       AND f.nf_entrada IS NOT TRUE AND f.nf_complementar IS NOT TRUE AND f.nf_sem_circulacao IS NOT TRUE AND COALESCE(f.status, 'Pendente') NOT IN ('Cancelado', 'Arquivado')
       AND COALESCE(f.frete_cif_fob, '') NOT IN ('FOB', 'Destinatário', 'Destinatario', 'Sem frete', 'Próprio destinatário')
       AND NULLIF(TRIM(COALESCE(f.cidade, '')), '') IS NOT NULL`;
-    filtros += embarcadas ? ' AND f.chave_cte IS NOT NULL AND NOT f.cte_cancelado' : ' AND f.chave_cte IS NULL AND f.data_entrega IS NULL';
+    filtros += embarcadas ? ' AND f.chave_cte IS NOT NULL AND NOT f.cte_cancelado' : ' AND f.chave_cte IS NULL AND f.cte_coberto_por IS NULL AND f.data_entrega IS NULL';
     if (desde) { valores.push(desde); filtros += ` AND COALESCE(f.data_emissao_nf, f.criado_em::date) >= $${valores.length}::date`; }
     else filtros += ` AND COALESCE(f.data_emissao_nf, f.criado_em::date) >= CURRENT_DATE - ${embarcadas ? 30 : 60}`;
     const busca = String(req.query.busca || '').trim();
@@ -1101,7 +1101,7 @@ router.get('/relatorios/consolidar-rotas', autenticar, permitirAlguma('pode_ver_
       AND COALESCE(f.frete_cif_fob, '') NOT IN ('FOB', 'Destinatário', 'Destinatario', 'Sem frete', 'Próprio destinatário')
       AND f.frete_por_conta_cliente IS NOT TRUE AND f.data_entrega IS NULL`;
     filtros += req.query.faturados === '1'
-      ? ' AND f.chave_cte IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE'
+      ? ' AND f.chave_cte IS NULL AND f.cte_coberto_por IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE'
       : " AND NULLIF(TRIM(COALESCE(f.numero_nf, '')), '') IS NULL AND f.chave_nfe IS NULL";
     const desde = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.desde || '')) ? req.query.desde : null;
     const ate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.ate || '')) ? req.query.ate : null;
@@ -1222,7 +1222,7 @@ router.get('/relatorios/consolidacao', autenticar, permitirAlguma('pode_ver_rela
     const desde = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.desde || '')) ? req.query.desde : null;
     const ate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.ate || '')) ? req.query.ate : null;
     const valores = [];
-    let filtros = `f.frete_principal_id IS NULL AND ${embarcadas ? 'f.chave_cte IS NOT NULL AND NOT f.cte_cancelado AND f.valor_total_cte > 0' : 'f.chave_cte IS NULL AND f.data_entrega IS NULL'}
+    let filtros = `f.frete_principal_id IS NULL AND ${embarcadas ? 'f.chave_cte IS NOT NULL AND NOT f.cte_cancelado AND f.valor_total_cte > 0' : 'f.chave_cte IS NULL AND f.cte_coberto_por IS NULL AND f.data_entrega IS NULL'}
       AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND f.nf_retornou IS NOT TRUE
       AND f.nf_entrada IS NOT TRUE AND f.nf_complementar IS NOT TRUE AND f.nf_sem_circulacao IS NOT TRUE
       AND COALESCE(f.status, 'Pendente') NOT IN ('Cancelado', 'Arquivado'${embarcadas ? '' : ", 'Não cobrado'"})
@@ -1549,7 +1549,7 @@ router.get('/resumo', autenticar, async (req, res) => {
       consultaCliente(req,
         `SELECT
            COUNT(*)::int AS total,
-           COUNT(*) FILTER (WHERE chave_cte IS NULL AND nf_cancelada IS NOT TRUE AND nf_devolvida IS NOT TRUE AND nf_retornou IS NOT TRUE AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Faturado', 'Não cobrado', 'Arquivado'))::int AS aguardando_cte,
+           COUNT(*) FILTER (WHERE chave_cte IS NULL AND cte_coberto_por IS NULL AND nf_cancelada IS NOT TRUE AND nf_devolvida IS NOT TRUE AND nf_retornou IS NOT TRUE AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Faturado', 'Não cobrado', 'Arquivado'))::int AS aguardando_cte,
            COUNT(*) FILTER (WHERE chave_cte IS NOT NULL AND COALESCE(status, 'Pendente') = 'Pendente')::int AS em_conferencia,
            COALESCE(SUM(${VALOR_CTE}) FILTER (WHERE chave_cte IS NOT NULL AND COALESCE(status, 'Pendente') = 'Pendente'), 0)::float AS valor_em_conferencia,
            COUNT(*) FILTER (WHERE status = 'Frete Retido')::int AS retidos,
@@ -2018,7 +2018,9 @@ router.get('/relatorios/nfe-cte', autenticar, permitirAlguma('pode_ver_relatorio
               'status', status,
               'vinculo_cte', vinculo_cte,
               'cte_cancelado', COALESCE(cte_cancelado, false),
-              'cte_cancelado_motivo', cte_cancelado_motivo
+              'cte_cancelado_motivo', cte_cancelado_motivo,
+              'frete_rateado', frete_rateado,
+              'coberto', cte_coberto_por IS NOT NULL
             )
           ) FILTER (WHERE numero_cte IS NOT NULL AND numero_cte <> '') AS ctes
         FROM base

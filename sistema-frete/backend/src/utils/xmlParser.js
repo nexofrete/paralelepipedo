@@ -329,6 +329,11 @@ function parseCTe(xmlString) {
       : (vPrest.vTPrest != null ? Number(vPrest.vTPrest) : null),
     gris, tde, tda, pedagio, trt, ad_valorem: adValorem,
     peso_kg: pesoInfo ? Number(pesoInfo.qCarga) : null,
+    // Para conferir com as notas: valor da mercadoria declarado, destinatário e cidade de destino.
+    valor_carga: infCarga.vCarga != null && String(infCarga.vCarga).trim() !== '' ? Number(infCarga.vCarga) : null,
+    destinatario_doc: infCte.dest ? String(infCte.dest.CNPJ || infCte.dest.CPF || '').replace(/\D/g, '') || null : null,
+    destinatario_nome: infCte.dest?.xNome ? String(infCte.dest.xNome) : null,
+    cidade_fim: ide.xMunFim ? String(ide.xMunFim) : null,
     cubagem_m3: cubagemInfo ? Number(cubagemInfo.qCarga) : null,
     numero_nf_referenciada: numeroNfReferenciada,
     chaves_nfe_referenciadas: chavesNfeReferenciadas,

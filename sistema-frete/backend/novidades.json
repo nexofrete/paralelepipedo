@@ -180,6 +180,10 @@
         {
           "area": "Ocorrências",
           "texto": "Tratamento das ocorrências de problema (aba Em tratamento): responsável, prazo, culpa, justificativa obrigatória, várias fotos (também pelo app do motorista), encerramento com solução e prejuízo, histórico de cada passo e relatório com Excel. Nova ocorrência Falta de volumes. Entrega ou devolução encerra sozinha os \"não entregue\" e as recusas."
+        },
+        {
+          "area": "Auditoria",
+          "texto": "NF-e × CT-e: o CT-e que leva várias notas passa a valer para todas (o frete é dividido entre elas e a conferência soma o peso de todas); conferência do CT-e com as notas (valor da mercadoria, peso, destinatário e cidade); tela de inconsistências (322) com nota sem CT-e, CT-e sem nota e vínculos suspeitos, religar, desligar, aceitar e Excel; pesquisa por NF, CT-e ou chave."
         }
       ]
     },

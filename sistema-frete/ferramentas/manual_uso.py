@@ -262,6 +262,14 @@ def parte_uso(g):
     s += lista(['No <b>Detalhe do Frete</b> da Auditoria (lista "CT-e desta nota", com o total pago).',
                 'Em <b>Relatórios » NF-e × CT-e</b>, que mostra cada nota com todos os CT-e vinculados.',
                 'Nos cartões do kanban, com selos como "Reentrega do CT-e 1234 · NF 5678".'])
+    s += h2('Um CT-e para várias notas')
+    s.append(P('Quando o CT-e leva várias notas (cita várias chaves de NF-e), ele é ligado a <b>todas</b>: fica no registro '
+               'de uma delas e as outras ficam "cobertas" por ele, com o número do CT-e. Nenhuma dessas notas fica como '
+               '"aguardando CT-e". O frete é <b>dividido entre as notas</b> pelo peso (sem peso, pelo valor da nota; sem os '
+               'dois, em partes iguais) e a parte de cada nota aparece em Relatórios » NF-e × CT-e e na pesquisa. A '
+               'conferência pela tabela usa a soma do peso, dos volumes, da cubagem e do valor de todas as notas do CT-e. '
+               'A data de entrega lançada no CT-e vale para todas as notas dele. Se a nota chegar depois do CT-e, ela é '
+               'ligada sozinha na importação seguinte.'))
 
     # 14
     s += h1('14. Todos os registros')
@@ -725,7 +733,30 @@ def parte_uso(g):
                'transportadoras com pelo menos 3 fretes).'))
     s += h2('NF-e × CT-e')
     s.append(P('Cada nota com todos os CT-e vinculados (principal, reentrega, outra transportadora...), valor da nota, '
-               'soma dos fretes e situação.'))
+               'soma dos fretes e situação. Nota coberta pelo CT-e de outra nota mostra o CT-e e a parte do frete dela.'))
+    s += h2('Inconsistências NF-e × CT-e (322)')
+    s.append(P('<b>Pesquisa</b> no alto: digite o número da NF, do CT-e ou a chave de 44 dígitos e veja cada CT-e com todas '
+               'as notas dele (valor, peso, parte do frete, entrega) e os CT-e a mais (reentrega, complementar). Embaixo, a '
+               '<b>lista única</b> de problemas, com um filtro por tipo e a exportação para Excel:'))
+    s += lista([
+        '<b>Nota sem CT-e</b> há pelo menos N dias (escolha 0 a 30; padrão 3), sem as notas canceladas, devolvidas, de '
+        'entrada, sem circulação, FOB por conta do cliente e de carga direta.',
+        '<b>CT-e sem nota</b>: CT-e importado cuja nota não está no sistema (mostra a NF que ele cita).',
+        '<b>Valor da mercadoria diferente</b>: o valor declarado no CT-e contra a soma das notas dele (tolerância de 0,5% ou R$ 1).',
+        '<b>Peso diferente</b>: o peso do CT-e contra a soma das notas (5% ou 1 kg).',
+        '<b>Destinatário diferente</b> e <b>cidade de destino diferente</b>: o CNPJ e a cidade/UF do CT-e contra os da nota '
+        '(com redespacho, a 1ª perna pode terminar na cidade do redespacho). São os <b>vínculos suspeitos</b>.',
+        '<b>Transportadora da NF-e × CT-e diferente</b>, <b>CT-e cancelado cobrado</b> (em fatura ou liberado) e '
+        '<b>possível cobrança em dobro</b>.',
+    ])
+    s += lista([
+        '<b>Religar</b> (quem edita registros ou aprova pagamento): mostra as notas candidatas (as que o CT-e cita e as sem '
+        'CT-e do mesmo destinatário) e passa o CT-e para a nota marcada, com o motivo. A nota de onde ele saiu volta a '
+        'esperar CT-e. CT-e que já está em fatura não muda (desfaça a conferência da fatura antes).',
+        '<b>Desligar</b>: tira o CT-e da nota (ele vira um "CT-e sem nota"), com o motivo. Ele não volta sozinho para essa nota.',
+        '<b>Aceitar</b>: quando a diferença está certa (peso cubado, coleta parcial...), explique o motivo; sai da lista e fica '
+        'em "Ver as aceitas", onde dá para desfazer.',
+    ])
     s += h2('Auditoria de Frete (relatório)')
     s.append(P('Conferência só de leitura, com filtro por período de emissão do CT-e, transportadora e busca. Aponta os '
                'problemas de cada frete, sem alterar nada:'))

@@ -6335,7 +6335,7 @@ document.getElementById('listaCamposBI').innerHTML = CAMPOS_BI.map((g) => `
 `).join('');
 
 // Relatórios: mostra uma sub-tela (gráficos, entregas, notas sem mapa, BI...).
-const SUBABAS_RELATORIO = { indicadores: 'subabaIndicadores', graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
+const SUBABAS_RELATORIO = { nfeCteInc: 'subabaNfeCteInc', indicadores: 'subabaIndicadores', graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
   comparador: 'subabaComparador', anomalias: 'subabaAnomalias', scorecard: 'subabaScorecard', nfeCte: 'subabaNfeCte', auditoriaFrete: 'subabaAuditoriaFrete' };
 function mostrarSubabaRelatorio(nome) {
   if (!SUBABAS_RELATORIO[nome]) nome = 'graficos';
@@ -6347,6 +6347,7 @@ function mostrarSubabaRelatorio(nome) {
   document.querySelectorAll('.nav-subitem').forEach((i) => i.classList.toggle('ativo', i.dataset.subaba === nome));
   if (nome === 'graficos') setTimeout(carregarRelatorios, 60);
   if (nome === 'indicadores') window.carregarIndicadores?.();
+  if (nome === 'nfeCteInc') window.carregarNfeCteInc?.();
   if (nome === 'entregas') carregarEntregasPrevistas();
   if (nome === 'semMapa') carregarSemMapa();
   if (nome === 'melhorTransp') carregarMelhorTransp();
@@ -7325,7 +7326,7 @@ function renderNfeCte() {
         <td style="text-align:center;"><span class="badge ${classeSituacao}">${cfEsc(r.situacao)}</span></td>
       </tr>
       <tr id="${idDetalhe}" class="oculto"><td colspan="8" style="padding:0 10px 12px; background:var(--bg-elevado);">
-        ${ctes.length ? `<div style="overflow-x:auto; margin-top:8px;"><table style="width:100%; font-size:11.5px;"><thead><tr><th>CT-e</th><th>Emissão</th><th>Transportadora</th><th>Tipo</th><th>Valor CT-e</th><th>Status</th><th>Chave</th></tr></thead><tbody>${ctes.map(c => `<tr><td><b>${cfEsc(c.numero_cte || '—')}</b>${c.cte_cancelado ? ' 🚫' : ''}</td><td>${formatoData(c.data_emissao_cte)}</td><td>${cfEsc(c.transportadora_cte || '—')}</td><td>${cfEsc(ROTULOS_VINCULO[c.vinculo_cte]?.txt || (c.vinculo_cte || 'Principal'))}</td><td>${c.valor_total_cte != null ? formatoMoeda(c.valor_total_cte) : '—'}</td><td>${cfEsc(c.status || '—')}</td><td style="max-width:230px; word-break:break-all;">${cfEsc(c.chave_cte || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<div style="padding:12px 0; color:var(--vermelho);">⚠ Esta NF-e ainda não possui CT-e vinculado.</div>'}
+        ${ctes.length ? `<div style="overflow-x:auto; margin-top:8px;"><table style="width:100%; font-size:11.5px;"><thead><tr><th>CT-e</th><th>Emissão</th><th>Transportadora</th><th>Tipo</th><th>Valor CT-e</th><th>Status</th><th>Chave</th></tr></thead><tbody>${ctes.map(c => `<tr><td><b>${cfEsc(c.numero_cte || '—')}</b>${c.cte_cancelado ? ' 🚫' : ''}${c.coberto ? '<br><small style="color:var(--texto-fraco);">CT-e de outra nota (leva as duas)</small>' : ''}${c.frete_rateado != null ? `<br><small style="color:var(--texto-fraco);">parte desta nota: ${formatoMoeda(c.frete_rateado)}</small>` : ''}</td><td>${formatoData(c.data_emissao_cte)}</td><td>${cfEsc(c.transportadora_cte || '—')}</td><td>${cfEsc(ROTULOS_VINCULO[c.vinculo_cte]?.txt || (c.vinculo_cte || 'Principal'))}</td><td>${c.valor_total_cte != null ? formatoMoeda(c.valor_total_cte) : '—'}</td><td>${cfEsc(c.status || '—')}</td><td style="max-width:230px; word-break:break-all;">${cfEsc(c.chave_cte || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<div style="padding:12px 0; color:var(--vermelho);">⚠ Esta NF-e ainda não possui CT-e vinculado.</div>'}
       </td></tr>`;
   }).join('');
 }

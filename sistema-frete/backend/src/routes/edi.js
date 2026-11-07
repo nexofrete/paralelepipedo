@@ -57,7 +57,7 @@ router.post('/embarcador/notfis', autenticar, embarcador, async (req, res) => {
          FROM fretes
         WHERE xml_nfe_original IS NOT NULL AND nf_cancelada IS NOT TRUE AND frete_principal_id IS NULL
           AND UPPER(TRIM(transportadora)) = UPPER(TRIM($1)) AND data_emissao_nf BETWEEN $2::date AND $3::date
-          ${semCte ? 'AND chave_cte IS NULL' : ''}
+          ${semCte ? 'AND chave_cte IS NULL AND cte_coberto_por IS NULL' : ''}
         ORDER BY data_emissao_nf, numero_nf`, [transp, de, ate]);
     if (!rows.length) return res.status(404).json({ erro: 'Nenhuma nota (com XML) dessa transportadora no período.' });
     const embarcadores = new Map();

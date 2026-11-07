@@ -527,8 +527,10 @@ async function reconciliarCtesSoltos() {
         `SELECT * FROM fretes
           WHERE id <> $1 AND frete_principal_id IS NULL AND cliente IS NOT NULL
             AND (chave_nfe = ANY($2) OR LTRIM(numero_nf, '0') = ANY($3))
+            -- CT-e que alguém desligou desta nota (NF-e × CT-e) não volta sozinho.
+            AND NOT EXISTS (SELECT 1 FROM nfe_cte_desvinculos dv WHERE dv.frete_id = fretes.id AND dv.chave_cte = $4)
           ORDER BY (chave_cte IS NULL) DESC, id LIMIT 1`,
-        [solto.id, chaves, numeros]);
+        [solto.id, chaves, numeros, solto.chave_cte]);
       const nota = notas[0];
       if (!nota) continue;
 
@@ -576,6 +578,9 @@ async function reconciliarCtesSoltos() {
       juntados += 1;
     }
     if (juntados) console.log(`[ctes] ${juntados} CT-e que tinham chegado antes da nota foram juntados à nota deles.`);
+    // CT-e que leva várias notas: liga as notas que chegaram depois (e divide o frete).
+    const cobertas = await require('./nfeCte').cobrirTodos().catch((e) => { console.error('[nfe-cte]', e.message); return 0; });
+    if (cobertas) console.log(`[nfe-cte] ${cobertas} nota(s) ligada(s) ao CT-e que as leva junto com outras.`);
   } catch (err) {
     console.error('[ctes] Erro ao juntar CT-e soltos:', err.message);
   } finally {
@@ -821,4 +826,4 @@ async function revisarCtesDeOutraTransportadora() {
   }
 }
 
-module.exports = { ehTransportadoraDoRedespacho, gravarDadosCte, revisarCtesDeOutraTransportadora, definirTransportadoraQueLevou, desfazerTransportadoraQueLevou, calcularRedespachosSemCalculo, reconciliarCtesSoltos, numerosDasChaves, acharPrincipal, gravarCteAdicional, recalcularFilhos, vincularCtesAntigos, percentualReentrega, cancelarCte };
+module.exports = { CAMPOS_DO_CTE, ehTransportadoraDoRedespacho, gravarDadosCte, revisarCtesDeOutraTransportadora, definirTransportadoraQueLevou, desfazerTransportadoraQueLevou, calcularRedespachosSemCalculo, reconciliarCtesSoltos, numerosDasChaves, acharPrincipal, gravarCteAdicional, recalcularFilhos, vincularCtesAntigos, percentualReentrega, cancelarCte };

@@ -156,7 +156,7 @@ router.delete('/backups/:arquivo', (req, res) => {
 //   recentes:    o resto — aguardando de verdade
 const FOB = `('FOB', 'Destinatário', 'Destinatario')`;
 const SEM_FRETE = `('Sem frete', 'Próprio remetente', 'Próprio destinatário')`;
-const BASE_AGUARDANDO = `frete_principal_id IS NULL AND chave_cte IS NULL AND nf_cancelada IS NOT TRUE AND nf_devolvida IS NOT TRUE AND nf_retornou IS NOT TRUE
+const BASE_AGUARDANDO = `frete_principal_id IS NULL AND chave_cte IS NULL AND cte_coberto_por IS NULL AND nf_cancelada IS NOT TRUE AND nf_devolvida IS NOT TRUE AND nf_retornou IS NOT TRUE
   AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Faturado', 'Não cobrado', 'Arquivado')`;
 const TEM_NF = `NULLIF(chave_nfe, '') IS NOT NULL`;
 const GRUPOS = (dias) => ({

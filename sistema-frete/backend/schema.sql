@@ -3000,3 +3000,36 @@ UPDATE cte_ocorrencias o SET
     resolvida_por = CASE WHEN c.situacao_entrega IN ('entregue', 'devolvido') THEN 'Sistema' END,
     prazo_tratamento = o.data_hora::date + 3, culpa = 'indefinida', justificativa = o.observacao
   FROM ctes_emitidos c WHERE c.id = o.cte_id AND o.tipo = 'problema' AND o.tratamento_status IS NULL;
+
+-- NF-e × CT-e: um CT-e que leva várias notas. O CT-e fica no registro de uma delas;
+-- as outras apontam para ele (cte_coberto_por), com o número do CT-e e a parte do frete
+-- de cada nota (frete_rateado, pelo peso; sem peso, pelo valor da nota).
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_coberto_por INTEGER REFERENCES fretes(id) ON DELETE SET NULL;
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS frete_rateado NUMERIC(14,2);
+CREATE INDEX IF NOT EXISTS idx_fretes_cte_coberto_por ON fretes (cte_coberto_por) WHERE cte_coberto_por IS NOT NULL;
+-- A entrega do CT-e vale para todas as notas dele.
+CREATE OR REPLACE FUNCTION nf_entrega_notas_cobertas() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.data_entrega IS DISTINCT FROM OLD.data_entrega OR NEW.data_entrega_prevista IS DISTINCT FROM OLD.data_entrega_prevista THEN
+    UPDATE fretes SET data_entrega = NEW.data_entrega, data_entrega_prevista = COALESCE(NEW.data_entrega_prevista, data_entrega_prevista), atualizado_em = NOW()
+     WHERE cte_coberto_por = NEW.id AND (data_entrega IS DISTINCT FROM NEW.data_entrega OR data_entrega_prevista IS DISTINCT FROM COALESCE(NEW.data_entrega_prevista, data_entrega_prevista));
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nf_entrega_notas_cobertas ON fretes;
+CREATE TRIGGER trg_nf_entrega_notas_cobertas AFTER UPDATE OF data_entrega, data_entrega_prevista ON fretes
+  FOR EACH ROW EXECUTE FUNCTION nf_entrega_notas_cobertas();
+-- Inconsistência NF-e × CT-e que alguém conferiu e aceitou (com o motivo): sai da lista.
+CREATE TABLE IF NOT EXISTS nfe_cte_aceites (
+  id SERIAL PRIMARY KEY,
+  frete_id INTEGER NOT NULL REFERENCES fretes(id) ON DELETE CASCADE,
+  codigo VARCHAR(30) NOT NULL, motivo VARCHAR(500) NOT NULL, usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (frete_id, codigo)
+);
+-- CT-e desligado de uma nota por alguém: não volta a cobrir essa nota sozinho.
+CREATE TABLE IF NOT EXISTS nfe_cte_desvinculos (
+  frete_id INTEGER NOT NULL REFERENCES fretes(id) ON DELETE CASCADE,
+  chave_cte VARCHAR(44) NOT NULL, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (frete_id, chave_cte)
+);

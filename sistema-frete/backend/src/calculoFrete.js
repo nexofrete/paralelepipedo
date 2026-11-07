@@ -584,12 +584,19 @@ async function calcularEGravar(id, origem = 'importacao') {
   if (!reg.transportadora_cte && !reg.transportadora_cnpj_cte) return { ok: false, motivo: 'O CT-e não tem a transportadora preenchida.' };
   if (['Faturado', 'Cancelado', 'Não cobrado', 'Arquivado'].includes(reg.status)) return { ok: false, motivo: `O frete está ${reg.status} — não é recalculado.` };
 
+  // CT-e que leva várias notas: a tabela se aplica ao total (peso, volumes, cubagem e valor de todas).
+  const { rows: [grupo] } = await pool.query(
+    `SELECT COUNT(*)::int AS n, SUM(qtd_volumes)::int AS volumes, SUM(peso_kg)::float AS peso, SUM(cubagem_m3)::float AS cubagem, SUM(valor_faturado)::float AS valor
+       FROM fretes WHERE cte_coberto_por = $1`, [id]);
+  const soma = (a, b) => (a == null && !b ? a : Number(a || 0) + Number(b || 0));
   const resultado = await calcularParaRegistro({
     transportadoraCte: reg.transportadora_cte, transportadoraCnpj: reg.transportadora_cnpj_cte,
     cidade: reg.cidade, bairro: reg.bairro,
     cidadeRedespacho: pernaDoRedespacho ? null : nota.cidade_redespacho, redespacho: pernaDoRedespacho ? null : nota.redespacho,
-    observacoes: pernaDoRedespacho ? null : reg.observacoes, qtdVolumes: reg.qtd_volumes, pesoKg: reg.peso_kg, cubagemM3: reg.cubagem_m3,
-    valorFaturado: reg.valor_faturado,
+    observacoes: pernaDoRedespacho ? null : reg.observacoes,
+    qtdVolumes: grupo.n ? soma(reg.qtd_volumes, grupo.volumes) : reg.qtd_volumes, pesoKg: grupo.n ? soma(reg.peso_kg, grupo.peso) : reg.peso_kg,
+    cubagemM3: grupo.n ? soma(reg.cubagem_m3, grupo.cubagem) : reg.cubagem_m3,
+    valorFaturado: grupo.n ? soma(reg.valor_faturado, grupo.valor) : reg.valor_faturado,
     registro: reg, xmlNfe: nota.xml_nfe_original || reg.xml_nfe_original, redespachoCnpj: nota.redespacho_cnpj,
   });
   const semAviso = (reg.observacoes || '').split('\n').filter((l) => !l.trim().startsWith('⚠️ Cálculo automático:'));

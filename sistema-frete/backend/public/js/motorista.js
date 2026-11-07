@@ -210,6 +210,8 @@
     $('mtPlRotVolta').textContent = tipo === 'coleta' ? 'Paletes carregados que levou' : 'Vazios recebidos em troca';
     if (tipo === 'coleta' && atual.volumes) $('mtVol').value = atual.volumes;
     $('mtFoto').value = ''; $('mtPrevia').classList.add('oculto'); $('mtErro').textContent = '';
+    $('mtFotos').value = ''; $('mtFaltam').value = '';
+    $('mtCampoFotos').classList.toggle('oculto', comAssinatura || coleta); $('mtCampoFalta').classList.add('oculto');
     $('mtFolha').classList.remove('oculto');
     if (comAssinatura) requestAnimationFrame(prepararCanvas);
   }
@@ -296,6 +298,8 @@
       if (modo === 'entrega') juntarPaletes(fd, 'paletes_entregues', 'paletes_recebidos');
       const foto = fotoReduzida || $('mtFoto').files[0];
       if (foto) fd.append('foto', foto, 'foto.jpg');
+      [...($('mtFotos').files || [])].slice(0, 6).forEach((f) => fd.append('fotos', f));
+      if ($('mtFaltam').value) fd.append('volumes_faltantes', $('mtFaltam').value);
       const c = await localizacao();
       if (c) { fd.append('latitude', c.latitude.toFixed(6)); fd.append('longitude', c.longitude.toFixed(6)); }
       const r = await api(`/entregas/${atual.cte_id}`, { method: 'POST', body: fd });
@@ -343,3 +347,9 @@
   const inicial = new URLSearchParams(location.search).get('c') || lido('motoristaCodigo');
   if (inicial) { $('mtCodigo').value = inicial; entrar(inicial); }
 })();
+
+// Falta de volumes: pergunta quantos faltaram.
+document.getElementById('mtTipo')?.addEventListener('change', (e) => {
+  const falta = e.target.value === 'falta_volumes';
+  document.getElementById('mtCampoFalta')?.classList.toggle('oculto', !falta);
+});

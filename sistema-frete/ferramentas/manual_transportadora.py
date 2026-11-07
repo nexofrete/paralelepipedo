@@ -209,6 +209,32 @@ def parte_operacao(g):
         'pagador a cada ocorrência escolhida, com o link de rastreio.',
         '<b>Rastreio público</b> (rastreio.html): o cliente consulta pela chave do CT-e ou CNPJ + NF, sem valores.',
     ])
+    s += h2('Tratamento das ocorrências de problema')
+    s.append(P('Toda ocorrência de problema (não entregue, recusa, avaria, extravio, <b>falta de volumes</b>, roubo...) entra na aba '
+               '<b>Em tratamento</b> das Ocorrências de entrega e fica lá até ser encerrada. Ao lançar à mão, a <b>justificativa</b> '
+               '(o que aconteceu e por quê) é obrigatória; na falta de volumes, informe quantos faltaram. Dá para anexar até 10 '
+               '<b>fotos</b> (avaria, embalagem, volumes) além do comprovante; o motorista também manda até 6 fotos e a quantidade '
+               'que faltou pelo app.'))
+    s += lista([
+        '<b>Situação</b>: Aberta, Em tratamento, Aguardando terceiro, Resolvida. Filtros: pendentes, prazo vencido, sem '
+        'responsável, abertas, em tratamento, aguardando, resolvidas e "só as minhas".',
+        '<b>Responsável</b>: clique em <b>Assumir</b> ou <b>Repassar para</b> alguém (com um recado).',
+        '<b>Prazo</b> para resolver: 2 dias no "não entregue", 3 na recusa e 7 em avaria, extravio e falta. Dá para mudar, '
+        'com o motivo. A tela Hoje avisa os prazos vencidos e as ocorrências sem responsável.',
+        '<b>Culpa</b>: o sistema sugere pela ocorrência (cliente ausente: cliente; quebra do veículo: empresa; estrada '
+        'interditada: terceiros; carga com o parceiro: parceiro) e dá para corrigir. Culpa do cliente ou de terceiros não conta '
+        'contra o desempenho dos parceiros.',
+        '<b>Encerrar</b>: escolha a solução (reentregue, devolvido, indenizado, abatido no frete, seguro, cobrado do parceiro, '
+        'cliente aceitou, mercadoria localizada...), descreva como foi resolvido, informe o prejuízo (se houve) e a culpa (não '
+        'dá para encerrar com a culpa "a definir"). Dá para reabrir, com o motivo.',
+        '<b>Encerramento automático</b>: quando o CT-e é entregue (ou devolvido), os "não entregue" e as recusas dele se '
+        'encerram sozinhos. Avaria, extravio e falta continuam abertas até alguém decidir.',
+        '<b>Histórico</b>: cada passo (aberta, responsável, situação, culpa, prazo, comentários, fotos, encerramento) com data, '
+        'hora e quem fez.',
+        '<b>Relatório</b> (botão no alto da aba): no período, as ocorrências por tipo, culpa, responsável, solução, cliente e '
+        'parceiro, com as resolvidas (e quantas no prazo), as abertas, as vencidas, o tempo médio para resolver e o prejuízo. '
+        'Exporta para Excel.',
+    ])
     s += h2('Como o celular do motorista acessa o app')
     s.append(P('O app não se instala pela loja: é uma página (motorista.html) aberta no navegador do celular, sem login. O motorista '
                'entra com o <b>código do romaneio</b> ou lendo o <b>QR code</b> da folha impressa. Também dá para copiar o link na tela do '

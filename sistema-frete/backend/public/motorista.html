@@ -55,6 +55,8 @@
       <label for="mtFoto" id="mtRotuloFoto">Foto (canhoto, fachada ou avaria)</label>
       <input id="mtFoto" type="file" accept="image/*" capture="environment" />
       <img id="mtPrevia" class="oculto" alt="" />
+      <div id="mtCampoFalta" class="oculto"><label for="mtFaltam">Quantos volumes faltaram?</label><input id="mtFaltam" type="number" min="1" inputmode="numeric" /></div>
+      <div id="mtCampoFotos" class="oculto"><label for="mtFotos">Mais fotos (avaria, embalagem, volumes) — até 6</label><input id="mtFotos" type="file" accept="image/*" multiple /></div>
       <label for="mtObs">Observação</label><textarea id="mtObs" rows="2" maxlength="500"></textarea>
       <button id="mtEnviar">Confirmar</button>
       <p id="mtErro" class="rt-erro"></p>

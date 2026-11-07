@@ -176,6 +176,10 @@
         {
           "area": "Auditoria",
           "texto": "Gestão das faturas das transportadoras: importação em planilha (Excel/CSV, vários arquivos) com aviso de cobrança repetida e valor diferente; situação Conferida → Aprovada → Liberada → Paga, com bloqueio automático por divergência (desbloqueio só com justificativa), aprovação com alçada, abas de Vencimentos e de CT-e não faturados, histórico de cada fatura e avisos na Visão geral."
+        },
+        {
+          "area": "Ocorrências",
+          "texto": "Tratamento das ocorrências de problema (aba Em tratamento): responsável, prazo, culpa, justificativa obrigatória, várias fotos (também pelo app do motorista), encerramento com solução e prejuízo, histórico de cada passo e relatório com Excel. Nova ocorrência Falta de volumes. Entrega ou devolução encerra sozinha os \"não entregue\" e as recusas."
         }
       ]
     },

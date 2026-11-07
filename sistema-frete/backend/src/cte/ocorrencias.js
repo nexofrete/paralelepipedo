@@ -41,6 +41,8 @@ const CATALOGO = [
   { id: 'avaria_total', codigo: 78, rotulo: 'Avaria total', tipo: 'problema', grupo: 'Sinistro' },
   { id: 'extravio_parcial', codigo: 81, rotulo: 'Extravio parcial', tipo: 'problema', grupo: 'Sinistro' },
   { id: 'extravio_total', codigo: 80, rotulo: 'Extravio total', tipo: 'problema', grupo: 'Sinistro' },
+  // No OCOREN vai como "extravio parcial" (81): o PROCEDA não tem código próprio para falta de volumes.
+  { id: 'falta_volumes', codigo: 81, rotulo: 'Falta de volumes', tipo: 'problema', grupo: 'Sinistro', pedeVolumes: true },
   { id: 'roubo', codigo: 27, rotulo: 'Roubo de carga', tipo: 'problema', grupo: 'Sinistro' },
   { id: 'fiscalizacao', codigo: 26, rotulo: 'Nota retida pela fiscalização', tipo: 'problema', grupo: 'Sinistro' },
   { id: 'devolvido', codigo: 25, rotulo: 'Devolvido ao remetente', tipo: 'devolucao', grupo: 'Devolução', pedeRecebedor: true },
@@ -125,7 +127,7 @@ async function recalcularSituacao(cteId, cliente = pool) {
 // corpo: { tipo_id, data_hora "AAAA-MM-DDTHH:MM" (Brasília), cidade, uf, recebedor_nome, recebedor_documento,
 //          nova_previsao, observacao, latitude, longitude }
 // arquivo: foto/PDF do multer; assinaturaPng: Buffer da assinatura desenhada na tela (app do motorista).
-async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng, usuarioNome, origem = 'sistema', romaneioId = null }) {
+async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng, usuarioNome, origem = 'sistema', romaneioId = null, fotosExtras = null, exigirJustificativa = false }) {
   const item = PORID.get(corpo.tipo_id);
   if (!item) throw falha('Escolha a ocorrência.');
   const { rows } = await cliente.query('SELECT id, numero, status, autorizado_em, dados FROM ctes_emitidos WHERE id = $1 FOR UPDATE', [cteId]);
@@ -140,6 +142,8 @@ async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng,
   if (item.pedeRecebedor && item.tipo === 'entrega' && !recebedor) throw falha('Informe quem recebeu a mercadoria.');
   const obs = String(corpo.observacao || '').trim();
   if (item.pedeObservacao && !obs) throw falha('Descreva a ocorrência na observação.');
+  // Lançada à mão no sistema: problema pede a justificativa (o que aconteceu).
+  if (exigirJustificativa && item.tipo === 'problema' && !obs && !String(corpo.justificativa || '').trim()) throw falha('Escreva a justificativa: o que aconteceu e por quê.');
   const novaPrevisao = item.pedePrevisao ? dataIso(corpo.nova_previsao) : null;
   if (item.tipo === 'agendada' && !novaPrevisao) throw falha('Informe a data agendada para a entrega.');
   const salvar = (buffer, ext) => {
@@ -167,6 +171,9 @@ async function lancarOcorrencia(cliente, { cteId, corpo, arquivo, assinaturaPng,
     [cteId, item.id, item.codigo, item.rotulo, item.tipo, `${m[1]} ${m[2]}`, cidade, uf, recebedor || null,
       String(corpo.recebedor_documento || '').trim() || null, novaPrevisao, obs || null, nomeArquivo, nomeAssinatura,
       coord(corpo.latitude, 90), coord(corpo.longitude, 180), origem, romaneioId, usuarioNome]);
+  // Problema: entra no tratamento (prazo, culpa, justificativa). Entrega/devolução encerra os "não entregue".
+  await require('./tratamento').aoLancar(cliente, { ocorrenciaId: novo[0].id, item, cteId, corpo, romaneioId, usuarioNome });
+  if (fotosExtras?.length) await require('./tratamento').adicionarFotos(cliente, novo[0].id, fotosExtras, usuarioNome);
   const situacao = await recalcularSituacao(cteId, cliente);
   // Carga paletizada: a troca de paletes na entrega (e o vale-palete do que não voltou).
   const paletes = ['entrega', 'devolucao'].includes(item.tipo)

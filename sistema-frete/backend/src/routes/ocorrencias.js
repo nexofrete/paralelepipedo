@@ -137,7 +137,7 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
          FROM ctes_emitidos WHERE id = $1`, [req.params.id]);
     if (!rows[0]) return res.status(404).json({ erro: 'CT-e não encontrado.' });
     const r = rows[0];
-    const { rows: ocs } = await pool.query('SELECT * FROM cte_ocorrencias WHERE cte_id = $1 ORDER BY data_hora DESC, id DESC', [r.id]);
+    const { rows: ocs } = await pool.query('SELECT o.*, (SELECT COUNT(*)::int FROM cte_ocorrencia_fotos f WHERE f.ocorrencia_id = o.id) AS qtd_fotos FROM cte_ocorrencias o WHERE o.cte_id = $1 ORDER BY o.data_hora DESC, o.id DESC', [r.id]);
     const d = r.dados || {};
     res.json({
       ...r, destinatario_nome: r.destinatario_nome || d.destinatario?.xNome || null, dados: undefined, nfs: (d.nfes || []).map(nfDaChave).filter(Boolean),
@@ -176,14 +176,14 @@ router.post('/agendamento/:id(\\d+)/cancelar', autenticar, emitir, async (req, r
 });
 
 // Grava uma ocorrência (regras em src/cte/ocorrencias.js).
-const lancar = (cliente, req, cteId, corpo, arquivo) => oc.lancarOcorrencia(cliente, { cteId, corpo, arquivo, usuarioNome: req.usuario.nome });
+const lancar = (cliente, req, cteId, corpo, arquivo, fotosExtras = null) => oc.lancarOcorrencia(cliente, { cteId, corpo, arquivo, fotosExtras, usuarioNome: req.usuario.nome, exigirJustificativa: true });
 
 // POST /api/ocorrencias/:id  (multipart: campos + "comprovante" opcional)
-router.post('/:id(\\d+)', autenticar, emitir, upload.single('comprovante'), async (req, res) => {
+router.post('/:id(\\d+)', autenticar, emitir, upload.fields([{ name: 'comprovante', maxCount: 1 }, { name: 'fotos', maxCount: 10 }]), async (req, res) => {
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
-    const r = await lancar(cliente, req, Number(req.params.id), req.body || {}, req.file);
+    const r = await lancar(cliente, req, Number(req.params.id), req.body || {}, req.files?.comprovante?.[0], req.files?.fotos);
     await cliente.query('COMMIT');
     oc.depoisDeLancar([r]);
     log(req, 'cte_ocorrencia', `Lançou "${r.descricao}" no CT-e ${r.numero}`, Number(req.params.id));
@@ -218,16 +218,54 @@ router.delete('/ocorrencia/:id(\\d+)', autenticar, emitir, async (req, res) => {
     await cliente.query('BEGIN');
     await ag.aoApagarOcorrencia(cliente, Number(req.params.id));
     await require('../paletes').aoApagarOcorrencia(cliente, Number(req.params.id));
+    const { rows: fotosApagadas } = await cliente.query('SELECT arquivo FROM cte_ocorrencia_fotos WHERE ocorrencia_id = $1', [req.params.id]);
     const { rows } = await cliente.query(
       `DELETE FROM cte_ocorrencias o USING ctes_emitidos c WHERE o.id = $1 AND c.id = o.cte_id RETURNING o.cte_id, o.descricao, o.data_hora, o.comprovante_arquivo, c.numero`, [req.params.id]);
     if (!rows[0]) { await cliente.query('ROLLBACK'); return res.status(404).json({ erro: 'Ocorrência não encontrada.' }); }
     await oc.recalcularSituacao(rows[0].cte_id, cliente);
     await cliente.query('COMMIT');
     if (rows[0].comprovante_arquivo) fs.rm(path.join(PASTA, rows[0].comprovante_arquivo), { force: true }, () => {});
+    for (const f of fotosApagadas) fs.rm(path.join(PASTA, f.arquivo), { force: true }, () => {});
     log(req, 'cte_ocorrencia_excluir', `Apagou a ocorrência "${rows[0].descricao}" de ${new Date(rows[0].data_hora).toLocaleString('pt-BR')} do CT-e ${rows[0].numero}`, rows[0].cte_id);
     res.json({ ok: true });
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao apagar a ocorrência.'); } finally { cliente.release(); }
 });
+
+// ---------- Tratamento das ocorrências de problema (src/cte/tratamento.js) ----------
+const tr = require('../cte/tratamento');
+router.get('/tratamento', autenticar, emitir, async (req, res) => {
+  try {
+    res.json({ linhas: await tr.listar({ ...req.query, usuarioId: req.usuario.id }), pendencias: await tr.pendencias(), status: tr.STATUS, culpas: tr.CULPAS, solucoes: tr.SOLUCOES, hoje: oc.hojeBrasilia() });
+  } catch (err) { erro(res, err, 'Erro ao listar as ocorrências em tratamento.'); }
+});
+router.get('/tratamento/responsaveis', autenticar, emitir, async (req, res) => { try { res.json(await tr.responsaveis()); } catch (err) { erro(res, err, 'Erro.'); } });
+router.get('/tratamento/relatorio', autenticar, emitir, async (req, res) => { try { res.json(await tr.relatorio(req.query)); } catch (err) { erro(res, err, 'Erro ao montar o relatório.'); } });
+router.get('/ocorrencia/:id(\\d+)/tratamento', autenticar, emitir, async (req, res) => { try { res.json(await tr.detalhe(Number(req.params.id))); } catch (err) { erro(res, err, 'Erro.'); } });
+router.post('/ocorrencia/:id(\\d+)/tratamento', autenticar, emitir, async (req, res) => {
+  try {
+    const r = await tr.atualizar(Number(req.params.id), req.body || {}, req.usuario);
+    log(req, 'cte_ocorrencia_tratamento', `Tratamento da ocorrência "${r.descricao}" do CT-e ${r.numero}: ${req.body?.acao}`, r.cte_id);
+    res.json({ ok: true });
+  } catch (err) { erro(res, err, 'Erro ao atualizar o tratamento.'); }
+});
+router.post('/ocorrencia/:id(\\d+)/fotos', autenticar, emitir, upload.array('fotos', 10), async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id FROM cte_ocorrencias WHERE id = $1', [req.params.id]);
+    if (!rows[0]) throw falha('Ocorrência não encontrada.', 404);
+    const n = await tr.adicionarFotos(pool, Number(req.params.id), req.files, req.usuario.nome, req.body?.legenda);
+    res.status(201).json({ fotos: n });
+  } catch (err) { erro(res, err, 'Erro ao anexar as fotos.'); }
+});
+router.get('/foto/:id(\\d+)', autenticar, emitir, async (req, res) => {
+  try {
+    const nome = await tr.arquivoFoto(Number(req.params.id));
+    if (!nome || nome.includes('/') || nome.includes('\\')) return res.status(404).send('Foto não encontrada.');
+    const caminho = path.join(PASTA, nome);
+    if (!fs.existsSync(caminho)) return res.status(404).send('Arquivo não encontrado.');
+    require('../utils/arquivoSeguro').servir(res, caminho);
+  } catch (err) { res.status(500).send('Erro ao buscar a foto.'); }
+});
+router.delete('/foto/:id(\\d+)', autenticar, emitir, async (req, res) => { try { await tr.apagarFoto(Number(req.params.id), req.usuario.nome); res.json({ ok: true }); } catch (err) { erro(res, err, 'Erro ao apagar a foto.'); } });
 
 // Foto do comprovante ou assinatura (?tipo=assinatura) de uma ocorrência.
 router.get('/ocorrencia/:id(\\d+)/comprovante', autenticar, emitir, async (req, res) => {

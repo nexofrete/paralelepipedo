@@ -16,7 +16,7 @@ const erro = (res, err, padrao) => { console.error('[motorista]', err.message); 
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
 // O que o motorista pode lançar na rua.
 const DO_MOTORISTA = ['entregue', 'retirou', 'fechado', 'ausente', 'endereco', 'mudou', 'horario', 'reentrega_cliente', 'sem_pedido', 'desacordo', 'embalagem', 'negociacao',
-  'avaria_parcial', 'avaria_total', 'extravio_parcial', 'roubo', 'veiculo', 'interditada', 'devolvido', 'outros'];
+  'avaria_parcial', 'avaria_total', 'extravio_parcial', 'falta_volumes', 'roubo', 'veiculo', 'interditada', 'devolvido', 'outros'];
 
 async function romaneioDoCodigo(codigo) {
   const c = String(codigo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -35,7 +35,7 @@ router.get('/:codigo', async (req, res) => {
     res.json({
       romaneio: { id: r.id, data: r.data, motorista: r.motorista_nome, placa: r.placa, veiculo: r.veiculo, status: r.status, observacao: r.observacao, parceiro: !!r.parceiro_id },
       empresa: { nome: emp[0]?.nome_fantasia || emp[0]?.razao_social || '', telefone: emp[0]?.telefone || '' },
-      ocorrencias: oc.CATALOGO.filter((c) => DO_MOTORISTA.includes(c.id)).map(({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao }) => ({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao })),
+      ocorrencias: oc.CATALOGO.filter((c) => DO_MOTORISTA.includes(c.id)).map(({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao, pedeVolumes }) => ({ id, rotulo, tipo, grupo, pedeRecebedor, pedeObservacao, pedePrevisao, pedeVolumes })),
       itens,
       // Coletas do mesmo caminhão (sem valor da mercadoria no celular).
       coletas: (await coletas.coletasDoRomaneio(r.id)).filter((c) => c.status !== 'cancelada').map((c) => ({
@@ -63,7 +63,8 @@ router.post('/:codigo/saida', async (req, res) => {
 
 // Baixa de uma entrega: multipart com tipo_id, recebedor_nome, recebedor_documento,
 // observacao, nova_previsao, latitude, longitude, foto (arquivo) e assinatura (PNG em data URL).
-router.post('/:codigo/entregas/:cteId(\\d+)', upload.single('foto'), async (req, res) => {
+router.post('/:codigo/entregas/:cteId(\\d+)', upload.fields([{ name: 'foto', maxCount: 1 }, { name: 'fotos', maxCount: 6 }]), async (req, res) => {
+  req.file = req.files?.foto?.[0];
   const cliente = await pool.connect();
   try {
     const r = await romaneioDoCodigo(req.params.codigo);
@@ -82,7 +83,7 @@ router.post('/:codigo/entregas/:cteId(\\d+)', upload.single('foto'), async (req,
     await cliente.query('BEGIN');
     const lancada = await oc.lancarOcorrencia(cliente, {
       cteId: Number(req.params.cteId), corpo: { ...corpo, data_hora: oc.agoraBrasilia() }, arquivo: req.file, assinaturaPng: assinatura,
-      usuarioNome: `Motorista ${r.motorista_nome}`, origem: 'motorista', romaneioId: r.id,
+      usuarioNome: `Motorista ${r.motorista_nome}`, origem: 'motorista', romaneioId: r.id, fotosExtras: req.files?.fotos,
     });
     await cliente.query('COMMIT');
     oc.depoisDeLancar([lancada]);

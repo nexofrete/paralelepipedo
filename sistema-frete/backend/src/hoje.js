@@ -66,6 +66,9 @@ async function montar(req) {
     } catch (e) { console.error('[hoje]', e.message); }
     try {
       const pa = await require('./parceiros').pendencias();
+      const tt = await require('./cte/tratamento').pendencias();
+      add('operacao', { chave: 'ocorrencias_vencidas', icone: '⚠', titulo: 'Ocorrências com prazo de tratamento vencido', qtd: tt.vencidas, nivel: 'perigo', detalhe: 'avaria, extravio, falta, recusa ou não entregue sem solução', destino: { ir: 'ocorrencias', clicar: '[data-oc-aba="tratamento"]' } });
+      add('operacao', { chave: 'ocorrencias_sem_responsavel', icone: '🙋', titulo: 'Ocorrências sem responsável', qtd: tt.sem_responsavel, nivel: 'atencao', detalhe: 'alguém precisa assumir o tratamento', destino: { ir: 'ocorrencias', clicar: '[data-oc-aba="tratamento"]' } });
       add('operacao', { chave: 'parceiros_atrasados', icone: '🤝', titulo: 'Entregas atrasadas com parceiros', qtd: pa.atrasados, nivel: 'perigo', detalhe: 'cobre o parceiro (redespacho)', destino: { ir: 'parceiros' } });
       add('operacao', { chave: 'parceiros_docs_vencidos', icone: '🤝', titulo: 'Documentos de parceiros vencidos', qtd: pa.docs_vencidos, nivel: 'perigo', detalhe: 'RNTRC ou seguro RCTR-C vencido impede o repasse', destino: { ir: 'parceiros' } });
       add('operacao', { chave: 'parceiros_docs_vencendo', icone: '🤝', titulo: 'Documentos de parceiros vencendo', qtd: pa.docs_vencendo, nivel: 'atencao', detalhe: 'peça a renovação ao parceiro', destino: { ir: 'parceiros' } });

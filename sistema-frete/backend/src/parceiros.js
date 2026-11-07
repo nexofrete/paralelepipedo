@@ -428,7 +428,8 @@ async function entregasDe(ids, de, ate) {
     `SELECT r.parceiro_id, c.id, c.serie, c.numero, c.uf_fim, c.cidade_fim, c.destinatario_nome, c.situacao_entrega, c.data_entrega::date::text AS entregue_em, r.data::text AS repasse,
             COALESCE(ri.prometido_parceiro, (SELECT o.nova_previsao FROM cte_ocorrencias o WHERE o.cte_id = c.id AND o.romaneio_id = r.id AND o.tipo_id = 'redespacho' AND o.nova_previsao IS NOT NULL ORDER BY o.id DESC LIMIT 1),
                      c.previsao_original, c.previsao_entrega)::text AS prometido,
-            (SELECT COUNT(*)::int FROM cte_ocorrencias o WHERE o.cte_id = c.id AND o.tipo = 'problema' AND o.data_hora::date >= r.data) AS problemas
+            (SELECT COUNT(*)::int FROM cte_ocorrencias o WHERE o.cte_id = c.id AND o.tipo = 'problema' AND o.data_hora::date >= r.data
+              AND COALESCE(o.culpa, 'indefinida') NOT IN ('cliente', 'terceiros')) AS problemas
        FROM romaneio_itens ri JOIN romaneios r ON r.id = ri.romaneio_id JOIN ctes_emitidos c ON c.id = ri.cte_id
       WHERE r.parceiro_id = ANY($1::int[]) AND r.data BETWEEN $2::date AND $3::date AND c.status = 'autorizado'`, [ids, de, ate]);
   return rows;

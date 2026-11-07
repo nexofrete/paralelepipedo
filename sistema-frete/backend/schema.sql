@@ -2963,3 +2963,40 @@ CREATE TABLE IF NOT EXISTS faturas_frete_historico (
 CREATE INDEX IF NOT EXISTS idx_faturas_frete_historico ON faturas_frete_historico (fatura_id, id);
 -- Acima deste valor, só quem tem "Aprovar valores altos" aprova a fatura (vazio = sem alçada).
 ALTER TABLE configuracao_auditoria ADD COLUMN IF NOT EXISTS limite_alcada_fatura NUMERIC(14,2);
+
+-- Tratamento das ocorrências de problema (avaria, extravio, falta, recusa, não entregue):
+-- situação até o encerramento, responsável, prazo, culpa, justificativa, solução e prejuízo;
+-- várias fotos por ocorrência e o histórico de cada passo.
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS tratamento_status VARCHAR(12);    -- aberta | tratamento | aguardando | resolvida
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS responsavel_id INTEGER;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS responsavel_nome VARCHAR(150);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS prazo_tratamento DATE;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS culpa VARCHAR(12);                -- cliente | empresa | motorista | parceiro | terceiros | indefinida
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS justificativa TEXT;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS volumes_faltantes INTEGER;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS solucao VARCHAR(20);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS solucao_texto TEXT;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS prejuizo NUMERIC(14,2);
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS resolvida_em TIMESTAMPTZ;
+ALTER TABLE cte_ocorrencias ADD COLUMN IF NOT EXISTS resolvida_por VARCHAR(150);
+CREATE INDEX IF NOT EXISTS idx_cte_ocorrencias_tratamento ON cte_ocorrencias (tratamento_status, prazo_tratamento) WHERE tratamento_status IS NOT NULL;
+CREATE TABLE IF NOT EXISTS cte_ocorrencia_fotos (
+  id SERIAL PRIMARY KEY,
+  ocorrencia_id INTEGER NOT NULL REFERENCES cte_ocorrencias(id) ON DELETE CASCADE,
+  arquivo VARCHAR(200) NOT NULL, legenda VARCHAR(150), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cte_ocorrencia_fotos ON cte_ocorrencia_fotos (ocorrencia_id);
+CREATE TABLE IF NOT EXISTS cte_ocorrencia_historico (
+  id SERIAL PRIMARY KEY,
+  ocorrencia_id INTEGER NOT NULL REFERENCES cte_ocorrencias(id) ON DELETE CASCADE,
+  acao VARCHAR(20) NOT NULL, detalhe VARCHAR(600), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cte_ocorrencia_historico ON cte_ocorrencia_historico (ocorrencia_id, id);
+-- Ocorrências de problema que já existiam: entram no tratamento. CT-e já entregue ou devolvido: resolvida.
+UPDATE cte_ocorrencias o SET
+    tratamento_status = CASE WHEN c.situacao_entrega IN ('entregue', 'devolvido') THEN 'resolvida' ELSE 'aberta' END,
+    solucao = CASE WHEN c.situacao_entrega = 'entregue' THEN 'reentregue' WHEN c.situacao_entrega = 'devolvido' THEN 'devolvido' END,
+    resolvida_em = CASE WHEN c.situacao_entrega IN ('entregue', 'devolvido') THEN COALESCE(c.data_entrega, NOW()) END,
+    resolvida_por = CASE WHEN c.situacao_entrega IN ('entregue', 'devolvido') THEN 'Sistema' END,
+    prazo_tratamento = o.data_hora::date + 3, culpa = 'indefinida', justificativa = o.observacao
+  FROM ctes_emitidos c WHERE c.id = o.cte_id AND o.tipo = 'problema' AND o.tratamento_status IS NULL;

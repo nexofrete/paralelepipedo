@@ -214,7 +214,9 @@
         <div class="cte-abas">
           <div class="cte-aba ativo" data-oc-aba="entregas">Entregas</div>
           <div class="cte-aba" data-oc-aba="romaneios">🚚 Romaneios</div>
+          <div class="cte-aba" data-oc-aba="tratamento">⚠ Em tratamento <span id="ocTratBadge" class="nav-badge oculto"></span></div>
         </div>
+        <div id="ocAbaTratamento" class="oculto"></div>
         <div id="ocAbaRomaneios" class="oculto">
           <div class="painel oc-painel">
             <div class="oc-barra"><p class="edi-dica" style="margin:0;">Monte o romaneio marcando os CT-e na aba Entregas. O motorista acompanha e dá baixa pelo celular com o código do romaneio.</p>
@@ -238,6 +240,7 @@
             <input type="datetime-local" id="ocLoteData" class="cte-entrada" />
             <input type="text" id="ocLoteRecebedor" class="cte-entrada oculto" placeholder="Recebido por" />
             <input type="date" id="ocLotePrevisao" class="cte-entrada oculto" title="Nova previsão de entrega" />
+            <input type="text" id="ocLoteJust" class="cte-entrada oculto" maxlength="500" placeholder="Justificativa (o que aconteceu)" />
             <button class="btn btn-primario" id="ocLoteAplicar" style="width:auto;">Lançar nos marcados</button>
             <span style="flex:1;"></span>
             <button class="btn btn-secundario" id="ocRepassar" style="width:auto;" title="Entrega por um parceiro (redespacho)">🤝 Repassar a parceiro</button>
@@ -3790,6 +3793,7 @@
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>
   <script src="js/ocorrencias.js"></script>
+  <script src="js/tratamento.js"></script>
   <script src="js/coletas.js"></script>
   <script src="js/cotacoes.js"></script>
   <script src="js/conferencia.js"></script>

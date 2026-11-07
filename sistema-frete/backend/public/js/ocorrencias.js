@@ -25,6 +25,8 @@
     if (!r.ok) throw new Error(corpo.erro || 'Erro ao falar com o servidor.');
     return corpo;
   };
+  const CULPAS_OC = { cliente: 'Cliente (destinatário/remetente)', empresa: 'Empresa (operação)', motorista: 'Motorista', parceiro: 'Parceiro (redespacho)', terceiros: 'Terceiros / força maior', indefinida: 'A definir' };
+  const ST_TRAT = { aberta: '🆕 aberta', tratamento: '🔧 em tratamento', aguardando: '⏳ aguardando', resolvida: '✅ resolvida' };
   const COR_TIPO = { transito: '#4d7cff', em_rota: '#06b6d4', agendada: '#a855f7', entrega: '#22c55e', problema: '#f59e0b', devolucao: '#ef4444', informativo: '#8a94a6' };
 
   let catalogo = []; let situacoes = {};
@@ -151,6 +153,7 @@
     const item = catalogo.find((c) => c.id === $('ocLoteTipo').value);
     $('ocLoteRecebedor').classList.toggle('oculto', !(item?.tipo === 'entrega'));
     $('ocLotePrevisao').classList.toggle('oculto', !item?.pedePrevisao);
+    $('ocLoteJust').classList.toggle('oculto', item?.tipo !== 'problema');
   });
   $('ocLoteAplicar').addEventListener('click', async (e) => {
     const b = e.currentTarget;
@@ -160,7 +163,7 @@
     b.disabled = true;
     try {
       const r = await api('/lote', { method: 'POST', body: JSON.stringify({ ids, tipo_id: item.id, data_hora: $('ocLoteData').value,
-        recebedor_nome: $('ocLoteRecebedor').value, nova_previsao: $('ocLotePrevisao').value }) });
+        recebedor_nome: $('ocLoteRecebedor').value, nova_previsao: $('ocLotePrevisao').value, observacao: item.tipo === 'problema' ? $('ocLoteJust').value : '' }) });
       mostrarAlerta(`"${item.rotulo}" lançado em ${r.lancadas} CT-e.`, { tipo: 'sucesso' });
       $('ocLoteRecebedor').value = ''; $('ocLoteData').value = '';
       await carregar();
@@ -193,8 +196,11 @@
         <div class="campo oc-receb oculto"><label for="ocPlTipo">Paletes (carga paletizada)</label><select id="ocPlTipo"><option value="pbr">PBR (madeira)</option><option value="chep">CHEP</option><option value="plastico">Plástico</option><option value="outro">Outro</option></select></div>
         <div class="campo oc-receb oculto" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"><div><label for="ocPlSai">Deixados com a carga</label><input type="number" min="0" id="ocPlSai" /></div>
           <div><label for="ocPlVolta">Vazios recebidos</label><input type="number" min="0" id="ocPlVolta" /></div></div>
-        <div class="campo inteiro"><label for="ocObs">Observação (fica só aqui dentro)</label><textarea id="ocObs" rows="2" maxlength="500"></textarea></div>
+        <div class="campo oc-falta oculto"><label for="ocFaltam">Volumes que faltaram</label><input type="number" min="1" id="ocFaltam" /></div>
+        <div class="campo oc-prob oculto"><label for="ocCulpa">De quem foi a culpa</label><select id="ocCulpa"><option value="">Pelo tipo (pode mudar no tratamento)</option>${Object.entries(CULPAS_OC).map(([k, t]) => `<option value="${k}">${esc(t)}</option>`).join('')}</select></div>
+        <div class="campo inteiro"><label for="ocObs" id="ocRotObs">Observação (fica só aqui dentro)</label><textarea id="ocObs" rows="2" maxlength="500"></textarea></div>
         <div class="campo inteiro"><label for="ocFoto">Comprovante (foto do canhoto ou PDF) — opcional</label><input type="file" id="ocFoto" accept="image/*,application/pdf" capture="environment" /></div>
+        <div class="campo inteiro oc-prob oculto"><label for="ocFotos">Mais fotos (avaria, embalagem, volumes) — até 10</label><input type="file" id="ocFotos" accept="image/*" multiple /></div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:6px;">
         <button class="btn btn-secundario" data-oc-fechar style="width:auto;">Cancelar</button>
@@ -204,7 +210,10 @@
       const item = catalogo.find((x) => x.id === $('ocTipo').value);
       document.querySelectorAll('.oc-receb').forEach((x) => x.classList.toggle('oculto', !item?.pedeRecebedor));
       document.querySelector('.oc-prevcampo').classList.toggle('oculto', !item?.pedePrevisao);
-      $('ocObs').placeholder = item?.pedeObservacao ? 'Obrigatório: descreva o que aconteceu' : '';
+      $('ocObs').placeholder = item?.pedeObservacao || item?.tipo === 'problema' ? 'Obrigatório: o que aconteceu e por quê' : '';
+      $('ocRotObs').textContent = item?.tipo === 'problema' ? 'Justificativa (o que aconteceu e por quê)' : 'Observação (fica só aqui dentro)';
+      document.querySelectorAll('.oc-prob').forEach((x) => x.classList.toggle('oculto', item?.tipo !== 'problema'));
+      document.querySelector('.oc-falta').classList.toggle('oculto', !item?.pedeVolumes);
     });
     $('ocSalvar').addEventListener('click', async (e) => {
       const fd = new FormData();
@@ -213,6 +222,9 @@
       fd.append('nova_previsao', $('ocPrevisao').value); fd.append('observacao', $('ocObs').value);
       if (Number($('ocPlSai').value) > 0 || Number($('ocPlVolta').value) > 0) { fd.append('paletes_tipo', $('ocPlTipo').value); fd.append('paletes_entregues', $('ocPlSai').value || '0'); fd.append('paletes_recebidos', $('ocPlVolta').value || '0'); }
       if ($('ocFoto').files[0]) fd.append('comprovante', $('ocFoto').files[0]);
+      [...$('ocFotos').files].slice(0, 10).forEach((f) => fd.append('fotos', f));
+      if ($('ocCulpa').value) fd.append('culpa', $('ocCulpa').value);
+      if ($('ocFaltam').value) fd.append('volumes_faltantes', $('ocFaltam').value);
       const b = e.currentTarget; b.disabled = true;
       try {
         const r = await api(`/${id}`, { method: 'POST', body: fd });
@@ -273,6 +285,8 @@
         ${o.recebedor_nome ? `<small>Recebido por ${esc(o.recebedor_nome)}${o.recebedor_documento ? ` (${esc(o.recebedor_documento)})` : ''}</small>` : ''}
         ${o.nova_previsao ? `<small>Nova previsão: ${diaSemana(o.nova_previsao)}</small>` : ''}
         ${o.observacao ? `<small style="white-space:pre-wrap;">${esc(o.observacao)}</small>` : ''}
+        ${o.tratamento_status ? `<small>Tratamento: <b>${ST_TRAT[o.tratamento_status] || esc(o.tratamento_status)}</b>${o.responsavel_nome ? ` · ${esc(o.responsavel_nome)}` : ' · sem responsável'}${o.culpa ? ` · culpa: ${esc(CULPAS_OC[o.culpa] || o.culpa)}` : ''}${o.volumes_faltantes ? ` · ${o.volumes_faltantes} volume(s) faltando` : ''}${o.solucao_texto ? ` · ${esc(o.solucao_texto)}` : ''}
+          · <a href="#" data-oc-tratar="${o.id}">abrir o tratamento${o.qtd_fotos ? ` (${o.qtd_fotos} foto(s))` : ''}</a></small>` : ''}
         <small>${o.origem === 'motorista' ? '📱 pelo app do motorista · ' : ''}${o.romaneio_id ? `romaneio ${o.romaneio_id} · ` : ''}${o.tem_comprovante ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📎 Ver comprovante</a> · ` : ''}${o.tem_assinatura ? `<a href="/api/ocorrencias/ocorrencia/${o.id}/comprovante?tipo=assinatura&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">✍ Assinatura</a> · ` : ''}${o.latitude != null ? `<a href="https://www.google.com/maps?q=${o.latitude},${o.longitude}" target="_blank" rel="noopener">📍 Local</a> · ` : ''}
           <a href="#" data-oc-apagar="${o.id}" style="color:var(--vermelho);">apagar</a>${o.enviada_edi_em ? ' · enviada no OCOREN' : ''}</small></li>`),
     `<li style="--cor-ev:#8a94a6;"><b>CT-e emitido</b><small>${dataHora(c.autorizado_em)} · ${esc(c.origem || '')}</small></li>`].join('');
@@ -289,6 +303,7 @@
     $('ocAgendar')?.addEventListener('click', () => abrirAgendamento(id).catch((err) => mostrarAlerta(err.message, { tipo: 'erro' })));
     $('ocNova')?.addEventListener('click', () => abrirLancamento(id));
     $('ocCopiarLink')?.addEventListener('click', () => copiar(`${location.origin}/rastreio.html?chave=${c.chave}`));
+    document.querySelectorAll('[data-oc-tratar]').forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); window.abrirTratamentoOcorrencia?.(Number(a.dataset.ocTratar)); }));
     document.querySelectorAll('[data-oc-apagar]').forEach((a) => a.addEventListener('click', async (ev) => {
       ev.preventDefault();
       if (!await confirmar('Apagar esta ocorrência? A situação do CT-e é refeita com as que sobrarem.', { tipo: 'perigo', textoOk: 'Apagar' })) return;
@@ -315,7 +330,9 @@
     document.querySelectorAll('[data-oc-aba]').forEach((x) => x.classList.toggle('ativo', x === a));
     $('ocAbaEntregas').classList.toggle('oculto', a.dataset.ocAba !== 'entregas');
     $('ocAbaRomaneios').classList.toggle('oculto', a.dataset.ocAba !== 'romaneios');
+    $('ocAbaTratamento').classList.toggle('oculto', a.dataset.ocAba !== 'tratamento');
     if (a.dataset.ocAba === 'romaneios') carregarRomaneios().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+    else if (a.dataset.ocAba === 'tratamento') window.carregarTratamento?.();
     else carregar().catch(() => {});
   }));
 

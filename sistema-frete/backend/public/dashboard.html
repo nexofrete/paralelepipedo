@@ -147,6 +147,7 @@
       </div>
       <div class="nav-item" data-pagina="relatorios" data-modulo="embarcador">📊 Relatórios <span id="navRelSeta" style="float:right; font-size:11px;">▸</span></div>
       <div class="nav-sub oculto" id="navSubRelatorios" data-modulo="embarcador">
+        <div class="nav-subitem" data-subaba="indicadores">🎯 Indicadores</div>
         <div class="nav-subitem ativo" data-subaba="graficos">📈 Gráficos</div>
         <div class="nav-subitem" data-subaba="entregas">🚚 Entregas previstas</div>
         <div class="nav-subitem" data-subaba="semMapa">🗺️ Notas sem mapa <span class="nav-badge oculto" id="navBadgeSemMapa"></span></div>
@@ -2161,6 +2162,7 @@
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn btn-secundario" id="btnVoltarInicioRelatorios" style="width:auto;">🏠 Voltar ao Início</button>
+            <button class="btn btn-secundario" id="btnExcelRelatorios" style="width:auto;" title="Tabelas e gráficos desta aba, uma planilha cada">⬇ Excel</button>
             <button class="btn btn-secundario" id="btnImprimirRelatorios" style="width:auto;">🖨 Imprimir/PDF</button>
           </div>
         </div>
@@ -2168,6 +2170,7 @@
         <div class="oculto" style="display:flex; gap:8px; margin-bottom:18px;">
           <button class="btn btn-secundario botao-subaba" data-subaba="entregas">Entregas previstas</button>
           <button class="btn btn-secundario botao-subaba" data-subaba="semMapa">Notas sem mapa</button>
+          <button class="btn btn-secundario botao-subaba" data-subaba="indicadores" style="width:auto; padding:9px 18px;">🎯 Indicadores</button>
           <button class="btn btn-primario botao-subaba ativo" data-subaba="graficos" style="width:auto; padding:9px 18px;">📊 Gráficos</button>
           <button class="btn btn-secundario botao-subaba" data-subaba="bi" style="width:auto; padding:9px 18px;">🛠️ Montar Relatório (BI)</button>
           <button class="btn btn-secundario botao-subaba" data-subaba="comparador" style="width:auto; padding:9px 18px;">💰 Comparar Cotações</button>
@@ -2176,6 +2179,8 @@
           <button class="btn btn-secundario botao-subaba" data-subaba="nfeCte" style="width:auto; padding:9px 18px;">📦 NF-e × CT-e</button>
           <button class="btn btn-secundario botao-subaba" data-subaba="auditoriaFrete" style="width:auto; padding:9px 18px;">🔍 Auditoria de Frete</button>
         </div>
+
+        <div id="subabaIndicadores" class="oculto"></div>
 
         <div id="subabaGraficos">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;">
@@ -3018,7 +3023,7 @@
             <div style="overflow-x:auto;">
               <table>
                 <thead>
-                  <tr><th>Fatura</th><th>Transportadora</th><th>Vencimento</th><th style="text-align:right;">Qtd CT-e</th><th style="text-align:right;">Valor CT-e</th><th style="text-align:right;">Valor fatura</th><th>Parecer</th><th>Conferido por</th><th></th></tr>
+                  <tr><th>Fatura</th><th>Transportadora</th><th>Vencimento</th><th style="text-align:right;">Qtd CT-e</th><th style="text-align:right;">Valor CT-e</th><th style="text-align:right;">Valor fatura</th><th>Parecer</th><th>Conferido por</th><th>Pagamento</th><th></th></tr>
                 </thead>
                 <tbody id="cfCorpoLista"></tbody>
               </table>
@@ -3768,6 +3773,7 @@
   <script src="js/documento.js"></script>
   <script src="js/linkSeguro.js"></script>
   <script src="js/dashboard.js"></script>
+  <script src="js/indicadores.js"></script>
   <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>

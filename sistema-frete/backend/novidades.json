@@ -168,6 +168,10 @@
         {
           "area": "Parceiros",
           "texto": "Gestão completa dos parceiros (065): cadastro com IE, endereço, vários contatos, banco e serviços; tabela de frete por região e faixa de peso com prazo por região; documentos com vencimento (RNTRC e RCTR-C vencidos travam o repasse); desempenho com pontualidade, atrasos e ranking; avaliação com estrelas; bloqueio e liberação com histórico."
+        },
+        {
+          "area": "Relatórios",
+          "texto": "Indicadores (309): contratado, pago e a pagar; gasto por transportadora, cliente, região, estado, mês e modalidade (modal, lotação × fracionada, CIF × FOB, redespacho); entregas, pontualidade, ocorrências e a economia da auditoria. Registro do pagamento da fatura da transportadora e Excel (.xlsx) e PDF em todos os relatórios."
         }
       ]
     },

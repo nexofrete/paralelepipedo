@@ -4859,7 +4859,11 @@ function truncarTextoGrafico(t, n) { return t && t.length > n ? t.slice(0, n - 1
 // Guarda como cada gráfico foi desenhado, pra poder redesenhar ele igualzinho
 // (só que maior) na hora de "Maximizar".
 let graficosRegistrados = {};
+// Dados de cada gráfico desenhado (o "⬇ Excel" dos relatórios exporta o que está na tela).
+const graficosDados = {};
+window.graficosDados = graficosDados;
 function chamarGrafico(fn, canvasId, ...args) {
+  graficosDados[canvasId] = { labels: args[0], valores: args[1] };
   graficosRegistrados[canvasId] = (destino) => {
     // No modal maximizado, aumenta a altura de verdade (não só a largura) —
     // cada função tem a "altura" numa posição diferente dos argumentos.
@@ -6322,7 +6326,7 @@ document.getElementById('listaCamposBI').innerHTML = CAMPOS_BI.map((g) => `
 `).join('');
 
 // Relatórios: mostra uma sub-tela (gráficos, entregas, notas sem mapa, BI...).
-const SUBABAS_RELATORIO = { graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
+const SUBABAS_RELATORIO = { indicadores: 'subabaIndicadores', graficos: 'subabaGraficos', entregas: 'subabaEntregas', semMapa: 'subabaSemMapa', melhorTransp: 'subabaMelhorTransp', consolidacao: 'subabaConsolidacao', roteirizar: 'subabaRoteirizar', bi: 'subabaBI',
   comparador: 'subabaComparador', anomalias: 'subabaAnomalias', scorecard: 'subabaScorecard', nfeCte: 'subabaNfeCte', auditoriaFrete: 'subabaAuditoriaFrete' };
 function mostrarSubabaRelatorio(nome) {
   if (!SUBABAS_RELATORIO[nome]) nome = 'graficos';
@@ -6333,6 +6337,7 @@ function mostrarSubabaRelatorio(nome) {
   });
   document.querySelectorAll('.nav-subitem').forEach((i) => i.classList.toggle('ativo', i.dataset.subaba === nome));
   if (nome === 'graficos') setTimeout(carregarRelatorios, 60);
+  if (nome === 'indicadores') window.carregarIndicadores?.();
   if (nome === 'entregas') carregarEntregasPrevistas();
   if (nome === 'semMapa') carregarSemMapa();
   if (nome === 'melhorTransp') carregarMelhorTransp();
@@ -7894,16 +7899,17 @@ async function cfGerar() {
 
 async function cfCarregarLista() {
   const corpo = document.getElementById('cfCorpoLista');
-  corpo.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--texto-fraco); padding:20px;">Carregando...</td></tr>';
+  corpo.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--texto-fraco); padding:20px;">Carregando...</td></tr>';
   try {
     const resposta = await apiFetch('/api/faturas');
     const faturas = await resposta.json();
     if (!resposta.ok) throw new Error(faturas.erro);
     if (faturas.length === 0) {
-      corpo.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--texto-fraco); padding:20px;">Nenhuma fatura conferida ainda.</td></tr>';
+      corpo.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--texto-fraco); padding:20px;">Nenhuma fatura conferida ainda.</td></tr>';
       return;
     }
     const ehAdmin = usuario.perfil === 'admin';
+    const podePagar = ehAdmin || ((usuario.pode_ver_todos) && (usuario.pode_aprovar_pagamento || usuario.pode_ver_financeiro));
     corpo.innerHTML = faturas.map((f) => `
       <tr>
         <td><strong>${cfEsc(f.numero)}</strong></td>
@@ -7914,14 +7920,38 @@ async function cfCarregarLista() {
         <td style="text-align:right;">${formatoMoeda(f.valor_informado)}</td>
         <td><span class="badge ${f.parecer === 'Conferida' ? 'badge-liberado' : 'badge-retido'}">${cfEsc(f.parecer)}</span></td>
         <td>${cfEsc(f.conferido_por_nome || '—')}<div style="font-size:11px; color:var(--texto-fraco);">${formatoDataHora(f.conferido_em)}</div></td>
+        <td>${f.pago_em ? `<span class="badge badge-liberado">Paga ${formatoData(f.pago_em)}</span><div style="font-size:11px; color:var(--texto-fraco);">${formatoMoeda(f.valor_pago)} · ${cfEsc(f.pago_por || '')}</div>${podePagar ? `<a href="#" data-cf-despagar="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="font-size:11px;">desfazer</a>` : ''}`
+          : `<span class="badge badge-retido">A pagar</span>${podePagar ? `<br><button class="btn btn-secundario" data-cf-pagar="${f.id}" data-cf-numero="${cfEsc(f.numero)}" data-cf-valor="${f.valor_informado != null ? f.valor_informado : Number(f.valor_ctes) - Number(f.total_glosas || 0)}" style="width:auto; padding:4px 10px; font-size:12px; margin-top:4px;">💸 Registrar pagamento</button>` : ''}`}</td>
         <td style="text-align:right; white-space:nowrap;">
           <button class="btn btn-secundario" data-cf-imprimir="${f.id}" style="width:auto; padding:5px 10px; font-size:12px;">🖨 Documento</button>
           ${ehAdmin ? `<button class="btn btn-secundario" data-cf-desfazer="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="width:auto; padding:5px 10px; font-size:12px; color:var(--vermelho);">Desfazer</button>` : ''}
         </td>
       </tr>`).join('');
   } catch (err) {
-    corpo.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--vermelho); padding:20px;">Erro ao carregar as faturas.</td></tr>';
+    corpo.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--vermelho); padding:20px;">Erro ao carregar as faturas.</td></tr>';
   }
+}
+
+// Pagamento da fatura: os CT-e dela passam a contar como "pagos" nos Indicadores.
+async function cfPagar(id, numero, valor) {
+  const data = await pedirTexto(`Data do pagamento da fatura ${numero} (AAAA-MM-DD):`, { titulo: 'Registrar pagamento', valor: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10), textoOk: 'Continuar' });
+  if (!data) return;
+  const v = await pedirTexto('Valor pago (R$):', { titulo: 'Registrar pagamento', valor: Number(valor || 0).toFixed(2).replace('.', ','), textoOk: 'Registrar pagamento' });
+  if (v == null) return;
+  try {
+    const r = await apiFetch(`/api/faturas/${id}/pagamento`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data, valor: v }) });
+    const j = await r.json();
+    if (!r.ok) { mostrarAlerta(j.erro || 'Erro ao registrar.'); return; }
+    mostrarAlerta(`Pagamento da fatura ${numero} registrado: ${formatoMoeda(j.valor_pago)}.`, { tipo: 'sucesso' });
+    cfCarregarLista();
+  } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
+}
+async function cfDespagar(id, numero) {
+  if (!(await confirmar(`A fatura ${numero} volta a ficar "a pagar".`, { tipo: 'perigo', titulo: 'Desfazer o pagamento?', textoOk: 'Desfazer' }))) return;
+  const r = await apiFetch(`/api/faturas/${id}/pagamento`, { method: 'DELETE' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { mostrarAlerta(j.erro || 'Erro.'); return; }
+  cfCarregarLista();
 }
 
 async function cfDesfazer(id, numero) {
@@ -8143,7 +8173,11 @@ document.getElementById('cfCorpoLista').addEventListener('click', (e) => {
   const imprimir = e.target.closest('[data-cf-imprimir]');
   if (imprimir) { cfImprimir(imprimir.dataset.cfImprimir); return; }
   const desfazer = e.target.closest('[data-cf-desfazer]');
-  if (desfazer) cfDesfazer(desfazer.dataset.cfDesfazer, desfazer.dataset.cfNumero);
+  if (desfazer) { cfDesfazer(desfazer.dataset.cfDesfazer, desfazer.dataset.cfNumero); return; }
+  const pagar = e.target.closest('[data-cf-pagar]');
+  if (pagar) { cfPagar(pagar.dataset.cfPagar, pagar.dataset.cfNumero, pagar.dataset.cfValor); return; }
+  const despagar = e.target.closest('[data-cf-despagar]');
+  if (despagar) { e.preventDefault(); cfDespagar(despagar.dataset.cfDespagar, despagar.dataset.cfNumero); }
 });
 
 

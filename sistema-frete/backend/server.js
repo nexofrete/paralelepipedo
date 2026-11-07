@@ -176,6 +176,7 @@ app.use('/api/edi', express.json({ limit: '10mb' }));
 // API para ERP: NF-e em XML no corpo.
 app.use('/api/v1/nfe', express.json({ limit: '10mb' }));
 app.use('/api/contabil/entradas', express.json({ limit: '5mb' }));
+app.use('/api/indicadores/xlsx', express.json({ limit: '20mb' }));
 app.use(express.json());
 // Respostas da API em JSON comprimidas (src/estaticos.js).
 app.use('/api', require('./src/estaticos').comprimirJson);
@@ -220,6 +221,7 @@ app.use('/api/notificacoes', notificacoesRoutes);
 app.use('/api/metas-frete', metasFreteRoutes);
 app.use('/api/sinistros', sinistrosRoutes);
 app.use('/api/faturas', faturasRoutes);
+app.use('/api/indicadores', require('./src/routes/indicadores'));
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);

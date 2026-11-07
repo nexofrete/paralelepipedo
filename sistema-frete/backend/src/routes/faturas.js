@@ -54,7 +54,8 @@ router.get('/', autenticar, podeVerFaturas, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, numero, transportadora, data_emissao, data_vencimento, valor_informado,
-              valor_ctes, qtd_ctes, parecer, codigo_verificacao, conferido_por_nome, conferido_em
+              valor_ctes, qtd_ctes, parecer, codigo_verificacao, conferido_por_nome, conferido_em, total_glosas,
+              pago_em::text, valor_pago, pago_por, pagamento_obs
          FROM faturas_frete ORDER BY conferido_em DESC LIMIT 200`
     );
     res.json(rows);
@@ -118,6 +119,44 @@ router.get('/:id', autenticar, podeVerFaturas, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao buscar a fatura.' });
+  }
+});
+
+// Pagamento da fatura (quem aprova pagamento ou vê o Financeiro): os CT-e dela passam a contar como pagos.
+function podePagarFatura(req, res, next) {
+  if (ehAdmin(req) || (vePotudo(req) && temAlguma(req, 'pode_aprovar_pagamento', 'pode_ver_financeiro'))) return next();
+  return res.status(403).json({ erro: 'Você não tem permissão para registrar o pagamento de faturas.' });
+}
+const numero = (v) => { if (v === '' || v == null) return null; const n = typeof v === 'number' ? v : Number(String(v).includes(',') ? String(v).replace(/\./g, '').replace(',', '.') : v); return Number.isFinite(n) ? n : NaN; };
+// POST /api/faturas/:id/pagamento  { data, valor, observacao }
+router.post('/:id(\\d+)/pagamento', autenticar, podePagarFatura, async (req, res) => {
+  try {
+    const data = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.data || '')) ? req.body.data : null;
+    if (!data) return res.status(400).json({ erro: 'Informe a data do pagamento.' });
+    const { rows: [f] } = await pool.query('SELECT id, numero, transportadora, valor_informado, valor_ctes, total_glosas, pago_em FROM faturas_frete WHERE id = $1', [req.params.id]);
+    if (!f) return res.status(404).json({ erro: 'Fatura não encontrada.' });
+    if (f.pago_em) return res.status(409).json({ erro: 'Esta fatura já está paga. Desfaça o pagamento para lançar de novo.' });
+    const devido = f.valor_informado != null ? Number(f.valor_informado) : Number(f.valor_ctes) - Number(f.total_glosas || 0);
+    const valor = numero(req.body?.valor) ?? devido;
+    if (!Number.isFinite(valor) || valor <= 0) return res.status(400).json({ erro: 'Valor pago inválido.' });
+    const obs = String(req.body?.observacao || '').trim().slice(0, 300) || null;
+    await pool.query('UPDATE faturas_frete SET pago_em = $2, valor_pago = $3, pago_por = $4, pagamento_obs = $5 WHERE id = $1', [f.id, data, Math.round(valor * 100) / 100, req.usuario.nome, obs]);
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'faturas', detalhes: `Registrou o pagamento da fatura ${f.numero} (${f.transportadora}): R$ ${valor.toFixed(2)} em ${data}` });
+    res.json({ ok: true, valor_pago: Math.round(valor * 100) / 100, devido: Math.round(devido * 100) / 100 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao registrar o pagamento.' });
+  }
+});
+router.delete('/:id(\\d+)/pagamento', autenticar, podePagarFatura, async (req, res) => {
+  try {
+    const { rows: [f] } = await pool.query('UPDATE faturas_frete SET pago_em = NULL, valor_pago = NULL, pago_por = NULL, pagamento_obs = NULL WHERE id = $1 AND pago_em IS NOT NULL RETURNING numero, transportadora', [req.params.id]);
+    if (!f) return res.status(409).json({ erro: 'Esta fatura não está paga.' });
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'faturas', detalhes: `Desfez o pagamento da fatura ${f.numero} (${f.transportadora})` });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao desfazer o pagamento.' });
   }
 });
 

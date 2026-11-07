@@ -39,7 +39,7 @@
     't:frota:painel': ['200', 'frota custo km'], 't:frota:abastecimentos': ['201', 'abastecimento combustivel diesel consumo'],
     't:frota:manutencoes': ['210', 'manutencao oficina preventiva'], 't:frota:documentos': ['230', 'documentos vencimento crlv rntrc tacografo cnh toxicologico mopp'], 't:frota:pneus': ['240', 'pneus fogo rodizio recapagem sulco'], 't:frota:jornada': ['250', 'jornada motorista lei 13103 horas extras direcao pausa espelho'], 't:emissao-cte:frota': ['220', 'veiculo motorista placa cadastro'],
     't:painel-transporte:geral': ['300', 'painel gerencial indicadores'], 't:painel-transporte:resultado': ['301', 'margem resultado lucro cliente dre'], 't:centros:resultado': ['302', 'centro de custo resultado filial veiculo rota'],
-    'r:graficos': ['310', 'relatorio grafico'], 'r:entregas': ['311', 'entregas previstas'], 'r:semMapa': ['312', 'mapa'],
+    'r:indicadores': ['309', 'indicadores kpi dashboard painel pago pendente contratado economia auditoria regiao estado modalidade modal pontualidade ocorrencias entregas'], 'r:graficos': ['310', 'relatorio grafico'], 'r:entregas': ['311', 'entregas previstas'], 'r:semMapa': ['312', 'mapa'],
     'r:melhorTransp': ['313', 'melhor transportadora'], 'r:consolidacao': ['314', 'consolidar rotas'], 'r:roteirizar': ['315', 'roteirizar rota'],
     'r:bi': ['316', 'bi relatorio montar'], 'r:comparador': ['317', 'comparar cotacoes'], 'r:anomalias': ['318', 'anomalias'],
     'r:scorecard': ['319', 'scorecard'], 'r:nfeCte': ['320', 'nfe cte'], 'r:auditoriaFrete': ['321', 'conferencia cte'],

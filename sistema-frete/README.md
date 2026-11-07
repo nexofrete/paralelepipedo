@@ -240,7 +240,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **0xx Operação:** 000 Hoje · 001 Coletas · 002 Nova coleta · 010 Cotações · 011 Nova cotação · 020 CT-e · 021 Novo CT-e · 025 MDF-e · 030 NFS-e · 031 Nova NFS-e · 040 Romaneios · 041 Ocorrências de entrega · 045 Monitoramento (mapa) · 050 Conferência (bipagem) · 051 Etiquetas · 055 Armazém · 060 Onde está a mercadoria · 061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
-  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 Relatórios · 330 Auditoria de frete
+  - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 321 Relatórios · 330 Auditoria de frete
   - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
   - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos
@@ -811,6 +811,19 @@ Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a rec
    - **Aprovar** (ajustando valor/horas) ou cancelar com motivo; **Gerar CT-e complementar / NFS-e** das aprovadas: um CT-e complementar por CT-e com um componente por serviço (REENTREGA, DEVOLUCAO, ESTADIA, DESCARGA) e o ICMS na alíquota do original; armazenagem em NFS-e (cTribNac 11.04.01). Os documentos saem como rascunho; documento excluído/cancelado/rejeitado → "Reabrir". A tela Hoje avisa o que está para aprovar e para cobrar. Código em `src/servicosExtras.js`.
 
 O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento pelo PIX é conferido no extrato (Caixa e bancos → Conciliação) ou baixado aqui. Para boleto registrado, veja "Boleto registrado (CNAB 240)".
+
+## Indicadores (Relatórios)
+
+Em **Relatórios → 🎯 Indicadores** (código **309**), tudo numa tela, no período (emissão do CT-e) e, se quiser, de uma transportadora só:
+
+- **Fretes:** contratados (CT-e do período, sem cancelados, não cobrados e barrados), **pagos** (CT-e de faturas com o pagamento registrado), **a pagar** (faturado e não pago, liberado sem fatura, em conferência, retido) e o % do frete sobre o valor das notas.
+- **Pagamento da fatura:** em Auditoria de Frete → Conferir Fatura → Faturas conferidas, **💸 Registrar pagamento** (data e valor; quem aprova pagamento ou vê o Financeiro). Dá para desfazer. Colunas `faturas_frete.pago_em`, `valor_pago`, `pago_por`.
+- **Gasto** por transportadora, cliente, **região** (Norte, Nordeste, Centro-Oeste, Sudeste, Sul), estado e mês: contratado, pago, a pagar, % sobre a NF e R$/kg.
+- **Modalidade:** modal do CT-e (rodoviário, aéreo, aquaviário… lido do XML), lotação × fracionada, CIF × FOB, direta × redespacho × reentrega e tipo de serviço (normal, subcontratação, redespacho).
+- **Entregas:** entregues no período, pontualidade (no prazo ÷ entregues com prazo) e atraso médio; pendentes, atrasadas, previstas para hoje e para os próximos 7 dias (situação de agora).
+- **Ocorrências:** problemas do rastreio por tipo, por transportadora e por mês, reentregas, sinistros (prejuízo e ressarcido) e entregas com problema agora.
+- **Economia da auditoria:** glosas + CT-e barrados (recusados, da transportadora que não levou a carga) = economizado, e o "em apuração" (o que os retidos cobram acima da tabela), por transportadora e por mês.
+- **Excel e PDF:** o **⬇ Excel** do painel gera um .xlsx com uma aba por bloco; o **⬇ Excel** do alto de Relatórios exporta as tabelas e os gráficos da aba aberta (uma planilha cada) em qualquer relatório; **🖨 PDF / Imprimir** imprime ou salva em PDF. Código em `src/indicadores.js` e `public/js/indicadores.js`; a planilha sai de `POST /api/indicadores/xlsx`.
 
 ## Roteirizar entregas
 

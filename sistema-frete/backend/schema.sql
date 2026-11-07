@@ -2931,3 +2931,10 @@ CREATE TABLE IF NOT EXISTS parceiro_bloqueios (
 );
 -- Data que o parceiro prometeu para a entrega (a maior entre a previsão do CT-e e o dia do repasse, + o prazo dele).
 ALTER TABLE romaneio_itens ADD COLUMN IF NOT EXISTS prometido_parceiro DATE;
+
+-- Pagamento da fatura da transportadora (embarcador): a fatura conferida vira "paga" e os CT-e dela
+-- contam como fretes pagos nos indicadores.
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS pago_em DATE;
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS valor_pago NUMERIC(14,2);
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS pago_por VARCHAR(150);
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS pagamento_obs VARCHAR(300);

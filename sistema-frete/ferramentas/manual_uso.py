@@ -468,6 +468,9 @@ def parte_uso(g):
         'Parecer: <b>Conferida</b> (todos os CT-e conferidos e o total bate com a fatura) ou <b>Conferida com '
         'ressalvas</b>. Glosas combinadas nos CT-e aparecem no documento, para conferir se foram descontadas.',
         'A aba "Faturas conferidas" lista o histórico. Só o administrador pode desfazer uma conferência.',
+        '<b>Registrar pagamento</b> (na aba "Faturas conferidas", para quem aprova pagamento ou vê o Financeiro): informe a '
+        'data e o valor pago. A fatura fica "Paga" e os CT-e dela contam como <b>fretes pagos</b> nos Indicadores. '
+        '"desfazer" volta a fatura para "a pagar".',
     ])
 
     # 18
@@ -489,8 +492,32 @@ def parte_uso(g):
     # 19
     s += h1('19. Relatórios')
     s.append(P('Ao clicar em <b>Relatórios</b> no menu da esquerda, abre um submenu logo abaixo, com uma tela para cada relatório: '
-               'Gráficos, Entregas previstas, Notas sem mapa, Montar relatório (BI), Comparar cotações, Anomalias, Scorecard, '
+               'Indicadores, Gráficos, Entregas previstas, Notas sem mapa, Montar relatório (BI), Comparar cotações, Anomalias, Scorecard, '
                'NF-e × CT-e e Conferência de CT-e. Os gráficos podem ser maximizados ou minimizados, e a tela pode ser impressa.'))
+    s.append(P('<b>Excel e PDF em todos os relatórios</b>: o botão <b>Excel</b> no alto de Relatórios baixa uma planilha (.xlsx) com '
+               'as tabelas e os gráficos da aba aberta, uma planilha para cada um, com os números como números (o Excel soma). '
+               '<b>Imprimir/PDF</b> imprime a tela ou salva em PDF.'))
+    s += h2('Indicadores (309)')
+    s.append(P('O painel com os principais números numa tela só. Escolha o período (pela emissão do CT-e) e, se quiser, uma '
+               'transportadora. Clicar num quadro abre a tela de onde ele vem.'))
+    s += lista([
+        '<b>Fretes contratados</b>: os CT-e do período, sem os cancelados, os que não são cobrados da empresa e os barrados '
+        'pela auditoria; com o % do frete sobre o valor das notas.',
+        '<b>Fretes pagos</b>: os CT-e das faturas com o pagamento registrado (capítulo 17). <b>A pagar</b>: faturado e ainda '
+        'não pago, liberado sem fatura, em conferência e retido.',
+        '<b>Por transportadora, cliente, região, estado e mês</b>: contratado, pago, a pagar, % sobre a NF e R$ por kg. As '
+        'regiões são Norte, Nordeste, Centro-Oeste, Sudeste e Sul.',
+        '<b>Modalidade</b>: o modal do CT-e (rodoviário, aéreo, aquaviário, ferroviário...), lotação ou fracionada, CIF ou FOB, '
+        'direta, por redespacho ou reentrega, e o tipo de serviço (normal, subcontratação, redespacho).',
+        '<b>Entregas</b>: entregues no período, pontualidade (entregues até a data prevista, dividido pelas entregues com '
+        'previsão) e atraso médio; e, na situação de agora, pendentes, atrasadas, previstas para hoje e para os próximos 7 dias.',
+        '<b>Ocorrências</b>: os problemas do rastreio por tipo, por transportadora e por mês, as reentregas, os sinistros '
+        '(prejuízo e ressarcido) e as entregas com problema agora.',
+        '<b>Economia da auditoria</b>: glosas mais CT-e barrados (recusados na conferência ou da transportadora que não levou a '
+        'carga) = o economizado; e o "em apuração", que é o que os CT-e retidos cobram acima da tabela.',
+        '<b>Excel</b> (uma aba por bloco: resumo, transportadoras, clientes, regiões, estados, meses, modalidades, '
+        'ocorrências, economia) e <b>PDF</b>.',
+    ])
     s += h2('Melhor transportadora para cada nota')
     s.append(P('Para cada nota que ainda não saiu (sem CT-e e sem entrega), calcula pelas tabelas de preço o frete de <b>todas</b> as '
                'transportadoras que atendem a cidade — com taxas, descarga e ICMS —, o prazo e o <b>% de entregas no prazo</b> de cada uma '

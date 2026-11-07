@@ -260,13 +260,13 @@ def parte_uso(g):
                'destino", pago pelo cliente. No CT-e principal, o sistema só mostra um aviso laranja no detalhe.'))
     s += h2('Onde ver os CT-e de uma nota')
     s += lista(['No <b>Detalhe do Frete</b> da Auditoria (lista "CT-e desta nota", com o total pago).',
-                'Em <b>Relatórios » NF-e × CT-e</b>, que mostra cada nota com todos os CT-e vinculados.',
+                'Em <b>Documentos » NF-e × CT-e » Notas e seus CT-e</b> (320), que mostra cada nota com todos os CT-e vinculados.',
                 'Nos cartões do kanban, com selos como "Reentrega do CT-e 1234 · NF 5678".'])
     s += h2('Um CT-e para várias notas')
     s.append(P('Quando o CT-e leva várias notas (cita várias chaves de NF-e), ele é ligado a <b>todas</b>: fica no registro '
                'de uma delas e as outras ficam "cobertas" por ele, com o número do CT-e. Nenhuma dessas notas fica como '
                '"aguardando CT-e". O frete é <b>dividido entre as notas</b> pelo peso (sem peso, pelo valor da nota; sem os '
-               'dois, em partes iguais) e a parte de cada nota aparece em Relatórios » NF-e × CT-e e na pesquisa. A '
+               'dois, em partes iguais) e a parte de cada nota aparece em Documentos » NF-e × CT-e e na pesquisa. A '
                'conferência pela tabela usa a soma do peso, dos volumes, da cubagem e do valor de todas as notas do CT-e. '
                'A data de entrega lançada no CT-e vale para todas as notas dele. Se a nota chegar depois do CT-e, ela é '
                'ligada sozinha na importação seguinte.'))
@@ -303,7 +303,7 @@ def parte_uso(g):
     s.append(P('"+ Lançar registro manual" abre o formulário vazio, para fretes que não têm XML.'))
 
     s += h2('Notas fiscais (403)')
-    s.append(P('Em <b>Notas e fretes » Notas fiscais</b>, as NF-e importadas com todos os dados da nota: número e série, chave de '
+    s.append(P('Em <b>Documentos » Notas fiscais</b>, as NF-e importadas com todos os dados da nota: número e série, chave de '
                'acesso, emitente (nome e CNPJ), destinatário, valor dos produtos e total da nota, peso bruto e peso líquido, '
                'volumes, data de emissão, data e hora de saída, endereço de entrega (o local de entrega, quando a nota informa '
                'um diferente do destinatário) e a situação: autorizada, cancelada ou denegada. Esses dados são lidos do XML na '
@@ -557,7 +557,9 @@ def parte_uso(g):
 
     # 18
     s += h1('18. Financeiro')
-    s.append(P('Fretes liberados para pagamento, vencimentos e glosas.'))
+    s.append(P('Menu <b>Financeiro » Pagamento de fretes contratados</b> (130): fretes liberados para pagamento, vencimentos e glosas. '
+               'O botão <b>Faturas das transportadoras</b>, no alto, abre a lista de faturas (a mesma janela da Auditoria de '
+               'frete, capítulo 17): conferir, aprovar, liberar e registrar o pagamento sem trocar de tela.'))
     s += lista([
         '<b>Quadros</b>: total a pagar, vencendo em 7 dias, vencidos e aguardando resolução (retidos).',
         '<b>Meta de gasto com frete</b> do mês: defina o valor; a Visão geral e o sino avisam quando chega a 90% e quando '
@@ -573,9 +575,12 @@ def parte_uso(g):
 
     # 19
     s += h1('19. Relatórios')
-    s.append(P('Ao clicar em <b>Relatórios</b> no menu da esquerda, abre um submenu logo abaixo, com uma tela para cada relatório: '
-               'Indicadores, Gráficos, Entregas previstas, Notas sem mapa, Montar relatório (BI), Comparar cotações, Anomalias, Scorecard, '
-               'NF-e × CT-e e Conferência de CT-e. Os gráficos podem ser maximizados ou minimizados, e a tela pode ser impressa.'))
+    s.append(P('Os relatórios ficam no grupo do assunto deles no menu (capítulo 29, Mapa do menu): <b>Gestão e relatórios</b> '
+               '(Painel de indicadores com Indicadores e Gráficos, Entregas previstas, Notas sem mapa, Consolidar rotas, Roteirizar, '
+               'Montar relatório (BI), Comparar cotações, Anomalias e duplicidades), <b>Transportadoras e parceiros</b> (Scorecard e '
+               'Melhor transportadora), <b>Documentos</b> (NF-e × CT-e) e <b>Auditoria de fretes</b> (Conferência de CT-e e '
+               'Cobranças indevidas). Os códigos 309 a 323 continuam valendo no Ctrl+K. Os gráficos podem ser maximizados ou '
+               'minimizados, e a tela pode ser impressa.'))
     s.append(P('<b>Excel e PDF em todos os relatórios</b>: o botão <b>Excel</b> no alto de Relatórios baixa uma planilha (.xlsx) com '
                'as tabelas e os gráficos da aba aberta, uma planilha para cada um, com os números como números (o Excel soma). '
                '<b>Imprimir/PDF</b> imprime a tela ou salva em PDF.'))
@@ -765,7 +770,11 @@ def parte_uso(g):
     s += h2('Anomalias e duplicidades')
     s.append(P('<b>Fretes fora do padrão</b>: compara cada frete com a média da mesma transportadora e mostra os que '
                'ficaram mais de 2 desvios-padrão acima ou abaixo (só transportadoras com pelo menos 5 fretes). '
-               '<b>Possíveis duplicidades</b>: o mesmo número de CT-e ou NF-e em mais de um registro.'))
+               '<b>Possíveis duplicidades</b>: o mesmo CT-e (número da mesma transportadora) ou a mesma NF-e (número do mesmo '
+               'emitente) em mais de um registro, com a coluna do emitente ou transportadora. Zeros à esquerda não contam '
+               '(000123 = 123). Não entram: CT-e cancelado, CT-e a mais da mesma nota (reentrega, devolução, redespacho) e as '
+               'notas cobertas por um CT-e de várias notas. É a mesma regra dos avisos "CT-e aparece 2x" / "NF-e aparece 2x" da '
+               'Auditoria de frete.'))
     s += h2('Scorecard de transportadoras')
     s.append(P('Nota de 0 a 100 combinando % de entregas no prazo, % de fretes retidos por divergência e sinistros (só '
                'transportadoras com pelo menos 3 fretes).'))

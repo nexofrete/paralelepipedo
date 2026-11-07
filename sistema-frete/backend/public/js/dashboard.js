@@ -6400,7 +6400,6 @@ function mostrarSubabaRelatorio(nome) {
     const ativo = b.dataset.subaba === nome;
     b.classList.toggle('ativo', ativo); b.classList.toggle('btn-primario', ativo); b.classList.toggle('btn-secundario', !ativo);
   });
-  document.querySelectorAll('.nav-subitem').forEach((i) => i.classList.toggle('ativo', i.dataset.subaba === nome));
   if (nome === 'graficos') setTimeout(carregarRelatorios, 60);
   if (nome === 'indicadores') window.carregarIndicadores?.();
   if (nome === 'nfeCteInc') window.carregarNfeCteInc?.();
@@ -6417,14 +6416,6 @@ function mostrarSubabaRelatorio(nome) {
 }
 document.querySelectorAll('.botao-subaba').forEach((botao) => {
   botao.addEventListener('click', () => mostrarSubabaRelatorio(botao.dataset.subaba));
-});
-// Itens do submenu de Relatórios no menu da esquerda.
-document.querySelectorAll('.nav-subitem').forEach((sub) => {
-  sub.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (document.getElementById('pagina-relatorios').classList.contains('oculto')) irParaPagina('relatorios');
-    mostrarSubabaRelatorio(sub.dataset.subaba);
-  });
 });
 
 document.getElementById('btnBiMarcarTodos').addEventListener('click', () => {
@@ -7464,14 +7455,15 @@ async function carregarDuplicidades() {
 
     lista.innerHTML = dados.length
       ? `<table style="width:100%;">
-          <thead><tr><th style="text-align:left;">Tipo</th><th style="text-align:left;">Número</th><th style="text-align:left;">Aparece em quantos registros</th><th style="text-align:left;">Pedidos</th></tr></thead>
+          <thead><tr><th style="text-align:left;">Tipo</th><th style="text-align:left;">Número</th><th style="text-align:left;">Emitente / transportadora</th><th style="text-align:left;">Aparece em quantos registros</th><th style="text-align:left;">Pedidos</th></tr></thead>
           <tbody>
             ${dados.map((d) => `
               <tr>
-                <td>${d.tipo}</td>
-                <td>${d.numero}</td>
-                <td style="color:var(--vermelho); font-weight:600;">${d.qtd}x</td>
-                <td>${d.pedidos}</td>
+                <td>${cfEsc(d.tipo)}</td>
+                <td>${cfEsc(d.numero)}</td>
+                <td>${cfEsc(d.emissor || '—')}</td>
+                <td style="color:var(--vermelho); font-weight:600;">${Number(d.qtd)}x</td>
+                <td>${cfEsc(d.pedidos || '')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -8328,6 +8320,12 @@ if (!podeConferirFatura) {
   document.querySelector('.cf-aba[data-cf-aba="nova"]').classList.add('oculto');
 }
 document.getElementById('btnAbrirConferenciaFatura').addEventListener('click', cfAbrir);
+// Pagamento de fretes: atalho para as faturas (a mesma janela da Auditoria de frete, uma tela só para faturas).
+if (podeVerFaturas) {
+  const b = document.getElementById('btnFinAbrirFaturas');
+  b?.classList.remove('oculto');
+  b?.addEventListener('click', () => cfAbrir().then(() => cfTrocarAba('lista')));
+}
 document.getElementById('btnFecharConferenciaFatura').addEventListener('click', () => {
   document.getElementById('painelConferenciaFatura').classList.add('oculto');
 });
@@ -10782,7 +10780,7 @@ document.getElementById('btnCrRoteirizar')?.addEventListener('click', () => {
   if (!ids.length) { mostrarAlerta(crMarcados.size ? 'Os pedidos marcados ainda não estão no sistema (só na planilha do ERP) — eles entram depois da importação.' : 'Marque os pedidos primeiro.', { tipo: 'info' }); return; }
   if (ids.length < crMarcados.size) mostrarAlerta(`${crMarcados.size - ids.length} pedido(s) marcados só existem na planilha do ERP e ficaram de fora.`, { tipo: 'info' });
   window.roteirizarIds?.(ids);
-  document.querySelector('.nav-subitem[data-subaba="roteirizar"]')?.click();
+  window.Navegar?.ir('r:roteirizar');
 });
 document.getElementById('btnCrExcel')?.addEventListener('click', () => { if (!crMarcados.size) { mostrarAlerta('Marque os pedidos primeiro.', { tipo: 'info' }); return; } abrirCargaMontada('excel'); });
 document.querySelectorAll('input.campo-data').forEach(ativarCampoData);

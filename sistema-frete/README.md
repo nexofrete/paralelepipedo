@@ -210,8 +210,10 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
 
 ## Menu por área e tela "Hoje"
 
-- **Módulos da empresa** (Cadastros → Empresa → *Módulos usados pela empresa*): **tudo** (padrão), **só transportadora** (some Notas e fretes e Relatórios) ou **só embarcador** (somem Hoje, Operação, Financeiro, Frota, Gestão, Filiais e Configuração fiscal; abre na Visão geral). Esconde do menu, do "Ir para" e da Hoje; não mexe em permissões. Coluna `empresa.modulos`; na tela, `public/js/modulos.js` marca `html[data-modulos]` e os itens com `data-modulo` somem pelo CSS.
-- **TMS | Embarcador** (empresa com os dois módulos): chave no alto do menu que mostra só a parte escolhida — TMS (Hoje, Operação, Financeiro, Frota, Gestão; abre na Hoje) ou Embarcador (Notas e fretes, Relatórios; abre na Visão geral). Mensagens, Agenda e Configuração ficam nas duas. A escolha é de cada usuário (guardada no navegador); o "Ir para" acha telas das duas partes e troca a chave ao abrir uma da outra.
+- **Menu único, por área** (`public/dashboard.html`, `js/menuTransporte.js`): Hoje, Fretes contratados (visão geral), 🚚 Operação, 🤝 Transportadoras e parceiros, 📄 Documentos, ⚖️ Auditoria de fretes, 💰 Financeiro, 🔧 Frota, 📊 Gestão e relatórios, 🌐 Clientes, Mensagens, Agenda e ⚙️ Configuração. As telas da transportadora (TMS) e do embarcador ficam no mesmo menu, cada uma no grupo do assunto (a antiga chave TMS | Embarcador saiu). Subitens `.nav-tsub`: `data-ir` (+ `data-aba`) abre uma página, `data-subaba` uma tela de Relatórios e `data-familia` um grupo de telas parecidas. Os itens escondidos `.nav-no-grupo` guardam a permissão de cada página.
+- **Telas parecidas juntas** (`js/familias.js`, `window.Navegar`): Painel de indicadores (300 / 309 / 310), Auditoria de frete (330 / 321 / 323), NF-e × CT-e (322 / 320) e Parceiros, ranking e escolha (065 / 319 / 313) são um item só no menu, com uma barra no alto da tela para trocar entre elas (só as que o usuário pode abrir). Destinos no formato `p:<página>`, `t:<página>:<aba>` e `r:<subaba>`.
+- **Regras únicas:** duplicidade de documentos em `src/duplicidade.js` (auditoria de frete e `/api/fretes/relatorios/duplicidades`: CT-e = número sem zeros + raiz do CNPJ da transportadora; NF-e = número sem zeros + emitente da chave ou `emitente_cnpj`; fora CT-e cancelado, CT-e a mais da mesma nota e notas cobertas por CT-e de várias notas) e alíquota interestadual do ICMS em `src/icmsCte.js` (usada também por `calculoFrete.js`).
+- **Módulos da empresa** (Cadastros → Empresa → *Módulos usados pela empresa*): **tudo** (padrão), **só transportadora** (somem as telas do embarcador) ou **só embarcador** (somem Hoje, Operação, Frota, Clientes, o financeiro da transportadora, Filiais e Configuração fiscal; abre na Visão geral, que no menu vira "Início"). Esconde do menu, do "Ir para" e da Hoje; não mexe em permissões. Coluna `empresa.modulos`; na tela, `public/js/modulos.js` marca `html[data-modulos]` e os itens com `data-modulo` somem pelo CSS.
 
 - **🏠 Hoje** (código **000**) é a primeira tela de quem emite CT-e ou cuida do financeiro. Ela mostra, por área, o que precisa de atenção:
   - **Operação:** CT-e rejeitados ou com erro, rascunhos, entregas atrasadas, com ocorrência ou previstas para hoje, coletas a programar, cotações pedidas no portal e MDF-e em aberto.
@@ -219,9 +221,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **Frota:** manutenção vencida e vencendo, CNH vencendo e veículos na oficina.
   - Vermelho é para resolver já, amarelo é para hoje e azul é só para saber.
   - Cada cartão abre a tela certa **já filtrada**. A tela se atualiza sozinha a cada 5 minutos.
-- **Menu em grupos**, com os mesmos números do "Ir para":
-  - 🚛 Operação, 💰 Financeiro, 🔧 Frota, 📊 Gestão, 📥 Notas e fretes (a parte do embarcador) e ⚙️ Configuração.
-  - O grupo da tela aberta abre sozinho. Os que você abrir à mão ficam abertos, e o navegador lembra.
+- **Menu em grupos**, com os mesmos números do "Ir para": o grupo da tela aberta abre sozinho. Os que você abrir à mão ficam abertos, e o navegador lembra.
 - **Recolher o menu:** a seta redonda na borda do menu deixa só os ícones (a tela ganha espaço). Recolhido, passar o mouse abre o menu por cima, sem empurrar o conteúdo; o nome de cada tela aparece ao parar o mouse no ícone. O navegador lembra a escolha (`js/menuRecolher.js`; aplicada antes de desenhar em `js/tema.js`).
 - **Cores pelo tema:** o menu segue o tema escolhido (claro ou escuro), com o logo na cor certa — as cores ficam nas variáveis `--lat-*` de `css/style.css`.
 - **No celular**, o menu vira uma gaveta: o botão **☰ Menu** abre, e escolher a tela fecha.
@@ -241,9 +241,9 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 323 Relatórios · 330 Auditoria de frete
-  - **4xx Notas e fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 410 Sinistros
+  - **4xx Fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
-  - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos
+  - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 905 Transportadoras contratadas · 906 Tabelas de preço · 990 Modo compacto · 991 Tema · 999 Lista de códigos
 - **Modo compacto** (botão no menu lateral, ou código 990): menos espaço e letra menor, para ver mais linhas na tela. Fica salvo naquele computador.
 - **Nos formulários** (janelas de cadastro e lançamento):
   - **Enter** passa para o próximo campo, como o Tab;
@@ -815,7 +815,7 @@ O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o v
 
 ## Notas fiscais (embarcador)
 
-Em **Notas e fretes → 🧾 Notas fiscais** (código **403**). Regras em `src/notasFiscais.js`, DANFE em `src/danfe.js`, rotas em `/api/notas`.
+Em **Documentos → 🧾 Notas fiscais** (código **403**). Regras em `src/notasFiscais.js`, DANFE em `src/danfe.js`, rotas em `/api/notas`.
 
 - **Dados completos da nota**, lidos do XML na importação (e do XML guardado nas notas antigas, ao ligar o sistema — `nf_dados_em` marca as já lidas): série, emitente (nome e CNPJ), valor dos produtos, peso bruto e líquido separados, data/hora de saída e endereço de entrega (`entrega_endereco`, com o grupo `<entrega>` quando a nota tem local de entrega diferente).
 - **Consulta** com filtros (número, chave, cliente, pedido, emitente, destinatário, série, cidade, UF, período por emissão ou saída, situação) e totais; **Excel**; **XML** da nota e **.zip** dos XML filtrados (`GET /api/notas/zip`).
@@ -831,11 +831,11 @@ Regras em `src/auditoriaDetalhada.js`. Além do total do CT-e × tabela (confer�
 - **Peso e volumes** do CT-e (`infQ` 01/02 e 03) × os das notas (inclui as cobertas pelo mesmo CT-e).
 - **ICMS**: base (vTPrest com redução), alíquota pela rota (`icmsCte.conferirIcms`), valor (base × alíquota) e CFOP (5xxx no estado, 6xxx entre estados).
 - **Histórico do frete** (`GET /api/fretes/:id/historico`): importação, cálculo, liberação/aprovação/reprovação, glosa, cancelamento, registro de atividades (`auditoria.registro_id`), fatura e pagamento.
-- Os apontamentos entram no relatório **Auditoria de Frete** e no relatório **Cobranças indevidas** (Relatórios → 💸, código **323**, `GET /api/fretes/relatorios/cobrancas-indevidas`): cobrado a mais por componente, transportadora e mês, com Excel.
+- Os apontamentos entram no relatório **Auditoria de Frete** e no relatório **Cobranças indevidas** (Auditoria de fretes → Auditoria de frete → 💸 Cobranças indevidas, código **323**, `GET /api/fretes/relatorios/cobrancas-indevidas`): cobrado a mais por componente, transportadora e mês, com Excel.
 
 ## NF-e × CT-e (embarcador)
 
-Regras em `src/nfeCte.js`, rotas em `src/routes/nfeCte.js` (`/api/nfe-cte`), tela em **Relatórios → 🔗 Inconsistências NF-e × CT-e** (322).
+Regras em `src/nfeCte.js`, rotas em `src/routes/nfeCte.js` (`/api/nfe-cte`), tela em **Documentos → 🔗 NF-e × CT-e → Inconsistências e vínculos** (322).
 
 - **Vinculação:** pela chave da NF-e citada no CT-e (infDoc); sem ela, pedido, número da NF dentro da chave (posições 26–34) ou das observações. CT-e que chega antes da nota é juntado quando a nota chega.
 - **Um CT-e para várias notas:** o CT-e fica no registro de uma nota e as outras citadas ficam **cobertas** (`fretes.cte_coberto_por`, com o número do CT-e); nenhuma fica "aguardando CT-e". O frete é **rateado** (`fretes.frete_rateado`) pelo peso, senão pelo valor, senão em partes iguais. A conferência pela tabela soma peso, volumes, cubagem e valor de todas as notas. A data de entrega do CT-e passa para as cobertas (gatilho `trg_nf_entrega_notas_cobertas`). Nota que chega depois é coberta na reconciliação após cada importação.
@@ -858,7 +858,7 @@ Em **Auditoria de Frete → 🧾 Conferir Fatura** (código 330). Regras em `src
 
 ## Indicadores (Relatórios)
 
-Em **Relatórios → 🎯 Indicadores** (código **309**), tudo numa tela, no período (emissão do CT-e) e, se quiser, de uma transportadora só:
+Em **Gestão e relatórios → 📊 Painel de indicadores → Fretes contratados (KPIs)** (código **309**), tudo numa tela, no período (emissão do CT-e) e, se quiser, de uma transportadora só:
 
 - **Fretes:** contratados (CT-e do período, sem cancelados, não cobrados e barrados), **pagos** (CT-e de faturas com o pagamento registrado), **a pagar** (faturado e não pago, liberado sem fatura, em conferência, retido) e o % do frete sobre o valor das notas.
 - **Pagamento da fatura:** em Auditoria de Frete → Conferir Fatura → Faturas conferidas, **💸 Registrar pagamento** na fatura liberada (veja "Faturas das transportadoras"). Colunas `faturas_frete.pago_em`, `valor_pago`, `pago_por`.
@@ -871,7 +871,7 @@ Em **Relatórios → 🎯 Indicadores** (código **309**), tudo numa tela, no pe
 
 ## Roteirizar entregas
 
-Em **Relatórios → 🗺️ Roteirizar entregas**, ou pelo botão **🗺️ Roteirizar** da carga montada em "Consolidar rotas":
+Em **Gestão e relatórios → 🗺️ Roteirizar entregas**, ou pelo botão **🗺️ Roteirizar** da carga montada em "Consolidar rotas":
 
 1. Marque as notas que vão no caminhão. Notas para o mesmo endereço viram uma parada só. Nota com redespacho para na transportadora do redespacho.
 2. Informe a saída: data, hora, veículo (VUC, 3/4, toco, truck...), placa (para o rodízio), tempo de descarga e o horário em que os clientes recebem.

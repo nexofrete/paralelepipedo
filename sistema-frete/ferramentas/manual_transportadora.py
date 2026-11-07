@@ -20,30 +20,71 @@ def parte_operacao(g):
 
     # 29
     s += h1('29. Menu por área, tela Hoje e códigos de tela')
-    s.append(P('O menu da esquerda é organizado por área: <b>Operação, Financeiro, Frota, Gestão, Notas e fretes</b> (a '
-               'parte do embarcador) e <b>Configuração</b>. O grupo da tela aberta abre sozinho; os que você abrir à mão '
-               'ficam abertos e o navegador lembra. No celular, o botão <b>Menu</b> abre o menu como uma gaveta.'))
+    s.append(P('O menu da esquerda é <b>um só</b>, organizado por área, com as telas da transportadora (TMS) e do embarcador '
+               '(fretes contratados) juntas: <b>Hoje</b>, <b>Fretes contratados (visão geral)</b>, <b>Operação</b>, '
+               '<b>Transportadoras e parceiros</b>, <b>Documentos</b>, <b>Auditoria de fretes</b>, <b>Financeiro</b>, <b>Frota</b>, '
+               '<b>Gestão e relatórios</b>, <b>Clientes</b>, Mensagens, Agenda e <b>Configuração</b>. O grupo da tela aberta abre '
+               'sozinho; os que você abrir à mão ficam abertos e o navegador lembra. No celular, o botão <b>Menu</b> abre o menu '
+               'como uma gaveta. Cada usuário só vê as telas que tem permissão de abrir.'))
+    s += aviso('nota', 'Até a versão 1.72 havia uma chave <b>TMS | Embarcador</b> no alto do menu, que mostrava uma parte de cada '
+                       'vez. Ela saiu: agora as duas partes ficam no mesmo menu, cada tela no grupo do seu assunto. Os códigos '
+                       'de tela (Ctrl+K) continuam os mesmos.')
+    s += h2('Mapa do menu')
+    s.append(P('Onde fica cada tela, o código para abrir pelo "Ir para" (Ctrl+K) e o capítulo deste manual que explica. '
+               'Os capítulos seguem a numeração de antes; use esta tabela para achá-los na ordem do menu.'))
+    s += tabela(['Grupo do menu', 'Tela', 'Código', 'Capítulo'], [
+        ['Hoje', 'Pendências do dia (transportadora)', '000', '29'],
+        ['Fretes contratados', 'Visão geral (início do embarcador)', '400', '11'],
+        ['Operação', 'Coletas, Cotações', '001, 010', '31, 30'],
+        ['Operação', 'CT-e, MDF-e, NFS-e', '020, 025, 030', '32, 33, 34'],
+        ['Operação', 'Romaneios, Ocorrências de entrega, Monitoramento', '040, 041, 045', '35'],
+        ['Operação', 'Conferência, Etiquetas, Armazém', '050, 051, 055', '37'],
+        ['Operação', 'Onde está a mercadoria, Transferências, Paletes', '060, 061, 066', '36, 35'],
+        ['Transportadoras e parceiros', 'Parceiros, ranking e escolha: Parceiros e redespacho, Scorecard, Melhor transportadora', '065, 319, 313', '36, 19'],
+        ['Transportadoras e parceiros', 'Transportadoras contratadas, Tabelas de preço', '905, 906', '23, 15'],
+        ['Documentos', 'Enviar XML, Notas fiscais, Fretes (todos os registros)', '401, 403, 402', '12, 14'],
+        ['Documentos', 'NF-e × CT-e: Inconsistências e vínculos, Notas e seus CT-e', '322, 320', '13, 19'],
+        ['Documentos', 'EDI', '070', '38'],
+        ['Auditoria de fretes', 'Auditoria de frete: Fretes auditados, Conferência de CT-e, Cobranças indevidas', '330, 321, 323', '16, 19'],
+        ['Auditoria de fretes', 'Sinistros', '410', '20'],
+        ['Financeiro', 'Faturamento, Contas a receber, Boletos, Régua, Serviços extras', '100 a 104', '41 a 43'],
+        ['Financeiro', 'Contas a pagar, Acerto de viagem, Comissões', '110, 120, 125', '45, 46'],
+        ['Financeiro', 'Pagamento de fretes contratados (e as faturas das transportadoras)', '130', '18, 17'],
+        ['Financeiro', 'Caixa e bancos, Conciliação, Fluxo de caixa', '150 a 152', '44'],
+        ['Financeiro', 'Fiscal e contabilidade, Notas de entrada, NF-e contra o CNPJ, GNRE, Pacote do contador', '140 a 144', '49'],
+        ['Frota', 'Custos, Abastecimentos, Manutenções, Documentos, Pneus, Jornada, Veículos', '200 a 250', '40'],
+        ['Gestão e relatórios', 'Painel de indicadores: Operação própria (CT-e), Fretes contratados (KPIs), Gráficos', '300, 309, 310', '48, 19'],
+        ['Gestão e relatórios', 'Margem por CT-e e cliente, Centros de custo', '301, 302', '48, 47'],
+        ['Gestão e relatórios', 'Entregas previstas, Notas sem mapa, Consolidar rotas, Roteirizar', '311, 312, 314, 315', '19'],
+        ['Gestão e relatórios', 'Montar relatório (BI), Comparar cotações, Anomalias e duplicidades', '316, 317, 318', '19'],
+        ['Clientes', 'SAC (chamados), Portal do cliente', '090, 080', '39'],
+        ['Mensagens e Agenda', 'Mensagens, Agenda', '500, 501', '21'],
+        ['Configuração', 'Filiais, Configuração fiscal, Cadastros, Manutenção, Integração', '901, 902, 900, 903, 904', '36, 32, 22, 24, 53'],
+    ], [0.2, 0.46, 0.17, 0.17])
+    s += h2('Telas parecidas juntas')
+    s.append(P('Algumas telas tratam do mesmo assunto e ficavam em lugares diferentes do menu. Agora cada assunto é <b>um item '
+               'só</b> no menu e, no alto da tela, aparece uma barra para trocar entre as telas dele (só as que você pode abrir):'))
+    s += lista([
+        '<b>Painel de indicadores</b>: Operação própria (CT-e emitidos pela transportadora), Fretes contratados (KPIs do embarcador) e Gráficos.',
+        '<b>Auditoria de frete</b>: Fretes auditados, Conferência de CT-e e Cobranças indevidas.',
+        '<b>NF-e × CT-e</b>: Inconsistências e vínculos e Notas e seus CT-e.',
+        '<b>Parceiros, ranking e escolha</b>: Parceiros e redespacho, Scorecard das transportadoras e Melhor transportadora por destino.',
+    ])
+    s.append(P('Também passaram a ter <b>uma regra só</b>: a verificação de documento duplicado (a mesma nos avisos da Auditoria '
+               'de frete e no relatório Anomalias e duplicidades, capítulo 19) e a alíquota interestadual do ICMS (a mesma no '
+               'cálculo do frete pela tabela e na conferência do CT-e). As faturas das transportadoras abrem tanto pela '
+               'Auditoria de frete quanto pelo Pagamento de fretes contratados, na mesma janela.'))
     s += h2('Módulos da empresa')
     s.append(P('Em <b>Cadastros » Empresa » Módulos usados pela empresa</b>, o administrador escolhe o que aparece:'))
     s += lista([
-        '<b>Transportadora e embarcador (tudo)</b>: o padrão, todo o menu.',
-        '<b>Só transportadora</b>: some <b>Notas e fretes</b> e <b>Relatórios</b> (a parte do embarcador); a primeira tela é a Hoje.',
-        '<b>Só embarcador</b>: somem Hoje, Operação, Financeiro, Frota, Gestão, Filiais (unidades) e Configuração fiscal; '
-        'a primeira tela é a Visão geral.',
+        '<b>Transportadora e embarcador (tudo)</b>: o padrão, todo o menu; a primeira tela é a Hoje.',
+        '<b>Só transportadora</b>: somem as telas do embarcador (fretes contratados, Enviar XML, Auditoria de fretes, '
+        'Pagamento de fretes contratados, relatórios dos fretes contratados); a primeira tela é a Hoje.',
+        '<b>Só embarcador</b>: somem Hoje, Operação, Frota, Clientes, o financeiro da transportadora, Filiais (unidades) e '
+        'Configuração fiscal; a primeira tela é a Visão geral (no menu, "Início").',
     ])
     s += aviso('nota', 'A escolha esconde os itens do menu, do "Ir para" (Ctrl+K) e da tela Hoje para todos os usuários; '
                        'não apaga nada nem muda permissões. Volte para "tudo" a qualquer momento.')
-    s += h2('TMS e Embarcador separados no menu')
-    s.append(P('Com os dois módulos, o alto do menu (logo abaixo do "Ir para") tem a chave <b>TMS | Embarcador</b>. Em <b>TMS</b> '
-               'aparecem só as telas da transportadora (Hoje, Operação, Financeiro, Frota, Gestão), começando pela Hoje; em '
-               '<b>Embarcador</b>, só as do embarcador (Notas e fretes e Relatórios), começando pela Visão geral. Mensagens, '
-               'Agenda e Configuração aparecem nos dois.'))
-    s += lista([
-        'Cada usuário escolhe a sua parte, e o navegador lembra na próxima vez.',
-        'O "Ir para" (Ctrl+K) acha as telas das duas partes: abrir um código da outra parte (ex.: 020 estando no Embarcador) '
-        'troca a chave sozinha.',
-        'Com o menu recolhido, a chave vira dois ícones (🚛 e 📥). A chave não aparece quando a empresa usa só um dos módulos.',
-    ])
     s += h2('Recolher o menu e cores pelo tema')
     s += lista([
         'A <b>seta na borda do menu</b> (botão redondo no alto) recolhe o menu: ficam só os ícones e a tela ganha '
@@ -78,10 +119,10 @@ def parte_operacao(g):
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
          'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
         ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada'],
-        ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 '
-         'Relatórios · 330 Auditoria de frete'],
-        ['4xx Notas e fretes', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 410 Sinistros'],
-        ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · '
+        ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores dos '
+         'fretes contratados · 310 a 323 Relatórios · 330 Auditoria de frete'],
+        ['4xx Fretes contratados', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 410 Sinistros'],
+        ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 905 Transportadoras contratadas · 906 Tabelas de preço · '
          '903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos'],
     ], [0.2, 0.8])
     s += h2('Filtro de período')
@@ -731,7 +772,7 @@ def parte_financeiro(g):
 
     # 47
     s += h1('47. Centros de custo')
-    s.append(P('Em <b>Gestão » Centros de custo</b> (302): filial, veículo, rota, comercial, administrativo e outro. O botão '
+    s.append(P('Em <b>Gestão e relatórios » Centros de custo</b> (302): filial, veículo, rota, comercial, administrativo e outro. O botão '
                '<b>Criar automático</b> cria um por filial e por veículo. Abastecimento, manutenção e acerto pegam o '
                'centro do veículo. O <b>resultado por centro</b> mostra receita, despesas e o detalhe por categoria.'))
 

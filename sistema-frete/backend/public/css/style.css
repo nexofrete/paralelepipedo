@@ -1711,13 +1711,11 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .mo-caminhao b { background: #111827; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 4px; }
 @media (max-width: 900px) { .mo-grade { grid-template-columns: 1fr; } .mo-mapa { height: 420px; } .mo-lado { max-height: none; } }
 
-/* Chave TMS | Embarcador no alto do menu (empresa com os dois módulos; js/modulos.js). */
-.menu-partes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 2px 14px; padding: 4px; border-radius: 10px; background: var(--lat-campo); border: 1px solid var(--lat-campo-borda); }
-html:not([data-empresa-modulos="ambos"]) .menu-partes { display: none; }
-.menu-partes button { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 7px; padding: 8px 6px; background: transparent; color: var(--lat-texto); font-size: 13px; font-weight: 600; cursor: pointer; }
-.menu-partes button:hover { color: var(--lat-forte); }
-.menu-partes button.ativo { background: #2563eb; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
-@media (min-width: 801px) {
-  html.menu-recolhido .barra-lateral:not(:hover) .menu-partes { grid-template-columns: 1fr; padding: 3px; }
-  html.menu-recolhido .barra-lateral:not(:hover) .menu-partes .mp-txt { display: none; }
-}
+/* Barra das telas do mesmo assunto (js/familias.js): no alto da tela, troca entre elas. */
+.familia-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 16px; padding: 6px; border: 1px solid var(--borda); border-radius: 10px; background: var(--bg-card); }
+.familia-barra.oculto { display: none; }
+.familia-titulo { font-size: 12px; font-weight: 700; color: var(--texto-fraco); padding: 0 8px 0 4px; text-transform: uppercase; letter-spacing: .03em; }
+.familia-aba { border: 0; border-radius: 7px; padding: 7px 12px; background: transparent; color: var(--texto); font-size: 13px; font-weight: 600; cursor: pointer; }
+.familia-aba:hover { background: var(--bg-hover, rgba(127,127,127,.12)); }
+.familia-aba.ativo { background: var(--azul); color: #fff; }
+@media (max-width: 700px) { .familia-barra { flex-wrap: nowrap; overflow-x: auto; } .familia-aba { flex-shrink: 0; } }

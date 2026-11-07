@@ -3,6 +3,7 @@ const pool = require('../db');
 const { autenticar, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
 const icmsCte = require('../icmsCte');
+const duplicidade = require('../duplicidade');
 // Junta a conferência do ICMS (com o trecho do redespacho) e tira os campos auxiliares.
 function comIcmsConferido(r) {
   const { icms_nota: _n, icms_uf_recebedor: _u, ...resto } = r;
@@ -2091,18 +2092,10 @@ router.get('/relatorios/auditoria-frete', autenticar, permitirAlguma('pode_ver_r
              f.frete_principal_id, f.vinculo_cte, f.carga_direta,
              f.xml_cte_original, f.auditoria_calculo, f.peso_kg, f.qtd_volumes, f.tipo_cte,
              ${icmsCte.camposSql('f')},
-             -- Duplicidade: o mesmo CT-e (número + transportadora) em mais de um registro
-             -- ativo; a mesma NF em mais de um registro PRINCIPAL (CT-e a mais da nota
-             -- — reentrega, redespacho, cancelado — é esperado e não conta).
-             (SELECT COUNT(*) FROM fretes d WHERE d.numero_cte = f.numero_cte AND NOT d.cte_cancelado
-                 AND LEFT(COALESCE(d.transportadora_cnpj_cte, ''), 8) = LEFT(COALESCE(f.transportadora_cnpj_cte, ''), 8))::int AS qtd_numero_cte,
-             CASE WHEN f.frete_principal_id IS NULL AND f.numero_nf IS NOT NULL
-                  THEN (SELECT COUNT(*) FROM fretes d WHERE d.frete_principal_id IS NULL AND NOT d.cte_cancelado
-                          AND LTRIM(d.numero_nf, '0') = LTRIM(f.numero_nf, '0')
-                          AND COALESCE(d.chave_nfe, '') <> '' AND COALESCE(f.chave_nfe, '') <> ''
-                          AND SUBSTRING(d.chave_nfe FROM 7 FOR 14) = SUBSTRING(f.chave_nfe FROM 7 FOR 14))
-                  ELSE 0 END::int AS qtd_numero_nf
-      FROM fretes f
+             -- Duplicidade (regra única, src/duplicidade.js): mesmo CT-e da mesma transportadora;
+             -- mesma NF do mesmo emitente em mais de um registro principal.
+             COALESCE(dup_cte.qtd, 0) AS qtd_numero_cte, COALESCE(dup_nf.qtd, 0) AS qtd_numero_nf
+      FROM fretes f ${duplicidade.joinsQuantidade('f')}
       -- Só o que tem CT-e: nota ainda sem CT-e não tem o que auditar.
       WHERE f.chave_cte IS NOT NULL AND COALESCE(f.status, '') <> 'Não cobrado' ${whereExtra}
       ORDER BY f.data_emissao_cte DESC NULLS LAST, f.id DESC
@@ -2181,20 +2174,9 @@ router.get('/relatorios/cobrancas-indevidas', autenticar, permitirAlguma('pode_v
 // a pedidos diferentes por engano (evita pagar o mesmo frete duas vezes).
 router.get('/relatorios/duplicidades', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
   try {
-    const { rows: cteDuplicado } = await consultaCliente(req, 
-      // Mesmo número de CT-e da MESMA transportadora (raiz do CNPJ): transportadoras
-      // diferentes podem ter CT-e com o mesmo número. CT-e cancelado não conta.
-      `SELECT numero_cte AS numero, 'CT-e' AS tipo, COUNT(*)::int AS qtd,
-              STRING_AGG(numero_pedido, ', ') AS pedidos, STRING_AGG(id::text, ',') AS ids
-       FROM fretes WHERE numero_cte IS NOT NULL AND numero_cte <> '' AND NOT cte_cancelado
-       GROUP BY numero_cte, LEFT(COALESCE(transportadora_cnpj_cte, transportadora_cte, ''), 8) HAVING COUNT(*) > 1`
-    );
-    const { rows: nfDuplicada } = await consultaCliente(req, 
-      `SELECT numero_nf AS numero, 'NF-e' AS tipo, COUNT(*)::int AS qtd,
-              STRING_AGG(numero_pedido, ', ') AS pedidos, STRING_AGG(id::text, ',') AS ids
-       FROM fretes WHERE numero_nf IS NOT NULL AND numero_nf <> '' AND frete_principal_id IS NULL
-       GROUP BY numero_nf HAVING COUNT(*) > 1`
-    );
+    // Regra única (src/duplicidade.js), a mesma da auditoria de frete.
+    const { rows: cteDuplicado } = await consultaCliente(req, duplicidade.sqlGruposCte);
+    const { rows: nfDuplicada } = await consultaCliente(req, duplicidade.sqlGruposNf);
     res.json([...cteDuplicado, ...nfDuplicada]);
   } catch (err) {
     console.error(err);

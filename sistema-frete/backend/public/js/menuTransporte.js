@@ -1,10 +1,12 @@
 // =====================================================================
-// Menu por área (Operação, Financeiro, Frota, Gestão, Notas e fretes
-// contratados, Configuração), com os mesmos números do "Ir para".
+// Menu único, por área (Operação, Transportadoras, Documentos, Auditoria,
+// Financeiro, Frota, Gestão, Clientes, Configuração), com os mesmos números do "Ir para".
 // Cada grupo abre/fecha; o grupo da tela aberta fica sempre aberto e os que a
 // pessoa abriu à mão continuam abertos (lembrado neste navegador).
-// Os subitens ".nav-tsub" abrem a página de sempre (o item escondido do menu,
-// que guarda a permissão) e já escolhem a aba certa dela.
+// Subitens ".nav-tsub":
+//   data-ir="<página>" [data-aba]  → abre a página (o item escondido guarda a permissão) e a aba
+//   data-subaba="<nome>"           → uma tela de Relatórios
+//   data-familia="<nome>"          → telas parecidas juntas (js/familias.js); abre a primeira que o usuário pode
 // =====================================================================
 (() => {
   const grupos = [...document.querySelectorAll('.barra-lateral .nav-grupo[data-grupo]')].map((cab) => ({
@@ -18,29 +20,40 @@
     b.addEventListener('click', () => { const ab = document.body.classList.toggle('menu-aberto'); b.textContent = ab ? '✕ Fechar' : '☰ Menu'; });
     marca.insertBefore(b, marca.lastElementChild);
     document.querySelector('.barra-lateral').addEventListener('click', (e) => {
-      if (e.target.closest('.nav-tsub, .nav-item:not([data-pagina="relatorios"]), .nav-subitem')) { document.body.classList.remove('menu-aberto'); b.textContent = '☰ Menu'; }
+      if (e.target.closest('.nav-tsub, .nav-item')) { document.body.classList.remove('menu-aberto'); b.textContent = '☰ Menu'; }
     });
   }
-  if (!grupos.length) return;
+  const N = window.Navegar;
+  if (!grupos.length || !N) return;
   const ehAdmin = usuario?.perfil === 'admin';
-  const paginaDo = (el) => document.querySelector(`.nav-item[data-pagina="${el.dataset.ir}"]`);
-  // Atributo das abas de cada tela.
-  const ATRIBUTO_ABA = {
-    'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba',
-    filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba', comissoes: 'data-cm-aba', centros: 'data-ccu-aba',
+  // Destino do subitem, no formato do js/familias.js.
+  const destino = (el) => {
+    if (el.dataset.familia) return `f:${el.dataset.familia}`;
+    if (el.dataset.subaba) return `r:${el.dataset.subaba}`;
+    return el.dataset.aba ? `t:${el.dataset.ir}:${el.dataset.aba}` : `p:${el.dataset.ir}`;
   };
-  const DATASET = Object.fromEntries(Object.entries(ATRIBUTO_ABA).map(([p, a]) => [p, a.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())]));   // data-cte-aba → cteAba
   const tsubs = [...document.querySelectorAll('.barra-lateral .nav-tsub')];
+  tsubs.forEach((el) => { el.dataset.destino = destino(el); });
 
-  // Só aparece o que o usuário pode abrir (os scripts de cada tela já tiraram o "oculto" do item da página).
-  tsubs.forEach((el) => el.classList.toggle('oculto', !paginaDo(el) || paginaDo(el).classList.contains('oculto') || (!!el.dataset.soAdmin && !ehAdmin)));
-  const itensDo = (g) => [...g.sub.querySelectorAll('.nav-tsub, .nav-item')];
+  // Só aparece o que o usuário pode abrir.
+  const navHoje = document.getElementById('navHoje');
+  const inicioEmb = document.getElementById('navInicioEmb');
+  const temHoje = () => !!navHoje && !navHoje.classList.contains('oculto') && !window.Modulos?.fora(navHoje);
   const visivel = (el) => !el.classList.contains('oculto') && !window.Modulos?.fora(el);
-  const atualizarVisiveis = () => grupos.forEach((g) => { g.cab.classList.toggle('oculto', !itensDo(g).some(visivel)); });
+  const itensDo = (g) => [...g.sub.querySelectorAll('.nav-tsub, .nav-item')];
+  function atualizarVisiveis() {
+    tsubs.forEach((el) => el.classList.toggle('oculto', !N.acessivel(el.dataset.destino) || (!!el.dataset.soAdmin && !ehAdmin)));
+    // Com a tela Hoje (transportadora), a visão geral do embarcador vira um item comum, logo abaixo.
+    const rot = inicioEmb?.querySelector('.nav-rotulo');
+    if (rot) rot.textContent = temHoje() ? '📥 Fretes contratados (visão geral)' : '🏠 Início';
+    grupos.forEach((g) => { g.cab.classList.toggle('oculto', !itensDo(g).some(visivel)); });
+  }
   atualizarVisiveis();
-  // Itens de página dentro dos grupos (Cadastros, Manutenção...) aparecem depois, quando o dashboard confere a permissão.
-  const vigiaItens = new MutationObserver(atualizarVisiveis);
-  grupos.forEach((g) => g.sub.querySelectorAll('.nav-item').forEach((el) => vigiaItens.observe(el, { attributes: true, attributeFilter: ['class'] })));
+  // As permissões de algumas telas chegam depois (Cadastros, Manutenção, módulos da empresa...).
+  let agendado = null;
+  const reagendar = () => { clearTimeout(agendado); agendado = setTimeout(() => { atualizarVisiveis(); desenhar(); }, 30); };
+  const vigiaItens = new MutationObserver(reagendar);
+  document.querySelectorAll('.barra-lateral .nav-item[data-pagina]').forEach((el) => vigiaItens.observe(el, { attributes: true, attributeFilter: ['class'] }));
 
   // Abertos à mão (lembrados); o grupo da tela atual abre sozinho.
   const CHAVE = 'menuGruposAbertos';
@@ -48,13 +61,16 @@
   try { abertos = new Set(JSON.parse(localStorage.getItem(CHAVE) || '[]')); } catch { abertos = new Set(); }
   const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify([...abertos])); } catch { /* sem armazenamento */ } };
   let grupoAtual = null;
-  const desenhar = () => grupos.forEach((g) => {
-    const aberto = abertos.has(g.chave) || g.chave === grupoAtual || grupos.filter((x) => visivel(x.cab)).length === 1;
-    g.sub.classList.toggle('oculto', !aberto);
-    g.cab.classList.toggle('aberto', aberto);
-    g.cab.classList.toggle('contem-ativo', g.chave === grupoAtual);
-    const seta = g.cab.querySelector('.nav-seta'); if (seta) seta.textContent = aberto ? '▾' : '▸';
-  });
+  function desenhar() {
+    const visiveis = grupos.filter((x) => visivel(x.cab)).length;
+    grupos.forEach((g) => {
+      const aberto = abertos.has(g.chave) || g.chave === grupoAtual || visiveis === 1;
+      g.sub.classList.toggle('oculto', !aberto);
+      g.cab.classList.toggle('aberto', aberto);
+      g.cab.classList.toggle('contem-ativo', g.chave === grupoAtual);
+      const seta = g.cab.querySelector('.nav-seta'); if (seta) seta.textContent = aberto ? '▾' : '▸';
+    });
+  }
   grupos.forEach((g) => g.cab.addEventListener('click', () => {
     const aberto = !g.sub.classList.contains('oculto');
     if (aberto) { abertos.delete(g.chave); if (g.chave === grupoAtual) grupoAtual = null; } else abertos.add(g.chave);
@@ -67,46 +83,35 @@
     grupoAtual = g ? g.chave : null;
     desenhar();
   };
-
   tsubs.forEach((el) => el.addEventListener('click', () => {
-    const pagina = paginaDo(el);
-    if (!pagina || pagina.classList.contains('oculto')) return;
-    const naPagina = !document.getElementById(`pagina-${el.dataset.ir}`)?.classList.contains('oculto');
-    if (!naPagina) pagina.click();
-    if (el.dataset.aba) document.querySelector(`[${ATRIBUTO_ABA[el.dataset.ir]}="${el.dataset.aba}"]`)?.click();
+    if (el.classList.contains('oculto')) return;
+    N.ir(el.dataset.destino);
     marcar(el);
   }));
 
-  // As abas dentro das telas também acendem o subitem certo.
-  const seletorAbas = Object.values(ATRIBUTO_ABA).map((a) => `[${a}]`).join(', ');
-  document.querySelectorAll(seletorAbas).forEach((aba) => aba.addEventListener('click', () => {
-    const ir = Object.keys(DATASET).find((p) => aba.dataset[DATASET[p]] != null);
-    const el = tsubs.find((x) => x.dataset.ir === ir && x.dataset.aba === aba.dataset[DATASET[ir]]);
-    if (el) marcar(el);
-  }));
-
-  // Mudou a tela (menu, atalho, notificação): acende o item dela e abre o grupo.
-  const secoes = [...document.querySelectorAll('main > section[id^="pagina-"]')];
-  const observar = new MutationObserver(() => {
-    const aberta = secoes.find((s) => !s.classList.contains('oculto'))?.id.slice(7);
-    if (!aberta) return;
+  // Mudou a tela (menu, atalho, notificação, aba dentro da tela): acende o item dela e abre o grupo.
+  function acompanhar() {
     const atual = tsubs.find((x) => x.classList.contains('ativo'));
-    if (atual && atual.dataset.ir === aberta) return;
-    const tsub = tsubs.find((x) => x.dataset.ir === aberta && visivel(x));
-    if (tsub) { marcar(tsub); return; }
-    // Página que é item direto dentro de um grupo (ex.: Visão geral, Cadastros).
-    tsubs.forEach((x) => x.classList.remove('ativo'));
-    const item = document.querySelector(`.barra-lateral .nav-sub .nav-item[data-pagina="${aberta}"]`);
-    const g = item ? grupos.find((x) => x.sub.contains(item)) : null;
-    grupoAtual = g ? g.chave : null;
-    desenhar();
-  });
-  secoes.forEach((s) => observar.observe(s, { attributes: true, attributeFilter: ['class'] }));
-  observar.takeRecords(); // estado inicial:
-  const inicial = secoes.find((s) => !s.classList.contains('oculto'))?.id.slice(7);
-  const itemIni = inicial && document.querySelector(`.barra-lateral .nav-sub .nav-item[data-pagina="${inicial}"]`);
-  grupoAtual = itemIni ? grupos.find((x) => x.sub.contains(itemIni))?.chave || null : null;
-  desenhar();
+    if (atual && visivel(atual) && N.ehAtual(atual.dataset.destino)) { desenhar(); return; }
+    // Primeiro o que bate exato (página + aba); depois só a página (aba que não está no menu).
+    let tsub = tsubs.find((x) => visivel(x) && N.ehAtual(x.dataset.destino));
+    if (!tsub) {
+      const aberta = document.querySelector('main > section[id^="pagina-"]:not(.oculto)')?.id.slice(7);
+      // Página que é item direto dentro de um grupo (Cadastros, Manutenção...) vem antes de um subitem de outra aba dela.
+      const item = aberta && document.querySelector(`.barra-lateral .nav-sub .nav-item[data-pagina="${aberta}"]`);
+      tsub = !item && aberta && aberta !== 'relatorios' ? tsubs.find((x) => visivel(x) && x.dataset.ir === aberta) : null;
+      if (!tsub) {
+        tsubs.forEach((x) => x.classList.remove('ativo'));
+        const g = item ? grupos.find((x) => x.sub.contains(item)) : null;
+        grupoAtual = g ? g.chave : null;
+        desenhar();
+        return;
+      }
+    }
+    marcar(tsub);
+  }
+  document.addEventListener('tela-mudou', acompanhar);
+  acompanhar();
   // Módulos da empresa trocados (Cadastros » Empresa): refaz o menu na hora.
-  document.addEventListener('modulos-mudou', () => { atualizarVisiveis(); desenhar(); });
+  document.addEventListener('modulos-mudou', () => { atualizarVisiveis(); acompanhar(); });
 })();

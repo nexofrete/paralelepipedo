@@ -147,8 +147,8 @@ function calcularFreteBase(trecho, { qtdVolumes, pesoKg, cubagemM3 }) {
 // e o ICMS por cima quando a transportadora cobra "tabela + ICMS".
 // opcoes: { valorFaturado, pesoKg, qtdVolumes, cliente, clienteCnpj, impostosCte, ufIni, ufFim }
 const semAcentoMaiusc = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-const UF_SUL_SUDESTE = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
-const UF_N_NE_CO_ES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'PA', 'PB', 'PE', 'PI', 'RN', 'RO', 'RR', 'SE', 'TO'];
+// Alíquota interestadual do ICMS: uma regra só, a mesma da conferência do CT-e (src/icmsCte.js).
+const { aliquotaInterestadual } = require('./icmsCte');
 
 // O cliente está na lista de descarga da tabela? Cada linha: CNPJ (ou raiz de 8
 // dígitos) ou parte do nome do cliente.
@@ -200,7 +200,7 @@ function calcularComponentesEValorTotal(trecho, freteBase, opcoes = {}) {
     if (Number(trecho.icms_aliquota) > 0) { icmsAliquota = Number(trecho.icms_aliquota); icmsOrigem = 'alíquota da tabela'; }
     else if (Number(imp?.pICMS) > 0) { icmsAliquota = Number(imp.pICMS); icmsOrigem = 'alíquota do CT-e'; }
     else if (ini && fim && ini !== fim) {
-      icmsAliquota = UF_SUL_SUDESTE.includes(ini) && UF_N_NE_CO_ES.includes(fim) ? 7 : 12;
+      icmsAliquota = aliquotaInterestadual(ini, fim);
       icmsOrigem = `alíquota da rota ${ini}→${fim}`;
     }
     if (icmsAliquota && icmsAliquota < 100) {

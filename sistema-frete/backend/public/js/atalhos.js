@@ -47,7 +47,7 @@
     'p:visao-geral': ['400', 'inicio'], 'p:upload': ['401', 'xml importar nota'], 'p:registros': ['402', 'registros fretes notas'], 'p:notas-fiscais': ['403', 'notas fiscais nfe nf-e danfe xml emitente serie chave consulta pesquisa nota cancelada denegada'],
     'p:sinistros': ['410', 'sinistro avaria'],
     'p:mensagens': ['500', 'mensagem'], 'p:agenda': ['501', 'agenda compromisso'],
-    'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:filiais:unidades': ['901', 'filial unidade'],
+    'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:cadastros:transportadoras': ['905', 'transportadoras contratadas cadastro embarcador'], 't:cadastros:tabelas-preco': ['906', 'tabela de preco frete contratado faixa peso'], 't:filiais:unidades': ['901', 'filial unidade'],
     't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'], 'p:integracao': ['904', 'integracao api erp webhook chave'],
   };
   // Ações diretas: abrem a tela e clicam no botão de "novo" (código = o da tela + 1).
@@ -66,26 +66,41 @@
   // Nome do item sem os contadores (ex.: "Notas sem mapa 5").
   const limpo = (el) => { const c = el.cloneNode(true); c.querySelectorAll('.nav-badge, .nav-cod, [id^="badge"]').forEach((b) => b.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
 
+  // Chave do código de um subitem do menu (formato dos CODIGOS acima).
+  const chaveDo = (el) => {
+    if (el.dataset.subaba) return `r:${el.dataset.subaba}`;
+    const t = `t:${el.dataset.ir}:${el.dataset.aba || ''}`;
+    return (CODIGOS[t] || el.dataset.aba) ? t : `p:${el.dataset.ir}`;
+  };
+  // Família (telas parecidas juntas num item do menu): o código é o da primeira tela que a pessoa pode abrir.
+  const primeiroDaFamilia = (el) => window.Navegar?.membrosDe(el.dataset.familia).find((d) => window.Navegar.acessivel(d));
+  const nomeDoGrupo = (el) => {
+    const g = el.closest('.nav-sub')?.dataset.grupo;
+    return g ? limpo(document.querySelector(`.nav-grupo[data-grupo="${g}"]`)).replace(/[▸▾]/g, '').trim() : 'Menu';
+  };
+
   // Destinos que este usuário pode abrir (o menu já esconde o que ele não pode).
   function destinos() {
     const lista = [];
+    const N = window.Navegar;
     document.querySelectorAll('.nav-tsub').forEach((el) => {
       if (!visivel(el)) return;
-      const chave = `t:${el.dataset.ir}:${el.dataset.aba || ''}`;
-      const g = el.closest('.nav-sub')?.dataset.grupo;
-      const nomeGrupo = g ? limpo(document.querySelector(`.nav-grupo[data-grupo="${g}"]`)).replace(/[▸▾]/g, '').trim() : 'Menu';
-      lista.push({ chave, rotulo: limpo(el), grupo: nomeGrupo, abrir: () => el.click() });
+      const grupo = nomeDoGrupo(el);
+      if (el.dataset.familia) {
+        // Cada tela da família tem o seu código (os de antes continuam valendo).
+        (N?.FAMILIAS[el.dataset.familia]?.membros || []).forEach(([d, rotulo]) => {
+          if (N.acessivel(d)) lista.push({ chave: d, rotulo, grupo, abrir: () => N.ir(d) });
+        });
+        return;
+      }
+      lista.push({ chave: chaveDo(el), rotulo: limpo(el), grupo, abrir: () => el.click() });
     });
     document.querySelectorAll('.barra-lateral .nav-item[data-pagina]').forEach((el) => {
-      if (!visivel(el) || el.classList.contains('nav-no-grupo') || el.dataset.pagina === 'relatorios') return;
+      if (!visivel(el) || el.classList.contains('nav-no-grupo')) return;
       lista.push({ chave: `p:${el.dataset.pagina}`, rotulo: limpo(el).replace(/\s*\d+$/, ''), grupo: 'Menu', abrir: () => el.click() });
     });
-    const rel = document.querySelector('.nav-item[data-pagina="relatorios"]');
-    if (visivel(rel)) {
-      document.querySelectorAll('.nav-subitem[data-subaba]').forEach((el) => {
-        lista.push({ chave: `r:${el.dataset.subaba}`, rotulo: limpo(el), grupo: 'Relatórios', abrir: () => { if (!document.getElementById('pagina-relatorios') || document.getElementById('pagina-relatorios').classList.contains('oculto')) rel.click(); el.click(); } });
-      });
-    }
+    const vistos = new Set();
+    for (let i = lista.length - 1; i >= 0; i -= 1) { if (vistos.has(lista[i].chave)) lista.splice(i, 1); else vistos.add(lista[i].chave); }
     const porChave = new Map(lista.map((d) => [d.chave, d]));
     ACOES.forEach((a) => {
       const tela = porChave.get(a.chave);
@@ -207,11 +222,18 @@
       else if (fim) { sp.style.cssText = 'position:static; transform:none; float:right; margin-right:8px;'; el.classList.add('cod-antes'); el.insertBefore(sp, fim); }
       else el.appendChild(sp);
     };
-    document.querySelectorAll('.nav-tsub').forEach((el) => por(el, `t:${el.dataset.ir}:${el.dataset.aba || ''}`));
+    document.querySelectorAll('.nav-tsub').forEach((el) => {
+      if (!el.dataset.familia) { por(el, chaveDo(el)); return; }
+      el.querySelector('.nav-cod')?.remove();
+      const d = primeiroDaFamilia(el);
+      if (d) por(el, d);
+    });
     document.querySelectorAll('.barra-lateral .nav-item[data-pagina]').forEach((el) => { if (!el.classList.contains('nav-no-grupo')) por(el, `p:${el.dataset.pagina}`); });
-    document.querySelectorAll('.nav-subitem[data-subaba]').forEach((el) => por(el, `r:${el.dataset.subaba}`));
   }
   codigosNoMenu();
+  // As permissões e os módulos da empresa chegam depois: refaz o código das famílias.
+  document.addEventListener('modulos-mudou', codigosNoMenu);
+  setTimeout(codigosNoMenu, 1500);
 
   // Botão no menu lateral.
   const marca = document.querySelector('.barra-lateral .marca');

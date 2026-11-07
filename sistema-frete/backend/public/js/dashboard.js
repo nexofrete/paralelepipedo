@@ -5197,9 +5197,13 @@ function desenharBarras(canvasId, labels, valores, cor, horizontal, alturaPadrao
   // Vertical: nomes em pé, embaixo da barra; a margem de baixo é do tamanho do maior.
   const margemBaixoV = Math.max(40, maiorNomePx + 18);
 
+  // Vertical com muitas colunas: o valor vai em pé em cima da barra; a altura cresce o tanto dele.
+  const fmtPrevia = (v) => String(formatarValor ? formatarValor(v) : v);
+  const valorEmPePrevia = !horizontal && Math.max(0, ...valores.map((v) => larguraTexto(fmtPrevia(v), 'bold 11px sans-serif'))) > (larguraTela - 20) / Math.max(1, labels.length) - 6;
+  const extraValorEmPe = valorEmPePrevia ? Math.max(0, ...valores.map((v) => larguraTexto(fmtPrevia(v), 'bold 11px sans-serif'))) : 0;
   const alturaCalculada = horizontal
     ? Math.max(70, alturasLinhaH.reduce((a, h) => a + h, 0) + 10)
-    : Math.max(alturaPadrao, margemBaixoV + 150);
+    : Math.max(alturaPadrao, margemBaixoV + 150) + extraValorEmPe;
   const p = prepararCanvas(canvasId, alturaCalculada);
   if (!p) return;
   const { ctx, largura, altura } = p;
@@ -5280,11 +5284,15 @@ function desenharBarras(canvasId, labels, valores, cor, horizontal, alturaPadrao
       });
     });
   } else {
-    const margemTopo = 22;
     // A margem debaixo (onde fica o nome em pé) já veio medida lá em cima,
     // do tamanho exato do maior nome — por isso nenhum nome é cortado.
     const margemBaixo = margemBaixoV;
     const espacamento = (largura - 20) / labels.length;
+    // Muitas colunas: o valor não cabe deitado em cima da barra (um invadiria o
+    // outro). Aí ele vai em pé, e o topo ganha a altura do maior valor.
+    const maiorValorTexto = Math.max(0, ...valores.map((v) => larguraTexto(String(fmt(v)), 'bold 11px sans-serif')));
+    const valorEmPe = maiorValorTexto > espacamento - 6;
+    const margemTopo = valorEmPe ? Math.ceil(maiorValorTexto) + 12 : 22;
     const larguraBarra = Math.min(46, espacamento * 0.62);
     const alturaDisponivel = altura - margemBaixo - margemTopo;
     const base = margemTopo + alturaDisponivel;
@@ -5314,7 +5322,17 @@ function desenharBarras(canvasId, labels, valores, cor, horizontal, alturaPadrao
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(fmt(valores[i]), x + larguraBarra / 2, y - 4);
+        if (valorEmPe) {
+          ctx.save();
+          ctx.translate(x + larguraBarra / 2, y - 5);
+          ctx.rotate(-Math.PI / 2);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fmt(valores[i]), 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillText(fmt(valores[i]), x + larguraBarra / 2, y - 4);
+        }
         ctx.globalAlpha = 1;
         ctx.font = '11px sans-serif';
 

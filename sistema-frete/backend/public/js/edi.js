@@ -8,6 +8,7 @@
   const ladoEmbarcador = ehAdmin || !!(usuario?.pode_ver_auditoria || usuario?.pode_editar_registros || usuario?.pode_enviar_xml);
   const ladoTransportadora = ehAdmin || !!usuario?.pode_emitir_cte;
   const podeGravarEntrega = ehAdmin || !!usuario?.pode_editar_registros;
+  const podeFinanceiro = ehAdmin || !!usuario?.pode_ver_financeiro;
   const nav = document.getElementById('navEdi');
   if (!nav || (!ladoEmbarcador && !ladoTransportadora)) return;
   nav.classList.remove('oculto');
@@ -44,12 +45,13 @@
 
   // ---------------- Abas ----------------
   if (!ladoEmbarcador) $('ediAbaEmbarcador').classList.add('oculto');
-  if (!ladoTransportadora) $('ediAbaTransportadora').classList.add('oculto');
+  if (!ladoTransportadora) { $('ediAbaTransportadora').classList.add('oculto'); $('ediAbaParceiro').classList.add('oculto'); }
   const abrirAba = (lado) => {
     document.querySelectorAll('[data-edi-aba]').forEach((a) => a.classList.toggle('ativo', a.dataset.ediAba === lado));
     $('edi-aba-embarcador').classList.toggle('oculto', lado !== 'embarcador');
     $('edi-aba-transportadora').classList.toggle('oculto', lado !== 'transportadora');
-    if (lado === 'embarcador') carregarTransportadoras(); else carregarClientes();
+    $('edi-aba-parceiro').classList.toggle('oculto', lado !== 'parceiro');
+    if (lado === 'embarcador') carregarTransportadoras(); else if (lado === 'transportadora') carregarClientes();
   };
   document.querySelectorAll('[data-edi-aba]').forEach((a) => a.addEventListener('click', () => abrirAba(a.dataset.ediAba)));
   let iniciado = false;
@@ -309,5 +311,84 @@
       const r = await api('/transportadora/ocoren', { method: 'POST', body: JSON.stringify({ nome: nomeCliente(), ocorrencias }) });
       baixar(r.nome, r.texto); mostrarAlerta(`OCOREN gerado com ${r.ocorrencias} ocorrência(s).`, { tipo: 'sucesso' });
     }));
+  }
+
+  // =================================================================
+  // Parceiros (redespacho): OCOREN, CONEMB e DOCCOB que o parceiro manda
+  // =================================================================
+  let leituraParceiro = null;
+  const ACAO_OCO = { lancar: ['Lançar', 'var(--azul)'], ja_feita: ['Já lançada', 'var(--texto-fraco)'], sem_cte: ['Nota não é nossa', 'var(--vermelho)'], sem_data: ['Sem data', 'var(--vermelho)'] };
+  const ACAO_CON = { confere: ['✓ Confere', 'var(--verde)'], ajustar: ['Valor diferente', 'var(--amarelo)'], sem_custo: ['Sem custo de redespacho', 'var(--amarelo)'], acertado: ['Já acertado', 'var(--texto-fraco)'], sem_cte: ['Nota não é nossa', 'var(--vermelho)'] };
+  const cteTxt = (c) => (c ? `<b>${esc(c.serie)}/${esc(c.numero)}</b><br><small style="color:var(--texto-fraco);">${esc(c.destinatario || '')} · ${esc(c.destino)}${c.repassado ? '' : ' · não repassado'}</small>` : '—');
+  const parceiroTxt = (r) => (r.parceiro ? `<b>${esc(r.parceiro.fantasia || r.parceiro.nome)}</b>` : `<span style="color:var(--vermelho);">${esc(r.transportadora?.razao || '')} não está em Parceiros e redespacho</span>`);
+  $('ediArquivoParceiro').addEventListener('change', async (e) => {
+    const alvo = $('ediResultadoParceiro');
+    try {
+      const { nome, texto } = await lerArquivo(e.target);
+      alvo.innerHTML = '<div class="painel edi-painel">Lendo o arquivo...</div>';
+      leituraParceiro = await api('/transportadora/parceiro/ler', { method: 'POST', body: JSON.stringify({ texto }) });
+      leituraParceiro.arquivo = nome;
+      ({ OCOREN: mostrarOcorenParceiro, CONEMB: mostrarConembParceiro, DOCCOB: mostrarDoccobParceiro })[leituraParceiro.tipo](leituraParceiro);
+    } catch (err) { alvo.innerHTML = `<div class="cte-aviso erro">${esc(err.message)}</div>`; } finally { e.target.value = ''; }
+  });
+  const cabParceiro = (r, titulo) => `${cabecalhoLeitura(r, titulo)}<p style="margin:0 0 10px;">Parceiro: ${parceiroTxt(r)}</p>`;
+
+  function mostrarOcorenParceiro(r) {
+    const n = r.linhas.filter((l) => l.acao === 'lancar').length;
+    $('ediResultadoParceiro').innerHTML = `<div class="painel edi-painel">${cabParceiro(r, '📍 OCOREN — ocorrências do parceiro')}
+      <div class="edi-rolagem"><table class="edi-tabela"><thead><tr><th><input type="checkbox" id="epTodos" checked /></th><th>NF</th><th>Ocorrência do parceiro</th><th>Quando</th><th>Nosso CT-e</th><th>Vira</th><th>Situação</th></tr></thead><tbody>
+      ${r.linhas.map((l, i) => `<tr><td>${l.acao === 'lancar' ? `<input type="checkbox" data-ep-oco="${i}" checked />` : ''}</td><td>${esc(l.nf)}</td>
+        <td>${esc(l.codigo)} — ${esc(l.descricao)}${l.texto ? `<br><small style="color:var(--texto-fraco);">${esc(l.texto)}</small>` : ''}</td><td>${l.data_hora ? `${dataBr(l.data_hora)} ${esc(l.data_hora.slice(11, 16))}` : '—'}</td>
+        <td>${cteTxt(l.cte)}${l.outros_ctes ? `<br><small style="color:var(--amarelo);">+${l.outros_ctes} CT-e com esta nota</small>` : ''}</td><td>${esc(l.tipo_nome)}</td>
+        <td><span style="color:${ACAO_OCO[l.acao][1]}; font-weight:600;">${ACAO_OCO[l.acao][0]}</span>${l.motivo && l.acao !== 'lancar' ? `<br><small>${esc(l.motivo)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      ${n ? `<div style="display:flex; justify-content:flex-end; margin-top:10px;"><button class="btn btn-primario" id="epLancarOco" style="width:auto;">📍 Lançar as ocorrências marcadas</button></div>` : '<p class="edi-dica">Nada novo para lançar.</p>'}</div>`;
+    $('epTodos')?.addEventListener('change', (ev) => document.querySelectorAll('[data-ep-oco]').forEach((x) => { x.checked = ev.target.checked; }));
+    $('epLancarOco')?.addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      const itens = [...document.querySelectorAll('[data-ep-oco]:checked')].map((x) => r.linhas[Number(x.dataset.epOco)])
+        .map((l) => ({ cte_id: l.cte.id, tipo_id: l.tipo_id, data_hora: l.data_hora, texto: l.texto, nf: l.nf }));
+      if (!itens.length) throw new Error('Marque as ocorrências.');
+      const res = await api('/transportadora/parceiro/ocoren', { method: 'POST', body: JSON.stringify({ parceiro_nome: r.parceiro?.fantasia || r.parceiro?.nome || r.transportadora?.razao || '', itens }) });
+      mostrarAlerta(`${res.lancadas} ocorrência(s) lançada(s) nos CT-e${res.puladas ? `; ${res.puladas} já estava(m) lá` : ''}. O cliente é avisado como numa baixa pelo app.`, { tipo: 'sucesso' });
+      $('ediResultadoParceiro').innerHTML = '';
+    }));
+  }
+
+  function mostrarConembParceiro(r) {
+    const ajustar = r.linhas.filter((l) => l.acao === 'ajustar');
+    $('ediResultadoParceiro').innerHTML = `<div class="painel edi-painel">${cabParceiro(r, '📄 CONEMB — CT-e do parceiro')}
+      <div class="edi-rolagem"><table class="edi-tabela"><thead><tr><th>CT-e do parceiro</th><th>Notas</th><th>Nosso CT-e</th><th class="n">Valor do parceiro</th><th class="n">Custo previsto</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>
+      ${r.linhas.map((l) => `<tr><td><b>${esc(l.serie)}/${esc(l.numero)}</b><br><small style="color:var(--texto-fraco);">${dataBr(l.emissao)}</small></td><td><small>${esc(l.notas.join(', '))}</small></td><td>${cteTxt(l.cte)}</td>
+        <td class="n">${moeda(l.valor)}</td><td class="n">${l.custo ? moeda(l.custo.valor) : '—'}</td><td class="n">${l.diferenca ? `<b style="color:${l.diferenca > 0 ? 'var(--vermelho)' : 'var(--verde)'};">${moeda(l.diferenca)}</b>` : '—'}</td>
+        <td><span style="color:${ACAO_CON[l.acao][1]}; font-weight:600;">${ACAO_CON[l.acao][0]}</span></td></tr>`).join('')}</tbody></table></div>
+      ${ajustar.length && r.parceiro ? `<div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:10px;"><small>${ajustar.length} custo(s) diferente(s) do valor do parceiro</small><button class="btn btn-primario" id="epAjustar" style="width:auto;">Usar o valor do parceiro no custo</button></div>` : ''}</div>`;
+    $('epAjustar')?.addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      const res = await api('/transportadora/parceiro/conemb', { method: 'POST', body: JSON.stringify({ parceiro_id: r.parceiro.id,
+        itens: ajustar.map((l) => ({ lancamento_id: l.custo.id, valor: l.valor, cte_parceiro: `${l.serie}/${l.numero}` })) }) });
+      mostrarAlerta(`${res.ajustados} custo(s) ajustado(s) na conta-corrente do parceiro.`, { tipo: 'sucesso' });
+      $('ediResultadoParceiro').innerHTML = '';
+    }));
+  }
+
+  function mostrarDoccobParceiro(r) {
+    $('ediResultadoParceiro').innerHTML = `<div class="painel edi-painel">${cabParceiro(r, '💰 DOCCOB — fatura do parceiro')}
+      ${r.faturas.map((f, i) => `<div class="painel" style="padding:12px 14px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;"><div><b>Fatura ${esc(f.numero)}</b> · ${moeda(f.valor)} · vence ${dataBr(f.vencimento)}${f.banco ? `<br><small style="color:var(--texto-fraco);">${esc(f.banco)}</small>` : ''}</div>
+          <div style="text-align:right;">Previsto na conta-corrente: <b>${moeda(f.previsto)}</b>${f.diferenca ? `<br><small style="color:${f.diferenca > 0 ? 'var(--vermelho)' : 'var(--verde)'}; font-weight:600;">diferença ${moeda(f.diferenca)}</small>` : '<br><small style="color:var(--verde);">✓ confere</small>'}</div></div>
+        <table class="edi-tabela" style="margin-top:8px;"><thead><tr><th>CT-e do parceiro</th><th>Notas</th><th>Nosso CT-e</th><th class="n">Cobrado</th><th class="n">Previsto</th></tr></thead><tbody>
+        ${f.ctes.map((c) => `<tr><td>${esc(c.serie)}/${esc(c.numero)}</td><td><small>${esc(c.notas.join(', '))}</small></td><td>${cteTxt(c.cte)}</td><td class="n">${moeda(c.valor)}</td>
+          <td class="n">${c.custo ? `${moeda(c.custo.valor)}${c.custo.status !== 'aberto' ? '<br><small>já acertado</small>' : ''}` : '<small style="color:var(--amarelo);">sem custo</small>'}</td></tr>`).join('')}</tbody></table>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; align-items:center;">
+          ${f.ja_registrada ? '<span style="color:var(--texto-fraco); font-weight:600;">Fatura já registrada</span>'
+    : !r.parceiro ? '<small>Cadastre o parceiro para registrar a fatura.</small>'
+      : podeFinanceiro ? `<button class="btn btn-primario" data-ep-fatura="${i}" style="width:auto;">💰 Registrar a fatura (acerto + conta a pagar)</button>` : '<small>Registrar a fatura: pede o financeiro.</small>'}</div></div>`).join('')}
+      <p class="edi-dica">Registrar: os custos em aberto dos CT-e da fatura fecham num acerto do parceiro; a diferença entre a fatura e o previsto vira um ajuste; a fatura vira conta a pagar (Frete de terceiro) com o banco do arquivo e o PIX do parceiro.</p></div>`;
+    document.querySelectorAll('[data-ep-fatura]').forEach((b) => b.addEventListener('click', () => comBotao(b, async () => {
+      const f = r.faturas[Number(b.dataset.epFatura)];
+      if (f.diferenca && !await confirmar(`A fatura ${f.numero} (${moeda(f.valor)}) difere do previsto (${moeda(f.previsto)}) em ${moeda(f.diferenca)}. Registrar assim mesmo? A diferença vira um ajuste na conta do parceiro.`, { textoOk: 'Registrar' })) return;
+      const res = await api('/transportadora/parceiro/doccob', { method: 'POST', body: JSON.stringify({ parceiro_id: r.parceiro.id,
+        fatura: { numero: f.numero, emissao: f.emissao, vencimento: f.vencimento, valor: f.valor, banco: f.banco }, lancamento_ids: f.ctes.filter((c) => c.custo?.status === 'aberto').map((c) => c.custo.id) }) });
+      mostrarAlerta(`Fatura registrada: ${res.ctes} CT-e no acerto${res.diferenca ? `, ajuste de ${moeda(res.diferenca)}` : ''}; conta a pagar #${res.conta_pagar_id}.`, { tipo: 'sucesso' });
+      f.ja_registrada = true; mostrarDoccobParceiro(r);
+    })));
   }
 })();

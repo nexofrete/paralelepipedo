@@ -160,6 +160,10 @@
         {
           "area": "Manual",
           "texto": "Manual do sistema atualizado com as Partes 4 a 6: operação da transportadora, financeiro e gestão, e integrações."
+        },
+        {
+          "area": "EDI",
+          "texto": "EDI dos parceiros (EDI » Dos parceiros): a transportadora lê o OCOREN, o CONEMB e o DOCCOB da transportadora parceira do redespacho. As ocorrências entram nos nossos CT-e (achados pelas notas) e o cliente é avisado; o CONEMB confere e ajusta o custo previsto; a fatura vira acerto do parceiro e conta a pagar."
         }
       ]
     },

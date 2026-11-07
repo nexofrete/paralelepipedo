@@ -596,6 +596,7 @@
         <div class="cte-abas">
           <div class="cte-aba ativo" data-edi-aba="embarcador" id="ediAbaEmbarcador">Com a transportadora <small style="font-weight:400;">(sou embarcador)</small></div>
           <div class="cte-aba" data-edi-aba="transportadora" id="ediAbaTransportadora">Com o cliente <small style="font-weight:400;">(sou transportadora)</small></div>
+          <div class="cte-aba" data-edi-aba="parceiro" id="ediAbaParceiro">Dos parceiros <small style="font-weight:400;">(redespacho)</small></div>
         </div>
 
         <div id="edi-aba-embarcador">
@@ -640,6 +641,17 @@
             </div>
           </div>
           <div id="ediResultadoTransp"></div>
+        </div>
+
+        <div id="edi-aba-parceiro" class="oculto">
+          <div class="painel edi-cartao">
+            <h3>📥 Arquivos da transportadora parceira — OCOREN, CONEMB, DOCCOB</h3>
+            <p class="edi-dica">Para as cargas repassadas a parceiros (redespacho, subcontratação). O sistema acha os nossos CT-e pelas notas fiscais:
+              o <b>OCOREN</b> lança as ocorrências e entregas nos nossos CT-e (o cliente é avisado), o <b>CONEMB</b> confere o valor do CT-e do parceiro com o
+              custo previsto e o <b>DOCCOB</b> confere a fatura com a conta-corrente do parceiro e vira o acerto e a conta a pagar.</p>
+            <label class="edi-arquivo"><input type="file" id="ediArquivoParceiro" accept=".txt,.edi,.rem,.ret,text/plain" /><span>Escolher o arquivo do parceiro (.txt)</span></label>
+          </div>
+          <div id="ediResultadoParceiro"></div>
         </div>
       </section>
 

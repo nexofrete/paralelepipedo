@@ -320,6 +320,8 @@ def parte_operacao(g):
         '<b>Abrir</b> o parceiro: as cargas com ele (atrasadas em vermelho), a conta-corrente e o histórico de acertos.',
         '<b>Conta-corrente</b>: custo de cada CT-e (a pagar ao parceiro), pagamentos, frete que o parceiro recebeu do cliente e '
         'ficou com ele, recebimentos e ajustes. O saldo diz quem deve a quem.',
+        'O parceiro que manda <b>EDI</b> (OCOREN, CONEMB, DOCCOB) tem os arquivos lidos em EDI » Dos parceiros (seção 38): '
+        'ocorrências lançadas nos CT-e, custos conferidos e a fatura vira acerto e conta a pagar.',
         'Quando o <b>CT-e do parceiro</b> (redespacho contra a sua empresa) é lançado em Fiscal » Notas de entrada, os custos '
         'dos CT-e citados nele saem da conta (a conta a pagar já sai da nota).',
         '<b>Fazer o acerto</b> (financeiro): fecha os lançamentos até a data; se a empresa deve, vira conta a pagar (categoria '
@@ -371,6 +373,22 @@ def parte_operacao(g):
     s.append(P('Arquivos NOTFIS 3.1, CONEMB 3.1, OCOREN 3.1 e DOCCOB 3.0A, nos dois sentidos: com o cliente, lê o NOTFIS '
                '(cria rascunhos de CT-e) e gera CONEMB, OCOREN e DOCCOB; com a transportadora (embarcador), gera o '
                'NOTFIS e lê o que ela devolve.'))
+    s += h2('Dos parceiros (redespacho)')
+    s.append(P('Na aba <b>Dos parceiros</b>, a transportadora recebe os arquivos da transportadora parceira para quem repassou '
+               'cargas (redespacho, subcontratação; seção 36). O parceiro é achado pelo CNPJ do arquivo (cadastro em 065) e '
+               'os nossos CT-e pelas notas fiscais (número e CNPJ de quem emitiu a NF); o CT-e repassado a esse parceiro '
+               'tem preferência. Nada é gravado antes de conferir na tela.'))
+    s += lista([
+        '<b>OCOREN</b>: cada ocorrência do parceiro mostra o nosso CT-e e o que ela vira (entregue, chegada, estabelecimento '
+        'fechado...). Marque e clique em <b>Lançar as ocorrências marcadas</b>: entram com origem "EDI", o cliente é avisado '
+        'como numa baixa pelo app e a entrega fecha o CT-e. Ocorrência já lançada (mesmo código e hora) aparece como "Já '
+        'lançada"; nota que não é nossa ou sem data fica de fora.',
+        '<b>CONEMB</b>: compara o valor de cada CT-e do parceiro com o custo previsto na conta-corrente dele. '
+        '<b>Usar o valor do parceiro no custo</b> ajusta os custos diferentes e guarda o número do CT-e do parceiro.',
+        '<b>DOCCOB</b> (financeiro): mostra a fatura, o previsto na conta-corrente e a diferença. <b>Registrar a fatura</b> '
+        'fecha os custos dos CT-e da fatura num acerto do parceiro (a diferença entra como ajuste) e cria a conta a pagar '
+        '(Frete de terceiro) com o vencimento, o banco do arquivo e o PIX do parceiro. A mesma fatura não entra duas vezes.',
+    ])
 
     # 39
     s += h1('39. Portal do cliente e SAC (atendimento com protocolo)')

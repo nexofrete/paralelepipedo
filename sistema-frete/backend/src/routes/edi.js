@@ -425,6 +425,35 @@ router.post('/transportadora/notfis/rascunhos', autenticar, transportadora, asyn
   } catch (err) { responderErro(res, err, 'Erro ao criar os rascunhos.'); }
 });
 
+// =====================================================================
+// PARCEIROS (redespacho): arquivos que a transportadora parceira manda (regras em src/ediParceiros.js)
+// =====================================================================
+const ediParceiros = require('../ediParceiros');
+router.post('/transportadora/parceiro/ler', autenticar, transportadora, async (req, res) => {
+  try { res.json(await ediParceiros.ler(String(req.body?.texto || ''))); } catch (err) { responderErro(res, err, 'Erro ao ler o arquivo.'); }
+});
+router.post('/transportadora/parceiro/ocoren', autenticar, transportadora, async (req, res) => {
+  try {
+    const r = await ediParceiros.aplicarOcoren(req.body?.itens, { parceiroNome: String(req.body?.parceiro_nome || '').slice(0, 80), usuarioNome: req.usuario.nome });
+    log(req, 'edi_parceiro_ocoren', `Lançou ${r.lancadas} ocorrência(s) do OCOREN do parceiro ${req.body?.parceiro_nome || ''}${r.puladas ? ` (${r.puladas} já estavam lá)` : ''}`);
+    res.json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao lançar as ocorrências.'); }
+});
+router.post('/transportadora/parceiro/conemb', autenticar, transportadora, async (req, res) => {
+  try {
+    const r = await ediParceiros.aplicarConemb(Number(req.body?.parceiro_id), req.body?.itens);
+    log(req, 'edi_parceiro_conemb', `Ajustou ${r.ajustados} custo(s) de redespacho pelo CONEMB do parceiro #${req.body?.parceiro_id}`);
+    res.json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao ajustar os custos.'); }
+});
+router.post('/transportadora/parceiro/doccob', autenticar, permitirAlguma('pode_ver_financeiro'), async (req, res) => {
+  try {
+    const r = await ediParceiros.registrarFatura(Number(req.body?.parceiro_id), req.body?.fatura || {}, req.body?.lancamento_ids, req.usuario.nome);
+    log(req, 'edi_parceiro_doccob', `Registrou a fatura ${req.body?.fatura?.numero} do parceiro ${r.parceiro}: ${r.ctes} CT-e, conta a pagar #${r.conta_pagar_id}`);
+    res.status(201).json(r);
+  } catch (err) { responderErro(res, err, 'Erro ao registrar a fatura.'); }
+});
+
 module.exports = router;
 // Usados pelo faturamento (DOCCOB de uma fatura).
 module.exports.ajudantes = { conhecimentoEdi, cabecalhoTransportadora, nomeArquivo };

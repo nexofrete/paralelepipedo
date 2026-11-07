@@ -2868,3 +2868,9 @@ CREATE TABLE IF NOT EXISTS gnre_guia_ctes (
   PRIMARY KEY (guia_id, cte_id)
 );
 CREATE INDEX IF NOT EXISTS idx_gnre_guia_ctes_cte ON gnre_guia_ctes (cte_id);
+
+-- EDI dos parceiros (redespacho) no TMS: a fatura (DOCCOB) registrada vira o acerto do parceiro;
+-- o número dela não entra duas vezes. O CONEMB do parceiro guarda o CT-e dele no custo do redespacho.
+ALTER TABLE parceiro_acertos ADD COLUMN IF NOT EXISTS documento VARCHAR(40);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_parceiro_acertos_documento ON parceiro_acertos (parceiro_id, documento) WHERE documento IS NOT NULL;
+ALTER TABLE parceiro_lancamentos ADD COLUMN IF NOT EXISTS cte_parceiro VARCHAR(60);

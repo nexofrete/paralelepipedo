@@ -355,6 +355,8 @@ const tratar_evento = async (req, res) => {
     if (!dados.chave) {
       return res.status(400).json({ erro: 'Não consegui identificar a chave de acesso do NF-e/CT-e referenciado nesse evento.' });
     }
+    // Guarda o XML do evento (histórico do documento e download), mesmo antes de o documento chegar.
+    await require('../ctesRecebidos').guardarEvento(xmlString, dados, req.usuario.nome).catch((e) => console.error('[evento] guardar:', e.message));
 
     // Cancelamento de CT-e: além de anotar, tira o CT-e das contas da nota.
     const ehCancelamento = String(dados.tpEvento || '') === '110111' || /cancel/i.test(dados.descEvento || '');

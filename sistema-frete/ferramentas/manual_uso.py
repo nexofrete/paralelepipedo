@@ -321,6 +321,30 @@ def parte_uso(g):
         'O DANFE sai com a marca "USO DENEGADO".',
     ])
 
+    s += h2('CT-e recebidos (404)')
+    s.append(P('Em <b>Documentos » CT-e recebidos</b>, os CT-e das transportadoras com todos os dados lidos do XML: número, série '
+               'e chave de acesso, emissão, protocolo de autorização, emitente (a transportadora), tomador (quem paga o frete), '
+               'remetente, destinatário, município e UF de origem e de destino, modal (rodoviário, aéreo, aquaviário, '
+               'ferroviário, dutoviário, multimodal), tipo de serviço (normal, subcontratação, redespacho...), CFOP, valor total '
+               'do frete e o ICMS (situação tributária, base de cálculo, alíquota e valor). Os CT-e que já estavam no sistema '
+               'são lidos do XML guardado sozinhos.'))
+    s += lista([
+        '<b>Filtros</b>: número, chave, NF ou pedido; transportadora, tomador, remetente e destinatário (nome ou CNPJ); '
+        'município e UF de origem e de destino; modal; tipo de serviço; CFOP; período pela emissão do CT-e; situação '
+        '(normal, cancelado, complementar, anulação, substituto). No alto: quantidade de CT-e, valor do frete e ICMS (sem os '
+        'cancelados) e quantos estão cancelados.',
+        '<b>Abrir</b> o CT-e mostra tudo, o <b>histórico do documento</b> (importação, eventos, auditoria, fatura e '
+        'pagamento) e os botões <b>DACTE</b> (gerado a partir do XML, no mesmo desenho do DACTE oficial, com código de barras '
+        'e QR Code, para imprimir ou salvar em PDF; o CT-e cancelado sai com a tarja CANCELADO) e <b>XML do CT-e</b>.',
+        '<b>Eventos</b>: o XML de cada evento importado (Carta de Correção, Cancelamento, Comprovante de Entrega...) fica '
+        'guardado e aparece no histórico com o botão <b>XML do evento</b>. A Carta de Correção do CT-e mostra os campos '
+        'corrigidos (ex.: "corrigido: ide/xMunFim = CURITIBA") e o protocolo.',
+        '<b>XML dos CT-e (.zip)</b>: baixa os XML de todos os CT-e do filtro, com os XML dos eventos numa pasta "eventos". '
+        '<b>Excel</b>: a lista com todas as colunas.',
+        'No detalhe do frete (Todos os registros) também aparecem os botões <b>DACTE</b> e <b>XML do CT-e</b>, e o histórico '
+        'traz os eventos com o XML de cada um.',
+    ])
+
     # 15
     s += h1('15. Tabelas de preço e o cálculo do frete')
     s.append(P('A tabela de preço é o que a transportadora negociou. É com ela que o sistema calcula quanto cada frete '

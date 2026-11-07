@@ -86,6 +86,7 @@
       <div class="nav-sub oculto" data-grupo="documentos">
         <div class="nav-tsub" data-ir="upload" data-modulo="embarcador">📤 Enviar XML</div>
         <div class="nav-tsub" data-ir="notas-fiscais" data-modulo="embarcador">🧾 Notas fiscais (NF-e)</div>
+        <div class="nav-tsub" data-ir="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
         <div class="nav-tsub" data-ir="registros" data-modulo="embarcador">🗂 Fretes (todos os registros)</div>
         <div class="nav-tsub" data-familia="nfecte" data-modulo="embarcador">🔗 NF-e × CT-e</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
@@ -175,6 +176,7 @@
       <div class="nav-item nav-no-grupo" data-pagina="upload" id="navUpload" data-modulo="embarcador">📤 Enviar XML</div>
       <div class="nav-item nav-no-grupo" data-pagina="registros" data-modulo="embarcador">🗂 Todos os registros</div>
       <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Notas fiscais</div>
+      <div class="nav-item nav-no-grupo" data-pagina="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
       <div class="nav-item nav-no-grupo" data-pagina="auditoria-frete" data-modulo="embarcador">⚖️ Auditoria de Frete</div>
       <div class="nav-item nav-no-grupo" data-pagina="financeiro" data-modulo="embarcador">💰 Pagamento de fretes</div>
       <div class="nav-item nav-no-grupo" data-pagina="sinistros" data-modulo="embarcador">📦 Sinistros</div>
@@ -343,6 +345,20 @@
           </div>
         </div>
         <div id="nfConteudo"></div>
+      </section>
+
+      <section id="pagina-ctes-recebidos" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🚛 CT-e recebidos</h2>
+            <p>Os CT-e das transportadoras com todos os dados: emitente, tomador, remetente, destinatário, cidades e UF de origem e destino, modal, serviço, valor do frete e ICMS; XML, DACTE e eventos</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="ctrExcel" style="width:auto;">⬇ Excel</button>
+            <button class="btn btn-secundario" id="ctrZip" style="width:auto;" title="Os XML dos CT-e filtrados (e dos eventos deles), num arquivo .zip">🗜 XML dos CT-e (.zip)</button>
+          </div>
+        </div>
+        <div id="ctrConteudo"></div>
       </section>
 
       <section id="pagina-parceiros" class="oculto">
@@ -3831,6 +3847,7 @@
   <script src="js/nfeCte.js"></script>
   <script src="js/cobrancasIndevidas.js"></script>
   <script src="js/notasFiscais.js"></script>
+  <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>

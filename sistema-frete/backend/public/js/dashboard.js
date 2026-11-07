@@ -3954,10 +3954,16 @@ async function carregarAuditoriaDetalhada(id) {
         <span style="color:${i.checagens.length ? 'var(--vermelho)' : 'var(--verde)'};">${i.checagens.length ? `✗ confira: ${i.checagens.join(', ')}` : '✓ base, alíquota, valor e CFOP conferem'}</span></div></div>`;
     if (a.apontamentos.length) html += `<ul style="font-size:12.5px; color:var(--vermelho); margin:10px 0 0 18px;">${a.apontamentos.map((x) => `<li>${cfEsc(x.texto)}</li>`).join('')}</ul>`;
   }
+  const comToken = (c) => `${c}?token=${encodeURIComponent(token)}`;
+  // XML e DACTE do CT-e recebido (Documentos » CT-e recebidos).
+  if (a && !a.sem_xml) {
+    html += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;"><a class="btn btn-secundario" style="width:auto; padding:6px 12px; font-size:12.5px;" href="${comToken(`/api/ctes-recebidos/${id}/dacte`)}" target="_blank" rel="noopener">📄 DACTE</a>
+      <a class="btn btn-secundario" style="width:auto; padding:6px 12px; font-size:12.5px;" href="${comToken(`/api/ctes-recebidos/${id}/xml`)}">⬇ XML do CT-e</a></div>`;
+  }
   const ev = h?.historico || [];
   if (ev.length) {
     html += `<hr style="border-color:var(--borda); margin:14px 0;" /><p style="margin:0 0 8px;"><strong>🕘 Histórico deste frete</strong></p>
-      <table style="width:100%; font-size:12px;"><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap; color:var(--texto-fraco);">${formatoDataHora(e.quando)}</td><td>${cfEsc(e.texto)}</td><td style="color:var(--texto-fraco); white-space:nowrap;">${cfEsc(e.quem || '')}</td></tr>`).join('')}</tbody></table>`;
+      <table style="width:100%; font-size:12px;"><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap; color:var(--texto-fraco);">${formatoDataHora(e.quando)}</td><td>${cfEsc(e.texto)}${e.evento_id ? ` <a href="${comToken(`/api/ctes-recebidos/${id}/eventos/${e.evento_id}/xml`)}" title="XML do evento" style="white-space:nowrap;">⬇ XML do evento</a>` : ''}</td><td style="color:var(--texto-fraco); white-space:nowrap;">${cfEsc(e.quem || '')}</td></tr>`).join('')}</tbody></table>`;
   }
   alvo.innerHTML = html;
 }

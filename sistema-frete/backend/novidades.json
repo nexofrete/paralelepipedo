@@ -10,6 +10,14 @@
           "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
         },
         {
+          "area": "Documentos",
+          "texto": "CT-e recebidos (código 404): todos os CT-e das transportadoras com emitente, tomador, remetente, destinatário, município e UF de origem e destino, modal, tipo de serviço, CFOP, valor do frete e ICMS (base, alíquota e valor). Filtros por cada um, totais de frete e ICMS, Excel, XML um a um ou em .zip e o DACTE para imprimir."
+        },
+        {
+          "area": "Documentos",
+          "texto": "Eventos dos documentos guardados: o XML da Carta de Correção, do Cancelamento e do Comprovante de Entrega fica no sistema e aparece no histórico do CT-e e do frete, com download. A Carta de Correção do CT-e mostra os campos corrigidos."
+        },
+        {
           "area": "Menu",
           "texto": "Menu único, por área: as telas da transportadora (TMS) e do embarcador ficam juntas, cada uma no grupo do seu assunto (Operação, Transportadoras e parceiros, Documentos, Auditoria de fretes, Financeiro, Frota, Gestão e relatórios, Clientes, Configuração). A chave TMS | Embarcador saiu; os códigos do \"Ir para\" continuam os mesmos."
         },

@@ -179,6 +179,12 @@ async function historico(id) {
   }
   if (f.glosa_registrada_em) ev.push({ quando: f.glosa_registrada_em, tipo: 'glosa', texto: `Glosa de R$ ${Number(f.glosa_valor || 0).toFixed(2)}${f.glosa_motivo ? `: ${f.glosa_motivo}` : ''}`, quem: f.glosa_registrada_por });
   if (f.cte_cancelado && f.cte_cancelado_em) ev.push({ quando: f.cte_cancelado_em, tipo: 'cancelamento', texto: `CT-e cancelado${f.cte_cancelado_motivo ? `: ${f.cte_cancelado_motivo}` : ''}`, quem: null });
+  // Eventos do CT-e e da nota (Carta de Correção, Cancelamento, Comprovante de Entrega...), com o XML guardado.
+  const { rows: evs } = await pool.query(
+    `SELECT e.id, e.descricao, e.detalhe, e.protocolo, e.dh_evento, e.criado_em, e.usuario_nome, e.tipo_documento FROM documento_eventos e
+      WHERE e.chave IN ($1, (SELECT chave_nfe FROM fretes WHERE id = $2)) ORDER BY e.id`, [f.chave_cte || '', id]);
+  evs.forEach((e) => ev.push({ quando: e.dh_evento || e.criado_em, tipo: 'evento', evento_id: e.id,
+    texto: `${e.tipo_documento === 'cte' ? 'CT-e' : 'NF-e'}: ${e.descricao}${e.detalhe ? ` — ${e.detalhe}` : ''}${e.protocolo ? ` (protocolo ${e.protocolo})` : ''}`, quem: e.usuario_nome }));
   // O que ficou no registro de atividades ligado a este frete.
   const { rows: log } = await pool.query('SELECT criado_em, acao, detalhes, usuario_nome FROM auditoria WHERE registro_id = $1 ORDER BY criado_em LIMIT 500', [id]);
   log.forEach((l) => ev.push({ quando: l.criado_em, tipo: 'registro', texto: l.detalhes || l.acao, quem: l.usuario_nome }));

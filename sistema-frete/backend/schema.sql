@@ -3046,3 +3046,41 @@ ALTER TABLE fretes ADD COLUMN IF NOT EXISTS entrega_endereco JSONB;      -- { lo
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_denegada BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_dados_em TIMESTAMPTZ;      -- quando os dados acima foram lidos do XML
 CREATE INDEX IF NOT EXISTS idx_fretes_emitente ON fretes (emitente_cnpj) WHERE emitente_cnpj IS NOT NULL;
+
+-- Gestão de CT-e recebidos (embarcador): os dados do CT-e que o frete não usava, lidos do XML guardado.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_serie VARCHAR(5);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_remetente_nome VARCHAR(200);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_remetente_doc VARCHAR(20);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_destinatario_nome VARCHAR(200);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_destinatario_doc VARCHAR(20);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_cidade_inicio VARCHAR(100);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_cidade_fim VARCHAR(100);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_modal VARCHAR(2);          -- 01 rodoviário, 02 aéreo, 03 aquaviário, 04 ferroviário, 05 dutoviário, 06 multimodal
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_cfop VARCHAR(4);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_icms_cst VARCHAR(10);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_icms_base NUMERIC(14,2);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_icms_aliquota NUMERIC(6,2);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_icms_valor NUMERIC(14,2);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_protocolo VARCHAR(20);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cte_dados_em TIMESTAMPTZ;      -- quando os dados acima foram lidos do XML
+CREATE INDEX IF NOT EXISTS idx_fretes_cte_pendente ON fretes (id) WHERE xml_cte_original IS NOT NULL AND cte_dados_em IS NULL;
+-- XML do CT-e trocado (outro CT-e na mesma nota): lê de novo.
+CREATE OR REPLACE FUNCTION fretes_cte_reler() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.xml_cte_original IS DISTINCT FROM OLD.xml_cte_original THEN NEW.cte_dados_em := NULL; END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_fretes_cte_reler ON fretes;
+CREATE TRIGGER trg_fretes_cte_reler BEFORE UPDATE OF xml_cte_original ON fretes FOR EACH ROW EXECUTE FUNCTION fretes_cte_reler();
+-- Eventos dos documentos (Carta de Correção, Cancelamento, Comprovante de Entrega...): o XML de cada um, guardado.
+CREATE TABLE IF NOT EXISTS documento_eventos (
+  id SERIAL PRIMARY KEY,
+  chave VARCHAR(44) NOT NULL,                  -- chave do CT-e ou NF-e a que o evento se refere
+  tipo_documento VARCHAR(3) NOT NULL,          -- cte | nfe
+  tp_evento VARCHAR(6), descricao VARCHAR(120), detalhe TEXT, protocolo VARCHAR(30), dh_evento DATE,
+  xml TEXT NOT NULL, hash VARCHAR(64) NOT NULL,
+  usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (chave, hash)
+);
+CREATE INDEX IF NOT EXISTS idx_documento_eventos_chave ON documento_eventos (chave);

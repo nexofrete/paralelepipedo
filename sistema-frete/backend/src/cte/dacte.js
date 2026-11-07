@@ -105,7 +105,7 @@ async function gerarDacte(d, reg, { semValores = false } = {}) {
       <div>CNPJ: ${esc(docFmt(em.cnpj))} &nbsp; IE: ${esc(em.ie || '')}</div>
       <div>Fone: ${esc(em.fone || em.endereco.fone || '')} &nbsp; RNTRC: ${esc(em.rntrc || '')}</div></div>
     <div class="titulo"><h1>DACTE</h1><div>Documento Auxiliar do<br>Conhecimento de Transporte Eletrônico</div>
-      <div style="margin-top:4px;"><b>MODAL RODOVIÁRIO</b></div></div>
+      <div style="margin-top:4px;"><b>MODAL ${esc(d.modalNome || 'RODOVIÁRIO')}</b></div></div>
     <div class="chave">
       ${reg.chave ? code128Svg(reg.chave, { altura: 40 }) : '<div style="height:40px"></div>'}
       <span class="r">Chave de acesso</span><span class="v" style="font-size:9px;">${esc(chaveFmt(reg.chave)) || '— (gerada ao transmitir)'}</span>

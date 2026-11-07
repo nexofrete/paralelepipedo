@@ -224,6 +224,7 @@ app.use('/api/faturas', faturasRoutes);
 app.use('/api/indicadores', require('./src/routes/indicadores'));
 app.use('/api/nfe-cte', require('./src/routes/nfeCte'));
 app.use('/api/notas', require('./src/routes/notas'));
+app.use('/api/ctes-recebidos', require('./src/routes/ctesRecebidos'));
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);
@@ -373,6 +374,7 @@ async function iniciar() {
     // Transportadoras de redespacho das notas antigas: cadastra/completa pelo CNPJ (em segundo plano).
     setTimeout(() => require('./src/transportadorasRedespacho').completarAntigos(), 40000);
     setTimeout(() => require('./src/notasFiscais').completarTodos().catch((e) => console.error('[notas]', e.message)), 4000);
+    setTimeout(() => require('./src/ctesRecebidos').completarTodos().catch((e) => console.error('[ctes]', e.message)), 6000);
     require('./src/ctesVinculados').vincularCtesAntigos().then(() => require('./src/ctesVinculados').reconciliarCtesSoltos()).then(() => require('./src/ctesVinculados').revisarCtesDeOutraTransportadora()).then(() => require('./src/ctesVinculados').calcularRedespachosSemCalculo());
 
     app.listen(PORT, '0.0.0.0', () => {

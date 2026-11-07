@@ -42,7 +42,7 @@ def parte_operacao(g):
         ['Operação', 'Onde está a mercadoria, Transferências, Paletes', '060, 061, 066', '36, 35'],
         ['Transportadoras e parceiros', 'Parceiros, ranking e escolha: Parceiros e redespacho, Scorecard, Melhor transportadora', '065, 319, 313', '36, 19'],
         ['Transportadoras e parceiros', 'Transportadoras contratadas, Tabelas de preço', '905, 906', '23, 15'],
-        ['Documentos', 'Enviar XML, Notas fiscais, Fretes (todos os registros)', '401, 403, 402', '12, 14'],
+        ['Documentos', 'Enviar XML, Notas fiscais, CT-e recebidos, Fretes (todos os registros)', '401, 403, 404, 402', '12, 14'],
         ['Documentos', 'NF-e × CT-e: Inconsistências e vínculos, Notas e seus CT-e', '322, 320', '13, 19'],
         ['Documentos', 'EDI', '070', '38'],
         ['Auditoria de fretes', 'Auditoria de frete: Fretes auditados, Conferência de CT-e, Cobranças indevidas', '330, 321, 323', '16, 19'],
@@ -121,7 +121,7 @@ def parte_operacao(g):
         ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada'],
         ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores dos '
          'fretes contratados · 310 a 323 Relatórios · 330 Auditoria de frete'],
-        ['4xx Fretes contratados', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 410 Sinistros'],
+        ['4xx Fretes contratados', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 404 CT-e recebidos · 410 Sinistros'],
         ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 905 Transportadoras contratadas · 906 Tabelas de preço · '
          '903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos'],
     ], [0.2, 0.8])

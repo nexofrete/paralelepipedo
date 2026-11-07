@@ -241,7 +241,7 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - **1xx Financeiro:** 100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · 110 Contas a pagar · 111 Nova conta a pagar · 120 Acerto de viagem · 125 Comissões · 130 Pagamento de fretes (embarcador) · 140 Fiscal e contabilidade · 141 Pacote do contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação bancária · 152 Fluxo de caixa · 153 Importar extrato (OFX)
   - **2xx Frota:** 200 Custos e alertas · 201 Abastecimentos · 202 Novo abastecimento · 210 Manutenções · 211 Nova manutenção · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada
   - **3xx Gestão e relatórios:** 300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores · 310 a 323 Relatórios · 330 Auditoria de frete
-  - **4xx Fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 410 Sinistros
+  - **4xx Fretes contratados:** 400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 404 CT-e recebidos · 410 Sinistros
   - **5xx Comunicação:** 500 Mensagens · 501 Agenda
   - **9xx Sistema:** 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 903 Manutenção · 904 Integração (API e ERP) · 905 Transportadoras contratadas · 906 Tabelas de preço · 990 Modo compacto · 991 Tema · 999 Lista de códigos
 - **Modo compacto** (botão no menu lateral, ou código 990): menos espaço e letra menor, para ver mais linhas na tela. Fica salvo naquele computador.
@@ -821,6 +821,15 @@ Em **Documentos → 🧾 Notas fiscais** (código **403**). Regras em `src/notas
 - **Consulta** com filtros (número, chave, cliente, pedido, emitente, destinatário, série, cidade, UF, período por emissão ou saída, situação) e totais; **Excel**; **XML** da nota e **.zip** dos XML filtrados (`GET /api/notas/zip`).
 - **DANFE** (`GET /api/notas/:id/danfe`): HTML A4 retrato a partir do XML — emitente, chave com código de barras Code 128, protocolo, destinatário, local de entrega, duplicatas, cálculo do imposto, transportador/volumes, itens e dados adicionais —, para imprimir ou salvar em PDF.
 - **Denegação**: `protNFe` com cStat 110/301/302/303 no XML ou no recibo da SEFAZ importado marca `nf_denegada` (e `nf_cancelada`, para o frete se comportar como nota cancelada); o DANFE sai com a marca "USO DENEGADO".
+
+## CT-e recebidos (embarcador)
+
+Em **Documentos → 🚛 CT-e recebidos** (código **404**). Regras em `src/ctesRecebidos.js`, rotas em `/api/ctes-recebidos`, tela em `public/js/ctesRecebidos.js`.
+
+- **Dados completos do CT-e**, lidos do XML (`parseCTe` em `src/utils/xmlParser.js`) e gravados em colunas próprias: série, remetente e destinatário (nome e CNPJ/CPF), municípios de origem e destino, modal (`cte_modal`: 01 rodoviário … 06 multimodal), CFOP, ICMS (CST, base, alíquota e valor — também ICMSOutraUF, ICMS60 e Simples Nacional) e protocolo. Os CT-e antigos são lidos do XML guardado ao ligar o sistema e ao abrir a tela (`cte_dados_em`; o gatilho `trg_fretes_cte_reler` limpa a marca quando o XML do CT-e muda).
+- **Consulta** com filtros (número/chave/NF/pedido, transportadora, tomador, remetente, destinatário, município e UF de origem e destino, modal, tipo de serviço, CFOP, período, situação — os cancelados também aparecem) e totais de frete e ICMS; **Excel**; **XML** do CT-e e **.zip** dos filtrados com os XML dos eventos (`GET /api/ctes-recebidos/zip`).
+- **DACTE** do CT-e recebido (`GET /api/ctes-recebidos/:id/dacte`): o mesmo desenho do DACTE emitido (`src/cte/dacte.js`, agora com o modal do XML), montado a partir do XML; tarja CANCELADO no CT-e cancelado.
+- **Eventos guardados** (`documento_eventos`): todo XML de evento importado (Carta de Correção, Cancelamento, Comprovante de Entrega...) fica guardado uma vez só (hash), mesmo antes de o documento chegar. Aparecem no histórico do frete (`GET /api/fretes/:id/historico`) com download (`GET /api/ctes-recebidos/:id/eventos/:ev/xml`). A Carta de Correção do CT-e mostra os campos corrigidos (`infCorrecao`) e o protocolo do retorno da SEFAZ.
 
 ## Auditoria de frete em detalhe (embarcador)
 

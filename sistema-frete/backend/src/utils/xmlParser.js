@@ -207,6 +207,7 @@ function parseNFe(xmlString) {
  * Extrai os dados relevantes de um XML de CT-e (Conhecimento de Transporte Eletrônico).
  * Cobre o layout padrão do CT-e modelo 57 (cteProc / CTe / infCte).
  */
+const numOuNulo = (v) => (v != null && String(v).trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
 function parseCTe(xmlString) {
   const json = parser.parse(xmlString);
 
@@ -221,11 +222,8 @@ function parseCTe(xmlString) {
   // do próprio CT-e, nunca da UF do emitente, transportadora ou NF-e.
   const ufInicioCte = String(ide.UFIni ?? '').trim().toUpperCase();
   const ufFimCte = String(ide.UFFim ?? '').trim().toUpperCase();
-  const ufSulSudeste = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
-  const ufNorteNordesteCentroOesteEs = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'PA', 'PB', 'PE', 'PI', 'RN', 'RO', 'RR', 'SE', 'TO'];
-  const aliquotaIcmsInterestadual = (
-    ufInicioCte && ufFimCte && ufInicioCte !== ufFimCte
-  ) ? (ufSulSudeste.includes(ufInicioCte) && ufNorteNordesteCentroOesteEs.includes(ufFimCte) ? 7 : 12) : null;
+  // Alíquota esperada pela rota: a mesma regra da conferência (src/icmsCte.js).
+  const aliquotaIcmsInterestadual = require('../icmsCte').aliquotaInterestadual(ufInicioCte, ufFimCte);
   const emit = infCte.emit || {};
   const enderEmit = emit.enderEmit || {};
   const vPrest = infCte.vPrest || {};
@@ -345,6 +343,17 @@ function parseCTe(xmlString) {
     transportador_uf: enderEmit.UF ?? null,
     transportador_cep: enderEmit.CEP ?? null,
     transportador_telefone: enderEmit.fone ?? null,
+    // Gestão de CT-e: participantes, cidades, modal, CFOP e ICMS em campos próprios.
+    serie_cte: ide.serie != null ? String(ide.serie) : null,
+    remetente_doc: infCte.rem ? String(infCte.rem.CNPJ || infCte.rem.CPF || '').replace(/[^0-9A-Za-z]/g, '') || null : null,
+    remetente_nome: infCte.rem?.xNome ? String(infCte.rem.xNome) : null,
+    cidade_inicio: ide.xMunIni ? String(ide.xMunIni) : null,
+    modal: ide.modal != null ? String(ide.modal).padStart(2, '0') : null,
+    cfop: ide.CFOP != null ? String(ide.CFOP) : null,
+    icms_cst: chaveIcms === 'ICMSSN' ? 'SN' : chaveIcms === 'ICMSOutraUF' ? 'OUTRAUF' : (dadosIcms.CST != null ? String(dadosIcms.CST) : null),
+    icms_base: numOuNulo(dadosIcms.vBC ?? dadosIcms.vBCOutraUF ?? dadosIcms.vBCSTRet),
+    icms_aliquota: numOuNulo(dadosIcms.pICMS ?? dadosIcms.pICMSOutraUF ?? dadosIcms.pICMSSTRet),
+    icms_valor: numOuNulo(dadosIcms.vICMS ?? dadosIcms.vICMSOutraUF ?? dadosIcms.vICMSSTRet),
     // Impostos do CT-e, pra mostrar no detalhe da auditoria de frete.
     impostos_cte: JSON.stringify({
       cst: dadosIcms.CST ?? null,
@@ -390,7 +399,10 @@ function extrairDetalheEvento(detEvento) {
   const candidatos = [detEvento, ...Object.values(detEvento).filter((v) => v && typeof v === 'object')];
   for (const c of candidatos) {
     if (c.descEvento || c.xCorrecao || c.xJust) {
-      return { descEvento: c.descEvento || null, texto: c.xCorrecao || c.xJust || c.xCondUso || null, nProt: c.nProt || null };
+      // Carta de Correção do CT-e: lista de campos corrigidos (grupo/campo → valor), não um texto livre.
+      const correcoes = (Array.isArray(c.infCorrecao) ? c.infCorrecao : c.infCorrecao ? [c.infCorrecao] : [])
+        .map((x) => `${x.grupoAlterado ? `${x.grupoAlterado}/` : ''}${x.campoAlterado || '?'} = ${x.valorAlterado ?? ''}`).join('; ');
+      return { descEvento: c.descEvento || null, texto: c.xCorrecao || c.xJust || (correcoes ? `corrigido: ${correcoes}` : null) || c.xCondUso || null, nProt: c.nProt || null };
     }
   }
   return { descEvento: null, texto: null, nProt: null };
@@ -414,7 +426,7 @@ function parseEvento(xmlString) {
     // Cancelamento usa xJust — pegamos qualquer um que existir.
     textoDetalhe: texto,
     dhEvento: (infEvento.dhEvento || infEvento.dhRegEvento || '').toString().slice(0, 10) || null,
-    numeroProtocolo: infEvento.nProt ?? nProt ?? null,
+    numeroProtocolo: infEvento.nProt ?? nProt ?? encontrarNo(obj, (n) => n.nProt != null && (n.cStat != null || n.dhRegEvento != null))?.nProt ?? null,
     // Comprovante de Entrega (CT-e 110180 / NF-e 110130): quando e para quem foi entregue.
     ...dadosComprovanteEntrega(infEvento.detEvento),
     // Situação do registro na SEFAZ (retEvento): 135/136/155 = registrado. Nulo = arquivo sem retorno.

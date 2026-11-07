@@ -172,6 +172,10 @@
         {
           "area": "Relatórios",
           "texto": "Indicadores (309): contratado, pago e a pagar; gasto por transportadora, cliente, região, estado, mês e modalidade (modal, lotação × fracionada, CIF × FOB, redespacho); entregas, pontualidade, ocorrências e a economia da auditoria. Registro do pagamento da fatura da transportadora e Excel (.xlsx) e PDF em todos os relatórios."
+        },
+        {
+          "area": "Auditoria",
+          "texto": "Gestão das faturas das transportadoras: importação em planilha (Excel/CSV, vários arquivos) com aviso de cobrança repetida e valor diferente; situação Conferida → Aprovada → Liberada → Paga, com bloqueio automático por divergência (desbloqueio só com justificativa), aprovação com alçada, abas de Vencimentos e de CT-e não faturados, histórico de cada fatura e avisos na Visão geral."
         }
       ]
     },

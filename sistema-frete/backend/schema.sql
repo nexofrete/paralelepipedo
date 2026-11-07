@@ -2938,3 +2938,28 @@ ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS pago_em DATE;
 ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS valor_pago NUMERIC(14,2);
 ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS pago_por VARCHAR(150);
 ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS pagamento_obs VARCHAR(300);
+
+-- Gestão das faturas da transportadora (embarcador): situação da fatura, aprovação com alçada,
+-- bloqueio por divergência, liberação para pagamento e o histórico de cada passo.
+--   conferida → aprovada → liberada → paga;  bloqueada (divergência ou à mão) sai só com justificativa.
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS situacao VARCHAR(12);
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS bloqueio_motivo VARCHAR(500);
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS aprovado_por VARCHAR(150);
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS aprovado_em TIMESTAMPTZ;
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS liberado_por VARCHAR(150);
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS liberado_em TIMESTAMPTZ;
+-- Faturas que já existiam: pagas continuam pagas; com ressalvas ficam bloqueadas até alguém justificar.
+UPDATE faturas_frete SET situacao = CASE WHEN pago_em IS NOT NULL THEN 'paga' WHEN parecer = 'Conferida' THEN 'conferida' ELSE 'bloqueada' END,
+       bloqueio_motivo = CASE WHEN pago_em IS NULL AND parecer <> 'Conferida' THEN 'Conferida com ressalvas (divergência na conferência)' END
+ WHERE situacao IS NULL;
+ALTER TABLE faturas_frete ALTER COLUMN situacao SET DEFAULT 'conferida';
+CREATE TABLE IF NOT EXISTS faturas_frete_historico (
+  id SERIAL PRIMARY KEY,
+  fatura_id INTEGER NOT NULL REFERENCES faturas_frete(id) ON DELETE CASCADE,
+  acao VARCHAR(20) NOT NULL,                   -- conferida | bloqueada | desbloqueada | aprovada | liberada | paga | pagamento_desfeito | vencimento
+  situacao_antes VARCHAR(12), situacao_depois VARCHAR(12),
+  detalhe VARCHAR(500), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_faturas_frete_historico ON faturas_frete_historico (fatura_id, id);
+-- Acima deste valor, só quem tem "Aprovar valores altos" aprova a fatura (vazio = sem alçada).
+ALTER TABLE configuracao_auditoria ADD COLUMN IF NOT EXISTS limite_alcada_fatura NUMERIC(14,2);

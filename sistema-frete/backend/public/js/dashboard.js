@@ -870,6 +870,13 @@ function preencherVisaoGeral(dados) {
     `${formatoMoeda(dados.valor_retido)} cobrados diferente da tabela`, paginaPermitida('auditoria-frete') ? () => irParaPagina('auditoria-frete') : null);
   add(dados.vencendo > 0, '⏰', '#eab308', `${dados.vencendo} pagamento(s) vencendo nos próximos 7 dias`,
     'Liberados para pagamento', paginaPermitida('financeiro') ? () => irParaPagina('financeiro') : null);
+  const fa = dados.faturas || {};
+  const abrirFaturas = (aba) => (typeof podeVerFaturas !== 'undefined' && podeVerFaturas ? () => { irParaPagina('auditoria-frete'); cfAbrir().then(() => cfTrocarAba(aba)); } : null);
+  add(fa.vencidas > 0, '🚨', '#ef4444', `${fa.vencidas} fatura(s) de transportadora vencida(s) e não paga(s)`, 'Confira, aprove, libere e registre o pagamento', abrirFaturas('vencimentos'));
+  add(fa.bloqueadas > 0, '⛔', '#ef4444', `${fa.bloqueadas} fatura(s) bloqueada(s) por divergência`, 'Só saem do bloqueio com justificativa', abrirFaturas('lista'));
+  add(fa.vencendo > 0, '⏰', '#eab308', `${fa.vencendo} fatura(s) vencendo nos próximos 7 dias`, 'Ainda não pagas', abrirFaturas('vencimentos'));
+  add(fa.aguardando > 0, '✍️', '#4d7cff', `${fa.aguardando} fatura(s) aguardando aprovação ou liberação`, 'Conferidas: aprove e libere para pagamento', abrirFaturas('lista'));
+  add(fa.nao_faturados_30 > 0, '📭', '#f59e0b', `${fa.nao_faturados_30} CT-e há mais de 30 dias sem fatura`, `${formatoMoeda(fa.valor_nao_faturados_30)} que a transportadora ainda não cobrou`, abrirFaturas('naoFaturados'));
   add(dados.prontos_fatura > 0, '🧾', '#4d7cff', `${dados.prontos_fatura} CT-e liberado(s) ainda fora de fatura`,
     `${formatoMoeda(dados.valor_prontos_fatura)} prontos para conferir quando a fatura chegar`,
     typeof podeConferirFatura !== 'undefined' && podeConferirFatura && paginaPermitida('auditoria-frete')
@@ -4709,6 +4716,7 @@ async function carregarConfigAuditoria() {
     document.getElementById('audTolerValor').value = c.tolerancia_valor ?? 0;
     document.getElementById('audTolerPercentual').value = c.tolerancia_percentual ?? 0;
     document.getElementById('audLimiteAlcada').value = c.limite_alcada_aprovacao ? formatarMoedaExibicao(c.limite_alcada_aprovacao) : '';
+    document.getElementById('audLimiteFatura').value = c.limite_alcada_fatura ? formatarMoedaExibicao(c.limite_alcada_fatura) : '';
     document.getElementById('audPctReentrega').value = c.percentual_reentrega ?? 50;
   } catch (err) {
     console.error(err);
@@ -4723,6 +4731,7 @@ document.getElementById('btnSalvarAuditoriaConfig').addEventListener('click', as
     tolerancia_valor: Number(document.getElementById('audTolerValor').value) || 0,
     tolerancia_percentual: Number(document.getElementById('audTolerPercentual').value) || 0,
     limite_alcada_aprovacao: paraNumeroMoeda(document.getElementById('audLimiteAlcada').value) || null,
+    limite_alcada_fatura: paraNumeroMoeda(document.getElementById('audLimiteFatura').value) || null,
     percentual_reentrega: document.getElementById('audPctReentrega').value === '' ? 50 : Number(document.getElementById('audPctReentrega').value),
   };
 
@@ -7698,7 +7707,11 @@ function cfTrocarAba(aba) {
   document.getElementById('cfAbaNova').classList.toggle('oculto', aba !== 'nova');
   document.getElementById('cfRodapeNova').classList.toggle('oculto', aba !== 'nova');
   document.getElementById('cfAbaLista').classList.toggle('oculto', aba !== 'lista');
+  document.getElementById('cfAbaVencimentos').classList.toggle('oculto', aba !== 'vencimentos');
+  document.getElementById('cfAbaNaoFaturados').classList.toggle('oculto', aba !== 'naoFaturados');
   if (aba === 'lista') cfCarregarLista();
+  if (aba === 'vencimentos') cfCarregarVencimentos();
+  if (aba === 'naoFaturados') cfCarregarNaoFaturados();
 }
 
 async function cfAbrir() {
@@ -7909,8 +7922,25 @@ async function cfCarregarLista() {
       return;
     }
     const ehAdmin = usuario.perfil === 'admin';
-    const podePagar = ehAdmin || ((usuario.pode_ver_todos) && (usuario.pode_aprovar_pagamento || usuario.pode_ver_financeiro));
-    corpo.innerHTML = faturas.map((f) => `
+    const veTudo = ehAdmin || usuario.pode_ver_todos;
+    const podeAprovar = ehAdmin || (veTudo && usuario.pode_aprovar_pagamento);
+    const podePagar = ehAdmin || (veTudo && (usuario.pode_aprovar_pagamento || usuario.pode_ver_financeiro));
+    const podeBloquear = ehAdmin || (veTudo && (usuario.pode_aprovar_pagamento || usuario.pode_conferir_fatura || usuario.pode_ver_financeiro));
+    const botao = (attr, f, texto, cor = '') => `<button class="btn btn-secundario" ${attr}="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="width:auto; padding:4px 9px; font-size:11.5px; margin:2px 2px 0 0;${cor ? ` color:${cor};` : ''}">${texto}</button>`;
+    corpo.innerHTML = faturas.map((f) => {
+      const sit = f.situacao || 'conferida';
+      const acoes = [
+        sit === 'conferida' && podeAprovar ? botao('data-cf-aprovar', f, '✍️ Aprovar') : '',
+        sit === 'aprovada' && podeAprovar ? botao('data-cf-liberar', f, '✅ Liberar p/ pagamento') : '',
+        sit === 'liberada' && podePagar ? `<button class="btn btn-secundario" data-cf-pagar="${f.id}" data-cf-numero="${cfEsc(f.numero)}" data-cf-valor="${f.valor_informado != null ? f.valor_informado : Number(f.valor_ctes) - Number(f.total_glosas || 0)}" style="width:auto; padding:4px 9px; font-size:11.5px; margin:2px 2px 0 0;">💸 Registrar pagamento</button>` : '',
+        sit === 'bloqueada' && podeAprovar ? botao('data-cf-desbloquear', f, '🔓 Desbloquear') : '',
+        ['conferida', 'aprovada', 'liberada'].includes(sit) && podeBloquear ? botao('data-cf-bloquear', f, '⛔ Bloquear', 'var(--vermelho)') : '',
+        sit === 'paga' && podePagar ? botao('data-cf-despagar', f, 'Desfazer pagamento') : '',
+      ].join('');
+      const det = sit === 'paga' ? `${formatoData(f.pago_em)} · ${formatoMoeda(f.valor_pago)} · ${cfEsc(f.pago_por || '')}`
+        : sit === 'bloqueada' ? cfEsc(f.bloqueio_motivo || '')
+          : sit === 'liberada' ? `por ${cfEsc(f.liberado_por || '')}` : sit === 'aprovada' ? `por ${cfEsc(f.aprovado_por || '')}` : 'aguardando aprovação';
+      return `
       <tr>
         <td><strong>${cfEsc(f.numero)}</strong></td>
         <td>${cfEsc(f.transportadora)}</td>
@@ -7920,17 +7950,116 @@ async function cfCarregarLista() {
         <td style="text-align:right;">${formatoMoeda(f.valor_informado)}</td>
         <td><span class="badge ${f.parecer === 'Conferida' ? 'badge-liberado' : 'badge-retido'}">${cfEsc(f.parecer)}</span></td>
         <td>${cfEsc(f.conferido_por_nome || '—')}<div style="font-size:11px; color:var(--texto-fraco);">${formatoDataHora(f.conferido_em)}</div></td>
-        <td>${f.pago_em ? `<span class="badge badge-liberado">Paga ${formatoData(f.pago_em)}</span><div style="font-size:11px; color:var(--texto-fraco);">${formatoMoeda(f.valor_pago)} · ${cfEsc(f.pago_por || '')}</div>${podePagar ? `<a href="#" data-cf-despagar="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="font-size:11px;">desfazer</a>` : ''}`
-          : `<span class="badge badge-retido">A pagar</span>${podePagar ? `<br><button class="btn btn-secundario" data-cf-pagar="${f.id}" data-cf-numero="${cfEsc(f.numero)}" data-cf-valor="${f.valor_informado != null ? f.valor_informado : Number(f.valor_ctes) - Number(f.total_glosas || 0)}" style="width:auto; padding:4px 10px; font-size:12px; margin-top:4px;">💸 Registrar pagamento</button>` : ''}`}</td>
+        <td style="max-width:280px;">${cfBadgeSituacao(sit)}<div style="font-size:11px; color:var(--texto-fraco); margin-top:2px;">${det}</div><div>${acoes}</div></td>
         <td style="text-align:right; white-space:nowrap;">
+          <button class="btn btn-secundario" data-cf-historico="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="width:auto; padding:5px 10px; font-size:12px;">🕘 Histórico</button>
           <button class="btn btn-secundario" data-cf-imprimir="${f.id}" style="width:auto; padding:5px 10px; font-size:12px;">🖨 Documento</button>
-          ${ehAdmin ? `<button class="btn btn-secundario" data-cf-desfazer="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="width:auto; padding:5px 10px; font-size:12px; color:var(--vermelho);">Desfazer</button>` : ''}
+          ${ehAdmin && sit !== 'paga' ? `<button class="btn btn-secundario" data-cf-desfazer="${f.id}" data-cf-numero="${cfEsc(f.numero)}" style="width:auto; padding:5px 10px; font-size:12px; color:var(--vermelho);">Desfazer</button>` : ''}
         </td>
-      </tr>`).join('');
+      </tr>
+      <tr class="oculto" data-cf-hist-linha="${f.id}"><td colspan="10" style="background:var(--bg-elevado);"></td></tr>`;
+    }).join('');
   } catch (err) {
     corpo.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--vermelho); padding:20px;">Erro ao carregar as faturas.</td></tr>';
   }
 }
+
+const CF_SITUACOES = { conferida: ['Conferida', 'badge-pendente'], bloqueada: ['⛔ Bloqueada', 'badge-retido'], aprovada: ['✍️ Aprovada', 'badge-pendente'], liberada: ['✅ Liberada p/ pagamento', 'badge-liberado'], paga: ['💸 Paga', 'badge-liberado'] };
+const cfBadgeSituacao = (s) => `<span class="badge ${(CF_SITUACOES[s] || [])[1] || 'badge-pendente'}">${cfEsc((CF_SITUACOES[s] || [s])[0])}</span>`;
+// Passos da fatura: aprovar, liberar, bloquear, desbloquear (com o motivo/justificativa no histórico).
+async function cfPasso(id, numero, passo) {
+  const cfg = {
+    aprovar: { pergunta: `Aprovar a fatura ${numero}? Observação (opcional):`, titulo: 'Aprovar fatura', ok: 'Aprovar', campo: 'observacao', obrigatorio: false },
+    liberar: { pergunta: `Liberar a fatura ${numero} para pagamento? Observação (opcional):`, titulo: 'Liberar para pagamento', ok: 'Liberar', campo: 'observacao', obrigatorio: false },
+    bloquear: { pergunta: `Por que bloquear a fatura ${numero}? Ela não pode ser paga enquanto estiver bloqueada.`, titulo: 'Bloquear fatura', ok: 'Bloquear', campo: 'motivo', obrigatorio: true },
+    desbloquear: { pergunta: `Justificativa para desbloquear a fatura ${numero} (o que foi resolvido ou combinado):`, titulo: 'Desbloquear fatura', ok: 'Desbloquear', campo: 'justificativa', obrigatorio: true },
+  }[passo];
+  const t = await pedirTexto(cfg.pergunta, { titulo: cfg.titulo, textoOk: cfg.ok, valor: '' });
+  if (t == null) return;
+  if (cfg.obrigatorio && !t.trim()) { mostrarAlerta('Escreva o motivo.', { tipo: 'aviso' }); return; }
+  try {
+    const r = await apiFetch(`/api/faturas/${id}/${passo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [cfg.campo]: t }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { mostrarAlerta(j.erro || 'Erro.', { tipo: 'erro' }); return; }
+    cfCarregarLista();
+  } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
+}
+const CF_ACOES = { conferida: '🧾 Conferida', bloqueada: '⛔ Bloqueada', desbloqueada: '🔓 Desbloqueada', aprovada: '✍️ Aprovada', liberada: '✅ Liberada p/ pagamento', paga: '💸 Paga', pagamento_desfeito: '↩ Pagamento desfeito' };
+async function cfHistorico(id) {
+  const linha = document.querySelector(`[data-cf-hist-linha="${id}"]`);
+  if (!linha) return;
+  if (!linha.classList.contains('oculto')) { linha.classList.add('oculto'); return; }
+  const r = await apiFetch(`/api/faturas/${id}/historico`);
+  const j = await r.json().catch(() => ({}));
+  linha.firstElementChild.innerHTML = (j.historico || []).length ? `<div style="padding:6px 4px;"><b style="font-size:12.5px;">Histórico da fatura</b><table style="margin-top:4px;"><tbody>${j.historico.map((h) => `<tr><td style="white-space:nowrap;">${formatoDataHora(h.criado_em)}</td><td>${cfEsc(CF_ACOES[h.acao] || h.acao)}</td><td>${cfEsc(h.detalhe || '')}</td><td>${cfEsc(h.usuario_nome || '')}</td></tr>`).join('')}</tbody></table></div>`
+    : '<div style="padding:8px; color:var(--texto-fraco);">Sem histórico (fatura conferida antes desta versão). Os próximos passos ficam registrados aqui.</div>';
+  linha.classList.remove('oculto');
+}
+// Vencimentos das faturas ainda não pagas.
+async function cfCarregarVencimentos() {
+  const alvo = document.getElementById('cfAbaVencimentos');
+  alvo.innerHTML = '<div style="color:var(--texto-fraco);">Carregando...</div>';
+  const r = await apiFetch('/api/faturas/vencimentos');
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { alvo.innerHTML = `<div style="color:var(--vermelho);">${cfEsc(d.erro || 'Erro.')}</div>`; return; }
+  const FAIXA = { vencida: ['Vencidas', '#ef4444'], hoje: ['Vencem hoje', '#f97316'], semana: ['Próximos 7 dias', '#eab308'], depois: ['Depois', 'var(--texto)'], sem_vencimento: ['Sem vencimento', 'var(--texto-fraco)'] };
+  alvo.innerHTML = `<div class="oc-resumo">${Object.entries(FAIXA).map(([k, [t, cor]]) => `<div>${t}<b style="color:${cor};">${d.resumo[k].qtd}</b><span>${formatoMoeda(d.resumo[k].valor)}</span></div>`).join('')}</div>
+    ${d.faturas.length ? `<table><thead><tr><th>Vencimento</th><th>Fatura</th><th>Transportadora</th><th style="text-align:right;">A pagar</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${d.faturas.map((f) => `<tr><td><b style="color:${FAIXA[f.faixa][1]};">${f.data_vencimento ? formatoData(f.data_vencimento) : '—'}</b><div style="font-size:11px; color:var(--texto-fraco);">${f.faixa === 'vencida' ? `vencida há ${f.dias_atraso} dia(s)` : f.faixa === 'hoje' ? 'vence hoje' : f.data_vencimento ? `faltam ${-f.dias_atraso} dia(s)` : ''}</div></td>
+      <td><strong>${cfEsc(f.numero)}</strong></td><td>${cfEsc(f.transportadora)}</td><td style="text-align:right;">${formatoMoeda(f.valor)}</td><td>${cfBadgeSituacao(f.situacao || 'conferida')}${f.situacao === 'bloqueada' ? `<div style="font-size:11px; color:var(--texto-fraco);">${cfEsc(f.bloqueio_motivo || '')}</div>` : ''}</td>
+      <td><button class="btn btn-secundario" data-cf-ir-lista style="width:auto; padding:4px 10px; font-size:12px;">Abrir</button></td></tr>`).join('')}</tbody></table>`
+    : '<div style="color:var(--texto-fraco); padding:20px; text-align:center;">Nenhuma fatura a pagar. 👍</div>'}
+    <p style="font-size:12px; color:var(--texto-fraco); margin-top:10px;">Só faturas ainda não pagas. Para pagar: aprovar → liberar → registrar o pagamento (aba Faturas conferidas). Fatura bloqueada não pode ser paga.</p>`;
+  alvo.querySelectorAll('[data-cf-ir-lista]').forEach((b) => b.addEventListener('click', () => cfTrocarAba('lista')));
+}
+// CT-e que a transportadora ainda não cobrou.
+async function cfCarregarNaoFaturados(dias) {
+  const alvo = document.getElementById('cfAbaNaoFaturados');
+  const minimo = dias ?? (document.getElementById('cfNfDias')?.value || 0);
+  alvo.innerHTML = '<div style="color:var(--texto-fraco);">Carregando...</div>';
+  const r = await apiFetch(`/api/faturas/nao-faturados?dias=${encodeURIComponent(minimo)}`);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { alvo.innerHTML = `<div style="color:var(--vermelho);">${cfEsc(d.erro || 'Erro.')}</div>`; return; }
+  alvo.innerHTML = `<div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">Emitidos há pelo menos
+      <select id="cfNfDias" style="width:auto;">${[0, 15, 30, 45, 60, 90].map((n) => `<option value="${n}" ${Number(minimo) === n ? 'selected' : ''}>${n ? `${n} dias` : 'qualquer data'}</option>`).join('')}</select>
+      <span style="flex:1;"></span><b>${d.total} CT-e · ${formatoMoeda(d.valor)}</b></div>
+    ${d.por_transportadora.length ? `<table style="margin-bottom:14px;"><thead><tr><th>Transportadora</th><th style="text-align:right;">CT-e sem fatura</th><th style="text-align:right;">Valor</th><th style="text-align:right;">Mais antigo</th><th style="text-align:right;">+30 dias</th><th style="text-align:right;">+60 dias</th></tr></thead><tbody>
+      ${d.por_transportadora.map((t) => `<tr><td><b>${cfEsc(t.transportadora)}</b></td><td style="text-align:right;">${t.ctes}</td><td style="text-align:right;">${formatoMoeda(t.valor)}</td><td style="text-align:right; color:${t.mais_antigo > 60 ? 'var(--vermelho)' : t.mais_antigo > 30 ? '#d97706' : 'inherit'};">${t.mais_antigo} dia(s)</td><td style="text-align:right;">${t.acima_30 || '—'}</td><td style="text-align:right;">${t.acima_60 || '—'}</td></tr>`).join('')}</tbody></table>
+      <details><summary style="cursor:pointer; font-size:13px; margin-bottom:6px;">Ver os CT-e (${d.ctes.length})</summary><table><thead><tr><th>Emissão</th><th style="text-align:right;">Dias</th><th>CT-e</th><th>NF</th><th>Cliente</th><th>UF</th><th>Transportadora</th><th style="text-align:right;">Valor</th><th>Situação</th></tr></thead><tbody>
+      ${d.ctes.map((c) => `<tr><td>${formatoData(c.data_emissao_cte)}</td><td style="text-align:right;">${c.dias ?? '—'}</td><td>${cfEsc(c.numero_cte)}</td><td>${cfEsc(c.numero_nf || '')}</td><td>${cfEsc(c.cliente || '')}</td><td>${cfEsc(c.uf || '')}</td><td>${cfEsc(c.transportadora)}</td><td style="text-align:right;">${formatoMoeda(c.valor)}</td><td>${cfEsc(c.status || '')}</td></tr>`).join('')}</tbody></table></details>`
+    : '<div style="color:var(--texto-fraco); padding:20px; text-align:center;">Todos os CT-e já foram cobrados em fatura. 👍</div>'}
+    <p style="font-size:12px; color:var(--texto-fraco); margin-top:10px;">CT-e recebidos (com XML) que ainda não entraram em nenhuma fatura conferida, sem os cancelados, recusados e não cobrados. CT-e antigo sem fatura: a transportadora pode cobrar de surpresa depois, ou esqueceu — vale perguntar.</p>`;
+  document.getElementById('cfNfDias').addEventListener('change', (e) => cfCarregarNaoFaturados(e.target.value));
+}
+// Importa a fatura (Excel/CSV, um ou vários arquivos): marca os CT-e e preenche o que der.
+async function cfImportarArquivos(arquivos) {
+  const aviso = document.getElementById('cfAvisoImportacao');
+  if (!arquivos.length) return;
+  const fd = new FormData();
+  [...arquivos].forEach((a) => fd.append('arquivos', a));
+  fd.append('transportadora', document.getElementById('cfTransportadora').value || '');
+  aviso.innerHTML = '<span style="color:var(--texto-fraco);">Lendo o arquivo...</span>';
+  try {
+    const r = await apiFetch('/api/faturas/importar', { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { aviso.innerHTML = `<span style="color:var(--vermelho);">${cfEsc(d.erro || 'Erro ao ler o arquivo.')}</span>`; return; }
+    const sel = document.getElementById('cfTransportadora');
+    if (d.transportadora && sel.value !== d.transportadora && [...sel.options].some((o) => o.value === d.transportadora)) { sel.value = d.transportadora; await cfCarregarCtes(); }
+    if (d.numero && !document.getElementById('cfNumero').value) document.getElementById('cfNumero').value = d.numero;
+    if (d.vencimento && !document.getElementById('cfVencimento').value) document.getElementById('cfVencimento').value = d.vencimento;
+    if (d.valor_cobrado && !document.getElementById('cfValor').value) document.getElementById('cfValor').value = Number(d.valor_cobrado).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    d.achados.forEach((a) => { if (cfEstado.ctes.some((c) => c.id === a.frete_id)) cfEstado.marcados.add(a.frete_id); });
+    cfRenderizarTabela();
+    const dif = d.achados.filter((a) => a.diferenca && Math.abs(a.diferenca) >= 0.01);
+    aviso.innerHTML = `<span style="color:var(--verde);">✓ ${d.achados.length} CT-e marcado(s) de ${d.linhas} linha(s)${d.valor_cobrado ? ` · cobrado ${formatoMoeda(d.valor_cobrado)}` : ''}.</span>`
+      + (dif.length ? `<br><span style="color:#d97706;">⚠ ${dif.length} com valor cobrado diferente do CT-e: ${dif.slice(0, 8).map((a) => `${cfEsc(a.numero_cte)} (${a.diferenca > 0 ? '+' : ''}${formatoMoeda(a.diferenca)})`).join(', ')}${dif.length > 8 ? '…' : ''}</span>` : '')
+      + (d.ja_faturados.length ? `<br><span style="color:var(--vermelho);">⛔ Cobrança repetida — já em outra fatura: ${d.ja_faturados.map((a) => `${cfEsc(a.numero_cte)} (fatura ${cfEsc(a.numero_fatura || '')})`).join(', ')}</span>` : '')
+      + (d.repetidos_arquivo.length ? `<br><span style="color:var(--vermelho);">⛔ Repetidos no próprio arquivo: ${d.repetidos_arquivo.map((a) => `${cfEsc(a.cte)} (${a.vezes}x)`).join(', ')}</span>` : '')
+      + (d.cancelados.length ? `<br><span style="color:var(--vermelho);">⛔ CT-e cancelado cobrado: ${d.cancelados.map((a) => cfEsc(a.numero_cte)).join(', ')}</span>` : '')
+      + (d.nao_encontrados.length ? `<br><span style="color:var(--vermelho);">Não encontrados (sem XML no sistema ou de outra transportadora): ${d.nao_encontrados.slice(0, 15).map((a) => cfEsc(a.cte)).join(', ')}${d.nao_encontrados.length > 15 ? '…' : ''}</span>` : '');
+  } catch (err) { aviso.innerHTML = '<span style="color:var(--vermelho);">Falha de conexão com o servidor.</span>'; }
+}
+document.getElementById('cfArquivo')?.addEventListener('change', (e) => { cfImportarArquivos(e.target.files); e.target.value = ''; });
 
 // Pagamento da fatura: os CT-e dela passam a contar como "pagos" nos Indicadores.
 async function cfPagar(id, numero, valor) {
@@ -7947,7 +8076,7 @@ async function cfPagar(id, numero, valor) {
   } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
 }
 async function cfDespagar(id, numero) {
-  if (!(await confirmar(`A fatura ${numero} volta a ficar "a pagar".`, { tipo: 'perigo', titulo: 'Desfazer o pagamento?', textoOk: 'Desfazer' }))) return;
+  if (!(await confirmar(`A fatura ${numero} volta a ficar "liberada para pagamento" (a pagar).`, { tipo: 'perigo', titulo: 'Desfazer o pagamento?', textoOk: 'Desfazer' }))) return;
   const r = await apiFetch(`/api/faturas/${id}/pagamento`, { method: 'DELETE' });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { mostrarAlerta(j.erro || 'Erro.'); return; }
@@ -8177,7 +8306,13 @@ document.getElementById('cfCorpoLista').addEventListener('click', (e) => {
   const pagar = e.target.closest('[data-cf-pagar]');
   if (pagar) { cfPagar(pagar.dataset.cfPagar, pagar.dataset.cfNumero, pagar.dataset.cfValor); return; }
   const despagar = e.target.closest('[data-cf-despagar]');
-  if (despagar) { e.preventDefault(); cfDespagar(despagar.dataset.cfDespagar, despagar.dataset.cfNumero); }
+  if (despagar) { e.preventDefault(); cfDespagar(despagar.dataset.cfDespagar, despagar.dataset.cfNumero); return; }
+  for (const passo of ['aprovar', 'liberar', 'bloquear', 'desbloquear']) {
+    const b = e.target.closest(`[data-cf-${passo}]`);
+    if (b) { cfPasso(b.getAttribute(`data-cf-${passo}`), b.dataset.cfNumero, passo); return; }
+  }
+  const hist = e.target.closest('[data-cf-historico]');
+  if (hist) cfHistorico(hist.dataset.cfHistorico);
 });
 
 

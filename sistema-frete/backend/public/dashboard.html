@@ -2969,6 +2969,8 @@
           <div style="padding:10px 20px 0; display:flex; gap:8px; border-bottom:1px solid var(--borda); flex-shrink:0;">
             <button class="btn btn-secundario cf-aba ativa" data-cf-aba="nova" style="width:auto; padding:7px 14px; font-size:12.5px;">Nova conferência</button>
             <button class="btn btn-secundario cf-aba" data-cf-aba="lista" style="width:auto; padding:7px 14px; font-size:12.5px;">Faturas conferidas</button>
+            <button class="btn btn-secundario cf-aba" data-cf-aba="vencimentos" style="width:auto; padding:7px 14px; font-size:12.5px;">📅 Vencimentos</button>
+            <button class="btn btn-secundario cf-aba" data-cf-aba="naoFaturados" style="width:auto; padding:7px 14px; font-size:12.5px;">📭 CT-e não faturados</button>
           </div>
 
           <!-- Nova conferência -->
@@ -2987,6 +2989,10 @@
                 <textarea id="cfColarCtes" rows="3" placeholder="Um por linha, ou separados por vírgula. Pode colar a coluna CT-e da fatura."></textarea>
                 <button class="btn btn-secundario" id="btnCfMarcarColados" style="width:auto; margin-top:6px; padding:6px 12px; font-size:12px;">Marcar esses CT-e</button>
                 <div id="cfAvisoColados" style="font-size:12px; margin-top:6px;"></div>
+                <label class="btn btn-secundario" style="width:auto; margin-top:8px; padding:6px 12px; font-size:12px; display:inline-block; cursor:pointer;">📥 Importar arquivo da fatura (Excel/CSV)
+                  <input type="file" id="cfArquivo" accept=".xlsx,.xls,.csv,.txt,.ods" multiple style="display:none;" /></label>
+                <div style="font-size:11px; color:var(--texto-fraco); margin-top:4px;">Pode escolher vários arquivos (a fatura dividida). Precisa de uma coluna CT-e ou Chave; com a coluna Valor, compara o cobrado com o CT-e. DOCCOB: em EDI.</div>
+                <div id="cfAvisoImportacao" style="font-size:12px; margin-top:6px;"></div>
               </div>
               <div class="campo" style="margin-bottom:0;">
                 <label>Observações (vão no documento)</label>
@@ -3019,11 +3025,13 @@
           </div>
 
           <!-- Faturas conferidas -->
+          <div id="cfAbaVencimentos" class="oculto" style="flex:1; overflow-y:auto; padding:16px 20px;"></div>
+          <div id="cfAbaNaoFaturados" class="oculto" style="flex:1; overflow-y:auto; padding:16px 20px;"></div>
           <div id="cfAbaLista" class="oculto" style="flex:1; overflow-y:auto; padding:16px 20px;">
             <div style="overflow-x:auto;">
               <table>
                 <thead>
-                  <tr><th>Fatura</th><th>Transportadora</th><th>Vencimento</th><th style="text-align:right;">Qtd CT-e</th><th style="text-align:right;">Valor CT-e</th><th style="text-align:right;">Valor fatura</th><th>Parecer</th><th>Conferido por</th><th>Pagamento</th><th></th></tr>
+                  <tr><th>Fatura</th><th>Transportadora</th><th>Vencimento</th><th style="text-align:right;">Qtd CT-e</th><th style="text-align:right;">Valor CT-e</th><th style="text-align:right;">Valor fatura</th><th>Parecer</th><th>Conferido por</th><th>Situação</th><th></th></tr>
                 </thead>
                 <tbody id="cfCorpoLista"></tbody>
               </table>
@@ -3426,6 +3434,10 @@
             <div class="campo" style="margin-bottom:0; grid-column: 1 / -1; padding-top:8px; border-top:1px solid var(--borda); margin-top:6px;">
               <label>Limite de Alçada (R$) — acima disso, só quem tem "Aprovar valores altos" pode liberar</label>
               <input type="text" inputmode="numeric" class="campo-moeda" id="audLimiteAlcada" placeholder="Deixe vazio pra não usar alçada" />
+            </div>
+            <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
+              <label>Alçada da fatura (R$) — fatura acima disso só é aprovada por quem tem "Aprovar valores altos"</label>
+              <input type="text" inputmode="numeric" class="campo-moeda" id="audLimiteFatura" placeholder="Deixe vazio pra não usar alçada na fatura" />
             </div>
             <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
               <label>Reentrega / devolução: % do valor do CT-e original</label>

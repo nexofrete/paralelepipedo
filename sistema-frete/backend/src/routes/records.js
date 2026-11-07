@@ -1636,8 +1636,12 @@ router.get('/resumo', autenticar, async (req, res) => {
       );
       sinistrosCobrar = sc[0].qtd;
     }
+    // Faturas das transportadoras (só quem vê todos os fretes: a fatura junta vários clientes).
+    let faturas = null;
+    if (vePotudo(req)) faturas = await require('../faturasFrete').pendencias().catch(() => null);
     res.json({
       ...fluxo[0],
+      faturas,
       sinistros_cobrar: sinistrosCobrar,
       mes: mes[0],
       transportadoras_mes: transportadorasMes,

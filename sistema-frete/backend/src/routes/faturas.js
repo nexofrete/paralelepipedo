@@ -4,6 +4,9 @@ const pool = require('../db');
 const { autenticar, apenasAdmin } = require('../middlewareAuth');
 const { ehAdmin, vePotudo, temAlguma } = require('../permissoes');
 const { registrar } = require('../auditoria');
+const multer = require('multer');
+const faturasFrete = require('../faturasFrete');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 20 } });
 
 // Conferência de Fatura: junta os CT-e de uma fatura da transportadora,
 // guarda uma "foto" dos valores no momento da conferência e gera o
@@ -55,7 +58,8 @@ router.get('/', autenticar, podeVerFaturas, async (req, res) => {
     const { rows } = await pool.query(
       `SELECT id, numero, transportadora, data_emissao, data_vencimento, valor_informado,
               valor_ctes, qtd_ctes, parecer, codigo_verificacao, conferido_por_nome, conferido_em, total_glosas,
-              pago_em::text, valor_pago, pago_por, pagamento_obs
+              pago_em::text, valor_pago, pago_por, pagamento_obs, COALESCE(situacao, 'conferida') AS situacao, bloqueio_motivo,
+              aprovado_por, aprovado_em, liberado_por, liberado_em
          FROM faturas_frete ORDER BY conferido_em DESC LIMIT 200`
     );
     res.json(rows);
@@ -104,6 +108,27 @@ router.get('/ctes-disponiveis', autenticar, podeVerFaturas, async (req, res) => 
   }
 });
 
+// ---------- Gestão das faturas (src/faturasFrete.js) ----------
+const erroRota = (res, err, padrao) => { if (!err.status) console.error(err); res.status(err.status || 500).json({ erro: err.status ? err.message : padrao }); };
+const log = (req, detalhes) => registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'faturas', detalhes });
+// CT-e que a transportadora ainda não cobrou (?dias= mínimo desde a emissão).
+router.get('/nao-faturados', autenticar, podeVerFaturas, async (req, res) => {
+  try { res.json(await faturasFrete.naoFaturados(req.query)); } catch (err) { erroRota(res, err, 'Erro ao listar os CT-e não faturados.'); }
+});
+router.get('/vencimentos', autenticar, podeVerFaturas, async (req, res) => {
+  try { res.json(await faturasFrete.vencimentos()); } catch (err) { erroRota(res, err, 'Erro ao listar os vencimentos.'); }
+});
+router.get('/pendencias', autenticar, podeVerFaturas, async (req, res) => {
+  try { res.json(await faturasFrete.pendencias()); } catch (err) { erroRota(res, err, 'Erro.'); }
+});
+// Importa a fatura em planilha (Excel/CSV; um ou vários arquivos) e acha os CT-e.
+router.post('/importar', autenticar, podeConferirFatura, upload.array('arquivos', 20), async (req, res) => {
+  try { res.json(await faturasFrete.importar(req.files, String(req.body?.transportadora || '').trim() || null)); } catch (err) { erroRota(res, err, 'Erro ao ler o arquivo da fatura.'); }
+});
+router.get('/:id(\\d+)/historico', autenticar, podeVerFaturas, async (req, res) => {
+  try { res.json({ historico: await faturasFrete.verHistorico(Number(req.params.id)) }); } catch (err) { erroRota(res, err, 'Erro.'); }
+});
+
 // GET /api/faturas/:id  — fatura com a foto dos CT-e (pra imprimir)
 router.get('/:id', autenticar, podeVerFaturas, async (req, res) => {
   try {
@@ -122,42 +147,54 @@ router.get('/:id', autenticar, podeVerFaturas, async (req, res) => {
   }
 });
 
-// Pagamento da fatura (quem aprova pagamento ou vê o Financeiro): os CT-e dela passam a contar como pagos.
+// Aprovar e liberar: quem aprova pagamento. Bloquear: também quem confere fatura. Pagar: aprova pagamento ou Financeiro.
+function podeAprovarFatura(req, res, next) {
+  if (ehAdmin(req) || (vePotudo(req) && temAlguma(req, 'pode_aprovar_pagamento'))) return next();
+  return res.status(403).json({ erro: 'Você não tem permissão para aprovar ou liberar faturas.' });
+}
+function podeBloquearFatura(req, res, next) {
+  if (ehAdmin(req) || (vePotudo(req) && temAlguma(req, 'pode_aprovar_pagamento', 'pode_conferir_fatura', 'pode_ver_financeiro'))) return next();
+  return res.status(403).json({ erro: 'Você não tem permissão para bloquear faturas.' });
+}
+const moedaTxt = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+router.post('/:id(\\d+)/bloquear', autenticar, podeBloquearFatura, async (req, res) => {
+  try { const f = await faturasFrete.bloquear(Number(req.params.id), req.body?.motivo, req.usuario.nome); log(req, `Bloqueou a fatura ${f.numero} (${f.transportadora}): ${req.body?.motivo}`); res.json({ ok: true }); } catch (err) { erroRota(res, err, 'Erro ao bloquear.'); }
+});
+router.post('/:id(\\d+)/desbloquear', autenticar, podeAprovarFatura, async (req, res) => {
+  try { const f = await faturasFrete.desbloquear(Number(req.params.id), req.body?.justificativa, req.usuario.nome); log(req, `Desbloqueou a fatura ${f.numero} (${f.transportadora}): ${req.body?.justificativa}`); res.json({ ok: true }); } catch (err) { erroRota(res, err, 'Erro ao desbloquear.'); }
+});
+router.post('/:id(\\d+)/aprovar', autenticar, podeAprovarFatura, async (req, res) => {
+  try {
+    const f = await faturasFrete.aprovar(Number(req.params.id), { observacao: req.body?.observacao, podeValoresAltos: ehAdmin(req) || !!req.usuario.pode_aprovar_valores_altos }, req.usuario.nome);
+    log(req, `Aprovou a fatura ${f.numero} (${f.transportadora}): ${moedaTxt(faturasFrete.valorAPagar(f))}`); res.json({ ok: true });
+  } catch (err) { erroRota(res, err, 'Erro ao aprovar.'); }
+});
+router.post('/:id(\\d+)/liberar', autenticar, podeAprovarFatura, async (req, res) => {
+  try { const f = await faturasFrete.liberar(Number(req.params.id), req.body?.observacao, req.usuario.nome); log(req, `Liberou para pagamento a fatura ${f.numero} (${f.transportadora})`); res.json({ ok: true }); } catch (err) { erroRota(res, err, 'Erro ao liberar.'); }
+});
+// Pagamento: só fatura liberada. Os CT-e dela passam a contar como pagos nos Indicadores.
 function podePagarFatura(req, res, next) {
   if (ehAdmin(req) || (vePotudo(req) && temAlguma(req, 'pode_aprovar_pagamento', 'pode_ver_financeiro'))) return next();
   return res.status(403).json({ erro: 'Você não tem permissão para registrar o pagamento de faturas.' });
 }
 const numero = (v) => { if (v === '' || v == null) return null; const n = typeof v === 'number' ? v : Number(String(v).includes(',') ? String(v).replace(/\./g, '').replace(',', '.') : v); return Number.isFinite(n) ? n : NaN; };
-// POST /api/faturas/:id/pagamento  { data, valor, observacao }
 router.post('/:id(\\d+)/pagamento', autenticar, podePagarFatura, async (req, res) => {
   try {
     const data = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.data || '')) ? req.body.data : null;
     if (!data) return res.status(400).json({ erro: 'Informe a data do pagamento.' });
-    const { rows: [f] } = await pool.query('SELECT id, numero, transportadora, valor_informado, valor_ctes, total_glosas, pago_em FROM faturas_frete WHERE id = $1', [req.params.id]);
-    if (!f) return res.status(404).json({ erro: 'Fatura não encontrada.' });
-    if (f.pago_em) return res.status(409).json({ erro: 'Esta fatura já está paga. Desfaça o pagamento para lançar de novo.' });
-    const devido = f.valor_informado != null ? Number(f.valor_informado) : Number(f.valor_ctes) - Number(f.total_glosas || 0);
+    const { rows: [f0] } = await pool.query('SELECT * FROM faturas_frete WHERE id = $1', [req.params.id]);
+    if (!f0) return res.status(404).json({ erro: 'Fatura não encontrada.' });
+    const devido = faturasFrete.valorAPagar(f0);
     const valor = numero(req.body?.valor) ?? devido;
     if (!Number.isFinite(valor) || valor <= 0) return res.status(400).json({ erro: 'Valor pago inválido.' });
     const obs = String(req.body?.observacao || '').trim().slice(0, 300) || null;
-    await pool.query('UPDATE faturas_frete SET pago_em = $2, valor_pago = $3, pago_por = $4, pagamento_obs = $5 WHERE id = $1', [f.id, data, Math.round(valor * 100) / 100, req.usuario.nome, obs]);
-    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'faturas', detalhes: `Registrou o pagamento da fatura ${f.numero} (${f.transportadora}): R$ ${valor.toFixed(2)} em ${data}` });
-    res.json({ ok: true, valor_pago: Math.round(valor * 100) / 100, devido: Math.round(devido * 100) / 100 });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Erro ao registrar o pagamento.' });
-  }
+    const f = await faturasFrete.pagar(f0.id, { data, valor, observacao: obs }, req.usuario.nome);
+    log(req, `Registrou o pagamento da fatura ${f.numero} (${f.transportadora}): ${moedaTxt(valor)} em ${data}`);
+    res.json({ ok: true, valor_pago: Math.round(valor * 100) / 100, devido });
+  } catch (err) { erroRota(res, err, 'Erro ao registrar o pagamento.'); }
 });
 router.delete('/:id(\\d+)/pagamento', autenticar, podePagarFatura, async (req, res) => {
-  try {
-    const { rows: [f] } = await pool.query('UPDATE faturas_frete SET pago_em = NULL, valor_pago = NULL, pago_por = NULL, pagamento_obs = NULL WHERE id = $1 AND pago_em IS NOT NULL RETURNING numero, transportadora', [req.params.id]);
-    if (!f) return res.status(409).json({ erro: 'Esta fatura não está paga.' });
-    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'faturas', detalhes: `Desfez o pagamento da fatura ${f.numero} (${f.transportadora})` });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Erro ao desfazer o pagamento.' });
-  }
+  try { const f = await faturasFrete.desfazerPagamento(Number(req.params.id), req.usuario.nome); log(req, `Desfez o pagamento da fatura ${f.numero} (${f.transportadora})`); res.json({ ok: true }); } catch (err) { erroRota(res, err, 'Erro ao desfazer o pagamento.'); }
 });
 
 // POST /api/faturas  — confere e fecha a fatura
@@ -253,6 +290,7 @@ router.post('/', autenticar, podeConferirFatura, async (req, res) => {
        JSON.stringify(foto), codigo, req.usuario.id, req.usuario.nome, conferidoEm, totalGlosas]
     );
     const faturaId = nova[0].id;
+    await faturasFrete.aoConferir(cliente, faturaId, { parecer, pendencias, bateFatura, valorInformado, valorEsperado }, req.usuario.nome);
 
     await cliente.query(
       `UPDATE fretes

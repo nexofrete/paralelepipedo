@@ -25,13 +25,14 @@ router.put('/', autenticar, apenasAdmin, async (req, res) => {
     const valor = Number(req.body.tolerancia_valor) || 0;
     const percentual = Number(req.body.tolerancia_percentual) || 0;
     const limiteAlcada = req.body.limite_alcada_aprovacao ? Number(req.body.limite_alcada_aprovacao) : null;
+    const limiteFatura = req.body.limite_alcada_fatura ? Number(req.body.limite_alcada_fatura) : null;
     const pctReentrega = req.body.percentual_reentrega === undefined || req.body.percentual_reentrega === ''
       ? 50 : Math.min(200, Math.max(0, Number(req.body.percentual_reentrega) || 0));
 
     await pool.query('INSERT INTO configuracao_auditoria (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
     const { rows } = await pool.query(
-      'UPDATE configuracao_auditoria SET tolerancia_valor = $1, tolerancia_percentual = $2, limite_alcada_aprovacao = $3, percentual_reentrega = $4 WHERE id = 1 RETURNING *',
-      [valor, percentual, limiteAlcada, pctReentrega]
+      'UPDATE configuracao_auditoria SET tolerancia_valor = $1, tolerancia_percentual = $2, limite_alcada_aprovacao = $3, percentual_reentrega = $4, limite_alcada_fatura = $5 WHERE id = 1 RETURNING *',
+      [valor, percentual, limiteAlcada, pctReentrega, Number.isFinite(limiteFatura) && limiteFatura > 0 ? limiteFatura : null]
     );
 
     // Mudou o % da reentrega/devolução: refaz o esperado das que ainda não foram decididas.

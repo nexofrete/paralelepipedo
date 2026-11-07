@@ -468,9 +468,45 @@ def parte_uso(g):
         'Parecer: <b>Conferida</b> (todos os CT-e conferidos e o total bate com a fatura) ou <b>Conferida com '
         'ressalvas</b>. Glosas combinadas nos CT-e aparecem no documento, para conferir se foram descontadas.',
         'A aba "Faturas conferidas" lista o histórico. Só o administrador pode desfazer uma conferência.',
-        '<b>Registrar pagamento</b> (na aba "Faturas conferidas", para quem aprova pagamento ou vê o Financeiro): informe a '
-        'data e o valor pago. A fatura fica "Paga" e os CT-e dela contam como <b>fretes pagos</b> nos Indicadores. '
-        '"desfazer" volta a fatura para "a pagar".',
+    ])
+    s += h2('Importar a fatura em planilha')
+    s.append(P('Em vez de marcar os CT-e um a um, clique em <b>Importar arquivo da fatura (Excel/CSV)</b>. Dá para escolher '
+               'vários arquivos de uma vez (a fatura dividida). O arquivo precisa de uma coluna <b>CT-e</b> (número) ou '
+               '<b>Chave</b>; com a coluna <b>Valor</b>, o sistema compara o cobrado com o valor de cada CT-e. Ele escolhe a '
+               'transportadora, marca os CT-e, preenche o número da fatura, o vencimento e o valor (quando estão no arquivo) e avisa:'))
+    s += lista([
+        'CT-e com valor cobrado diferente do CT-e (e a diferença);',
+        '<b>cobrança repetida</b>: o mesmo CT-e duas vezes no arquivo, ou CT-e que já está em outra fatura;',
+        'CT-e cancelado cobrado e CT-e não encontrado (sem XML no sistema ou de outra transportadora).',
+    ])
+    s.append(P('O DOCCOB (EDI) continua em EDI » Com a transportadora, que abre a conferência já preenchida.'))
+    s += h2('Situação da fatura: aprovar, bloquear, liberar e pagar')
+    s.append(P('Depois de conferida, a fatura segue os passos <b>Conferida » Aprovada » Liberada p/ pagamento » Paga</b>, na aba '
+               '"Faturas conferidas". Os botões aparecem conforme a situação e a permissão de cada um.'))
+    s += lista([
+        '<b>Bloqueio automático</b>: fatura conferida com ressalvas (CT-e divergente ou valor da fatura diferente do esperado) '
+        'já nasce <b>Bloqueada</b>, com o motivo. Também dá para bloquear à mão (quem confere fatura, aprova pagamento ou vê o '
+        'Financeiro), com o motivo. <b>Fatura bloqueada não pode ser aprovada, liberada nem paga.</b>',
+        '<b>Desbloquear</b> (quem aprova pagamento): só com a justificativa (o que foi resolvido ou combinado com a '
+        'transportadora). A fatura volta para Conferida.',
+        '<b>Aprovar</b> (quem aprova pagamento). Com a <b>alçada da fatura</b> (Configurações da auditoria: "Alçada da fatura"), '
+        'fatura acima do valor só é aprovada por quem tem "Aprovar valores altos".',
+        '<b>Liberar p/ pagamento</b> (quem aprova pagamento): a fatura aprovada vai para o pagamento.',
+        '<b>Registrar pagamento</b> (quem aprova pagamento ou vê o Financeiro): só na fatura liberada; informe a data e o valor '
+        'pago. Os CT-e dela contam como <b>fretes pagos</b> nos Indicadores. "Desfazer pagamento" volta para Liberada.',
+        '<b>Histórico</b>: cada fatura guarda quem conferiu, bloqueou, desbloqueou, aprovou, liberou e pagou, com data, hora e '
+        'o motivo ou justificativa.',
+    ])
+    s += h2('Vencimentos e CT-e não faturados')
+    s += lista([
+        'Aba <b>Vencimentos</b>: as faturas ainda não pagas, separadas em vencidas, vencem hoje, próximos 7 dias, depois e '
+        'sem vencimento, com o valor a pagar e a situação.',
+        'Aba <b>CT-e não faturados</b>: os CT-e recebidos que ainda não entraram em fatura nenhuma (sem os cancelados, '
+        'recusados e não cobrados), por transportadora, com o mais antigo e quantos passam de 30 e de 60 dias. Filtre pelos '
+        'emitidos há pelo menos 15, 30, 45, 60 ou 90 dias. CT-e antigo sem fatura: a transportadora pode cobrar de surpresa '
+        'ou esqueceu de cobrar.',
+        'A <b>Visão geral</b> avisa as faturas vencidas, vencendo em 7 dias, bloqueadas e aguardando aprovação ou liberação, '
+        'e os CT-e há mais de 30 dias sem fatura. Clicar abre a aba certa.',
     ])
 
     # 18

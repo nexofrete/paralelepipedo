@@ -812,12 +812,24 @@ Fica em **🚛 Operação de Transporte → 🧾 Faturamento / 📈 Contas a rec
 
 O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o valor do saldo e a identificação da fatura (FAT + número), funciona em qualquer banco e não precisa de contrato nem integração. O recebimento pelo PIX é conferido no extrato (Caixa e bancos → Conciliação) ou baixado aqui. Para boleto registrado, veja "Boleto registrado (CNAB 240)".
 
+## Faturas das transportadoras (embarcador)
+
+Em **Auditoria de Frete → 🧾 Conferir Fatura** (código 330). Regras em `src/faturasFrete.js`, rotas em `src/routes/faturas.js`.
+
+- **Importação:** DOCCOB (EDI) ou **planilha** (Excel/CSV, vários arquivos de uma vez) com coluna CT-e ou Chave (e Valor): escolhe a transportadora, marca os CT-e, preenche número, vencimento e valor, e avisa valor cobrado diferente do CT-e, **cobrança repetida** (no arquivo ou CT-e já em outra fatura), CT-e cancelado e não encontrado (`POST /api/faturas/importar`).
+- **Associação e conferência:** marcar ou colar os CT-e; tabela × CT-e × fatura, glosas, parecer e documento com código de verificação. Mesma fatura duas vezes e CT-e em duas faturas são barrados.
+- **Situação:** Conferida → Aprovada → Liberada p/ pagamento → Paga (`faturas_frete.situacao`). Conferida com ressalvas já nasce **Bloqueada** (bloqueio automático); bloquear à mão pede motivo e desbloquear pede justificativa. Fatura bloqueada não é aprovada, liberada nem paga; o pagamento só entra na liberada.
+- **Aprovação com alçada:** `configuracao_auditoria.limite_alcada_fatura` ("Alçada da fatura" nas configurações da auditoria): acima dele, só quem tem "Aprovar valores altos".
+- **Vencimentos:** aba com vencidas, hoje, 7 dias, depois e sem vencimento (só não pagas). **CT-e não faturados:** aba por transportadora com os dias desde a emissão (+30, +60).
+- **Histórico:** `faturas_frete_historico` guarda cada passo (quem, quando, motivo/justificativa); botão 🕘 Histórico na fatura.
+- **Visão geral:** avisa faturas vencidas, vencendo, bloqueadas, aguardando aprovação/liberação e CT-e há mais de 30 dias sem fatura.
+
 ## Indicadores (Relatórios)
 
 Em **Relatórios → 🎯 Indicadores** (código **309**), tudo numa tela, no período (emissão do CT-e) e, se quiser, de uma transportadora só:
 
 - **Fretes:** contratados (CT-e do período, sem cancelados, não cobrados e barrados), **pagos** (CT-e de faturas com o pagamento registrado), **a pagar** (faturado e não pago, liberado sem fatura, em conferência, retido) e o % do frete sobre o valor das notas.
-- **Pagamento da fatura:** em Auditoria de Frete → Conferir Fatura → Faturas conferidas, **💸 Registrar pagamento** (data e valor; quem aprova pagamento ou vê o Financeiro). Dá para desfazer. Colunas `faturas_frete.pago_em`, `valor_pago`, `pago_por`.
+- **Pagamento da fatura:** em Auditoria de Frete → Conferir Fatura → Faturas conferidas, **💸 Registrar pagamento** na fatura liberada (veja "Faturas das transportadoras"). Colunas `faturas_frete.pago_em`, `valor_pago`, `pago_por`.
 - **Gasto** por transportadora, cliente, **região** (Norte, Nordeste, Centro-Oeste, Sudeste, Sul), estado e mês: contratado, pago, a pagar, % sobre a NF e R$/kg.
 - **Modalidade:** modal do CT-e (rodoviário, aéreo, aquaviário… lido do XML), lotação × fracionada, CIF × FOB, direta × redespacho × reentrega e tipo de serviço (normal, subcontratação, redespacho).
 - **Entregas:** entregues no período, pontualidade (no prazo ÷ entregues com prazo) e atraso médio; pendentes, atrasadas, previstas para hoje e para os próximos 7 dias (situação de agora).

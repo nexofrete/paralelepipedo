@@ -33,6 +33,17 @@ def parte_operacao(g):
     ])
     s += aviso('nota', 'A escolha esconde os itens do menu, do "Ir para" (Ctrl+K) e da tela Hoje para todos os usuários; '
                        'não apaga nada nem muda permissões. Volte para "tudo" a qualquer momento.')
+    s += h2('TMS e Embarcador separados no menu')
+    s.append(P('Com os dois módulos, o alto do menu (logo abaixo do "Ir para") tem a chave <b>TMS | Embarcador</b>. Em <b>TMS</b> '
+               'aparecem só as telas da transportadora (Hoje, Operação, Financeiro, Frota, Gestão), começando pela Hoje; em '
+               '<b>Embarcador</b>, só as do embarcador (Notas e fretes e Relatórios), começando pela Visão geral. Mensagens, '
+               'Agenda e Configuração aparecem nos dois.'))
+    s += lista([
+        'Cada usuário escolhe a sua parte, e o navegador lembra na próxima vez.',
+        'O "Ir para" (Ctrl+K) acha as telas das duas partes: abrir um código da outra parte (ex.: 020 estando no Embarcador) '
+        'troca a chave sozinha.',
+        'Com o menu recolhido, a chave vira dois ícones (🚛 e 📥). A chave não aparece quando a empresa usa só um dos módulos.',
+    ])
     s += h2('Recolher o menu e cores pelo tema')
     s += lista([
         'A <b>seta na borda do menu</b> (botão redondo no alto) recolhe o menu: ficam só os ícones e a tela ganha '

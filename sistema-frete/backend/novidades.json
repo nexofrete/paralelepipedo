@@ -11,6 +11,10 @@
         },
         {
           "area": "Menu",
+          "texto": "TMS e Embarcador separados: com os dois módulos, a chave TMS | Embarcador no alto do menu mostra só a parte escolhida (transportadora ou auditoria de frete do embarcador), cada uma com a sua tela inicial. O \"Ir para\" troca de parte sozinho."
+        },
+        {
+          "area": "Menu",
           "texto": "Filtro de período igual em todas as telas (Este mês, Mês passado, Últimos 30 dias...), lembrado em cada tela."
         },
         {

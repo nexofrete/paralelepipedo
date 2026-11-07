@@ -53,6 +53,11 @@
 
       <!-- Menu por área, com os mesmos números do "Ir para" (js/menuTransporte.js monta os grupos).
            Os itens de página escondidos (nav-no-grupo) guardam a permissão; os subitens abrem a aba certa. -->
+      <!-- Empresa com os dois módulos: escolhe qual parte o menu mostra (js/modulos.js). -->
+      <div class="menu-partes" id="menuPartes" role="tablist" aria-label="Parte do sistema">
+        <button type="button" role="tab" data-parte="transportadora" title="TMS: transportadora (CT-e, entregas, faturamento, frota)"><span class="mp-ico">🚛</span><span class="mp-txt">TMS</span></button>
+        <button type="button" role="tab" data-parte="embarcador" title="Embarcador: auditoria e pagamento de fretes"><span class="mp-ico">📥</span><span class="mp-txt">Embarcador</span></button>
+      </div>
       <div class="nav-item oculto" data-pagina="hoje" id="navHoje" data-modulo="transportadora">🏠 Hoje</div>
       <div class="nav-grupo oculto" data-grupo="operacao" data-modulo="transportadora">🚛 Operação <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="operacao" data-modulo="transportadora">

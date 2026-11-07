@@ -1710,3 +1710,14 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .mo-caminhao span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); font-size: 18px; }
 .mo-caminhao b { background: #111827; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 4px; }
 @media (max-width: 900px) { .mo-grade { grid-template-columns: 1fr; } .mo-mapa { height: 420px; } .mo-lado { max-height: none; } }
+
+/* Chave TMS | Embarcador no alto do menu (empresa com os dois módulos; js/modulos.js). */
+.menu-partes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 2px 14px; padding: 4px; border-radius: 10px; background: var(--lat-campo); border: 1px solid var(--lat-campo-borda); }
+html:not([data-empresa-modulos="ambos"]) .menu-partes { display: none; }
+.menu-partes button { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 7px; padding: 8px 6px; background: transparent; color: var(--lat-texto); font-size: 13px; font-weight: 600; cursor: pointer; }
+.menu-partes button:hover { color: var(--lat-forte); }
+.menu-partes button.ativo { background: #2563eb; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+@media (min-width: 801px) {
+  html.menu-recolhido .barra-lateral:not(:hover) .menu-partes { grid-template-columns: 1fr; padding: 3px; }
+  html.menu-recolhido .barra-lateral:not(:hover) .menu-partes .mp-txt { display: none; }
+}

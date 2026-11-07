@@ -11,6 +11,10 @@
         },
         {
           "area": "Documentos",
+          "texto": "Notas fiscais: imprimir vários DANFE de uma vez (as notas marcadas ou as do filtro), um por folha, para imprimir ou salvar tudo num PDF só; a nota cancelada sai com a marca CANCELADA. E os eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega) aparecem ao abrir a nota, com o XML de cada um."
+        },
+        {
+          "area": "Documentos",
           "texto": "CT-e recebidos (código 404): todos os CT-e das transportadoras com emitente, tomador, remetente, destinatário, município e UF de origem e destino, modal, tipo de serviço, CFOP, valor do frete e ICMS (base, alíquota e valor). Filtros por cada um, totais de frete e ICMS, Excel, XML um a um ou em .zip e o DACTE para imprimir."
         },
         {

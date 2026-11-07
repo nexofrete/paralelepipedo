@@ -820,6 +820,8 @@ Em **Documentos → 🧾 Notas fiscais** (código **403**). Regras em `src/notas
 - **Dados completos da nota**, lidos do XML na importação (e do XML guardado nas notas antigas, ao ligar o sistema — `nf_dados_em` marca as já lidas): série, emitente (nome e CNPJ), valor dos produtos, peso bruto e líquido separados, data/hora de saída e endereço de entrega (`entrega_endereco`, com o grupo `<entrega>` quando a nota tem local de entrega diferente).
 - **Consulta** com filtros (número, chave, cliente, pedido, emitente, destinatário, série, cidade, UF, período por emissão ou saída, situação) e totais; **Excel**; **XML** da nota e **.zip** dos XML filtrados (`GET /api/notas/zip`).
 - **DANFE** (`GET /api/notas/:id/danfe`): HTML A4 retrato a partir do XML — emitente, chave com código de barras Code 128, protocolo, destinatário, local de entrega, duplicatas, cálculo do imposto, transportador/volumes, itens e dados adicionais —, para imprimir ou salvar em PDF.
+- **DANFE em lote** (`GET /api/notas/danfes?ids=…` ou com os filtros da tela, até 300): uma página com um DANFE por folha (`danfeLote` em `src/danfe.js`, quebra de página entre as notas) para imprimir ou salvar tudo num PDF; nota cancelada com a marca CANCELADA.
+- **Eventos da nota** (`GET /api/notas/:id/eventos` e `/:id/eventos/:ev/xml`): os XML de evento guardados em `documento_eventos` (cancelamento, Carta de Correção, Comprovante de Entrega), no detalhe da nota.
 - **Denegação**: `protNFe` com cStat 110/301/302/303 no XML ou no recibo da SEFAZ importado marca `nf_denegada` (e `nf_cancelada`, para o frete se comportar como nota cancelada); o DANFE sai com a marca "USO DENEGADO".
 
 ## CT-e recebidos (embarcador)

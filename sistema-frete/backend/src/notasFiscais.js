@@ -121,9 +121,9 @@ async function listar(req, q = {}) {
 }
 
 async function xmlDaNota(req, id) {
-  const { rows: [f] } = await consultaCliente(req, 'SELECT f.numero_nf, f.chave_nfe, f.xml_nfe_original FROM fretes f WHERE f.id = $1', [id]);
+  const { rows: [f] } = await consultaCliente(req, 'SELECT f.numero_nf, f.chave_nfe, f.nf_cancelada, f.nf_denegada, f.xml_nfe_original FROM fretes f WHERE f.id = $1', [id]);
   if (!f?.xml_nfe_original) throw falha('Esta nota não tem o XML guardado (entrou pela planilha do ERP).', 404);
-  return { nome: `${f.chave_nfe || `NF-${f.numero_nf}`}-nfe.xml`, xml: f.xml_nfe_original };
+  return { nome: `${f.chave_nfe || `NF-${f.numero_nf}`}-nfe.xml`, xml: f.xml_nfe_original, cancelada: !!f.nf_cancelada && !f.nf_denegada };
 }
 // Vários XML num .zip (os filtrados na tela, até 5000).
 async function zipDasNotas(req, q = {}) {
@@ -145,4 +145,32 @@ async function zipDasNotas(req, q = {}) {
   return { arquivo, quantidade: rows.length };
 }
 
-module.exports = { dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+// DANFE de várias notas numa página (as marcadas na tela, ou as do filtro), até 300.
+const LIMITE_LOTE = 300;
+async function danfesEmLote(req, q = {}) {
+  const params = [];
+  let where = filtros(q, params);
+  const ids = String(q.ids || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  if (ids.length) { params.push(ids); where += ` AND f.id = ANY($${params.length}::int[])`; }
+  const { rows } = await consultaCliente(req, `SELECT f.numero_nf, f.nf_cancelada, f.nf_denegada, f.xml_nfe_original FROM fretes f
+     WHERE ${where} AND f.xml_nfe_original IS NOT NULL ORDER BY f.data_emissao_nf, f.numero_nf LIMIT ${LIMITE_LOTE + 1}`, params);
+  if (!rows.length) throw falha('Nenhuma nota com XML para imprimir.', 404);
+  if (rows.length > LIMITE_LOTE) throw falha(`São mais de ${LIMITE_LOTE} notas: filtre um período menor ou marque as notas.`, 400);
+  return { quantidade: rows.length, html: require('./danfe').danfeLote(rows.map((r) => ({ xml: r.xml_nfe_original, numero: r.numero_nf, marca: r.nf_cancelada && !r.nf_denegada ? 'CANCELADA' : null }))) };
+}
+// Eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega...), com o XML guardado.
+async function eventosDaNota(req, id) {
+  const { rows: [f] } = await consultaCliente(req, 'SELECT f.chave_nfe FROM fretes f WHERE f.id = $1', [id]);
+  if (!f) throw falha('Nota não encontrada.', 404);
+  if (!f.chave_nfe) return [];
+  const { rows } = await pool.query(`SELECT id, tp_evento, descricao, detalhe, protocolo, dh_evento, usuario_nome, criado_em FROM documento_eventos
+     WHERE chave = $1 ORDER BY COALESCE(dh_evento, criado_em::date), id`, [f.chave_nfe]);
+  return rows;
+}
+async function xmlDoEvento(req, id, eventoId) {
+  if (!(await eventosDaNota(req, id)).some((e) => e.id === eventoId)) throw falha('Evento não encontrado.', 404);
+  const { rows: [e] } = await pool.query('SELECT chave, tp_evento, xml FROM documento_eventos WHERE id = $1', [eventoId]);
+  return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
+}
+
+module.exports = { danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

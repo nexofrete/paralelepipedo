@@ -18,6 +18,8 @@
   const doc = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length === 14 ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}` : d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : d; };
   const SIT = { autorizada: ['entregue', 'Autorizada'], cancelada: ['devolvido', 'Cancelada'], denegada: ['ocorrencia', 'Denegada'] };
   let dados = null; let montado = false;
+  const marcadas = new Set();   // notas marcadas para imprimir o DANFE em lote
+  const link = (caminho) => `${caminho}${caminho.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
 
   function montar() {
     montado = true;
@@ -39,6 +41,15 @@
     ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
     ['nfData', 'nfSit'].forEach((id) => $(id).addEventListener('change', carregar));
     $('nfTabela').addEventListener('click', (e) => { const b = e.target.closest('[data-nf-ver]'); if (b) detalhe(Number(b.dataset.nfVer)); });
+    $('nfTabela').addEventListener('change', (e) => {
+      const c = e.target.closest('[data-nf-marca]');
+      if (c) { if (c.checked) marcadas.add(Number(c.dataset.nfMarca)); else marcadas.delete(Number(c.dataset.nfMarca)); botaoDanfes(); return; }
+      if (e.target.id === 'nfMarcaTodas') {
+        dados.notas.filter((n) => n.tem_xml).forEach((n) => { if (e.target.checked) marcadas.add(n.id); else marcadas.delete(n.id); });
+        $('nfTabela').querySelectorAll('[data-nf-marca]').forEach((x) => { x.checked = e.target.checked; });
+        botaoDanfes();
+      }
+    });
   }
   const filtros = () => new URLSearchParams({ busca: $('nfBusca').value.trim(), emitente: $('nfEmit').value.trim(), destinatario: $('nfDest').value.trim(), serie: $('nfSerie').value.trim(),
     cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value });
@@ -50,14 +61,19 @@
     const t = j.totais;
     $('nfResumo').innerHTML = `<div>Notas<b>${t.notas}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
       <div>Peso<b>${kg(t.peso)}</b><span>${t.volumes} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>`;
-    $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${j.notas.map((n) => `<tr><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}</td>
+    $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
+      ${j.notas.map((n) => `<tr><td>${n.tem_xml ? `<input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} />` : ''}</td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}</td>
         <td>${dia(n.data_emissao_nf)}</td><td>${n.data_saida ? dataHora(n.data_saida) : '—'}</td><td>${esc(n.emitente_nome || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.emitente_cnpj)}</small></td>
         <td>${esc(n.cliente || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.cliente_documento)}</small></td><td>${esc(n.cidade || '')}/${esc(n.uf || '')}</td>
         <td style="text-align:right;">${moeda(n.valor_produtos)}</td><td style="text-align:right;">${moeda(n.valor_faturado)}</td><td style="text-align:right;">${kg(n.peso_bruto ?? n.peso_kg)}</td><td style="text-align:right;">${n.qtd_volumes ?? '—'}</td>
         <td><span class="oc-sit ${SIT[n.situacao][0]}">${SIT[n.situacao][1]}</span></td>
         <td style="white-space:nowrap;"><button class="btn btn-secundario" data-nf-ver="${n.id}" style="width:auto; padding:4px 9px; font-size:11.5px;">Abrir</button></td></tr>`).join('')}</tbody></table>`
       : '<div style="padding:20px; text-align:center; color:var(--texto-fraco);">Nenhuma nota com esses filtros.</div>';
+    botaoDanfes();
+  }
+  function botaoDanfes() {
+    const b = $('nfDanfes'); if (!b) return;
+    b.textContent = marcadas.size ? `🖨 Imprimir DANFE (${marcadas.size} marcada${marcadas.size > 1 ? 's' : ''})` : '🖨 Imprimir DANFE (notas do filtro)';
   }
   nav.addEventListener('click', () => { if (!montado) montar(); carregar().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })); });
 
@@ -80,12 +96,23 @@
     fundo.innerHTML = `<div class="painel modal-card" style="max-width:760px; width:100%; max-height:92vh; overflow-y:auto; padding:20px 22px;">
       <div style="display:flex; justify-content:space-between;"><h3 style="margin:0;">🧾 NF-e ${esc(n.numero_nf)}</h3><span style="cursor:pointer; font-size:18px;" data-nf-fechar>✕</span></div>
       <div style="margin-top:12px;">${corpo}</div>
+      <div id="nfEventos" style="margin-top:12px; font-size:12.5px;"></div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
         ${n.tem_xml ? `<a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/danfe?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📄 DANFE (imprimir / PDF)</a>
         <a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/xml?token=${encodeURIComponent(token)}">⬇ XML</a>` : '<span style="color:var(--texto-fraco); align-self:center;">Nota sem XML (entrou pela planilha do ERP)</span>'}
         <button class="btn btn-primario" data-nf-fechar style="width:auto;">Fechar</button></div></div>`;
     document.body.appendChild(fundo);
     fundo.addEventListener('click', (ev) => { if (ev.target === fundo || ev.target.closest('[data-nf-fechar]')) fundo.remove(); });
+    // Eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega...), com o XML de cada um.
+    apiFetch(`/api/notas/${id}/eventos`).then((r) => (r.ok ? r.json() : [])).then((evs) => {
+      const alvo = fundo.querySelector('#nfEventos');
+      if (!alvo) return;
+      alvo.innerHTML = `<p style="margin:0 0 6px;"><strong>🕘 Eventos da nota</strong></p>${evs.length ? `<table style="width:100%; font-size:12px;"><tbody>${evs.map((e) => `<tr>
+        <td style="white-space:nowrap; vertical-align:top; color:var(--texto-fraco);">${dia(e.dh_evento || e.criado_em)}${e.usuario_nome ? `<br><small>${esc(e.usuario_nome)}</small>` : ''}</td>
+        <td>${esc(e.descricao || 'Evento')}${e.detalhe ? ` — ${esc(e.detalhe)}` : ''}${e.protocolo ? ` <small style="color:var(--texto-fraco);">(protocolo ${esc(e.protocolo)})</small>` : ''}
+          <a href="${link(`/api/notas/${id}/eventos/${e.id}/xml`)}" style="white-space:nowrap;">⬇ XML do evento</a></td></tr>`).join('')}</tbody></table>`
+        : '<span style="color:var(--texto-fraco);">Nenhum evento importado para esta nota (cancelamento, Carta de Correção, Comprovante de Entrega). Os XML de evento entram pelo Enviar XML.</span>'}`;
+    }).catch(() => {});
   }
 
   $('nfExcel')?.addEventListener('click', () => {
@@ -94,6 +121,13 @@
       colunas: ['NF', 'Série', 'Chave', 'Emissão', 'Saída', 'Emitente', 'CNPJ emitente', 'Destinatário', 'CNPJ/CPF destinatário', 'Cidade', 'UF', 'Valor produtos', 'Valor total', 'Peso bruto', 'Peso líquido', 'Volumes', 'Pedido', 'CT-e', 'Situação'],
       linhas: dados.notas.map((n) => [n.numero_nf, n.nf_serie || '', n.chave_nfe || '', dia(n.data_emissao_nf), n.data_saida ? dataHora(n.data_saida) : '', n.emitente_nome || '', doc(n.emitente_cnpj), n.cliente || '', doc(n.cliente_documento),
         n.cidade || '', n.uf || '', n.valor_produtos, n.valor_faturado, n.peso_bruto ?? n.peso_kg, n.peso_liquido, n.qtd_volumes, n.numero_pedido || '', n.numero_cte || '', SIT[n.situacao][1]]) }]).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+  });
+  // DANFE em lote: as marcadas ou, sem nenhuma marcada, as do filtro (numa aba nova, um DANFE por folha).
+  $('nfDanfes')?.addEventListener('click', () => {
+    if (!montado || !dados) return;
+    if (!marcadas.size && !dados.notas.some((n) => n.tem_xml)) { mostrarAlerta('Nenhuma nota com XML para imprimir neste filtro.', { tipo: 'info' }); return; }
+    const q = marcadas.size ? new URLSearchParams({ ids: [...marcadas].join(',') }) : filtros();
+    window.open(link(`/api/notas/danfes?${q}`), '_blank');
   });
   $('nfZip')?.addEventListener('click', () => {
     if (!montado) return;

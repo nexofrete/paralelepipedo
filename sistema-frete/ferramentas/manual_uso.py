@@ -316,6 +316,13 @@ def parte_uso(g):
         'pelo navegador) e <b>XML</b> (o arquivo da nota). Nota que entrou só pela planilha do ERP não tem XML.',
         '<b>XML das notas (.zip)</b>: baixa os XML de todas as notas do filtro num arquivo .zip. <b>Excel</b>: a lista com '
         'todas as colunas.',
+        '<b>Imprimir DANFE</b> em lote: marque as notas na lista (a caixinha do cabeçalho marca todas) e clique em <b>Imprimir '
+        'DANFE</b>. Abre uma página com um DANFE por folha, pronta para imprimir ou, em "Salvar como PDF", gerar um arquivo só '
+        'com todas. Sem nenhuma marcada, saem as notas do filtro (até 300 de uma vez). A nota cancelada sai com a marca '
+        'CANCELADA e a denegada com USO DENEGADO.',
+        '<b>Eventos da nota</b>: ao abrir a nota aparecem os eventos importados (Cancelamento, Carta de Correção, Comprovante '
+        'de Entrega), com data, texto, protocolo e o botão <b>XML do evento</b>. O XML dos eventos entra pelo Enviar XML, '
+        'como os das notas.',
         '<b>Denegada</b>: NF-e com uso denegado pela SEFAZ (no próprio XML ou no recibo da SEFAZ importado) fica marcada como '
         'denegada: não tem valor fiscal, sai de "aguardando CT-e" e o CT-e que vier para ela fica retido, como na cancelada. '
         'O DANFE sai com a marca "USO DENEGADO".',

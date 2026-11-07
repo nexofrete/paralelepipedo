@@ -43,3 +43,13 @@ test('DANFE traz a chave, o código de barras e escapa o texto da nota', () => {
   assert.ok(!h.includes('<10MM>'));
   assert.ok(danfeHtml(xml('302')).includes('USO DENEGADO'));
 });
+
+test('DANFE em lote: uma folha por nota, marca de cancelada e de denegada, XML ruim vira aviso', () => {
+  const { danfeLote } = require('../src/danfe');
+  const html = danfeLote([{ xml: xml(), numero: '73001' }, { xml: xml(), numero: '73001', marca: 'CANCELADA' }, { xml: xml('302'), numero: '73001' }, { xml: '<nada/>', numero: '99' }]);
+  assert.strictEqual((html.match(/class="pag"/g) || []).length, 4);
+  assert.match(html, /CANCELADA/);
+  assert.match(html, /USO DENEGADO/);
+  assert.match(html, /NF-e 99: XML ilegível/);
+  assert.strictEqual((html.match(/<html/g) || []).length, 1);
+});

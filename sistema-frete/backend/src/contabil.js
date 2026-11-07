@@ -297,7 +297,8 @@ async function lancamentos(p) {
       `Acerto ${a.id}: adiantamento vira ${a.tipo === 'terceiro' ? 'frete do terceiro' : 'despesa de viagem'} — ${a.proprietario_nome || a.motorista_nome || ''}${a.placa ? ` (${a.placa})` : ''}`, `ACERTO ${a.id}`);
   });
   // Contas a pagar: competência (despesa no lançamento, fornecedor no pagamento) ou caixa (despesa no pagamento).
-  const contaDespesa = (cat) => c[`despesa_${cat}`] || c.despesa_outros;
+  // GNRE: na competência, a guia baixa o "ICMS devido a outra UF" lançado com o CT-e; no regime de caixa, é o ICMS sobre o frete pago.
+  const contaDespesa = (cat) => (cat === 'gnre' ? (caixa ? c.icms_sobre_frete : c.icms_outra_uf) : c[`despesa_${cat}`] || c.despesa_outros);
   // Competência: a despesa entra no dia da competência da conta (o mês da despesa), não no dia em que
   // foi cadastrada. Conta cancelada depois do período continua no mês dela (o mês já foi ao contador)
   // e sai como estorno no mês do cancelamento.

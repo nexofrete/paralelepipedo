@@ -76,7 +76,7 @@ def parte_operacao(g):
          '061 Transferências · 065 Parceiros e redespacho · 066 Paletes · 070 EDI · 080 Portal do cliente · 090 SAC (chamados)'],
         ['1xx Financeiro', '100 Faturamento · 101 Contas a receber · 102 Boletos · 103 Régua de cobrança · 104 Serviços extras · '
          '110 Contas a pagar · 120 Acerto de viagem · 125 Comissões · 140 Fiscal e contabilidade · 141 Pacote do '
-         'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
+         'contador · 142 Notas de entrada · 143 NF-e contra o CNPJ · 144 GNRE · 150 Caixa e bancos · 151 Conciliação · 152 Fluxo de caixa · 153 Importar OFX'],
         ['2xx Frota', '200 Custos e alertas · 201 Abastecimentos · 210 Manutenções · 220 Veículos e motoristas · 230 Documentos · 240 Pneus · 250 Jornada'],
         ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 310 a 321 '
          'Relatórios · 330 Auditoria de frete'],
@@ -752,6 +752,36 @@ def parte_financeiro(g):
                              'diesel com ICMS monofásico) deve ser confirmado com o contador.')
     s += aviso('dica', 'Nas planilhas (CSV) geradas pelo sistema, um texto que começa com =, +, - ou @ vira texto puro, '
                        'para o Excel não executá-lo como fórmula.')
+
+    s += h2('GNRE: ICMS do frete devido a outra UF (144)')
+    s.append(P('Quando o frete começa num estado em que a transportadora não tem inscrição estadual, o CT-e sai com o ICMS '
+               'devido a outra UF (CST 90, ICMSOutraUF) e o imposto é pago por <b>GNRE</b> para a UF de início, antes de a '
+               'carga sair; a guia paga acompanha o transporte. Em <b>Fiscal e contabilidade » GNRE</b>:'))
+    s += passos([
+        'A tela lista, por UF, os CT-e com ICMS de outra UF que ainda não têm guia (com a base, a alíquota, o ICMS e se a '
+        'carga já está num romaneio ou já saiu).',
+        'Marque os CT-e (um ou vários da mesma UF) e clique em <b>Dados para a guia</b>: UF favorecida, receita <b>100030 '
+        '(ICMS Transporte)</b>, dados do emitente, CT-e de origem (número e chave), período de referência, vencimento e '
+        'valor, cada um com botão de copiar, e o botão do Portal GNRE (www.gnre.pe.gov.br). Dá para imprimir.',
+        'No portal, gere a guia (cada UF pode pedir campos extras; o portal mostra quais) e pague.',
+        'Volte e clique em <b>Registrar a guia</b>: digite ou cole a <b>linha digitável</b> (ou o código de barras). O '
+        'sistema confere os dígitos verificadores e o valor da guia com o ICMS dos CT-e (diferença só com confirmação: '
+        'multa, juros). Anexe o PDF da guia, se quiser.',
+        'A guia vira uma <b>conta a pagar</b> (categoria "ICMS de outra UF (GNRE)", fornecedor SEFAZ-UF, com a linha '
+        'digitável na observação). Pague em Contas a pagar e anexe o comprovante na guia (clipe).',
+    ])
+    s += lista([
+        '<b>UFs com inscrição</b> (engrenagem): nas UFs marcadas a empresa é inscrita e o ICMS do frete que começa lá entra '
+        'na apuração mensal daquela UF, sem GNRE por CT-e. Também o prazo de vencimento da guia.',
+        'O <b>romaneio</b> avisa, em vermelho, o CT-e de outra UF que vai sair sem a guia paga. A tela <b>Hoje</b> mostra os '
+        'CT-e sem guia e as guias a pagar hoje ou vencidas.',
+        'Na <b>contabilidade</b> (competência), a guia baixa o "ICMS devido a outra UF" lançado com o CT-e; no regime de '
+        'caixa, entra como ICMS sobre o frete quando paga.',
+        'Cancelar a guia (antes de pagar) cancela a conta a pagar e o CT-e volta para a lista. Guia paga de CT-e cancelado '
+        'depois: peça a restituição à SEFAZ da UF (a tela avisa).',
+    ])
+    s += aviso('nota', 'A guia é gerada no Portal GNRE: o envio automático pelo webservice da GNRE ainda não está no '
+                       'sistema (precisa de teste com o certificado e o ambiente de homologação da GNRE).')
 
     # 50
     s += h1('50. Tabela de frete por cliente')

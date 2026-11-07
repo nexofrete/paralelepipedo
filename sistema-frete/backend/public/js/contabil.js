@@ -41,13 +41,13 @@
   function mostrarAba(nome) {
     aba = nome;
     document.querySelectorAll('[data-cbl-aba]').forEach((x) => x.classList.toggle('ativo', x.dataset.cblAba === nome));
-    $('cblBarra').classList.toggle('oculto', nome === 'config' || nome === 'dfe');
+    $('cblBarra').classList.toggle('oculto', ['config', 'dfe', 'gnre'].includes(nome));
   }
   async function carregar() {
     mostrarPeriodo();
     if (!cfg) cfg = await api('/config');
     $('cblConteudo').innerHTML = '<div class="kanban-vazio">Carregando…</div>';
-    await ({ livro: telaLivro, entradas: telaEntradas, dfe: telaDfe, lancamentos: telaLancamentos, pacote: telaPacote, config: telaConfig }[aba])();
+    await ({ livro: telaLivro, entradas: telaEntradas, dfe: telaDfe, gnre: () => window.telaGnre($('cblConteudo')), lancamentos: telaLancamentos, pacote: telaPacote, config: telaConfig }[aba])();
   }
   document.querySelectorAll('[data-cbl-aba]').forEach((a) => a.addEventListener('click', () => { mostrarAba(a.dataset.cblAba); carregar().catch(erro); }));
   nav.addEventListener('click', () => { mostrarAba(aba); carregar().catch(erro); });

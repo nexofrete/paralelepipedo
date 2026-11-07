@@ -2842,3 +2842,29 @@ CREATE TABLE IF NOT EXISTS armazem_cobrancas (
   usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_armazem_cobranca_mes ON armazem_cobrancas (depositante_doc, competencia) WHERE status = 'gerada';
+
+-- GNRE: guia do ICMS do frete devido a outra UF (CT-e com ICMSOutraUF, CST 90), recolhida para a UF de início
+-- da prestação antes de a carga sair. A guia é gerada no Portal GNRE; aqui ficam os pendentes, os dados para a guia,
+-- a guia registrada (linha digitável e PDF) e a conta a pagar dela.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS gnre_config JSONB;
+CREATE TABLE IF NOT EXISTS gnre_guias (
+  id SERIAL PRIMARY KEY,
+  uf_favorecida CHAR(2) NOT NULL,
+  receita VARCHAR(6) NOT NULL DEFAULT '100030',
+  valor NUMERIC(14,2) NOT NULL CHECK (valor > 0),
+  vencimento DATE NOT NULL,
+  referencia VARCHAR(7) NOT NULL,                 -- AAAA-MM
+  numero_controle VARCHAR(30),
+  codigo_barras VARCHAR(44), linha_digitavel VARCHAR(48),
+  arquivo VARCHAR(200), comprovante VARCHAR(200),
+  conta_pagar_id INTEGER REFERENCES contas_pagar(id) ON DELETE SET NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'gerada',   -- gerada | cancelada (paga = a conta a pagar foi paga)
+  motivo_cancelamento VARCHAR(250), observacao VARCHAR(500), usuario_nome VARCHAR(150), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS gnre_guia_ctes (
+  guia_id INTEGER NOT NULL REFERENCES gnre_guias(id) ON DELETE CASCADE,
+  cte_id INTEGER NOT NULL REFERENCES ctes_emitidos(id),
+  valor NUMERIC(14,2) NOT NULL,
+  PRIMARY KEY (guia_id, cte_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gnre_guia_ctes_cte ON gnre_guia_ctes (cte_id);

@@ -384,6 +384,7 @@
         <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:4px;">${dia(r.data)} · ${esc(r.motorista_nome)}${r.placa ? ` · ${esc(r.placa)}` : ''}${r.veiculo ? ` · ${esc(r.veiculo)}` : ''}${r.itens.length ? ` · ${entregues}/${r.itens.length} entregue(s)` : ''}
         ${r.saiu_em ? ` · saiu ${dataHora(r.saiu_em)}` : ''}</div></div><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>
       ${r.status !== 'fechado' && r.documentos_vencidos?.length ? `<div class="cte-aviso erro" style="margin:12px 0;">📄 Documento vencido: ${r.documentos_vencidos.map((d) => `${esc(d.nome)} de ${esc(d.dono)} (${dia(d.validade)})`).join('; ')}. O MDF-e não transmite até atualizar em Frota › Documentos.</div>` : ''}
+      ${r.gnre_pendente?.length ? `<div class="cte-aviso erro" style="margin:12px 0;">🧾 ICMS de outra UF sem GNRE paga: ${r.gnre_pendente.map((g) => `CT-e ${esc(g.serie)}/${esc(g.numero)} (${esc(g.uf)}, ${g.guia === 'a_pagar' ? 'guia a pagar' : 'sem guia'})`).join('; ')}. A guia paga tem que acompanhar a carga: gere e pague em Fiscal » GNRE.</div>` : ''}
       ${r.status !== 'fechado' ? `<div class="cte-aviso" style="margin:12px 0;">📱 App do motorista: <b>${esc(linkMotorista())}</b> · código <b style="font-size:15px; letter-spacing:2px;">${esc(r.codigo_acesso)}</b>
         <a href="#" id="rmCopiarLink">copiar link direto</a> · <a href="#" id="rmNovoCodigo">trocar código</a></div>` : ''}
       ${r.itens.length && r.status === 'aberto' ? (() => {

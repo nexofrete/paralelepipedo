@@ -94,6 +94,10 @@
           "texto": "Armazém (055): contrato de armazenagem por depositante (diária por palete, m³, tonelada ou volume, taxas de entrada e saída, ad valorem e mínimo), entrada pelo XML da NF-e com endereço, lote e validade, estoque e inventário, saída com lista de separação, pedido de saída pelo portal e cobrança do mês pela ocupação de cada dia, em NFS-e."
         },
         {
+          "area": "Fiscal",
+          "texto": "GNRE (144): os CT-e com ICMS devido a outra UF sem guia, por estado; os dados prontos para gerar a guia no Portal GNRE (receita 100030, com copiar e imprimir); o registro da guia com a linha digitável conferida, que vira conta a pagar e baixa o ICMS de outra UF na contabilidade; e aviso no romaneio quando a carga vai sair sem a guia paga."
+        },
+        {
           "area": "Gestão",
           "texto": "Centros de custo (filial, veículo, rota, comercial, administrativo) com resultado por centro."
         },

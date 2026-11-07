@@ -7,7 +7,7 @@ const pool = require('./db');
 const CATEGORIAS = {
   combustivel: 'Combustível', pedagio: 'Pedágio', manutencao: 'Manutenção', pneus: 'Pneus', frete_terceiro: 'Frete de terceiro',
   adiantamento: 'Adiantamento de viagem', salarios: 'Salários e encargos', impostos: 'Impostos', seguro: 'Seguro', aluguel: 'Aluguel',
-  administrativo: 'Administrativo', comissao: 'Comissão de vendedores', outros: 'Outros',
+  administrativo: 'Administrativo', comissao: 'Comissão de vendedores', gnre: 'ICMS de outra UF (GNRE)', outros: 'Outros',
 };
 const FORMAS = ['pix', 'boleto', 'transferencia', 'dinheiro', 'cartao', 'cheque', 'outro'];
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });

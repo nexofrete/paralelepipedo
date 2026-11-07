@@ -129,6 +129,12 @@ async function montar(req) {
         destino: { ir: 'contabil', aba: 'dfe', clicar: '[data-dfe-filtro="manifestar"]' } });
     } catch (e) { console.error('[hoje]', e.message); }
     try {
+      const gn = await require('./gnre').pendencias();
+      add('financeiro', { chave: 'gnre_sem_guia', icone: '🧾', titulo: 'CT-e com ICMS de outra UF sem GNRE', qtd: gn.sem_guia, valor: gn.sem_guia_valor, nivel: 'perigo', detalhe: 'gere a guia no Portal GNRE e pague antes da carga sair',
+        destino: { ir: 'contabil', aba: 'gnre' } });
+      add('financeiro', { chave: 'gnre_vencendo', icone: '🧾', titulo: 'GNRE a pagar hoje ou vencida', qtd: gn.vencendo, valor: gn.vencendo_valor, nivel: 'perigo', detalhe: 'pague em Contas a pagar', destino: { ir: 'contabil', aba: 'gnre' } });
+    } catch (e) { console.error('[hoje]', e.message); }
+    try {
       const se = await require('./servicosExtras').pendencias();
       add('financeiro', { chave: 'extras_aprovar', icone: '➕', titulo: 'Serviços extras para aprovar', qtd: se.pendentes, nivel: 'atencao', detalhe: 'reentrega, devolução, estadia: confira o valor e aprove',
         destino: { ir: 'faturamento', aba: 'extras', clicar: '[data-ex-filtro="pendente"]' } });

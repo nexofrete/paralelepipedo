@@ -112,7 +112,10 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
       `SELECT id, status, resumo, concluida_em FROM conferencias WHERE romaneio_id = $1 AND tipo = 'carga' ORDER BY id DESC LIMIT 1`, [rows[0].id]);
     // Documentos vencidos do caminhão e do motorista (Frota › Documentos): aviso na tela.
     const vencidos = await require('../frotaDocumentos').vencidosDe({ placas: [rows[0].placa], cpfs: [rows[0].motorista_documento] }).catch(() => []);
-    res.json({ ...rows[0], itens: await itensDoRomaneio(rows[0].id), coletas: await coletas.coletasDoRomaneio(rows[0].id), conferencia: conf[0] || null, documentos_vencidos: vencidos });
+    const itens = await itensDoRomaneio(rows[0].id);
+    // CT-e com ICMS de outra UF sem a GNRE paga: a guia tem que acompanhar a carga.
+    const semGnre = rows[0].status === 'fechado' ? [] : await require('../gnre').semGuiaPaga(itens.map((i) => i.cte_id)).catch(() => []);
+    res.json({ ...rows[0], itens, coletas: await coletas.coletasDoRomaneio(rows[0].id), conferencia: conf[0] || null, documentos_vencidos: vencidos, gnre_pendente: semGnre });
   } catch (err) { erro(res, err, 'Erro ao abrir o romaneio.'); }
 });
 

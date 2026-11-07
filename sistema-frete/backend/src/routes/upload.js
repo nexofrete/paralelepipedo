@@ -159,8 +159,9 @@ const tratar_nfe = async (req, res) => {
             observacoes = CASE WHEN POSITION($2 IN COALESCE(observacoes, '')) > 0 THEN observacoes ELSE CONCAT_WS(E'\\n', NULLIF(observacoes, ''), $2::text) END
           WHERE id = $1`, [resultado.rows[0].id, msgFob]).catch(() => {});
       }
+      const nfc = await require('../notasFiscais').completar(resultado.rows[0].id).catch((e) => { console.error('[notas]', e.message); return null; });
       ctesVinculados.reconciliarCtesSoltos().catch(() => {});
-      return res.json({ mensagem: `NF-e vinculada ao pedido existente.${jaCancelada ? ' ⚠ Essa NF-e já tinha o cancelamento importado: entrou como CANCELADA.' : ''}`, frete: resultado.rows[0] });
+      return res.json({ mensagem: `NF-e vinculada ao pedido existente.${jaCancelada ? ' ⚠ Essa NF-e já tinha o cancelamento importado: entrou como CANCELADA.' : ''}${nfc?.denegada ? ' ⚠ NF-e com USO DENEGADO pela SEFAZ: marcada como DENEGADA (não gera frete).' : ''}`, frete: resultado.rows[0] });
     }
 
     resultado = await pool.query(
@@ -193,8 +194,9 @@ const tratar_nfe = async (req, res) => {
           observacoes = CASE WHEN POSITION($2 IN COALESCE(observacoes, '')) > 0 THEN observacoes ELSE CONCAT_WS(E'\\n', NULLIF(observacoes, ''), $2::text) END
         WHERE id = $1`, [resultado.rows[0].id, msgFob]).catch(() => {});
     }
+    const nfc = await require('../notasFiscais').completar(resultado.rows[0].id).catch((e) => { console.error('[notas]', e.message); return null; });
     ctesVinculados.reconciliarCtesSoltos().catch(() => {});
-    res.status(201).json({ mensagem: `NF-e importada com sucesso${comPlanilha ? ' (com os dados da planilha do ERP que estavam esperando)' : ''}.${jaCancelada ? ' ⚠ Essa NF-e já tinha o cancelamento importado: entrou como CANCELADA.' : ''}`, frete: resultado.rows[0] });
+    res.status(201).json({ mensagem: `NF-e importada com sucesso${comPlanilha ? ' (com os dados da planilha do ERP que estavam esperando)' : ''}.${jaCancelada ? ' ⚠ Essa NF-e já tinha o cancelamento importado: entrou como CANCELADA.' : ''}${nfc?.denegada ? ' ⚠ NF-e com USO DENEGADO pela SEFAZ: marcada como DENEGADA (não gera frete).' : ''}`, frete: resultado.rows[0] });
   } catch (err) {
     console.error(err);
     if (err.code === '23505') {
@@ -529,6 +531,8 @@ const tratar_retorno = async (req, res) => {
     if (d.tipoDocumento !== 'cte' && ruim === 'cancelada') {
       await pool.query('UPDATE fretes SET nf_cancelada = TRUE, atualizado_em = NOW() WHERE id = $1 OR frete_principal_id = $1', [rows[0].id]);
     }
+    // Uso denegado: a nota fica marcada como DENEGADA (e conta como cancelada para o frete).
+    if (d.tipoDocumento !== 'cte' && ruim === 'denegada') await require('../notasFiscais').marcarDenegada(rows[0].id, situacao);
     if (!(rows[0].observacoes || '').includes(anotacao)) {
       await pool.query(`UPDATE fretes SET observacoes = CONCAT_WS(E'\n', NULLIF(observacoes, ''), $1::text), atualizado_em = NOW() WHERE id = $2`, [anotacao, rows[0].id]);
     }

@@ -188,6 +188,10 @@
         {
           "area": "Auditoria",
           "texto": "Auditoria em detalhe: cada componente do CT-e lado a lado com a tabela (frete peso, ad valorem, GRIS, pedágio, TDE, TDA, TRT, despacho, descarga), taxa não prevista, peso e volumes, ICMS completo (base, alíquota, valor e CFOP), histórico de cada frete e o relatório Cobranças indevidas (323) com Excel."
+        },
+        {
+          "area": "Notas",
+          "texto": "Notas fiscais (403): série, emitente, valor dos produtos, peso bruto e líquido, data de saída e endereço de entrega lidos do XML (inclusive nas notas antigas); consulta com filtros e Excel; XML da nota e .zip das filtradas; DANFE para imprimir ou salvar em PDF; NF-e com uso denegado marcada como denegada."
         }
       ]
     },

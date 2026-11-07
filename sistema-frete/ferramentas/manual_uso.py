@@ -302,6 +302,25 @@ def parte_uso(g):
     s += h2('Lançar um registro manual')
     s.append(P('"+ Lançar registro manual" abre o formulário vazio, para fretes que não têm XML.'))
 
+    s += h2('Notas fiscais (403)')
+    s.append(P('Em <b>Notas e fretes » Notas fiscais</b>, as NF-e importadas com todos os dados da nota: número e série, chave de '
+               'acesso, emitente (nome e CNPJ), destinatário, valor dos produtos e total da nota, peso bruto e peso líquido, '
+               'volumes, data de emissão, data e hora de saída, endereço de entrega (o local de entrega, quando a nota informa '
+               'um diferente do destinatário) e a situação: autorizada, cancelada ou denegada. Esses dados são lidos do XML na '
+               'importação; nas notas que já estavam no sistema, são lidos do XML guardado quando o sistema liga.'))
+    s += lista([
+        '<b>Filtros</b>: número, chave, cliente ou pedido; emitente e destinatário (nome ou CNPJ); série; cidade e UF; período '
+        'pela emissão ou pela saída; situação (autorizada, cancelada, denegada, sem CT-e). No alto, o total de notas, valor, '
+        'peso, volumes, canceladas e denegadas.',
+        '<b>Abrir</b> a nota mostra tudo e os botões <b>DANFE</b> (gerado a partir do XML, pronto para imprimir ou salvar em PDF '
+        'pelo navegador) e <b>XML</b> (o arquivo da nota). Nota que entrou só pela planilha do ERP não tem XML.',
+        '<b>XML das notas (.zip)</b>: baixa os XML de todas as notas do filtro num arquivo .zip. <b>Excel</b>: a lista com '
+        'todas as colunas.',
+        '<b>Denegada</b>: NF-e com uso denegado pela SEFAZ (no próprio XML ou no recibo da SEFAZ importado) fica marcada como '
+        'denegada: não tem valor fiscal, sai de "aguardando CT-e" e o CT-e que vier para ela fica retido, como na cancelada. '
+        'O DANFE sai com a marca "USO DENEGADO".',
+    ])
+
     # 15
     s += h1('15. Tabelas de preço e o cálculo do frete')
     s.append(P('A tabela de preço é o que a transportadora negociou. É com ela que o sistema calcula quanto cada frete '

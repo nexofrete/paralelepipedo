@@ -141,6 +141,7 @@
         <div class="nav-item ativo" data-pagina="visao-geral">📊 Visão geral</div>
         <div class="nav-item" data-pagina="upload" id="navUpload">📤 Enviar XML</div>
         <div class="nav-item" data-pagina="registros">🗂 Todos os registros</div>
+        <div class="nav-item" data-pagina="notas-fiscais">🧾 Notas fiscais</div>
         <div class="nav-item" data-pagina="auditoria-frete">⚖️ Auditoria de Frete</div>
         <div class="nav-item" data-pagina="financeiro">💰 Pagamento de fretes</div>
         <div class="nav-item" data-pagina="sinistros">📦 Sinistros</div>
@@ -313,6 +314,20 @@
       <div class="modal-overlay oculto" id="modalSac">
         <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="sacModal"></div>
       </div>
+
+      <section id="pagina-notas-fiscais" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🧾 Notas fiscais</h2>
+            <p>As NF-e importadas com todos os dados da nota: série, emitente, destinatário, valores, pesos, volumes, emissão, saída, endereço de entrega e situação; XML e DANFE</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="nfExcel" style="width:auto;">⬇ Excel</button>
+            <button class="btn btn-secundario" id="nfZip" style="width:auto;" title="Os XML das notas filtradas, num arquivo .zip">🗜 XML das notas (.zip)</button>
+          </div>
+        </div>
+        <div id="nfConteudo"></div>
+      </section>
 
       <section id="pagina-parceiros" class="oculto">
         <div class="cabecalho-pagina">
@@ -3796,6 +3811,7 @@
   <script src="js/indicadores.js"></script>
   <script src="js/nfeCte.js"></script>
   <script src="js/cobrancasIndevidas.js"></script>
+  <script src="js/notasFiscais.js"></script>
   <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>
   <script src="js/edi.js"></script>

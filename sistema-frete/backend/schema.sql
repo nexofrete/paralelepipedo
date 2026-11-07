@@ -3033,3 +3033,16 @@ CREATE TABLE IF NOT EXISTS nfe_cte_desvinculos (
   chave_cte VARCHAR(44) NOT NULL, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (frete_id, chave_cte)
 );
+
+-- Gestão de NF-e (embarcador): os dados da nota que o frete não usava, lidos do XML guardado.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_serie VARCHAR(5);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS emitente_nome VARCHAR(200);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS emitente_cnpj VARCHAR(20);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS valor_produtos NUMERIC(14,2);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS peso_bruto NUMERIC(14,3);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS peso_liquido NUMERIC(14,3);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS data_saida TIMESTAMP;
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS entrega_endereco JSONB;      -- { logradouro, numero, complemento, bairro, cidade, uf, cep, local_diferente }
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_denegada BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_dados_em TIMESTAMPTZ;      -- quando os dados acima foram lidos do XML
+CREATE INDEX IF NOT EXISTS idx_fretes_emitente ON fretes (emitente_cnpj) WHERE emitente_cnpj IS NOT NULL;

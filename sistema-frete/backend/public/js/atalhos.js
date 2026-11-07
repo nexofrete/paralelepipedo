@@ -44,7 +44,7 @@
     'r:bi': ['316', 'bi relatorio montar'], 'r:comparador': ['317', 'comparar cotacoes'], 'r:anomalias': ['318', 'anomalias'],
     'r:scorecard': ['319', 'scorecard'], 'r:nfeCte': ['320', 'nfe cte'], 'r:auditoriaFrete': ['321', 'conferencia cte'], 'r:cobIndevidas': ['323', 'cobrancas indevidas cobrado a mais componente taxa nao autorizada pedagio gris ad valorem icms base cfop peso volumes'], 'r:nfeCteInc': ['322', 'inconsistencias nfe cte vinculo nota sem cte cte sem nota peso valor destinatario religar pesquisa nf'],
     'p:auditoria-frete': ['330', 'auditoria frete'],
-    'p:visao-geral': ['400', 'inicio'], 'p:upload': ['401', 'xml importar nota'], 'p:registros': ['402', 'registros fretes notas'],
+    'p:visao-geral': ['400', 'inicio'], 'p:upload': ['401', 'xml importar nota'], 'p:registros': ['402', 'registros fretes notas'], 'p:notas-fiscais': ['403', 'notas fiscais nfe nf-e danfe xml emitente serie chave consulta pesquisa nota cancelada denegada'],
     'p:sinistros': ['410', 'sinistro avaria'],
     'p:mensagens': ['500', 'mensagem'], 'p:agenda': ['501', 'agenda compromisso'],
     'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:filiais:unidades': ['901', 'filial unidade'],

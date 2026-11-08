@@ -104,4 +104,21 @@ router.get('/modelos/:id(\\d+)/exportar', autenticar, apenasAdmin, rota(async (r
   res.set({ 'Content-Type': r.tipo, 'Content-Disposition': `attachment; filename="${nome}"` }).send(r.conteudo);
 }, 'Erro ao exportar.'));
 
+// NF-Stock (Alterdata): buscar os XML (MS-Exportação) e enviar os documentos emitidos (MS-Importação).
+const nfstock = require('../integracao/nfstock');
+router.get('/nfstock', autenticar, apenasAdmin, rota(async (req, res) => res.json(await nfstock.painel()), 'Erro ao ler o NF-Stock.'));
+router.put('/nfstock', autenticar, apenasAdmin, rota(async (req, res) => {
+  const c = await nfstock.salvarConfig(req.body || {});
+  log(req, `NF-Stock: busca ${c.busca_ativa ? 'ligada' : 'desligada'}, envio ${c.envio_ativo ? 'ligado' : 'desligado'} (${c.ambiente})${req.body?.token_novo ? ', token trocado' : ''}${req.body?.remover_token ? ', token removido' : ''}`);
+  res.json(c);
+}, 'Erro ao salvar.'));
+router.post('/nfstock/testar', autenticar, apenasAdmin, rota(async (req, res) => res.json(await nfstock.testar()), 'Erro ao testar.'));
+router.post('/nfstock/buscar', autenticar, apenasAdmin, rota(async (req, res) => {
+  const r = await nfstock.buscar();
+  log(req, `NF-Stock: buscou ${r.documentos} documento(s), ${r.importados} importado(s), ${r.erros} com erro`);
+  res.json(r);
+}, 'Erro ao buscar no NF-Stock.'));
+router.post('/nfstock/enviar', autenticar, apenasAdmin, rota(async (req, res) => res.json(await nfstock.enviar()), 'Erro ao enviar ao NF-Stock.'));
+router.post('/nfstock/envios/:id(\\d+)/reenviar', autenticar, apenasAdmin, rota(async (req, res) => { await nfstock.reenviar(id(req)); res.json({ ok: true }); }, 'Erro ao reenviar.'));
+
 module.exports = router;

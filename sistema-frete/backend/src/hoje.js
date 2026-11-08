@@ -54,6 +54,13 @@ async function montar(req) {
       add('operacao', { chave: 'dfe_sem_cte', icone: '📡', titulo: 'NF-e de carga na SEFAZ sem CT-e', qtd: nf.sem_cte, nivel: 'atencao', detalhe: 'a sua empresa é a transportadora: gere os rascunhos de CT-e',
         destino: { ir: 'emissao-cte', aba: 'lista', clicar: '#btnCteSefaz' } });
     } catch (e) { console.error('[hoje]', e.message); }
+    if (req.usuario?.perfil === 'admin') {
+      try {
+        const ns = await require('./integracao/nfstock').pendencias();
+        add('operacao', { chave: 'nfstock', icone: '📤', titulo: 'Documentos que não chegaram ao NF-Stock', qtd: ns.problemas, nivel: 'atencao', detalhe: 'recusados pela Alterdata ou sem conexão: veja o motivo e reenvie',
+          destino: { ir: 'integracao', clicar: '#itgNfstockEnvios' } });
+      } catch (e) { console.error('[hoje]', e.message); }
+    }
     try {
       // SEFAZ do CT-e fora do ar (verificada a cada 15 min) ou de volta com a contingência ainda ligada.
       const a = await require('./sefazServicos').avisoHoje();

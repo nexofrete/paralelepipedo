@@ -671,6 +671,11 @@ A Data da Entrega das notas é preenchida sozinha todo dia às 6h30 e pelo botã
 
 Menu **⚙️ Configuração → 🔗 Integração (API e ERP)** (código **904**, só administrador):
 
+- **NF-Stock (Alterdata)** (`src/integracao/nfstock.js`, rotas `/api/integracao/nfstock*`, tabelas `configuracao_nfstock`, `nfstock_docs`, `nfstock_envios`):
+  - *Buscar* (MS-Exportação): `GET {base}/api/v1/{codigoCrm 6 dígitos}/{cnpj}/documentos/{nsu}/novos?Tamanho=50&Xml=true` com `Authorization: Bearer <token>`; repete enquanto vier página cheia e guarda o último NSU. O `xml` pode vir em texto, base64, gzip ou .zip; sem ele, baixa pela `url_download`. Roteamento: NF-e da própria empresa → `importarXmlInterno` (fretes); NF-e de outro emitente → `dfe.processarDoc` (NF-e contra o CNPJ); CT-e de terceiro → `importarXmlInterno` (CT-e recebidos); CT-e próprio e NFS-e → só registro; eventos por último.
+  - *Enviar* (MS-Importação): CT-e, eventos do CT-e, MDF-e e NFS-e autorizados em produção desde `enviar_desde` entram na fila (`nfstock_envios`, `ref` único); `POST /storage {size, extension}` → `PUT` do XML na `url` assinada (1 min, sem `Content-Type`) → `GET /storage/arquivo/{id}`: `Uploaded` = importado, `Com Erro` = recusado (com o `log`). Falha de conexão tenta de novo até 6 vezes (15 min × tentativas).
+  - Bases: produção `ms-exportacao-nfstock.pack.alterdata.com.br` e `ms-importacao-service-nfstock.alterdatasoftware.com.br`; desenvolvimento `ms-exportacao.dev.pack.alterdata.com.br`; ambiente `simulador` responde no próprio servidor. Token criptografado (`criptografar` do certificado), nunca devolvido. Agendador a cada 5 min (busca no intervalo configurado). Tela Hoje (admin): envios recusados ou sem conexão.
+
 - **Chaves de API:** uma por sistema (ex.: "ERP Bapx"), com o que pode fazer: *Consultar* (CT-e, entregas, faturas) e/ou *Enviar NF-e*. A chave aparece uma vez só, ao criar (o banco guarda só o SHA-256); dá para revogar a qualquer momento. Mostra o último uso e o IP.
 - **API** (`/api/v1`, cabeçalho `Authorization: Bearer nxf_...`, 120 chamadas/min por chave):
   - `GET /status` · `GET /ctes?alterado_desde=ISO&limite=100` (paginação por `proxima`) · `GET /ctes/<chave>` · `GET /ctes/<chave>/xml` · `GET /entregas?desde=&ate=` · `GET /faturas?alterado_desde=&status=` · `GET /faturas/<id>`

@@ -962,6 +962,29 @@ def parte_integracoes(g):
     s += h1('53. Integração com ERP: API e webhooks')
     s.append(P('Em <b>Configuração » Integração (API e ERP)</b> (904, só administrador). Cada empresa usa um ERP; a '
                'integração serve para qualquer um que chame um endereço web.'))
+    s += h2('NF-Stock (Alterdata)')
+    s.append(P('No alto da tela, o quadro <b>NF-Stock (Alterdata)</b> liga o Nexofrete ao NF-Stock, onde a Alterdata guarda os XML '
+               'fiscais da empresa. Funciona nos dois sentidos:'))
+    s += lista([
+        '<b>Buscar os XML no NF-Stock</b>: a cada 30 minutos (ou o intervalo escolhido) o sistema pede os documentos novos a partir '
+        'do último NSU. A NF-e emitida pela empresa entra como em "Enviar XML"; a NF-e de outro emitente vai para NF-e contra o '
+        'CNPJ (nota de entrada, ou carga sem CT-e quando a empresa é a transportadora); o CT-e de transportadora vai para CT-e '
+        'recebidos; os eventos (cancelamento, carta de correção) são aplicados; o CT-e emitido pela própria empresa e a NFS-e '
+        'ficam só registrados.',
+        '<b>Enviar os documentos emitidos</b>: os CT-e (e os eventos deles), MDF-e e NFS-e autorizados em produção, a partir da '
+        'data escolhida, vão para o NF-Stock. O sistema confere se a Alterdata importou cada um: Importado, Recusado (com o motivo '
+        'que ela devolveu, ex.: erro de schema) ou Falhou (sem conexão; tenta de novo sozinho até 6 vezes). O botão '
+        '<b>Reenviar</b> manda de novo. A tela Hoje avisa o administrador quando algo não chegou.',
+    ])
+    s += passos([
+        'No site do NF-Stock, entre em <b>Opções da Conta » Integração</b> e copie o token.',
+        'Na tela Integração, cole o token, informe o <b>código CRM</b> da Alterdata (6 dígitos; o sistema completa com zeros à '
+        'esquerda) e o CNPJ da empresa no NF-Stock.',
+        'Clique em <b>Testar conexão</b>. Depois marque <b>Buscar</b> e/ou <b>Enviar</b>, escolha o que enviar e salve.',
+        'Para conhecer sem a Alterdata, use o ambiente <b>Simulador</b>: traz documentos de exemplo e confirma os envios.',
+    ])
+    s.append(P('O token fica guardado criptografado e nunca volta para a tela (para trocar, cole outro; "Remover token" desliga tudo). '
+               'As listas <b>Recebidos do NF-Stock</b> e <b>Enviados ao NF-Stock</b> mostram cada documento e o resultado.'))
     s += h2('Chaves de API')
     s.append(P('Crie uma chave por sistema (ex.: "ERP Bapx") e escolha o que ela pode: <b>Consultar</b> (CT-e, entregas, '
                'faturas) e/ou <b>Enviar NF-e</b>. A chave aparece uma vez só; guarde e passe ao fornecedor do ERP. A lista '

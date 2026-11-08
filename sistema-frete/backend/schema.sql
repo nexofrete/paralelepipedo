@@ -3312,3 +3312,47 @@ CREATE TABLE IF NOT EXISTS sefaz_status (
     verificado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_sefaz_status_quando ON sefaz_status (servico, contingencia, verificado_em DESC);
+
+-- NF-Stock (Alterdata): src/integracao/nfstock.js. Token criptografado; estado = último NSU e últimos resultados.
+CREATE TABLE IF NOT EXISTS configuracao_nfstock (
+    id            INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    busca_ativa   BOOLEAN NOT NULL DEFAULT FALSE,
+    envio_ativo   BOOLEAN NOT NULL DEFAULT FALSE,
+    token         TEXT,
+    codigo_crm    VARCHAR(6),
+    cnpj          VARCHAR(14),
+    ambiente      VARCHAR(15) NOT NULL DEFAULT 'producao',   -- producao, desenvolvimento, simulador
+    intervalo_min INTEGER NOT NULL DEFAULT 30,
+    enviar_desde  DATE,
+    enviar_tipos  TEXT[] NOT NULL DEFAULT '{cte,cte_evento,mdfe,nfse}',
+    estado        JSONB NOT NULL DEFAULT '{}',
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS nfstock_docs (
+    id         SERIAL PRIMARY KEY,
+    nsu        BIGINT NOT NULL UNIQUE,
+    chave      VARCHAR(60),
+    modelo     VARCHAR(20),
+    tipo       VARCHAR(20),
+    status_doc VARCHAR(30),
+    emissao    TIMESTAMPTZ,
+    resultado  VARCHAR(20) NOT NULL,          -- importado, ja_existia, proprio, ignorado, erro
+    mensagem   VARCHAR(500),
+    criado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS nfstock_envios (
+    id           SERIAL PRIMARY KEY,
+    origem       VARCHAR(12) NOT NULL,        -- cte, cte_evento, mdfe, nfse
+    ref          VARCHAR(60) NOT NULL UNIQUE, -- ex.: cte:12, cte_evento:12:0
+    chave        VARCHAR(60),
+    status       VARCHAR(12) NOT NULL DEFAULT 'pendente',   -- pendente, enviado, importado, recusado, erro
+    remoto_id    VARCHAR(120),
+    tamanho      INTEGER,
+    log          TEXT,
+    tentativas   INTEGER NOT NULL DEFAULT 0,
+    enviado_em   TIMESTAMPTZ,
+    importado_em TIMESTAMPTZ,
+    criado_em    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_nfstock_envios_status ON nfstock_envios (status);

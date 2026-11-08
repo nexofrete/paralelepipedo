@@ -11,7 +11,7 @@ const pool = require('./db');
 
 const SEMPRE = ['usuarios', 'perfis_acesso', 'sessoes', 'empresa', 'configuracao_auditoria', 'configuracao_backup', 'configuracao_email', 'configuracao_importacao_erp',
   'configuracao_pasta_xml', 'configuracao_roteirizacao', 'configuracao_seguranca', 'configuracao_whatsapp', 'contas_email', 'api_chaves', 'webhooks',
-  'erp_modelos', 'feriados', 'geocodificacao_cache', 'sefaz_cadastros'];
+  'erp_modelos', 'feriados', 'geocodificacao_cache', 'sefaz_cadastros', 'configuracao_nfstock'];
 const CADASTROS = ['transportadoras', 'tabelas_preco', 'tabela_preco_faixas', 'tabelas_preco_versoes', 'clientes', 'parceiros', 'parceiro_tabela', 'parceiro_documentos',
   'veiculos', 'motoristas', 'unidades', 'centros_custo', 'contas_bancarias', 'vendedores', 'manutencao_planos', 'servicos_extras_regras', 'portal_usuarios',
   'metas_frete', 'restricoes_circulacao', 'pneus', 'frota_documentos', 'armazem_contratos',

@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Integração",
+          "texto": "NF-Stock (Alterdata): em Configuração » Integração (904), o sistema busca sozinho os XML guardados no NF-Stock (NF-e, CT-e e eventos, cada um no seu lugar) e manda para lá os CT-e, MDF-e e NFS-e emitidos, conferindo se a Alterdata importou. Token guardado criptografado; tem simulador para testar."
+        },
+        {
           "area": "SEFAZ",
           "texto": "CT-e direto da SEFAZ: em CT-e recebidos » 📡 CT-e na SEFAZ, os CT-e em que a empresa é tomadora, remetente ou destinatária chegam sozinhos (a cada hora, com o certificado digital), com os eventos. Consulta da IE na SEFAZ no cadastro do cliente e aviso na emissão do CT-e quando a IE do tomador não está habilitada. Situação da SEFAZ verificada a cada 15 minutos, com aviso na tela Hoje para ligar (e desligar) a contingência."
         },

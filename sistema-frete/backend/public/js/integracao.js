@@ -75,6 +75,7 @@
         <td>${e.status !== 'enviado' ? `<button class="btn btn-secundario" data-itg-reenviar="${e.id}" style="width:auto; padding:3px 9px;">Reenviar</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
       : '<p style="color:var(--texto-fraco); margin:0;">Nenhum aviso enviado ainda.</p>';
     $('itgConteudo').innerHTML = `
+      <div class="painel" style="padding:14px 16px; margin-bottom:14px;" id="itgNfstock"><h4 style="margin:0;">🗄 NF-Stock (Alterdata)</h4><p style="color:var(--texto-fraco); margin:6px 0 0;">Carregando…</p></div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">🔑 Chaves de API</h4>${chavesHtml}</div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">📣 Webhooks (avisos automáticos para o ERP)</h4>${whHtml}</div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">📬 Últimos avisos</h4>${entHtml}</div>
@@ -88,6 +89,89 @@
     document.querySelectorAll('[data-itg-reenviar]').forEach((b) => b.addEventListener('click', () => enviar(`/api/integracao/entregas/${b.dataset.itgReenviar}/reenviar`, 'POST').then(() => { mostrarAlerta('Vai de novo em até 20 segundos.', { tipo: 'sucesso' }); recarregar(); }).catch(erro)));
     $('itgCopiarDoc').addEventListener('click', (e) => copiar($('itgDoc').textContent, e.currentTarget));
     carregarModelos().catch(erro);
+    carregarNfstock().catch((e) => { $('itgNfstock').innerHTML = `<h4 style="margin:0;">🗄 NF-Stock (Alterdata)</h4><p style="color:var(--vermelho);">${esc(e.message)}</p>`; });
+  }
+
+  // ---------------- NF-Stock (Alterdata): buscar os XML e enviar os documentos emitidos ----------------
+  const RES_DOC = { importado: ['entregue', 'Importado'], ja_existia: ['em_transito', 'Já estava'], proprio: ['agendada', 'Emitido pela empresa'], ignorado: ['em_transito', 'Ignorado'], erro: ['ocorrencia', 'Erro'] };
+  const ST_ENVIO = { pendente: ['em_transito', 'Na fila'], enviado: ['agendada', 'Enviado (aguardando)'], importado: ['entregue', 'Importado'], recusado: ['ocorrencia', 'Recusado'], erro: ['ocorrencia', 'Falhou'] };
+  let ns = null;
+  async function carregarNfstock() {
+    ns = await api('/api/integracao/nfstock');
+    desenharNfstock();
+  }
+  function desenharNfstock() {
+    const c = ns.config; const e = c.estado || {}; const k = ns.contagem || {};
+    const u = e.ultimo_resultado; const ue = e.ultimo_envio_resultado;
+    const tipos = Object.entries(ns.tipos_envio).map(([t, n]) => `<label style="display:inline-flex; gap:5px; align-items:center; margin-right:12px;"><input type="checkbox" data-ns-tipo="${t}" ${(c.enviar_tipos || []).includes(t) ? 'checked' : ''} style="width:auto;" /> ${esc(n)}</label>`).join('');
+    const docs = ns.docs.length ? `<div class="tabela-container" style="max-height:320px; overflow:auto;"><table><thead><tr><th>NSU</th><th>Documento</th><th>Resultado</th><th>Quando</th></tr></thead><tbody>
+      ${ns.docs.map((d) => `<tr><td>${esc(d.nsu)}</td><td>${esc([d.modelo, d.tipo, d.status_doc].filter(Boolean).join(' · ') || '—')}${d.chave ? `<br><small style="font-family:monospace;">${esc(d.chave)}</small>` : ''}</td>
+        <td><span class="oc-sit ${(RES_DOC[d.resultado] || RES_DOC.erro)[0]}">${(RES_DOC[d.resultado] || [0, d.resultado])[1]}</span><br><small style="color:var(--texto-fraco);">${esc(d.mensagem || '')}</small></td><td>${quando(d.criado_em)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<p style="color:var(--texto-fraco); margin:0;">Nada buscado ainda.</p>';
+    const envios = ns.envios.length ? `<div class="tabela-container" style="max-height:320px; overflow:auto;"><table><thead><tr><th>Documento</th><th>Situação</th><th>Quando</th><th></th></tr></thead><tbody>
+      ${ns.envios.map((v) => `<tr><td>${esc(ns.tipos_envio[v.origem] || v.origem)}${v.chave ? `<br><small style="font-family:monospace;">${esc(v.chave)}</small>` : ''}</td>
+        <td><span class="oc-sit ${(ST_ENVIO[v.status] || ST_ENVIO.erro)[0]}">${(ST_ENVIO[v.status] || [0, v.status])[1]}</span>${v.log ? `<br><small style="color:var(--texto-fraco); white-space:normal;">${esc(v.log).slice(0, 300)}</small>` : ''}${v.tentativas > 1 ? `<br><small>${v.tentativas} tentativas</small>` : ''}</td>
+        <td>${quando(v.importado_em || v.enviado_em || v.atualizado_em)}</td>
+        <td>${['erro', 'recusado'].includes(v.status) ? `<button class="btn btn-secundario" data-ns-reenviar="${v.id}" style="width:auto; padding:3px 9px;">Reenviar</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+      : '<p style="color:var(--texto-fraco); margin:0;">Nada enviado ainda.</p>';
+    $('itgNfstock').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><h4 style="margin:0;">🗄 NF-Stock (Alterdata)</h4>
+        <span>${c.busca_ativa ? '<span class="oc-sit entregue">Buscando</span>' : ''} ${c.envio_ativo ? '<span class="oc-sit entregue">Enviando</span>' : ''} ${c.ambiente === 'simulador' ? '<span class="oc-sit agendada">Simulador</span>' : ''}</span></div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin:6px 0 10px;">Busca os XML guardados no NF-Stock (NF-e, CT-e e eventos) e manda para lá os CT-e, MDF-e e NFS-e que a empresa emite em produção.
+        A NF-e emitida pela empresa entra como em "Enviar XML"; a de outro emitente vai para NF-e contra o CNPJ; o CT-e de transportadora vai para CT-e recebidos.
+        O token é gerado no site do NF-Stock em <b>Opções da Conta » Integração</b> e fica guardado criptografado (não volta para a tela).</p>
+      <div class="cte-grade" style="grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">
+        <div class="campo"><label for="nsToken">Token ${c.tem_token ? '<small style="color:var(--verde);">✓ cadastrado — preencha só para trocar</small>' : ''}</label><input id="nsToken" type="password" autocomplete="new-password" placeholder="${c.tem_token ? '••••••••' : 'cole aqui o token do NF-Stock'}" /></div>
+        <div class="campo"><label for="nsCrm">Código CRM (6 dígitos)</label><input id="nsCrm" maxlength="6" inputmode="numeric" value="${esc(c.codigo_crm || '')}" placeholder="ex.: 000123" /></div>
+        <div class="campo"><label for="nsCnpj">CNPJ no NF-Stock</label><input id="nsCnpj" value="${esc(Doc.formatar(c.cnpj || ''))}" placeholder="o da empresa" /></div>
+        <div class="campo"><label for="nsAmb">Ambiente</label><select id="nsAmb">${[['producao', 'Produção'], ['desenvolvimento', 'Desenvolvimento (testes da Alterdata)'], ['simulador', 'Simulador (sem a Alterdata)']].map(([v, n]) => `<option value="${v}" ${c.ambiente === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        <div class="campo"><label for="nsIntervalo">Buscar a cada (min)</label><input id="nsIntervalo" type="number" min="15" max="1440" value="${esc(c.intervalo_min || 30)}" /></div>
+        <div class="campo"><label for="nsDesde">Enviar o que foi autorizado desde</label><input id="nsDesde" type="date" value="${esc(c.enviar_desde || '')}" /></div>
+      </div>
+      <div style="margin:8px 0;"><label style="display:inline-flex; gap:6px; align-items:center; margin-right:18px;"><input type="checkbox" id="nsBusca" ${c.busca_ativa ? 'checked' : ''} style="width:auto;" /> <b>Buscar os XML no NF-Stock</b></label>
+        <label style="display:inline-flex; gap:6px; align-items:center;"><input type="checkbox" id="nsEnvio" ${c.envio_ativo ? 'checked' : ''} style="width:auto;" /> <b>Enviar os documentos emitidos</b></label></div>
+      <div style="font-size:12.5px; margin-bottom:10px;">Enviar: ${tipos}</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <button class="btn btn-primario" id="nsSalvar" style="width:auto;">💾 Salvar</button>
+        <button class="btn btn-secundario" id="nsTestar" style="width:auto;">🔌 Testar conexão</button>
+        <button class="btn btn-secundario" id="nsBuscar" style="width:auto;">🔄 Buscar agora</button>
+        <button class="btn btn-secundario" id="nsEnviar" style="width:auto;">📤 Enviar agora</button>
+        ${c.tem_token ? '<button class="btn btn-secundario" id="nsRemover" style="width:auto;">Remover token</button>' : ''}
+      </div>
+      <div class="oc-resumo" style="margin-bottom:12px;">
+        <div>Última busca<b style="font-size:15px;">${e.ultima_busca ? quando(e.ultima_busca) : 'nunca'}</b><span>${e.erro_busca ? `<span style="color:var(--vermelho);">${esc(e.erro_busca)}</span>` : u ? `${u.importados} importado(s) de ${u.documentos} · último NSU ${esc(e.ult_nsu ?? 0)}` : ''}</span></div>
+        <div>Envios<b style="font-size:15px;">${k.importados || 0} importado(s)</b><span>${k.pendentes || 0} na fila · ${k.enviados || 0} aguardando · ${(k.recusados || 0) + (k.erros || 0)} com problema</span></div>
+        <div>Último envio<b style="font-size:15px;">${e.ultimo_envio ? quando(e.ultimo_envio) : 'nunca'}</b><span>${ue ? `${ue.enviados} enviado(s), ${ue.importados} confirmado(s)${ue.erros ? `, ${ue.erros} com erro` : ''}` : ''}</span></div>
+      </div>
+      <details ${ns.docs.length ? 'open' : ''}><summary style="cursor:pointer; font-weight:600; margin-bottom:6px;">📥 Recebidos do NF-Stock</summary>${docs}</details>
+      <details id="itgNfstockEnviosBloco" style="margin-top:10px;" ${ns.envios.some((v) => ['erro', 'recusado'].includes(v.status)) ? 'open' : ''}><summary id="itgNfstockEnvios" style="cursor:pointer; font-weight:600; margin-bottom:6px;">📤 Enviados ao NF-Stock</summary>${envios}</details>`;
+    const corpo = (extra = {}) => ({ token_novo: $('nsToken').value.trim() || undefined, codigo_crm: $('nsCrm').value, cnpj: $('nsCnpj').value, ambiente: $('nsAmb').value,
+      intervalo_min: $('nsIntervalo').value, enviar_desde: $('nsDesde').value || null, busca_ativa: $('nsBusca').checked, envio_ativo: $('nsEnvio').checked,
+      enviar_tipos: [...document.querySelectorAll('[data-ns-tipo]:checked')].map((x) => x.dataset.nsTipo), ...extra });
+    const comBotao = async (b, fn) => { const t = b.textContent; b.disabled = true; b.textContent = 'Aguarde…'; try { await fn(); } catch (err) { erro(err); } finally { b.disabled = false; b.textContent = t; } };
+    $('nsSalvar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => { await enviar('/api/integracao/nfstock', 'PUT', corpo()); mostrarAlerta('NF-Stock salvo.', { tipo: 'sucesso' }); await carregarNfstock(); }));
+    $('nsTestar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      if ($('nsToken').value.trim() || $('nsCrm').value !== (c.codigo_crm || '')) await enviar('/api/integracao/nfstock', 'PUT', corpo());
+      const r = await enviar('/api/integracao/nfstock/testar', 'POST'); mostrarAlerta(r.mensagem, { tipo: 'sucesso' }); await carregarNfstock();
+    }));
+    $('nsBuscar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      const r = await enviar('/api/integracao/nfstock/buscar', 'POST');
+      mostrarAlerta(`NF-Stock: ${r.documentos} documento(s) — ${r.importados} importado(s), ${r.ja_existiam} já estava(m), ${r.proprios} da própria empresa, ${r.ignorados} ignorado(s)${r.erros ? `, ${r.erros} com erro` : ''}.`, { tipo: r.erros ? 'aviso' : 'sucesso' });
+      await carregarNfstock();
+    }));
+    $('nsEnviar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      const r = await enviar('/api/integracao/nfstock/enviar', 'POST');
+      mostrarAlerta(`NF-Stock: ${r.enfileirados} novo(s) na fila, ${r.enviados} enviado(s), ${r.importados} confirmado(s)${r.recusados ? `, ${r.recusados} recusado(s)` : ''}${r.erros ? `, ${r.erros} com erro` : ''}.`, { tipo: r.erros || r.recusados ? 'aviso' : 'sucesso' });
+      await carregarNfstock();
+    }));
+    $('nsRemover')?.addEventListener('click', async () => {
+      if (!await confirmar('Remover o token do NF-Stock? A busca e o envio param até você cadastrar outro.', { tipo: 'perigo', textoOk: 'Remover' })) return;
+      try { await enviar('/api/integracao/nfstock', 'PUT', { remover_token: true }); await carregarNfstock(); } catch (err) { erro(err); }
+    });
+    document.querySelectorAll('[data-ns-reenviar]').forEach((b) => b.addEventListener('click', () => comBotao(b, async () => {
+      await enviar(`/api/integracao/nfstock/envios/${b.dataset.nsReenviar}/reenviar`, 'POST'); await enviar('/api/integracao/nfstock/enviar', 'POST'); await carregarNfstock();
+    })));
+    // Vindo da tela Hoje: abre a lista de envios.
+    $('itgNfstockEnvios').addEventListener('click', () => setTimeout(() => $('itgNfstockEnviosBloco').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50));
   }
 
   // ---------------- Modelos de planilha (ERP que só troca planilha) ----------------

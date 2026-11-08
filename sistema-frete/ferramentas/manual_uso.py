@@ -136,6 +136,9 @@ def parte_uso(g):
     s += h2('CT-e direto da SEFAZ (automático)')
     s.append(P('Com o certificado digital A1 cadastrado, os CT-e em que a empresa aparece podem vir direto da SEFAZ, sem '
                'depender da transportadora mandar o XML: veja "CT-e na SEFAZ" no capítulo 14 (CT-e recebidos, código 404).'))
+    s += h2('NF-Stock da Alterdata (automático)')
+    s.append(P('Se a empresa usa o NF-Stock da Alterdata, os XML guardados lá (NF-e, CT-e e eventos) podem entrar sozinhos: veja '
+               '"NF-Stock (Alterdata)" no capítulo 53 (Integração, código 904).'))
     s += h2('Pasta monitorada de XML (automático)')
     s.append(P('Em <b>Manutenção » Pasta monitorada de XML</b>, aponte a pasta onde os XML chegam (a que o e-mail ou o ERP '
                'salva — pode ser uma pasta da rede). O sistema confere a pasta de tempos em tempos e importa sozinho os '

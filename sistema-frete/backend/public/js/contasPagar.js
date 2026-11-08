@@ -48,7 +48,7 @@
     if (!catAc) catAc = await json('/api/acertos/categorias');
     return aba === 'contas' ? telaContas() : telaAcertos();
   };
-  $('cpNova').addEventListener('click', () => carregar().then(() => formConta()).catch(erro));
+  $('cpNova').addEventListener('click', () => carregar().then(() => formContaComCadastros()).catch(erro));
   $('axNovo').addEventListener('click', () => carregar().then(() => formAcerto()).catch(erro));
 
   // ======================= Contas a pagar =======================
@@ -87,6 +87,14 @@
     $('cpAbaContas').querySelectorAll('[data-cp-abrir]').forEach((b) => b.addEventListener('click', () => abrirConta(Number(b.dataset.cpAbrir)).catch(erro)));
   }
 
+  // Listas dos cadastros básicos (fornecedores, departamentos, condições de pagamento).
+  let cadForn = []; let cadDeptos = []; let cadConds = [];
+  async function carregarCadastros() {
+    const lista = (t) => apiFetch(`/api/cadastros-basicos/${t}?ativos=1`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    [cadForn, cadDeptos, cadConds] = await Promise.all([lista('fornecedores'), lista('departamentos'), lista('condicoes_pagamento')]);
+  }
+  async function formContaComCadastros(c = null) { await carregarCadastros(); formConta(c); }
+
   function formConta(c = null) {
     const v = (k) => esc(c?.[k] ?? '');
     $('cpModalConteudo').innerHTML = `${titulo(c ? `Conta ${c.id}` : '＋ Conta a pagar')}
@@ -94,24 +102,44 @@
         <div class="campo largo"><label for="cpDesc">Descrição</label><input id="cpDesc" maxlength="200" value="${v('descricao')}" placeholder="Ex.: Diesel posto Rodovia, aluguel do galpão" /></div>
         <div class="campo"><label for="cpCategoria">Categoria</label><select id="cpCategoria">${Object.entries(cat.categorias).map(([k, n]) => `<option value="${k}" ${c?.categoria === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
         <div class="campo"><label for="cpCentro">Centro de custo</label><select id="cpCentro"><option value="">${c ? '— nenhum —' : '— automático (veículo/filial) —'}</option>${(centrosCc || []).map((x) => `<option value="${x.id}" ${Number(c?.centro_custo_id) === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></div>
-        <div class="campo largo"><label for="cpForn">Fornecedor</label><input id="cpForn" maxlength="200" value="${v('fornecedor_nome')}" /></div>
+        <div class="campo largo"><label for="cpForn">Fornecedor <small style="color:var(--texto-fraco);">(escolha do cadastro ou digite)</small></label><input id="cpForn" maxlength="200" list="cpListaForn" autocomplete="off" value="${v('fornecedor_nome')}" />
+          <datalist id="cpListaForn">${cadForn.map((f) => `<option value="${esc(f.razao_social)}">${esc(Doc.formatar(f.documento || ''))}</option>`).join('')}</datalist></div>
         <div class="campo"><label for="cpFornDoc">CNPJ / CPF</label><input id="cpFornDoc" maxlength="18" value="${esc(Doc.formatar(c?.fornecedor_doc ?? ''))}" /></div>
+        <div class="campo"><label for="cpDepto">Departamento</label><select id="cpDepto"><option value="">—</option>${cadDeptos.map((x) => `<option value="${x.id}" ${Number(c?.departamento_id) === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></div>
         <div class="campo"><label for="cpDoc">Documento (NF, boleto)</label><input id="cpDoc" maxlength="60" value="${v('documento')}" /></div>
         <div class="campo"><label for="cpValor">${c ? 'Valor' : 'Valor (total)'}</label><input id="cpValor" inputmode="decimal" value="${c ? esc(num2(c.valor)) : ''}" /></div>
         <div class="campo"><label for="cpComp" title="Dia da despesa (data da nota ou do serviço): é o mês em que ela entra na contabilidade (regime de competência).">Competência</label><input id="cpComp" type="date" value="${c?.competencia ? esc(String(c.competencia).slice(0, 10)) : hoje()}" /></div>
         <div class="campo"><label for="cpVenc">${c ? 'Vencimento' : '1º vencimento'}</label><input id="cpVenc" type="date" value="${c ? esc(String(c.vencimento).slice(0, 10)) : hoje()}" /></div>
-        ${c ? '' : `<div class="campo"><label for="cpParcelas">Parcelas (mensais)</label><input id="cpParcelas" type="number" min="1" max="60" value="1" /></div>
+        ${c ? '' : `<div class="campo"><label for="cpCond" title="Com a condição, as parcelas saem pelos dias dela, contados da competência, e o valor é o total.">Condição de pagamento</label><select id="cpCond"><option value="">— parcelas mensais (abaixo) —</option>${cadConds.map((x) => `<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select></div>
+          <div class="campo"><label for="cpParcelas">Parcelas (mensais)</label><input id="cpParcelas" type="number" min="1" max="60" value="1" /></div>
           <div class="campo"><label for="cpDividir">O valor é</label><select id="cpDividir"><option value="true">o total (divide nas parcelas)</option><option value="false">de cada parcela (ex.: aluguel)</option></select></div>`}
         <div class="campo inteiro"><label for="cpObs">Observação</label><input id="cpObs" maxlength="2000" value="${v('observacao')}" /></div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-cp-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="cpSalvar" style="width:auto;">Salvar</button></div>`;
     modal.classList.remove('oculto');
     $('cpDesc').focus();
+    // Fornecedor do cadastro: preenche o CNPJ, a categoria padrão e a condição de pagamento.
+    let fornecedorId = c?.fornecedor_id || null;
+    $('cpForn').addEventListener('change', () => {
+      const f = cadForn.find((x) => x.razao_social === $('cpForn').value.trim());
+      fornecedorId = f?.id || null;
+      if (!f) return;
+      $('cpFornDoc').value = Doc.formatar(f.documento || '');
+      if (f.categoria_padrao && !c) $('cpCategoria').value = f.categoria_padrao;
+      if (f.condicao_pagamento_id && $('cpCond')) { $('cpCond').value = String(f.condicao_pagamento_id); $('cpCond').dispatchEvent(new Event('change')); }
+    });
+    $('cpCond')?.addEventListener('change', () => {
+      const com = !!$('cpCond').value;
+      ['cpParcelas', 'cpDividir'].forEach((id) => { $(id).disabled = com; });
+      $('cpVenc').disabled = com;
+    });
     $('cpSalvar').addEventListener('click', async (ev) => {
       const b = ev.currentTarget; b.disabled = true;
       try {
         const corpo = { descricao: $('cpDesc').value, categoria: $('cpCategoria').value, fornecedor_nome: $('cpForn').value, fornecedor_doc: $('cpFornDoc').value, documento: $('cpDoc').value,
-          valor: $('cpValor').value, competencia: $('cpComp').value, vencimento: $('cpVenc').value, observacao: $('cpObs').value, centro_custo_id: $('cpCentro').value || null, ...(c ? {} : { parcelas: $('cpParcelas').value, dividir: $('cpDividir').value }) };
+          valor: $('cpValor').value, competencia: $('cpComp').value, vencimento: $('cpVenc').value || $('cpComp').value, observacao: $('cpObs').value, centro_custo_id: $('cpCentro').value || null,
+          fornecedor_id: fornecedorId, departamento_id: $('cpDepto').value || null,
+          ...(c ? {} : { parcelas: $('cpParcelas').value, dividir: $('cpDividir').value, condicao_pagamento_id: $('cpCond').value || null }) };
         if (c) await json(`/api/contas-pagar/${c.id}`, { method: 'PUT', body: JSON.stringify(corpo) });
         else { const r = await json('/api/contas-pagar', { method: 'POST', body: JSON.stringify(corpo) }); if (r.length > 1) mostrarAlerta(`${r.length} parcelas lançadas.`, { tipo: 'sucesso' }); }
         fecharModal(); telaContas().catch(erro);
@@ -165,7 +193,7 @@
       if (motivo == null) return;
       try { await json(`/api/contas-pagar/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }); await depois(); } catch (err) { erro(err); }
     });
-    $('cpEditar')?.addEventListener('click', () => formConta(c));
+    $('cpEditar')?.addEventListener('click', () => formContaComCadastros(c).catch(erro));
     $('cpVerAcerto')?.addEventListener('click', (e) => { e.preventDefault(); mostrarAba('acertos'); abrirAcerto(c.acerto_id).catch(erro); });
   }
 

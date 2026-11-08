@@ -3270,3 +3270,7 @@ BEGIN
     EXECUTE format('CREATE TRIGGER trg_alteracoes AFTER INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION registrar_alteracao()', t);
   END LOOP;
 END $$;
+
+-- Ajudantes da viagem no romaneio (a diária vira conta a pagar ao fechar).
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS ajudante_ids INTEGER[] NOT NULL DEFAULT '{}';
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS diarias_lancadas BOOLEAN NOT NULL DEFAULT FALSE;

@@ -59,7 +59,8 @@ window.Acessos = (() => {
     const div = document.createElement('div');
     div.id = 'acSecao';
     div.style.cssText = 'grid-column:1 / -1; margin-top:14px; border-top:1px solid var(--borda); padding-top:12px;';
-    div.innerHTML = `<div class="campo" style="margin-bottom:10px;"><label>Perfil de acesso</label>
+    div.innerHTML = `<div class="campo" style="margin-bottom:10px;"><label>Departamento</label><select id="acDepartamento"><option value="">—</option></select></div>
+      <div class="campo" style="margin-bottom:10px;"><label>Perfil de acesso</label>
         <select id="acPerfil"><option value="">Sem perfil (permissões marcadas à mão)</option></select>
         <small style="color:var(--texto-fraco);">Escolher um perfil marca as permissões e os módulos dele. Quem segue um perfil é atualizado quando o perfil muda.</small></div>
       <div style="font-size:13px; font-weight:600; margin:8px 0 4px;">Módulos da transportadora que este usuário usa</div>
@@ -84,6 +85,8 @@ window.Acessos = (() => {
     await carregarListas();
     $('acPerfil').innerHTML = `<option value="">Sem perfil (permissões marcadas à mão)</option>${perfis.map((p) => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}`;
     $('acPerfil').value = u?.perfil_acesso_id ? String(u.perfil_acesso_id) : '';
+    const deptos = await apiFetch('/api/cadastros-basicos/opcoes/departamentos').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    $('acDepartamento').innerHTML = `<option value="">—</option>${deptos.map((d) => `<option value="${d.id}" ${Number(u?.departamento_id) === d.id ? 'selected' : ''}>${esc(d.nome)}</option>`).join('')}`;
     const bloq = u?.modulos_bloqueados || [];
     document.querySelectorAll('[data-ac-modulo]').forEach((c) => { c.checked = !bloq.includes(c.dataset.acModulo); });
     const perm = (u?.unidades_permitidas || []).map(Number);
@@ -94,6 +97,7 @@ window.Acessos = (() => {
     if (!$('acSecao')) return {};
     return {
       perfil_acesso_id: Number($('acPerfil').value) || null,
+      departamento_id: Number($('acDepartamento').value) || null,
       modulos_bloqueados: [...document.querySelectorAll('[data-ac-modulo]')].filter((c) => !c.checked).map((c) => c.dataset.acModulo),
       unidades_permitidas: [...document.querySelectorAll('[data-ac-filial]:checked')].map((c) => Number(c.dataset.acFilial)),
     };

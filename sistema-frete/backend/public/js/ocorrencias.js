@@ -357,10 +357,30 @@
       <div class="campo"><label for="rmData">Data</label><input type="date" id="rmData" value="${esc(String(r.data || '').slice(0, 10) || new Date().toISOString().slice(0, 10))}" /></div>
       <div class="campo"><label for="rmPlaca">Placa</label><input type="text" id="rmPlaca" maxlength="8" value="${esc(r.placa || '')}" /></div>
       <div class="campo"><label for="rmVeiculo">Veículo</label><input type="text" id="rmVeiculo" maxlength="60" placeholder="Ex: VUC, 3/4, Truck" value="${esc(r.veiculo || '')}" /></div>
+      <div class="campo inteiro"><label>Ajudantes da viagem <small style="color:var(--texto-fraco);">(Cadastros básicos; a diária vira conta a pagar ao fechar o romaneio)</small></label>
+        <div id="rmAjudantes" data-selecionados="${esc((r.ajudante_ids || []).join(','))}" style="display:flex; flex-wrap:wrap; gap:4px 14px;"><small style="color:var(--texto-fraco);">Carregando…</small></div></div>
       <div class="campo inteiro"><label for="rmObs">Observação</label><input type="text" id="rmObs" value="${esc(r.observacao || '')}" /></div></div>`;
   }
+  // Depois de desenhar o formulário: lista de ajudantes e o conjunto do cavalo (placa).
+  async function ligarFormRomaneio() {
+    const lista = (t) => apiFetch(`/api/cadastros-basicos/${t}?ativos=1`).then((x) => (x.ok ? x.json() : [])).catch(() => []);
+    const [ajs, conjuntos, veics] = await Promise.all([lista('ajudantes'), lista('conjuntos_veiculo'), apiFetch('/api/mdfe/veiculos').then((x) => (x.ok ? x.json() : [])).catch(() => [])]);
+    const caixa = $('rmAjudantes'); if (!caixa) return;
+    const sel = (caixa.dataset.selecionados || '').split(',').map(Number);
+    caixa.innerHTML = ajs.length ? ajs.map((a) => `<label class="ac-opcao"><input type="checkbox" data-rm-ajudante="${a.id}" ${sel.includes(a.id) ? 'checked' : ''} /> ${esc(a.nome)}${Number(a.diaria) ? ` <small style="color:var(--texto-fraco);">(${Number(a.diaria).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</small>` : ''}</label>`).join('')
+      : '<small style="color:var(--texto-fraco);">Nenhum ajudante cadastrado (Configuração » Cadastros básicos » Ajudantes).</small>';
+    $('rmPlaca').addEventListener('change', () => {
+      const placa = $('rmPlaca').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cav = veics.find((v) => v.placa === placa);
+      const conj = cav && conjuntos.find((c) => c.cavalo_id === cav.id);
+      if (!conj) return;
+      const carretas = conj.reboques.map((id) => veics.find((v) => v.id === id)?.placa).filter(Boolean);
+      if (!$('rmVeiculo').value.trim()) $('rmVeiculo').value = `${conj.descricao || cav.descricao || 'Conjunto'}${carretas.length ? ` + ${carretas.join(', ')}` : ''}`.slice(0, 60);
+    });
+  }
   const lerFormRomaneio = () => ({ motorista_nome: $('rmMotorista').value, motorista_documento: $('rmDoc').value, motorista_telefone: $('rmFone').value,
-    data: $('rmData').value, placa: $('rmPlaca').value, veiculo: $('rmVeiculo').value, observacao: $('rmObs').value });
+    data: $('rmData').value, placa: $('rmPlaca').value, veiculo: $('rmVeiculo').value, observacao: $('rmObs').value,
+    ajudante_ids: [...document.querySelectorAll('[data-rm-ajudante]:checked')].map((x) => Number(x.dataset.rmAjudante)) });
 
   $('ocRepassar').addEventListener('click', () => {
     if (!window.nexoParceiros) { mostrarAlerta('Sem permissão para parceiros.', { tipo: 'erro' }); return; }
@@ -377,6 +397,7 @@
       <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-oc-fechar style="width:auto;">Cancelar</button>
         <button class="btn btn-primario" id="rmCriar" style="width:auto;">Montar romaneio</button></div>`;
     modal.classList.remove('oculto');
+    ligarFormRomaneio();
     $('rmOrdem').addEventListener('click', (e) => {
       const li = e.target.closest('li'); if (!li) return;
       if (e.target.matches('[data-rm-sobe]') && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
@@ -439,6 +460,7 @@
       if (!await confirmar('Trocar o código? O código antigo para de funcionar no celular do motorista.', { textoOk: 'Trocar' })) return;
       try { await apiRom(`/${id}/novo-codigo`, { method: 'POST' }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
     });
+    if ($('rmAjudantes')) ligarFormRomaneio();
     $('rmSalvar')?.addEventListener('click', async () => { try { await apiRom(`/${id}`, { method: 'PUT', body: JSON.stringify(lerFormRomaneio()) }); recarregar(); } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); } });
     $('rmExcluir')?.addEventListener('click', async () => {
       if (!await confirmar('Excluir este romaneio? Os CT-e voltam a ficar livres.', { tipo: 'perigo', textoOk: 'Excluir' })) return;
@@ -463,7 +485,7 @@
       if (!await confirmar(`Fechar o romaneio?${avisos ? ` ${avisos}` : ''}`, { textoOk: 'Fechar' })) return;
       try {
         const x = await apiRom(`/${id}/fechar`, { method: 'POST', body: '{}' });
-        mostrarAlerta(`Romaneio fechado.${x.voltaram ? ` ${x.voltaram} CT-e voltaram para a base.` : ''}${x.coletas_sem_baixa ? ` ${x.coletas_sem_baixa} coleta(s) ficaram como não coletadas.` : ''}`, { tipo: 'sucesso' });
+        mostrarAlerta(`Romaneio fechado.${x.voltaram ? ` ${x.voltaram} CT-e voltaram para a base.` : ''}${x.coletas_sem_baixa ? ` ${x.coletas_sem_baixa} coleta(s) ficaram como não coletadas.` : ''}${x.diarias_lancadas ? ` ${x.diarias_lancadas} diária(s) de ajudante lançada(s) em Contas a pagar.` : ''}`, { tipo: 'sucesso' });
         recarregar();
       } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
     });

@@ -9556,6 +9556,9 @@ async function abrirCliente(id) {
     document.getElementById('clDocumento').value = clDoc(c.documento);
     CL_CAMPOS.forEach(([el, campo]) => { document.getElementById(el).value = c[campo] ?? ''; });
     document.getElementById('clExigeAgenda').checked = !!c.exige_agendamento;
+    // Condições de pagamento (Cadastros básicos): a 1ª parcela dá o vencimento das faturas deste cliente.
+    const conds = await apiFetch('/api/cadastros-basicos/opcoes/condicoes_pagamento').then((x) => (x.ok ? x.json() : [])).catch(() => []);
+    document.getElementById('clCondicao').innerHTML = `<option value="">Prazo padrão da empresa</option>${conds.map((o) => `<option value="${o.id}" ${Number(c.condicao_pagamento_id) === o.id ? 'selected' : ''}>${cfEsc(o.nome)}</option>`).join('')}`;
     const r = c.resumo || {};
     document.getElementById('clienteResumoFretes').innerHTML = `${r.notas || 0} nota(s) no sistema · frete cobrado ${formatoMoeda(r.frete_total)} · faturado ${formatoMoeda(r.faturado_total)}`
       + `${r.faturado_total ? ` · ${(100 * r.frete_total / r.faturado_total).toFixed(2).replace('.', ',')}% de frete` : ''}`
@@ -9569,6 +9572,7 @@ document.getElementById('btnSalvarCliente')?.addEventListener('click', async () 
   const corpo = {};
   CL_CAMPOS.forEach(([el, campo]) => { corpo[campo] = document.getElementById(el).value.trim(); });
   corpo.exige_agendamento = document.getElementById('clExigeAgenda').checked;
+  corpo.condicao_pagamento_id = document.getElementById('clCondicao').value || null;
   const resposta = await apiFetch(`/api/clientes/${clEstado.editandoId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
   const r = await resposta.json();
   if (!resposta.ok) { mostrarAlerta(r.erro || 'Erro ao salvar.'); return; }

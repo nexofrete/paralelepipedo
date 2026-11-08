@@ -181,6 +181,12 @@ async function lancar(b, usuarioNome) {
       [n.modelo, n.chave, n.serie, n.numero, n.emissao, entrada, n.emitente.doc || null, n.emitente.nome, n.emitente.uf || null, n.emitente.ie || null, n.natureza || null,
         centavos(n.valor_total), centavos(n.valor_produtos), centavos(n.base_icms), centavos(n.icms), centavos(n.icms_st), centavos(n.ipi), credito, categoria,
         JSON.stringify(n.itens), JSON.stringify(n.duplicatas || []), b.xml ? String(b.xml) : null, texto(b.observacao, 2000), usuarioNome]);
+    // O emitente vira fornecedor no cadastro (se ainda não for); as contas geradas ficam ligadas a ele.
+    const docEmit = String(n.emitente.doc || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+    if ([11, 14].includes(docEmit.length) && n.emitente.nome) {
+      await cliente.query(`INSERT INTO fornecedores (documento, razao_social, uf, ie, categoria_padrao) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (documento) DO NOTHING`,
+        [docEmit, String(n.emitente.nome).slice(0, 200), n.emitente.uf || null, n.emitente.ie || null, categoria]);
+    }
     const contas = [];
     if (gerar) {
       const docNota = `${n.modelo === '57' ? 'CT-e' : 'NF'} ${n.numero}${n.serie ? `/${n.serie}` : ''}`;

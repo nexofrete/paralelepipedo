@@ -68,7 +68,7 @@
   $('ctTabela').addEventListener('click', (e) => { const b = e.target.closest('[data-ct-abrir]'); if (b) abrir(Number(b.dataset.ctAbrir)).catch(erro); });
 
   // ---------- Formulário ----------
-  function formulario(c = null, { duplicar = false } = {}) {
+  async function formulario(c = null, { duplicar = false } = {}) {
     const v = (k) => esc(c?.[k] ?? '');
     const editar = c && !duplicar;
     const origem = estado.config?.origem || {};
@@ -96,7 +96,8 @@
           <div class="campo"><label for="cqVol">Volumes</label><input id="cqVol" inputmode="numeric" value="${v('volumes')}" /></div>
           <div class="campo"><label for="cqCub">Cubagem (m³)</label><input id="cqCub" inputmode="decimal" value="${c?.cubagem_m3 != null ? esc(num(c.cubagem_m3, 3)) : ''}" /></div>
           <div class="campo"><label for="cqValor">Valor da mercadoria (R$)</label><input id="cqValor" inputmode="decimal" value="${c?.valor_mercadoria != null ? esc(num(c.valor_mercadoria, 2)) : ''}" /></div>
-          <div class="campo largo"><label for="cqProduto">Produto</label><input id="cqProduto" maxlength="120" value="${v('produto')}" /></div>
+          <div class="campo largo"><label for="cqProduto">Produto <small style="color:var(--texto-fraco);">(do cadastro: com a quantidade, calcula peso, cubagem e valor)</small></label><input id="cqProduto" maxlength="120" list="cqListaProdutos" autocomplete="off" value="${v('produto')}" /><datalist id="cqListaProdutos"></datalist></div>
+          <div class="campo"><label for="cqProdQtd">Quantidade do produto</label><input id="cqProdQtd" inputmode="numeric" placeholder="ex.: 20" /></div>
         </div></div>
       </div>
       <div>
@@ -157,6 +158,21 @@
       campo.value = novo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       $('cqDesc').value = ''; totalizar();
     });
+    // Produtos e regiões de atendimento (Cadastros básicos).
+    const produtos = await apiFetch('/api/cadastros-basicos/produtos?ativos=1').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    $('cqListaProdutos').innerHTML = produtos.map((p) => `<option value="${esc(p.descricao)}">${esc(p.codigo)}</option>`).join('');
+    const aplicarProduto = () => {
+      const p = produtos.find((x) => x.descricao === $('cqProduto').value.trim());
+      const q = Number(String($('cqProdQtd').value).replace(',', '.'));
+      if (!p || !(q > 0)) return;
+      const n3 = (x) => num(Math.round(x * 1000) / 1000, 3);
+      if (p.peso_kg) $('cqPeso').value = n3(q * Number(p.peso_kg));
+      if (p.altura_cm && p.largura_cm && p.comprimento_cm) $('cqCub').value = n3((q * Number(p.altura_cm) * Number(p.largura_cm) * Number(p.comprimento_cm)) / 1e6);
+      if (p.valor_unitario) $('cqValor').value = num(Math.round(q * Number(p.valor_unitario) * 100) / 100, 2);
+      $('cqVol').value = String(q);
+    };
+    $('cqProduto').addEventListener('change', aplicarProduto);
+    $('cqProdQtd').addEventListener('input', aplicarProduto);
     const dadosCarga = () => ({ destino_cidade: $('cqDesCid').value, destino_uf: $('cqDesUf').value, destino_bairro: $('cqDesBairro').value, peso_kg: $('cqPeso').value,
       volumes: $('cqVol').value, cubagem_m3: $('cqCub').value, valor_mercadoria: $('cqValor').value, cliente_nome: $('cqCliente').value, cliente_doc: $('cqDoc').value });
     $('cqCalcular').addEventListener('click', async (e) => {
@@ -166,7 +182,10 @@
         calculo = { valor_tabela: r.total, tabela_nome: r.tabela_nome, explicacao: r.explicacao };
         corpoComps.innerHTML = ''; r.componentes.forEach(linha);
         if (r.prazo_dias) $('cqPrazo').value = r.prazo_dias;
-        $('cqExplica').textContent = `${r.explicacao || ''}${r.cidade_usada ? ` · praça ${r.cidade_usada}` : ''}`;
+        // Sem prazo na tabela: o da região de atendimento do destino.
+        const reg = await apiFetch(`/api/cadastros-basicos/regiao?${new URLSearchParams({ uf: $('cqDesUf').value, cidade: $('cqDesCid').value })}`).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        if (!r.prazo_dias && reg?.prazo_dias != null) $('cqPrazo').value = reg.prazo_dias;
+        $('cqExplica').textContent = `${r.explicacao || ''}${r.cidade_usada ? ` · praça ${r.cidade_usada}` : ''}${reg ? ` · região ${reg.nome}${reg.unidade_sigla ? ` (filial ${reg.unidade_sigla})` : ''}` : ''}`;
         totalizar();
       } catch (err) { erro(err); }
       b.disabled = false;
@@ -253,9 +272,9 @@
         ${c.status === 'aprovada' && !c.coleta_id ? '<button class="btn btn-primario" id="czColeta" style="width:auto;">📦 Criar a coleta</button>' : ''}</div>`;
     modal.classList.remove('oculto');
     const depois = async () => { await carregar(); await abrir(id); };
-    $('czEditar')?.addEventListener('click', () => formulario(c));
-    $('czPrecificar')?.addEventListener('click', () => { formulario(c); $('cqCalcular').click(); });
-    $('czDuplicar').addEventListener('click', () => formulario(c, { duplicar: true }));
+    $('czEditar')?.addEventListener('click', () => formulario(c).catch(erro));
+    $('czPrecificar')?.addEventListener('click', () => { formulario(c).then(() => $('cqCalcular').click()).catch(erro); });
+    $('czDuplicar').addEventListener('click', () => formulario(c, { duplicar: true }).catch(erro));
     $('czWhats')?.addEventListener('click', () => { api(`/${id}/marcar-enviada`, { method: 'POST' }).then(depois).catch(() => {}); });
     $('czEmail')?.addEventListener('click', async () => {
       const para = await pedirTexto('Enviar a proposta para qual e-mail?', { titulo: `Cotação ${id}`, valor: c.email || '', placeholder: 'cliente@empresa.com.br', textoOk: 'Enviar' });

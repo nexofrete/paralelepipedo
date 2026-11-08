@@ -77,6 +77,7 @@ function lerCabecalho(b) {
     motorista_nome: nome.slice(0, 120), motorista_documento: String(b.motorista_documento || '').trim().slice(0, 30) || null,
     motorista_telefone: String(b.motorista_telefone || '').trim().slice(0, 30) || null, placa: String(b.placa || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || null,
     veiculo: String(b.veiculo || '').trim().slice(0, 60) || null, observacao: String(b.observacao || '').trim() || null,
+    ajudante_ids: [...new Set((Array.isArray(b.ajudante_ids) ? b.ajudante_ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 10),
   };
 }
 
@@ -128,9 +129,9 @@ router.post('/', autenticar, emitir, async (req, res) => {
     const cab = lerCabecalho(req.body || {});
     await cliente.query('BEGIN');
     const { rows } = await cliente.query(
-      `INSERT INTO romaneios (data, motorista_nome, motorista_documento, motorista_telefone, placa, veiculo, observacao, codigo_acesso, criado_por_nome)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-      [cab.data, cab.motorista_nome, cab.motorista_documento, cab.motorista_telefone, cab.placa, cab.veiculo, cab.observacao, novoCodigo(), req.usuario.nome]);
+      `INSERT INTO romaneios (data, motorista_nome, motorista_documento, motorista_telefone, placa, veiculo, observacao, codigo_acesso, criado_por_nome, ajudante_ids)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      [cab.data, cab.motorista_nome, cab.motorista_documento, cab.motorista_telefone, cab.placa, cab.veiculo, cab.observacao, novoCodigo(), req.usuario.nome, cab.ajudante_ids]);
     await gravarItens(cliente, rows[0].id, req.body.ctes);
     await cliente.query('COMMIT');
     log(req, 'romaneio', `Montou o romaneio ${rows[0].id} (${cab.motorista_nome}${cab.placa ? ` · ${cab.placa}` : ''}) com ${req.body.ctes.length} CT-e`);
@@ -146,8 +147,8 @@ router.put('/:id(\\d+)', autenticar, emitir, async (req, res) => {
     if (!rows[0]) throw falha('Romaneio não encontrado.', 404);
     if (rows[0].status === 'fechado') throw falha('O romaneio já foi fechado.');
     const cab = lerCabecalho(req.body || {});
-    await cliente.query(`UPDATE romaneios SET data = $2, motorista_nome = $3, motorista_documento = $4, motorista_telefone = $5, placa = $6, veiculo = $7, observacao = $8 WHERE id = $1`,
-      [req.params.id, cab.data, cab.motorista_nome, cab.motorista_documento, cab.motorista_telefone, cab.placa, cab.veiculo, cab.observacao]);
+    await cliente.query(`UPDATE romaneios SET data = $2, motorista_nome = $3, motorista_documento = $4, motorista_telefone = $5, placa = $6, veiculo = $7, observacao = $8, ajudante_ids = $9 WHERE id = $1`,
+      [req.params.id, cab.data, cab.motorista_nome, cab.motorista_documento, cab.motorista_telefone, cab.placa, cab.veiculo, cab.observacao, cab.ajudante_ids]);
     if (Array.isArray(req.body.ctes)) {
       if (rows[0].status !== 'aberto') throw falha('O caminhão já saiu: não dá para mudar os CT-e. Feche este romaneio e monte outro.');
       await gravarItens(cliente, Number(req.params.id), req.body.ctes);
@@ -223,11 +224,22 @@ router.post('/:id(\\d+)/fechar', autenticar, emitir, async (req, res) => {
         nova_previsao: req.body?.nova_previsao, observacao: `Romaneio ${rows[0].id} fechado` }, usuarioNome: req.usuario.nome, romaneioId: rows[0].id }));
     }
     const { rows: semBaixa } = await coletas.fecharColetas(cliente, rows[0].id);
-    await cliente.query(`UPDATE romaneios SET status = 'fechado', fechado_em = NOW() WHERE id = $1`, [rows[0].id]);
+    // Diária dos ajudantes da viagem (Cadastros básicos): uma conta a pagar para cada um, uma vez só.
+    const diarias = [];
+    if (!rows[0].diarias_lancadas && rows[0].ajudante_ids?.length) {
+      const { rows: ajs } = await cliente.query('SELECT id, nome, cpf, diaria, pix FROM ajudantes WHERE id = ANY($1::int[]) AND diaria > 0', [rows[0].ajudante_ids]);
+      for (const a of ajs) {
+        const [c] = await require('../contasPagar').criar({ descricao: `Diária de ajudante — romaneio ${rows[0].id} (${String(rows[0].data).slice(0, 10)})`, categoria: 'outros',
+          fornecedor_nome: a.nome, fornecedor_doc: a.cpf || null, documento: `Romaneio ${rows[0].id}`, competencia: oc.hojeBrasilia(), vencimento: oc.hojeBrasilia(),
+          valor: Number(a.diaria), observacao: a.pix ? `PIX: ${a.pix}` : null, placa: rows[0].placa, parcelas: 1 }, req.usuario.nome, { cliente });
+        diarias.push(c.id);
+      }
+    }
+    await cliente.query(`UPDATE romaneios SET status = 'fechado', fechado_em = NOW(), diarias_lancadas = diarias_lancadas OR $2 WHERE id = $1`, [rows[0].id, diarias.length > 0]);
     await cliente.query('COMMIT');
     oc.depoisDeLancar(lancadas);
     log(req, 'romaneio', `Fechou o romaneio ${rows[0].id}: ${itens.filter((x) => x.situacao === 'entregue').length} entregue(s), ${lancadas.length} voltou(aram) para a base`);
-    res.json({ ok: true, voltaram: lancadas.length, coletas_sem_baixa: semBaixa.length });
+    res.json({ ok: true, voltaram: lancadas.length, coletas_sem_baixa: semBaixa.length, diarias_lancadas: diarias.length });
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao fechar o romaneio.'); } finally { cliente.release(); }
 });
 

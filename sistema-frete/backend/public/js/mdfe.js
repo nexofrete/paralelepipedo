@@ -372,6 +372,19 @@
         <button class="btn btn-secundario" id="mfSalvar" style="width:auto;">💾 Salvar rascunho</button>
         <button class="btn btn-primario" id="mfTransmitir" style="width:auto;">📤 Salvar e transmitir</button></div>`;
     modal.classList.remove('oculto');
+    // Conjunto (Cadastros básicos): o cavalo escolhido já traz as carretas e o motorista de costume.
+    $('mfVeic').addEventListener('change', async () => {
+      const cav = veiculos.find((x) => x.placa === $('mfVeic').value);
+      if (!cav) return;
+      const conjuntos = await apiFetch('/api/cadastros-basicos/conjuntos_veiculo?ativos=1').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+      const conj = conjuntos.find((c) => c.cavalo_id === cav.id);
+      if (!conj) return;
+      const placas = conj.reboques.map((id) => veiculos.find((x) => x.id === id)?.placa).filter(Boolean);
+      [...$('mfReboque').options].forEach((o) => { o.selected = placas.includes(o.value); });
+      const mot = conj.motorista_id && motoristas.find((x) => x.id === conj.motorista_id);
+      if (mot) [...$('mfCond').options].forEach((o) => { if (o.value === mot.cpf) o.selected = true; });
+      mostrarAlerta(`Conjunto ${conj.descricao || cav.placa}: ${placas.length ? `carretas ${placas.join(', ')}` : 'sem carretas'}${mot ? ` · motorista ${mot.nome}` : ''}.`, { tipo: 'info' });
+    });
 
     const ler = () => {
       const placa = $('mfVeic').value;

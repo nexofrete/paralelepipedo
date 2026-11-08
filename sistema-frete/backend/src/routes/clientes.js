@@ -9,7 +9,7 @@ const router = express.Router();
 const podeVer = permitirAlguma('pode_gerenciar_transportadoras', 'pode_editar_registros', 'pode_ver_todos');
 const podeEditar = permitirAlguma('pode_gerenciar_transportadoras', 'pode_editar_registros');
 const EDITAVEIS = ['razao_social', 'nome_fantasia', 'ie', 'ind_ie', 'email', 'telefone', 'logradouro', 'numero', 'complemento',
-  'bairro', 'municipio', 'uf', 'cep', 'observacoes', 'exige_agendamento', 'agendamento_instrucoes'];
+  'bairro', 'municipio', 'uf', 'cep', 'observacoes', 'exige_agendamento', 'agendamento_instrucoes', 'condicao_pagamento_id'];
 
 // GET /api/clientes?q=texto&pagina=1 -> { total, clientes: [...] } (com nº de notas e o último frete)
 router.get('/', autenticar, podeVer, async (req, res) => {
@@ -59,6 +59,7 @@ router.put('/:id(\\d+)', autenticar, podeEditar, async (req, res) => {
     const sets = campos.map((c, i) => `${c} = $${i + 2}`);
     const valores = campos.map((c) => {
       if (c === 'exige_agendamento') return req.body[c] === true || req.body[c] === 'true';
+      if (c === 'condicao_pagamento_id') return Number(req.body[c]) || null;
       let v = req.body[c] === '' ? null : req.body[c];
       if (v != null && c === 'uf') v = String(v).toUpperCase().slice(0, 2);
       if (v != null && c === 'cep') v = String(v).replace(/\D/g, '');

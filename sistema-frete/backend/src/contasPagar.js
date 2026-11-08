@@ -39,6 +39,7 @@ function lerConta(b = {}) {
     fornecedor_doc: Doc.limpar(b.fornecedor_doc), documento: texto(b.documento, 60),
     competencia: iso(b.competencia), vencimento: iso(b.vencimento), valor: valor(b.valor), observacao: texto(b.observacao, 2000), unidade_id: Number(b.unidade_id) || null, centro_custo_id: Number(b.centro_custo_id) || null,
     parcelas: Math.min(Math.max(parseInt(b.parcelas, 10) || 1, 1), 60), dividir: b.dividir !== false && b.dividir !== 'false',
+    fornecedor_id: Number(b.fornecedor_id) || null, departamento_id: Number(b.departamento_id) || null, condicao_pagamento_id: Number(b.condicao_pagamento_id) || null,
   };
   if (!c.descricao) throw falha('Informe a descrição da conta.');
   if (!c.vencimento) throw falha('Informe o vencimento.');
@@ -48,7 +49,15 @@ function lerConta(b = {}) {
 }
 
 // Divide em parcelas sem perder centavos (a diferença vai na primeira).
+// Com condição de pagamento (c.vencimentos): uma parcela por vencimento, o valor é o total.
 function parcelar(c) {
+  if (c.vencimentos?.length > 1) {
+    const n = c.vencimentos.length;
+    const cada = Math.floor((c.valor / n) * 100) / 100;
+    const resto = centavos(c.valor - cada * n);
+    return c.vencimentos.map((v, i) => ({ vencimento: v, valor: centavos(cada + (i === 0 ? resto : 0)), parcela: `${i + 1}/${n}`, competencia: c.competencia }));
+  }
+  if (c.vencimentos?.length === 1) return [{ vencimento: c.vencimentos[0], valor: c.valor, parcela: null, competencia: c.competencia }];
   if (c.parcelas === 1) return [{ vencimento: c.vencimento, valor: c.valor, parcela: null, competencia: c.competencia }];
   const cada = c.dividir ? Math.floor((c.valor / c.parcelas) * 100) / 100 : c.valor;
   const resto = c.dividir ? centavos(c.valor - cada * c.parcelas) : 0;
@@ -72,32 +81,52 @@ async function centroDaConta(c, b, cliente = pool) {
   return rows[0]?.id || null;
 }
 
+// Fornecedor do cadastro (pelo id ou pelo CNPJ/CPF) e, com condição de pagamento, os vencimentos das parcelas.
+async function completarCadastros(c, cliente = pool) {
+  if (!c.fornecedor_id && c.fornecedor_doc) {
+    const { rows } = await cliente.query('SELECT id FROM fornecedores WHERE documento = $1', [c.fornecedor_doc]);
+    c.fornecedor_id = rows[0]?.id || null;
+  }
+  if (c.fornecedor_id) {
+    const { rows: [f] } = await cliente.query('SELECT razao_social, documento FROM fornecedores WHERE id = $1', [c.fornecedor_id]);
+    if (!f) throw falha('Fornecedor não encontrado.');
+    c.fornecedor_nome = c.fornecedor_nome || f.razao_social; c.fornecedor_doc = c.fornecedor_doc || f.documento;
+  }
+  if (c.condicao_pagamento_id) {
+    const { rows: [cp] } = await cliente.query('SELECT parcelas FROM condicoes_pagamento WHERE id = $1', [c.condicao_pagamento_id]);
+    if (!cp) throw falha('Condição de pagamento não encontrada.');
+    c.vencimentos = require('./cadastrosBasicos').vencimentos(cp.parcelas, c.competencia || hojeBr());
+  }
+  return c;
+}
+
 async function criar(b, usuarioNome, { cliente = pool, acertoId = null } = {}) {
-  const c = lerConta(b);
+  const c = await completarCadastros(lerConta(b), cliente);
   c.centro_custo_id = await centroDaConta(c, b, cliente);
-  const grupo = c.parcelas > 1 ? crypto.randomBytes(6).toString('hex') : null;
+  const grupo = c.parcelas > 1 || c.vencimentos?.length > 1 ? crypto.randomBytes(6).toString('hex') : null;
   const criadas = [];
   for (const p of parcelar(c)) {
     const { rows } = await cliente.query(
-      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome, centro_custo_id, competencia)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
-      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome, c.centro_custo_id, p.competencia]);
+      `INSERT INTO contas_pagar (descricao, categoria, fornecedor_nome, fornecedor_doc, documento, vencimento, valor, parcela, grupo, acerto_id, unidade_id, observacao, criado_por_nome, centro_custo_id, competencia, fornecedor_id, departamento_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+      [c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, p.vencimento, p.valor, p.parcela, grupo, acertoId, c.unidade_id, c.observacao, usuarioNome, c.centro_custo_id, p.competencia, c.fornecedor_id, c.departamento_id]);
     criadas.push(rows[0]);
   }
   return criadas;
 }
 
 async function alterar(id, b) {
-  const c = lerConta({ ...b, parcelas: 1 });
+  const c = await completarCadastros(lerConta({ ...b, parcelas: 1, condicao_pagamento_id: null }));
   if (c.centro_custo_id) c.centro_custo_id = await centroDaConta(c, {});
   // Centro de custo só muda quando vem no pedido (senão a edição apagaria o do veículo/filial).
   const mudaCentro = Object.prototype.hasOwnProperty.call(b, 'centro_custo_id');
   const { rows } = await pool.query(
     `UPDATE contas_pagar SET descricao = $2, categoria = $3, fornecedor_nome = $4, fornecedor_doc = $5, documento = $6, vencimento = $7, valor = $8, observacao = $9, unidade_id = $10,
             centro_custo_id = CASE WHEN $12 THEN $11 ELSE centro_custo_id END, competencia = COALESCE($13::date, competencia),
+            fornecedor_id = $14, departamento_id = $15,
             status = CASE WHEN valor_pago >= $8 - 0.001 THEN 'paga' ELSE status END, pago_em = CASE WHEN valor_pago >= $8 - 0.001 THEN COALESCE(pago_em, CURRENT_DATE) ELSE pago_em END
       WHERE id = $1 AND status = 'aberta' AND valor_pago <= $8 RETURNING *`,
-    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id, mudaCentro, c.competencia]);
+    [id, c.descricao, c.categoria, c.fornecedor_nome, c.fornecedor_doc, c.documento, c.vencimento, c.valor, c.observacao, c.unidade_id, c.centro_custo_id, mudaCentro, c.competencia, c.fornecedor_id, c.departamento_id]);
   if (!rows[0]) throw falha('Só dá para alterar conta em aberto (e o valor não pode ficar menor que o já pago).', 409);
   return rows[0];
 }

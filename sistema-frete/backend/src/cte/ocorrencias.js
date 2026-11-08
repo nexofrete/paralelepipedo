@@ -83,7 +83,13 @@ async function prazoDoCte(reg, empresa) {
     });
     const p = r?.trecho?.prazo_dias ?? r?.trecho?.tabela_prazo_dias;
     if (p != null && Number(p) >= 0) return { dias: Number(p), origem: 'tabela' };
-  } catch { /* sem tabela: usa o padrão */ }
+  } catch { /* sem tabela: usa a região ou o padrão */ }
+  // Região de atendimento (Cadastros básicos): faixa de CEP, cidade ou UF do destino.
+  try {
+    const cep = d.recebedor?.endereco?.CEP || d.destinatario?.endereco?.CEP;
+    const r = await require('../cadastrosBasicos').regiaoDe({ uf: d.fim?.UF, cidade: d.fim?.xMun, cep });
+    if (r?.prazo_dias != null) return { dias: Number(r.prazo_dias), origem: 'regiao' };
+  } catch { /* sem região */ }
   return { dias: Number(empresa.cte_prazo_padrao) || 3, origem: 'padrao' };
 }
 

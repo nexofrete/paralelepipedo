@@ -160,6 +160,10 @@ def parte_operacao(g):
 
     # 32
     s += h1('32. Emissão de CT-e')
+    s.append(P('No formulário, o quadro <b>Tipo de operação</b> (Cadastros básicos, seção 23) preenche de uma vez o CFOP, o '
+               'tipo de serviço (normal, subcontratação, redespacho), o tomador e o tipo de mercadoria. O campo "Produto '
+               'predominante" sugere os produtos cadastrados. Sem prazo na tabela de frete, a previsão de entrega usa o prazo '
+               'da região de atendimento do destino.'))
     s += h2('Antes de emitir (administrador, Configuração fiscal, código 902)')
     s += passos([
         'Preencha os dados da empresa. Ao digitar o CNPJ, os dados da Receita entram sozinhos (veja a seção 51).',
@@ -243,7 +247,8 @@ def parte_operacao(g):
         '<b>Ocorrências</b> (041): coletado, chegada na filial, saiu para entrega, agendada, entregue (com quem recebeu e '
         'foto do canhoto), não entregue, recusa, avaria e devolução. Dá para lançar em lote.',
         '<b>Romaneio</b> (040): monte com motorista, placa e ordem de entrega. A folha sai com QR code do app. '
-        '"Dar saída" e "Fechar" atualizam as entregas.',
+        '"Dar saída" e "Fechar" atualizam as entregas. Marque os <b>ajudantes da viagem</b> (Cadastros básicos): ao fechar, '
+        'a diária de cada um vira conta a pagar.',
         '<b>App do motorista</b> (motorista.html, no celular, sem login): entra com o código do romaneio, vê as entregas '
         'com mapa e dá baixa com nome, assinatura, foto e GPS.',
         '<b>Avisos ao cliente</b> (Configuração fiscal » Avisos de entrega): e-mail e/ou WhatsApp ao destinatário e ao '
@@ -727,6 +732,9 @@ def parte_financeiro(g):
     s += lista([
         '<b>Contas a pagar</b> (110): qualquer saída, em parcelas, com centro de custo. Pagar total ou parcial; o '
         'pagamento pode ser estornado. Ao editar uma conta, o centro de custo só muda se você mexer nele.',
+        '<b>Fornecedor, departamento e condição</b>: escolha o fornecedor do cadastro (seção 23, Cadastros básicos) e o CNPJ, '
+        'a categoria e a condição de pagamento entram sozinhos. Com uma condição (ex.: 30/60/90 dias), as parcelas vencem '
+        'nos dias dela contados da competência, e o valor informado é o total.',
         '<b>Competência</b>: o dia da despesa (data da nota ou do serviço), que define o mês em que ela entra na '
         'contabilidade. Vem com o dia de hoje; corrija quando a nota for de outro mês. Compra parcelada fica toda no mês '
         'da compra; conta que se repete ("o valor é de cada parcela", ex.: aluguel) vai um mês para cada parcela. '

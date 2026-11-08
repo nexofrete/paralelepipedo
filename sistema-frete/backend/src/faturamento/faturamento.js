@@ -123,7 +123,11 @@ async function criar({ cteIds, nfseIds, debitoIds, vencimento, desconto = 0, obs
     const { rows: emp } = await cliente.query('SELECT fatura_proximo_numero, fatura_prazo_dias FROM empresa WHERE id = 1 FOR UPDATE');
     const { rows: maior } = await cliente.query('SELECT COALESCE(MAX(numero), 0) AS n FROM faturas_transporte');
     const numero = Math.max(Number(emp[0]?.fatura_proximo_numero) || 1, Number(maior[0].n) + 1);
-    const venc = dataIso(vencimento) || somarDias(hoje(), Number(emp[0]?.fatura_prazo_dias) || 15);
+    // Vencimento: o informado; senão, a condição de pagamento do cliente (prazo da 1ª parcela); senão, o prazo padrão da empresa.
+    const { rows: [cond] } = await cliente.query(`SELECT cp.parcelas FROM clientes c JOIN condicoes_pagamento cp ON cp.id = c.condicao_pagamento_id
+      WHERE regexp_replace(COALESCE(c.documento, ''), '[^0-9A-Za-z]', '', 'g') = regexp_replace($1, '[^0-9A-Za-z]', '', 'g') LIMIT 1`, [String(tomadores[0])]).catch(() => ({ rows: [] }));
+    const prazo = cond?.parcelas?.length ? Number(cond.parcelas[0]) : Number(emp[0]?.fatura_prazo_dias) || 15;
+    const venc = dataIso(vencimento) || somarDias(hoje(), prazo);
     const { rows: [f] } = await cliente.query(
       `INSERT INTO faturas_transporte (numero, tomador_doc, tomador_nome, tomador_email, emissao, vencimento, valor_bruto, desconto, observacoes, demonstracao, criado_por_nome)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,

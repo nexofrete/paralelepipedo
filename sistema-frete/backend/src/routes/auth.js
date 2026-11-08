@@ -143,7 +143,7 @@ router.post('/verificar-codigo-2fa', async (req, res) => {
   }
 });
 
-const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, ${CAMPOS_PERMISSAO.join(', ')}`;
+const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, departamento_id, ${CAMPOS_PERMISSAO.join(', ')}`;
 
 // POST /api/auth/ticket { caminho } — ticket de download para um link direto (ver ticketDownload.js).
 router.post('/ticket', autenticar, (req, res) => {
@@ -279,10 +279,10 @@ router.post('/usuarios', autenticar, permitir('pode_gerenciar_usuarios'), async 
     const senha_hash = await bcrypt.hash(senha, 10);
     // Senha criada pelo administrador é provisória por padrão: o usuário
     // cadastra a própria no primeiro acesso (dá pra desmarcar no formulário).
-    const colunas = ['nome', 'email', 'funcao', 'senha_hash', 'perfil', 'cliente_nome', 'trocar_senha', 'perfil_acesso_id', 'modulos_bloqueados', 'unidades_permitidas', ...CAMPOS_PERMISSAO];
+    const colunas = ['nome', 'email', 'funcao', 'senha_hash', 'perfil', 'cliente_nome', 'trocar_senha', 'perfil_acesso_id', 'modulos_bloqueados', 'unidades_permitidas', 'departamento_id', ...CAMPOS_PERMISSAO];
     const valores = [
       nome, email, String(req.body.funcao || '').trim().slice(0, 100) || null, senha_hash, perfil || 'cliente', cliente_nome || null, req.body.trocar_senha !== false,
-      Number(req.body.perfil_acesso_id) || null, limparModulos(req.body.modulos_bloqueados), limparUnidades(req.body.unidades_permitidas),
+      Number(req.body.perfil_acesso_id) || null, limparModulos(req.body.modulos_bloqueados), limparUnidades(req.body.unidades_permitidas), Number(req.body.departamento_id) || null,
       ...CAMPOS_PERMISSAO.map((c) => !!req.body[c]),
     ];
     const placeholders = valores.map((_, i) => `$${i + 1}`);
@@ -329,6 +329,7 @@ router.put('/usuarios/:id', autenticar, permitir('pode_gerenciar_usuarios'), asy
     if (req.body.perfil_acesso_id !== undefined) add('perfil_acesso_id', Number(req.body.perfil_acesso_id) || null);
     if (req.body.modulos_bloqueados !== undefined) add('modulos_bloqueados', limparModulos(req.body.modulos_bloqueados));
     if (req.body.unidades_permitidas !== undefined) add('unidades_permitidas', limparUnidades(req.body.unidades_permitidas));
+    if (req.body.departamento_id !== undefined) add('departamento_id', Number(req.body.departamento_id) || null);
     if (senha) {
       { const p = contas.problemaDaSenha(senha, await contas.politica()); if (p) return res.status(400).json({ erro: p }); }
       add('senha_hash', await bcrypt.hash(senha, 10));

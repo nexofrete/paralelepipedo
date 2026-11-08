@@ -11,6 +11,10 @@
         },
         {
           "area": "Cadastros",
+          "texto": "Os cadastros básicos já trabalham nas outras telas: fornecedor e condição de pagamento (30/60/90) nas contas a pagar, condição do cliente no vencimento da fatura, tipo de operação e produtos no CT-e, conjunto (cavalo + carretas) no MDF-e, ajudantes no romaneio (a diária vira conta a pagar ao fechar), produto na cotação e prazo/filial pela região de atendimento."
+        },
+        {
+          "area": "Cadastros",
           "texto": "Cadastros básicos (código 907): fornecedores, ajudantes, conjuntos de veículos (cavalo + carretas), produtos, tipos de mercadoria, departamentos, regiões de atendimento (UF, cidade e faixa de CEP), tipos de operação (CFOP e tomador do CT-e) e condições de pagamento (30/60/90...), numa tela só."
         },
         {

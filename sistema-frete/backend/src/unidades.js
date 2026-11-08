@@ -59,7 +59,8 @@ async function aoAutorizar(cteId) {
   const d = rows[0].dados || {};
   if (String(d.tpCTe) === '1') return;   // complementar: só valor, a mercadoria é a do original
   const origem = (await unidadeDaCidade(d.inicio?.xMun, d.inicio?.UF)) || matriz;
-  const destino = (await unidadeDaCidade(d.fim?.xMun, d.fim?.UF)) || origem;
+  const regiao = await require('./cadastrosBasicos').regiaoDe({ uf: d.fim?.UF, cidade: d.fim?.xMun, cep: d.recebedor?.endereco?.CEP || d.destinatario?.endereco?.CEP }).catch(() => null);
+  const destino = (await unidadeDaCidade(d.fim?.xMun, d.fim?.UF)) || regiao?.unidade_id || origem;
   await pool.query('UPDATE ctes_emitidos SET unidade_origem_id = $2, unidade_atual_id = $2, unidade_destino_id = $3 WHERE id = $1', [cteId, origem, destino]);
 }
 

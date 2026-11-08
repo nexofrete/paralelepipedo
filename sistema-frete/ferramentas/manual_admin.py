@@ -198,6 +198,26 @@ def parte_admin(g):
         ['Condições de pagamento', 'Prazos em dias, uma parcela por número: à vista (0), 30, 30/60, 30/60/90... Já vêm as mais '
          'comuns.', 'Financeiro'],
     ], [0.22, 0.6, 0.18])
+    s.append(P('<b>Onde cada cadastro é usado:</b>'))
+    s += tabela(['Cadastro', 'Onde aparece'], [
+        ['Fornecedores', 'Contas a pagar: escolha o fornecedor na lista e o CNPJ, a categoria e a condição de pagamento '
+         'entram sozinhos. Ao lançar uma nota de entrada, o emitente vira fornecedor (ou é atualizado).'],
+        ['Condições de pagamento', 'Contas a pagar: com a condição, as parcelas saem pelos dias dela, contados da competência '
+         '(30/60/90 = três parcelas, 30, 60 e 90 dias depois). No cliente (Clientes, campo Condição de pagamento): o '
+         'vencimento da fatura usa o primeiro prazo dela; sem condição, vale o prazo padrão da empresa.'],
+        ['Departamentos', 'Na conta a pagar (campo Departamento) e no usuário (Acessos).'],
+        ['Ajudantes', 'No romaneio (Ajudantes da viagem). Ao <b>Fechar</b> o romaneio, a diária de cada ajudante vira uma '
+         'conta a pagar ("Diária de ajudante", com o PIX na observação), uma vez só.'],
+        ['Conjuntos', 'No MDF-e, ao escolher o cavalo, as carretas e o motorista de costume entram sozinhos. No romaneio, a '
+         'placa do cavalo preenche o campo Veículo com as carretas.'],
+        ['Tipos de operação', 'Na emissão do CT-e (quadro Tipo de operação): preenche o CFOP, o tipo de serviço, o tomador e '
+         'o tipo de mercadoria. Tudo pode ser mudado à mão depois.'],
+        ['Tipos de mercadoria', 'Na emissão do CT-e, preenche "Outras características da carga" quando estiver vazio.'],
+        ['Produtos', 'Sugestões do "Produto predominante" no CT-e. Na cotação, escolha o produto e a quantidade: peso, '
+         'cubagem, valor e volumes são calculados.'],
+        ['Regiões de atendimento', 'Prazo de entrega do CT-e quando a tabela de frete não tem prazo (antes do prazo padrão), '
+         'filial de entrega quando a cidade não está numa filial, e o prazo da cotação quando a tabela não tem.'],
+    ], [0.24, 0.76])
     s.append(P('Também fazem parte dos cadastros: empresa e usuários (Cadastros), filiais (901), clientes, transportadoras, '
                'parceiros, motoristas e veículos (Veículos e motoristas), centros de custo (302) e tabelas de frete. Cidades e '
                'estados vêm da lista oficial do IBGE e não precisam ser cadastrados.'))

@@ -331,6 +331,10 @@
     const ibs = config?.cte_ibscbs_ativo;
     $('cteFormCorpo').innerHTML = `
       <div id="cteAvisoTipo"></div>
+      <div class="cte-secao" id="cteSecaoOperacao"><h4>Tipo de operação <small style="font-weight:400; color:var(--texto-fraco);">(Cadastros básicos: preenche CFOP, serviço e tomador)</small></h4><div class="cte-grade">
+        <div class="campo largo"><label for="cteTipoOperacao">Tipo de operação</label><select id="cteTipoOperacao"><option value="">— escolher à mão —</option></select></div>
+        <div class="campo largo"><label for="cteTipoMercadoria">Tipo de mercadoria</label><select id="cteTipoMercadoria"><option value="">—</option></select></div>
+      </div></div>
       <div class="cte-secao" id="cteSecaoServico"><h4>Tipo de serviço</h4><div class="cte-grade">
         <div class="campo largo"><label for="cteTpServ">Serviço</label><select id="cteTpServ">
           <option value="0">Normal — a transportadora faz o transporte para o cliente</option>
@@ -379,7 +383,7 @@
         <div class="campo inteiro" id="cteAvisoPrestacao" style="font-size:12px; color:var(--amarelo);"></div>
       </div></div>
       <div class="cte-secao" id="cteSecaoCarga"><h4>Carga</h4><div class="cte-grade">
-        ${campo('carga_pro', 'Produto predominante', { classe: 'largo' })}${campo('carga_out', 'Outras características')}
+        ${campo('carga_pro', 'Produto predominante', { classe: 'largo', extra: 'list="cteListaProdutos" autocomplete="off"' })}<datalist id="cteListaProdutos"></datalist>${campo('carga_out', 'Outras características')}
         ${campo('carga_valor', 'Valor da carga (R$)')}${campo('carga_peso', 'Peso bruto (kg)')}${campo('carga_vol', 'Volumes')}${campo('carga_m3', 'Cubagem (m³)')}
         ${campo('carga_tipo', 'Tipo de carga (tabela)', { ph: 'ex.: CAIXA' })}
       </div></div>
@@ -419,6 +423,9 @@
       if (b) { nfes = nfes.filter((c) => c !== b.dataset.tirar); desenharChips(); }
     });
     $('cteTomador').addEventListener('change', () => { $('cteBlocoOutroTomador').classList.toggle('oculto', $('cteTomador').value !== '4'); ajustarServico(); sugerirImpostos(); });
+    $('cteTipoOperacao').addEventListener('change', aplicarTipoOperacao);
+    $('cteTipoMercadoria').addEventListener('change', aplicarTipoMercadoria);
+    carregarCadastrosCte();
     ['cteTpServ', 'cteTemExped', 'cteTemReceb'].forEach((id) => $(id).addEventListener('change', () => { ajustarServico(); puxarPrestacao(false); }));
     $('cteBtnLerCteAnt').addEventListener('click', () => $('cteArquivoCteAnt').click());
     $('cteArquivoCteAnt').addEventListener('change', lerCteAnterior);
@@ -546,6 +553,34 @@
     copia($('cteTemExped').checked && $('exp_cmun').value ? 'exp' : 'rem', 'ini');
     copia($('cteTemReceb').checked && $('rec_cmun').value ? 'rec' : 'dest', 'fim');
     sugerirImpostos();
+  }
+
+  // Cadastros básicos: tipos de operação, tipos de mercadoria e produtos (sugestões do produto predominante).
+  let cadOperacoes = []; let cadMercadorias = []; let cadProdutos = [];
+  async function carregarCadastrosCte() {
+    const lista = (t) => apiFetch(`/api/cadastros-basicos/${t}?ativos=1`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    [cadOperacoes, cadMercadorias, cadProdutos] = await Promise.all([lista('tipos_operacao'), lista('tipos_mercadoria'), lista('produtos')]);
+    if (!$('cteTipoOperacao')) return;
+    $('cteTipoOperacao').innerHTML = `<option value="">— escolher à mão —</option>${cadOperacoes.map((o) => `<option value="${o.id}">${esc(o.nome)}${o.cfop_estadual ? ` (${o.cfop_estadual}/${o.cfop_interestadual || '—'})` : ''}</option>`).join('')}`;
+    $('cteTipoMercadoria').innerHTML = `<option value="">—</option>${cadMercadorias.map((m) => `<option value="${m.id}">${esc(m.nome)}</option>`).join('')}`;
+    $('cteListaProdutos').innerHTML = [...new Set(cadProdutos.map((p) => p.descricao))].map((d) => `<option value="${esc(d)}"></option>`).join('');
+  }
+  function aplicarTipoOperacao() {
+    const o = cadOperacoes.find((x) => String(x.id) === $('cteTipoOperacao').value);
+    if (!o) return;
+    const sufixo = String(o.cfop_estadual || o.cfop_interestadual || '').slice(1);
+    if (sufixo && sufixo !== '932') {
+      if (![...$('cteCfopTipo').options].some((op) => op.value === sufixo)) $('cteCfopTipo').insertAdjacentHTML('beforeend', `<option value="${sufixo}">${esc(o.natureza || 'Prestacao de servico de transporte')} (${sufixo})</option>`);
+      $('cteCfopTipo').value = sufixo;
+    }
+    if (o.tp_serv != null) { $('cteTpServ').value = String(o.tp_serv); $('cteTpServ').dispatchEvent(new Event('change')); }
+    if (o.tomador != null) { $('cteTomador').value = String(o.tomador); $('cteTomador').dispatchEvent(new Event('change')); }
+    if (o.tipo_mercadoria_id) { $('cteTipoMercadoria').value = String(o.tipo_mercadoria_id); aplicarTipoMercadoria(); }
+    sugerirImpostos();
+  }
+  function aplicarTipoMercadoria() {
+    const m = cadMercadorias.find((x) => String(x.id) === $('cteTipoMercadoria').value);
+    if (m && !$('carga_out').value.trim()) $('carga_out').value = m.nome.toUpperCase().slice(0, 30);
   }
 
   // CFOP, alíquota interestadual e avisos.

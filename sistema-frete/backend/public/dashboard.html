@@ -3456,7 +3456,7 @@
         </div>
 
         <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">🔒 Segurança — logout automático por inatividade</h3>
+          <h3 style="margin-top:0; font-size:15px;">🔒 Segurança — senhas, bloqueio, duas etapas e inatividade</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
             Se o usuário ficar sem mexer no sistema por esse tempo, ele é desconectado sozinho e volta pra tela de login.
             Deixe em branco pra desativar esse recurso.
@@ -3466,8 +3466,21 @@
               <label>Tempo de inatividade (minutos)</label>
               <input type="number" id="segTempoInatividade" min="1" placeholder="Ex: 30 (em branco = desativado)" />
             </div>
-            <button class="btn btn-primario" id="btnSalvarSeguranca" style="width:auto; padding:10px 20px;">Salvar</button>
           </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:12px; align-items:end; margin-top:14px;">
+            <div class="campo" style="margin-bottom:0;"><label>Tamanho mínimo da senha</label><input type="number" id="segSenhaMin" min="8" max="64" /></div>
+            <label class="ac-opcao" style="padding-bottom:10px;"><input type="checkbox" id="segSenhaVariedade" /> Exigir letras e números</label>
+            <div class="campo" style="margin-bottom:0;"><label>Bloquear a conta depois de (senhas erradas seguidas; 0 = não bloqueia)</label><input type="number" id="segBloqueioTentativas" min="0" max="50" /></div>
+            <div class="campo" style="margin-bottom:0;"><label>Bloqueio dura (minutos)</label><input type="number" id="segBloqueioMinutos" min="1" max="1440" /></div>
+            <div class="campo" style="margin-bottom:0;"><label>Trocar a senha a cada (dias; 0 = nunca vence)</label><input type="number" id="segSenhaValidade" min="0" max="3650" /></div>
+            <div class="campo" style="margin-bottom:0;"><label>Verificação em duas etapas obrigatória</label>
+              <select id="segExigir2fa"><option value="nao">Não (cada um escolhe)</option><option value="admins">Para os administradores</option><option value="todos">Para todos os usuários</option></select></div>
+          </div>
+          <p style="font-size:11.5px; color:var(--texto-fraco); margin:8px 0 0;">
+            Conta bloqueada: os administradores recebem um aviso por e-mail; para liberar antes, Cadastros » Usuários » Editar » Desbloquear.
+            Com a verificação em duas etapas obrigatória, quem ainda não tem (nem por e-mail, nem por aplicativo) configura o aplicativo autenticador no próximo login.
+          </p>
+          <button class="btn btn-primario" id="btnSalvarSeguranca" style="width:auto; padding:10px 20px; margin-top:12px;">Salvar</button>
           <p style="font-size:11.5px; color:var(--texto-fraco); margin-top:10px; margin-bottom:0;">
             Além disso, fechar o navegador/janela do sistema sem clicar em "Sair" já exige login de novo na próxima vez —
             isso já é automático, não precisa configurar nada.
@@ -3891,6 +3904,7 @@
   <script src="js/modulos.js"></script>
   <script src="js/hoje.js"></script>
   <script src="js/acessos.js"></script>
+  <script src="js/minhaSeguranca.js"></script>
   <script src="js/zerarBanco.js"></script>
   <script src="js/familias.js"></script>
   <script src="js/menuTransporte.js"></script>

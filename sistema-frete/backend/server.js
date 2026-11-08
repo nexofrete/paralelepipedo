@@ -161,6 +161,10 @@ const limitadorLogin = rateLimit({
   message: { erro: 'Muitas tentativas de login. Aguarde alguns minutos e tente de novo.' },
 });
 app.use('/api/auth/login', limitadorLogin);
+// Código do 2FA e "esqueci a senha": poucas tentativas por computador.
+const limitadorCodigos = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false,
+  message: { erro: 'Muitas tentativas. Aguarde alguns minutos e tente de novo.' } });
+['/api/auth/verificar-codigo-2fa', '/api/auth/esqueci', '/api/auth/redefinir'].forEach((r) => app.use(r, limitadorCodigos));
 // Rastreio público (sem login): no máximo 30 consultas por minuto por computador.
 // App do motorista (entra com o código do romaneio): 120 pedidos por minuto por celular.
 app.use('/api/motorista', rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false,
@@ -376,6 +380,9 @@ async function iniciar() {
     setTimeout(() => require('./src/transportadorasRedespacho').completarAntigos(), 40000);
     setTimeout(() => require('./src/notasFiscais').completarTodos().catch((e) => console.error('[notas]', e.message)), 4000);
     setTimeout(() => require('./src/ctesRecebidos').completarTodos().catch((e) => console.error('[ctes]', e.message)), 6000);
+    // Sessões e códigos de senha velhos: limpa ao ligar e uma vez por dia.
+    const limparContas = () => require('./src/segurancaContas').limparVelhas().catch((e) => console.error('[segurança]', e.message));
+    setTimeout(limparContas, 8000); setInterval(limparContas, 24 * 3600 * 1000).unref();
     require('./src/ctesVinculados').vincularCtesAntigos().then(() => require('./src/ctesVinculados').reconciliarCtesSoltos()).then(() => require('./src/ctesVinculados').revisarCtesDeOutraTransportadora()).then(() => require('./src/ctesVinculados').calcularRedespachosSemCalculo());
 
     app.listen(PORT, '0.0.0.0', () => {

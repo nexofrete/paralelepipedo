@@ -181,6 +181,33 @@ async function enviarCodigo2FA({ destinatarioEmail, destinatarioNome, codigo }) 
   });
 }
 
+// Código para redefinir a senha ("Esqueci minha senha" na tela de login).
+async function enviarCodigoRedefinicao({ destinatarioEmail, destinatarioNome, codigo }) {
+  const config = await buscarConfiguracao();
+  if (!config.ativo || !config.smtp_host || !config.smtp_usuario) throw new Error('O envio de email não está configurado.');
+  await criarTransportador(config).sendMail({
+    from: `"${config.nome_remetente || 'Nexofrete'}" <${config.email_remetente || config.smtp_usuario}>`,
+    to: destinatarioEmail,
+    subject: 'Código para redefinir a sua senha',
+    html: `<div style="font-family:Arial,sans-serif; max-width:480px; margin:0 auto;">
+      <h2 style="color:#1F4E78;">Redefinir a senha</h2>
+      <p>Olá, ${escaparHtml(destinatarioNome || '')}. Alguém pediu para redefinir a sua senha do Nexofrete. Digite este código na tela de login:</p>
+      <div style="font-size:30px; font-weight:700; letter-spacing:5px; text-align:center; background:#f1f5f9; padding:18px; border-radius:10px; color:#1F4E78; margin:20px 0;">${codigo}</div>
+      <p style="color:#888; font-size:12px;">Vale por 30 minutos e uma vez só. Se não foi você, ignore este e-mail: a sua senha continua a mesma.</p></div>`,
+  });
+}
+// Aviso de segurança aos administradores (ex.: conta bloqueada por senhas erradas).
+async function enviarAvisoSeguranca({ destinatarioEmail, destinatarioNome, assunto, texto }) {
+  const config = await buscarConfiguracao();
+  if (!config.ativo || !config.smtp_host || !config.smtp_usuario) return;
+  await criarTransportador(config).sendMail({
+    from: `"${config.nome_remetente || 'Nexofrete'}" <${config.email_remetente || config.smtp_usuario}>`,
+    to: destinatarioEmail, subject: `[Segurança] ${assunto}`,
+    html: `<div style="font-family:Arial,sans-serif; max-width:520px;"><p>Olá, ${escaparHtml(destinatarioNome || '')}.</p><p>${escaparHtml(texto)}</p></div>`,
+  });
+}
+const escaparHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 // Aviso da agenda (convite, lembrete, alteração ou cancelamento). Só manda se
 // o envio de email estiver configurado; se não estiver, não faz nada — o aviso
 // dentro do sistema continua valendo.
@@ -247,4 +274,4 @@ async function enviarSac({ para, assunto, html, responderPara }) {
   return true;
 }
 
-module.exports = { enviarSac, buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega, enviarFatura };
+module.exports = { enviarCodigoRedefinicao, enviarAvisoSeguranca, enviarSac, buscarConfiguracao, salvarConfiguracao, enviarEspelhoCalculo, enviarResumoSemanal, enviarCodigo2FA, enviarAvisoAgenda, enviarAvisoEntrega, enviarFatura };

@@ -34,13 +34,58 @@
           <input type="password" id="campoSenha" placeholder="••••••••" />
         </div>
         <button class="btn btn-primario" id="btnEntrar">Entrar</button>
+        <button type="button" class="link-login" id="btnEsqueci">Esqueci minha senha</button>
+      </div>
+
+      <!-- Esqueci minha senha: código por e-mail e senha nova -->
+      <div id="etapaEsqueci" class="oculto">
+        <div class="nova-senha-cabecalho"><div style="font-size:30px;">🔐</div><strong>Redefinir a senha</strong>
+          <p id="textoEsqueci">Digite o seu e-mail: mandamos um código de 8 números para você criar uma senha nova.</p></div>
+        <div class="campo"><label>Email</label><input type="email" id="campoEmailEsqueci" placeholder="seu@email.com" autocomplete="username" /></div>
+        <div id="esqueciParte2" class="oculto">
+          <div class="campo"><label>Código recebido por e-mail</label>
+            <input type="text" id="campoCodigoEsqueci" placeholder="00000000" maxlength="8" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:5px; font-size:20px; text-align:center;" /></div>
+          <div class="campo"><label>Nova senha</label><div class="campo-senha-olho">
+            <input type="password" id="campoNovaSenhaEsqueci" placeholder="••••••••" autocomplete="new-password" />
+            <button type="button" class="btn-olho" data-alvo="campoNovaSenhaEsqueci" title="Mostrar/ocultar">👁</button></div></div>
+          <div class="campo"><label>Confirme a nova senha</label>
+            <input type="password" id="campoConfirmaEsqueci" placeholder="••••••••" autocomplete="new-password" /></div>
+          <ul class="regras-senha" id="regrasEsqueci">
+            <li data-regra="tamanho">Pelo menos <span class="regraMin">8</span> caracteres</li>
+            <li data-regra="letrasNumeros">Letras e números</li>
+            <li data-regra="confere">As duas senhas iguais</li>
+          </ul>
+        </div>
+        <button class="btn btn-primario" id="btnEnviarCodigoEsqueci">Enviar código</button>
+        <button class="btn btn-primario oculto" id="btnRedefinirSenha" disabled>Salvar a senha nova</button>
+        <button type="button" class="link-login oculto" id="btnReenviarEsqueci">Não chegou? Enviar outro código</button>
+        <button class="btn btn-secundario" id="btnVoltarEsqueci" style="margin-top:10px;">← Voltar</button>
+      </div>
+
+      <!-- 2FA obrigatório: configurar o aplicativo autenticador antes de entrar -->
+      <div id="etapaConfigurar2fa" class="oculto">
+        <div class="nova-senha-cabecalho"><div style="font-size:30px;">📱</div><strong>Verificação em duas etapas</strong>
+          <p>A empresa exige a verificação em duas etapas. Instale um aplicativo autenticador no celular (Google Authenticator, Microsoft Authenticator ou Authy), leia o QR Code e digite o código que aparece.</p></div>
+        <div id="cfg2faParte1">
+          <div id="cfg2faQr" style="display:flex; justify-content:center; background:#fff; border-radius:10px; padding:10px; margin:0 auto 8px; width:200px; height:200px;"></div>
+          <p style="font-size:12px; color:var(--texto-fraco); text-align:center; margin:0 0 10px;">Sem câmera? Digite a chave: <b id="cfg2faSegredo" style="font-family:monospace;"></b></p>
+          <div class="campo"><label>Código de 6 números do aplicativo</label>
+            <input type="text" id="cfg2faCodigo" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:6px; font-size:20px; text-align:center;" /></div>
+          <button class="btn btn-primario" id="cfg2faConfirmar">Ativar e continuar</button>
+        </div>
+        <div id="cfg2faParte2" class="oculto">
+          <p style="font-size:13px;"><b>Guarde estes códigos de recuperação</b> (anote ou imprima). Cada um entra uma vez, se você perder o celular:</p>
+          <div id="cfg2faCodigos" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-family:monospace; font-size:15px; text-align:center; margin-bottom:12px;"></div>
+          <button class="btn btn-primario" id="cfg2faContinuar">Já guardei, entrar no sistema</button>
+        </div>
+        <button class="btn btn-secundario" id="cfg2faSair" style="margin-top:10px;">Sair</button>
       </div>
 
       <div id="etapaCodigoLogin" class="oculto">
         <p style="font-size:13px; color:var(--texto-fraco); margin-top:0;" id="textoEtapaCodigo"></p>
         <div class="campo">
-          <label>Código de 6 dígitos</label>
-          <input type="text" id="campoCodigo2FA" placeholder="000000" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:20px; text-align:center;" />
+          <label id="rotuloCodigo2FA">Código de 6 dígitos</label>
+          <input type="text" id="campoCodigo2FA" placeholder="000000" maxlength="11" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:6px; font-size:20px; text-align:center;" />
         </div>
         <button class="btn btn-primario" id="btnConfirmarCodigo">Confirmar código</button>
         <button class="btn btn-secundario" id="btnVoltarLogin" style="margin-top:10px;">← Voltar</button>
@@ -51,11 +96,11 @@
         <div class="nova-senha-cabecalho">
           <div style="font-size:30px;">🔑</div>
           <strong id="novaSenhaTitulo">Bem-vindo! Crie a sua senha</strong>
-          <p>Você entrou com uma senha provisória. Cadastre agora a sua senha pessoal para continuar.</p>
+          <p id="novaSenhaTexto">Você entrou com uma senha provisória (ou a sua senha venceu). Cadastre agora uma senha pessoal para continuar.</p>
         </div>
         <div class="campo" id="campoSenhaAtualWrap">
-          <label>Senha provisória</label>
-          <input type="password" id="campoSenhaAtual" placeholder="A senha que você recebeu" autocomplete="current-password" />
+          <label>Senha atual</label>
+          <input type="password" id="campoSenhaAtual" placeholder="A senha com que você entrou" autocomplete="current-password" />
         </div>
         <div class="campo">
           <label>Nova senha</label>
@@ -72,9 +117,9 @@
           </div>
         </div>
         <ul class="regras-senha" id="regrasSenha">
-          <li data-regra="tamanho">Pelo menos 8 caracteres</li>
+          <li data-regra="tamanho">Pelo menos <span class="regraMin">8</span> caracteres</li>
           <li data-regra="letrasNumeros">Letras e números</li>
-          <li data-regra="diferente">Diferente da senha provisória</li>
+          <li data-regra="diferente">Diferente da senha atual</li>
           <li data-regra="confere">As duas senhas iguais</li>
         </ul>
         <button class="btn btn-primario" id="btnSalvarNovaSenha" disabled>Salvar senha e entrar</button>

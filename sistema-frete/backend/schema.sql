@@ -3097,3 +3097,34 @@ CREATE TABLE IF NOT EXISTS perfis_acesso (
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS perfil_acesso_id INTEGER REFERENCES perfis_acesso(id) ON DELETE SET NULL;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS modulos_bloqueados TEXT[] NOT NULL DEFAULT '{}';   -- módulos da transportadora que o usuário NÃO usa
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS unidades_permitidas INTEGER[] NOT NULL DEFAULT '{}'; -- filiais que ele enxerga (vazio = todas)
+
+-- Segurança das contas (src/segurancaContas.js): sessões revogáveis, política de senha, bloqueio, esqueci a senha e 2FA por aplicativo.
+CREATE TABLE IF NOT EXISTS sessoes (
+  id UUID PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), ultimo_uso TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ip VARCHAR(60), aparelho VARCHAR(120), encerrada_em TIMESTAMPTZ, motivo VARCHAR(60)
+);
+CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes (usuario_id) WHERE encerrada_em IS NULL;
+CREATE TABLE IF NOT EXISTS senha_redefinicoes (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  hash VARCHAR(64) NOT NULL, tentativas INTEGER NOT NULL DEFAULT 0,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), expira_em TIMESTAMPTZ NOT NULL, usado_em TIMESTAMPTZ
+);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sessoes_invalidadas_em TIMESTAMPTZ;   -- tokens emitidos antes disto não valem
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tentativas_falhas INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bloqueado_ate TIMESTAMPTZ;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS senha_alterada_em TIMESTAMPTZ;
+UPDATE usuarios SET senha_alterada_em = COALESCE(criado_em, NOW()) WHERE senha_alterada_em IS NULL;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS totp_ativo BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS totp_segredo TEXT;          -- criptografado
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS totp_pendente TEXT;         -- enquanto a pessoa ainda não confirmou o primeiro código
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS totp_ultimo_passo BIGINT;   -- o mesmo código não entra duas vezes
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS totp_recuperacao TEXT[];    -- hashes dos códigos de recuperação
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS senha_min INTEGER NOT NULL DEFAULT 8;
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS senha_variedade BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS bloqueio_tentativas INTEGER NOT NULL DEFAULT 5;   -- 0 = não bloqueia
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS bloqueio_minutos INTEGER NOT NULL DEFAULT 15;
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS senha_validade_dias INTEGER NOT NULL DEFAULT 0;   -- 0 = não vence
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS exigir_2fa VARCHAR(10) NOT NULL DEFAULT 'nao';    -- nao | admins | todos

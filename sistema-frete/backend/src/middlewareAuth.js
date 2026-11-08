@@ -8,6 +8,9 @@ const ticket = require('./ticketDownload');
 // download (que não conseguem mandar cabeçalho) levam ?token= com um ticket de download
 // (ver ticketDownload.js) — nunca o token da sessão.
 const ROTAS_LIBERADAS_TROCA_SENHA = ['/api/auth/trocar-senha', '/api/auth/eu', '/api/auth/sair'];
+// Com o 2FA obrigatório e ainda não configurado, só dá para configurar (e sair).
+const ROTAS_LIBERADAS_2FA = [...ROTAS_LIBERADAS_TROCA_SENHA, '/api/auth/2fa-app/iniciar', '/api/auth/2fa-app/confirmar', '/api/seguranca/configuracao'];
+const contas = require('./segurancaContas');
 
 async function autenticar(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -35,7 +38,7 @@ async function autenticar(req, res, next) {
   try {
     const { rows } = await pool.query(
       `UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = $1
-       RETURNING id, nome, funcao, perfil, cliente_nome, ativo, trocar_senha, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, ${CAMPOS_PERMISSAO.join(', ')}`,
+       RETURNING id, nome, funcao, perfil, cliente_nome, ativo, trocar_senha, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, sessoes_invalidadas_em, totp_ativo, ${CAMPOS_PERMISSAO.join(', ')}`,
       [payload.id]
     );
     const usuario = rows[0];
@@ -44,8 +47,22 @@ async function autenticar(req, res, next) {
     }
     // Senha provisória: até cadastrar a própria senha, só pode fazer isso
     // (e sair). Qualquer outra rota responde pedindo a troca.
-    if (usuario.trocar_senha && !ROTAS_LIBERADAS_TROCA_SENHA.some((r) => req.originalUrl.split('?')[0] === r)) {
+    // Sessão encerrada (saiu, foi derrubada, trocou a senha) ou token anterior à última troca de senha.
+    if (token) {
+      if (payload.sid) {
+        if (!(await contas.sessaoAtiva(payload.sid, usuario.id))) return res.status(401).json({ erro: 'Sua sessão foi encerrada. Faça login novamente.', sessao_encerrada: true });
+        req.sessaoId = payload.sid;
+      } else if (usuario.sessoes_invalidadas_em && (payload.iat || 0) * 1000 < new Date(usuario.sessoes_invalidadas_em).getTime()) {
+        return res.status(401).json({ erro: 'Sua sessão foi encerrada. Faça login novamente.', sessao_encerrada: true });
+      }
+    }
+    delete usuario.sessoes_invalidadas_em;
+    const rota = req.originalUrl.split('?')[0];
+    if (usuario.trocar_senha && !ROTAS_LIBERADAS_TROCA_SENHA.some((r) => rota === r)) {
       return res.status(403).json({ erro: 'Cadastre a sua senha antes de continuar.', trocar_senha: true });
+    }
+    if (!ROTAS_LIBERADAS_2FA.includes(rota) && await contas.precisaConfigurar2fa(usuario)) {
+      return res.status(403).json({ erro: 'Configure a verificação em duas etapas antes de continuar.', configurar_2fa: true });
     }
     // Módulo bloqueado para este usuário (Cadastros » Usuários » Módulos): a API do módulo não responde.
     const modulo = moduloDaRota(req.originalUrl);

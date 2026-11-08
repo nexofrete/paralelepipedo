@@ -50,6 +50,7 @@ if (sessionStorage.getItem('token')) {
       if (r.status === 401) { sessionStorage.removeItem('token'); sessionStorage.removeItem('usuario'); return; }
       const eu = await r.json();
       if (eu.trocar_senha) mostrarEtapaNovaSenha(eu.nome);
+      else if (eu.configurar_2fa) mostrarConfigurar2fa();
       else window.location.href = 'dashboard.html';
     })
     .catch(() => { window.location.href = 'dashboard.html'; });
@@ -68,13 +69,21 @@ function mostrarEtapaNovaSenha(nome) {
   (senhaProvisoriaDigitada ? document.getElementById('campoNovaSenha') : document.getElementById('campoSenhaAtual')).focus();
 }
 
+// Regras de senha da empresa (Manutenção » Segurança).
+let politicaSenha = { senha_min: 8, senha_variedade: true };
+fetch('/api/auth/politica-senha').then((r) => r.json()).then((p) => {
+  politicaSenha = p;
+  document.querySelectorAll('.regraMin').forEach((el) => { el.textContent = p.senha_min; });
+  document.querySelectorAll('[data-regra="letrasNumeros"]').forEach((li) => li.classList.toggle('oculto', !p.senha_variedade));
+}).catch(() => {});
+const senhaBoa = (s) => ({ tamanho: s.length >= politicaSenha.senha_min, letrasNumeros: !politicaSenha.senha_variedade || (/[A-Za-zÀ-ÿ]/.test(s) && /\d/.test(s)) });
+
 function validarNovaSenha() {
   const nova = document.getElementById('campoNovaSenha').value;
   const confirma = document.getElementById('campoConfirmaSenha').value;
   const atual = senhaProvisoriaDigitada ?? document.getElementById('campoSenhaAtual').value;
   const regras = {
-    tamanho: nova.length >= 8,
-    letrasNumeros: /[A-Za-zÀ-ÿ]/.test(nova) && /\d/.test(nova),
+    ...senhaBoa(nova),
     diferente: nova.length > 0 && nova !== atual,
     confere: nova.length > 0 && nova === confirma,
   };
@@ -120,6 +129,8 @@ async function salvarNovaSenha() {
     u.trocar_senha = false;
     sessionStorage.setItem('usuario', JSON.stringify(u));
     botao.textContent = '✓ Senha cadastrada! Entrando...';
+    const eu = await fetch('/api/auth/eu', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }).then((r) => r.json()).catch(() => ({}));
+    if (eu.configurar_2fa) { setTimeout(mostrarConfigurar2fa, 600); return; }
     setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
     return;
   } catch (err) {
@@ -142,6 +153,8 @@ function concluirLogin(dados) {
   sessionStorage.setItem('token', dados.token);
   sessionStorage.setItem('usuario', JSON.stringify(dados.usuario));
   if (dados.usuario?.trocar_senha) { mostrarEtapaNovaSenha(dados.usuario.nome); return; }
+  if (dados.usuario?.configurar_2fa) { mostrarConfigurar2fa(); return; }
+  if (dados.usouRecuperacao) window.alert('Você entrou com um código de recuperação: ele não vale mais. Se perdeu o celular, gere novos códigos ou configure o aplicativo de novo em "Minha segurança".');
   window.location.href = 'dashboard.html';
 }
 
@@ -184,6 +197,7 @@ async function fazerLogin() {
       senhaProvisoriaDigitada = senha;
       tempToken2FA = dados.tempToken;
       document.getElementById('textoEtapaCodigo').textContent = dados.mensagem || 'Enviamos um código para o seu email.';
+      document.getElementById('rotuloCodigo2FA').textContent = dados.metodo === 'app' ? 'Código do aplicativo (ou de recuperação)' : 'Código de 6 dígitos';
       document.getElementById('etapaSenhaLogin').classList.add('oculto');
       document.getElementById('etapaCodigoLogin').classList.remove('oculto');
       document.getElementById('campoCodigo2FA').focus();
@@ -205,7 +219,7 @@ let tempToken2FA = null;
 async function confirmarCodigo2FA() {
   esconderErro();
   const codigo = document.getElementById('campoCodigo2FA').value.trim();
-  if (!codigo) { mostrarErro('Digite o código recebido por email.'); return; }
+  if (!codigo) { mostrarErro('Digite o código.'); return; }
 
   const botao = document.getElementById('btnConfirmarCodigo');
   botao.disabled = true;
@@ -263,3 +277,87 @@ fetch('/api/status').then((r) => r.json()).then((d) => {
     document.querySelectorAll('link[rel~="icon"]').forEach((l) => { l.href = 'img/nexofrete-icone-teste.svg'; l.type = 'image/svg+xml'; });
   }
 }).catch(() => {});
+
+
+// ---------- Esqueci minha senha ----------
+const $l = (id) => document.getElementById(id);
+function mostrarEsqueci() {
+  esconderErro();
+  ['etapaSenhaLogin', 'etapaCodigoLogin', 'etapaNovaSenha'].forEach((id) => $l(id).classList.add('oculto'));
+  $l('etapaEsqueci').classList.remove('oculto');
+  $l('campoEmailEsqueci').value = campoEmail.value.trim();
+  $l('campoEmailEsqueci').focus();
+}
+function validarEsqueci() {
+  const nova = $l('campoNovaSenhaEsqueci').value;
+  const regras = { ...senhaBoa(nova), confere: nova.length > 0 && nova === $l('campoConfirmaEsqueci').value };
+  document.querySelectorAll('#regrasEsqueci li').forEach((li) => li.classList.toggle('ok', !!regras[li.dataset.regra]));
+  $l('btnRedefinirSenha').disabled = !(Object.values(regras).every(Boolean) && $l('campoCodigoEsqueci').value.replace(/\D/g, '').length === 8);
+}
+['campoCodigoEsqueci', 'campoNovaSenhaEsqueci', 'campoConfirmaEsqueci'].forEach((id) => $l(id).addEventListener('input', validarEsqueci));
+async function enviarCodigoEsqueci() {
+  esconderErro();
+  const email = $l('campoEmailEsqueci').value.trim();
+  if (!email.includes('@')) { mostrarErro('Digite o seu e-mail.'); return; }
+  const b = $l('btnEnviarCodigoEsqueci'); b.disabled = true;
+  try {
+    const r = await fetch('/api/auth/esqueci', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { mostrarErro(d.erro || 'Não foi possível enviar.'); return; }
+    $l('textoEsqueci').textContent = d.mensagem;
+    $l('esqueciParte2').classList.remove('oculto');
+    b.classList.add('oculto'); $l('btnRedefinirSenha').classList.remove('oculto'); $l('btnReenviarEsqueci').classList.remove('oculto');
+    $l('campoCodigoEsqueci').focus();
+  } catch { mostrarErro('Não foi possível conectar ao servidor.'); } finally { b.disabled = false; }
+}
+async function redefinirSenha() {
+  esconderErro();
+  const b = $l('btnRedefinirSenha'); b.disabled = true;
+  try {
+    const r = await fetch('/api/auth/redefinir', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: $l('campoEmailEsqueci').value.trim(), codigo: $l('campoCodigoEsqueci').value, nova_senha: $l('campoNovaSenhaEsqueci').value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { mostrarErro(d.erro || 'Não foi possível redefinir.'); validarEsqueci(); return; }
+    $l('etapaEsqueci').classList.add('oculto'); $l('etapaSenhaLogin').classList.remove('oculto');
+    campoEmail.value = $l('campoEmailEsqueci').value.trim(); campoSenha.value = ''; campoSenha.focus();
+    const aviso = $l('avisoLogin');
+    aviso.innerHTML = '<span class="aviso-login-icone">✓</span><span>Senha redefinida. Entre com a senha nova.</span>';
+    aviso.classList.remove('alerta', 'oculto');
+  } catch { mostrarErro('Não foi possível conectar ao servidor.'); validarEsqueci(); }
+}
+$l('btnEsqueci').addEventListener('click', mostrarEsqueci);
+$l('btnEnviarCodigoEsqueci').addEventListener('click', enviarCodigoEsqueci);
+$l('btnReenviarEsqueci').addEventListener('click', enviarCodigoEsqueci);
+$l('campoEmailEsqueci').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$l('btnEnviarCodigoEsqueci').classList.contains('oculto')) enviarCodigoEsqueci(); });
+$l('btnRedefinirSenha').addEventListener('click', redefinirSenha);
+$l('btnVoltarEsqueci').addEventListener('click', () => {
+  $l('etapaEsqueci').classList.add('oculto'); $l('etapaSenhaLogin').classList.remove('oculto'); esconderErro();
+});
+
+// ---------- 2FA obrigatório: configurar o aplicativo antes de entrar ----------
+async function mostrarConfigurar2fa() {
+  esconderErro();
+  ['etapaSenhaLogin', 'etapaCodigoLogin', 'etapaNovaSenha', 'etapaEsqueci'].forEach((id) => $l(id).classList.add('oculto'));
+  $l('etapaConfigurar2fa').classList.remove('oculto');
+  try {
+    const r = await fetch('/api/auth/2fa-app/iniciar', { method: 'POST', headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.erro);
+    $l('cfg2faQr').innerHTML = d.qr;   // SVG gerado pelo servidor
+    $l('cfg2faSegredo').textContent = d.segredo;
+    $l('cfg2faCodigo').focus();
+  } catch (e) { mostrarErro(e.message || 'Não foi possível preparar o aplicativo.'); }
+}
+async function confirmarConfigurar2fa() {
+  esconderErro();
+  const r = await fetch('/api/auth/2fa-app/confirmar', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('token')}` },
+    body: JSON.stringify({ codigo: $l('cfg2faCodigo').value }) }).catch(() => null);
+  const d = r ? await r.json().catch(() => ({})) : {};
+  if (!r || !r.ok) { mostrarErro(d.erro || 'Não foi possível ativar.'); return; }
+  $l('cfg2faParte1').classList.add('oculto'); $l('cfg2faParte2').classList.remove('oculto');
+  $l('cfg2faCodigos').innerHTML = d.codigos_recuperacao.map((c) => `<div style="padding:6px; border:1px dashed var(--borda); border-radius:6px;">${c}</div>`).join('');
+}
+$l('cfg2faConfirmar').addEventListener('click', confirmarConfigurar2fa);
+$l('cfg2faCodigo').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarConfigurar2fa(); });
+$l('cfg2faContinuar').addEventListener('click', () => { window.location.href = 'dashboard.html'; });
+$l('cfg2faSair').addEventListener('click', () => $l('btnCancelarNovaSenha').click());

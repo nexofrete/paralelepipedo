@@ -1723,3 +1723,7 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 /* Acesso por usuário (js/acessos.js): caixinhas de módulos, filiais e permissões do perfil. */
 .ac-opcao { display: flex !important; gap: 8px; align-items: center; justify-content: flex-start; text-align: left; font-size: 13px; font-weight: 400; margin: 0; cursor: pointer; }
 .ac-opcao input[type="checkbox"] { width: auto !important; margin: 0; flex: 0 0 auto; }
+
+/* Login: "Esqueci minha senha" e links parecidos. */
+.link-login { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--azul); font-size: 13px; cursor: pointer; text-decoration: underline; padding: 4px; }
+.link-login.oculto { display: none; }

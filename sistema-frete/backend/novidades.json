@@ -10,6 +10,14 @@
           "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
         },
         {
+          "area": "Segurança",
+          "texto": "Sessões de verdade: em 🔐 Minha segurança cada um vê onde está conectado e encerra as outras sessões; sair, trocar a senha ou ser desativado derruba o acesso na hora."
+        },
+        {
+          "area": "Segurança",
+          "texto": "Esqueci minha senha na tela de login (código por e-mail), verificação em duas etapas por aplicativo autenticador com códigos de recuperação (e obrigatória, se a empresa quiser) e política de senha: tamanho mínimo, bloqueio depois de várias senhas erradas com aviso aos administradores e troca periódica."
+        },
+        {
           "area": "Manutenção",
           "texto": "Zerar o banco de dados para começar sem informações: mostra antes o que vai sair, pede ZERAR e a senha do administrador e faz um backup antes (dá para voltar). Usuários, dados da empresa e configurações ficam; os cadastros ficam se você quiser; a numeração do CT-e, MDF-e e NFS-e continua de onde parou."
         },

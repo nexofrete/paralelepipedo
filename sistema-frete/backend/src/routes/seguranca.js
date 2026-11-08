@@ -25,16 +25,29 @@ router.put('/configuracao', autenticar, apenasAdmin, async (req, res) => {
   try {
     const minutos = req.body.tempo_inatividade_minutos;
     const valor = minutos === '' || minutos == null ? null : Number(minutos);
+    const b = req.body || {};
+    const inteiro = (v, min, max, padrao) => (v === undefined || v === '' || v === null ? padrao : Math.min(max, Math.max(min, Math.round(Number(v) || 0))));
+    const atual = await require('../segurancaContas').politica();
+    // Quem liga a exigência precisa ter a própria verificação em duas etapas (senão fica preso fora do sistema).
+    if (['admins', 'todos'].includes(b.exigir_2fa) && b.exigir_2fa !== atual.exigir_2fa && !req.usuario.totp_ativo && !req.usuario.dois_fatores_ativo) {
+      return res.status(400).json({ erro: 'Antes de exigir a verificação em duas etapas, ligue a sua: menu » 🔐 Minha segurança » Ativar aplicativo autenticador.' });
+    }
 
     await pool.query('INSERT INTO configuracao_seguranca (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
     const { rows } = await pool.query(
-      'UPDATE configuracao_seguranca SET tempo_inatividade_minutos = $1 WHERE id = 1 RETURNING *',
-      [valor]
+      `UPDATE configuracao_seguranca SET tempo_inatividade_minutos = $1, senha_min = $2, senha_variedade = $3, bloqueio_tentativas = $4,
+              bloqueio_minutos = $5, senha_validade_dias = $6, exigir_2fa = $7 WHERE id = 1 RETURNING *`,
+      [valor, inteiro(b.senha_min, 8, 64, atual.senha_min), b.senha_variedade === undefined ? atual.senha_variedade : !!b.senha_variedade,
+        inteiro(b.bloqueio_tentativas, 0, 50, atual.bloqueio_tentativas), inteiro(b.bloqueio_minutos, 1, 1440, atual.bloqueio_minutos),
+        inteiro(b.senha_validade_dias, 0, 3650, atual.senha_validade_dias), ['nao', 'admins', 'todos'].includes(b.exigir_2fa) ? b.exigir_2fa : atual.exigir_2fa]
     );
+    require('../segurancaContas').limparCache();
 
     registrar({
       usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_seguranca_config',
-      detalhes: valor ? `Definiu logout automático após ${valor} minuto(s) de inatividade` : 'Desativou o logout automático por inatividade',
+      detalhes: `${valor ? `Logout após ${valor} min de inatividade` : 'Sem logout por inatividade'}; senha mínima ${rows[0].senha_min}${rows[0].senha_variedade ? ' com letras e números' : ''}; `
+        + `${rows[0].bloqueio_tentativas ? `bloqueio após ${rows[0].bloqueio_tentativas} erros por ${rows[0].bloqueio_minutos} min` : 'sem bloqueio'}; `
+        + `${rows[0].senha_validade_dias ? `senha vence em ${rows[0].senha_validade_dias} dias` : 'senha não vence'}; 2FA obrigatório: ${rows[0].exigir_2fa}`,
     });
     res.json(rows[0]);
   } catch (err) {

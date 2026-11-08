@@ -35,7 +35,7 @@ if (!token || !usuario) {
 }
 
 // Senha provisória: antes de usar o sistema, cadastra a própria senha (no login).
-if (usuario?.trocar_senha) window.location.href = 'login.html';
+if (usuario?.trocar_senha || usuario?.configurar_2fa) window.location.href = 'login.html';
 
 document.getElementById('nomeUsuario').textContent = usuario.nome;
 document.getElementById('avatarIniciais').textContent = (usuario.nome || '?')
@@ -304,7 +304,7 @@ async function apiFetch(caminho, opcoes = {}) {
   if (resposta.status === 403) {
     try {
       const corpo = await resposta.clone().json();
-      if (corpo?.trocar_senha) {
+      if (corpo?.trocar_senha || corpo?.configurar_2fa) {
         window.location.href = 'login.html';
         throw new Error('Precisa cadastrar a senha.');
       }
@@ -382,7 +382,7 @@ function abrirDialogo(opcoes) {
         ${opcoes.mensagem ? `<p class="dlg-mensagem">${esc(opcoes.mensagem)}</p>` : ''}
         ${opcoes.campo ? (opcoes.campo.multilinha
           ? `<textarea class="dlg-campo" rows="4" placeholder="${esc(opcoes.campo.placeholder || '')}">${esc(opcoes.campo.valor || '')}</textarea>`
-          : `<input class="dlg-campo" type="text" placeholder="${esc(opcoes.campo.placeholder || '')}" value="${esc(opcoes.campo.valor || '')}" />`) : ''}
+          : `<input class="dlg-campo" type="${opcoes.campo.senha ? 'password' : 'text'}" placeholder="${esc(opcoes.campo.placeholder || '')}" value="${esc(opcoes.campo.valor || '')}" />`) : ''}
         <div class="dlg-botoes">
           ${botoes.map((b, i) => `<button class="btn dlg-btn dlg-${b.estilo || 'secundario'} ${(b.estilo || 'secundario') === 'secundario' ? 'btn-secundario' : ''}" data-i="${i}">${esc(b.texto)}</button>`).join('')}
         </div>
@@ -437,7 +437,7 @@ async function confirmar(mensagem, opcoes = {}) {
 async function pedirTexto(mensagem, opcoes = {}) {
   const valor = await abrirDialogo({
     tipo: opcoes.tipo || 'pergunta', titulo: opcoes.titulo || 'Informe', mensagem,
-    campo: { valor: opcoes.valor || '', placeholder: opcoes.placeholder || '', multilinha: !!opcoes.multilinha },
+    campo: { valor: opcoes.valor || '', placeholder: opcoes.placeholder || '', multilinha: !!opcoes.multilinha, senha: !!opcoes.senha },
     botoes: [
       { texto: 'Cancelar', valor: null, estilo: 'secundario' },
       { texto: opcoes.textoOk || 'Continuar', valor: true, estilo: 'primario' },
@@ -1518,6 +1518,7 @@ function abrirFormularioUsuario(usuarioParaEditar = null) {
 
   atualizarCamposConformePerfil();
   window.Acessos?.preencherFormulario(usuarioParaEditar);   // perfil de acesso, módulos e filiais (js/acessos.js)
+  window.MinhaSeguranca?.formularioUsuario(usuarioParaEditar);   // sessões, bloqueio e 2FA da pessoa (js/minhaSeguranca.js)
   painelFormUsuario.classList.remove('oculto');
 }
 
@@ -4663,6 +4664,12 @@ async function carregarConfigSeguranca() {
     if (!resposta.ok) return;
     const config = await resposta.json();
     document.getElementById('segTempoInatividade').value = config.tempo_inatividade_minutos ?? '';
+    document.getElementById('segSenhaMin').value = config.senha_min ?? 8;
+    document.getElementById('segSenhaVariedade').checked = config.senha_variedade !== false;
+    document.getElementById('segBloqueioTentativas').value = config.bloqueio_tentativas ?? 5;
+    document.getElementById('segBloqueioMinutos').value = config.bloqueio_minutos ?? 15;
+    document.getElementById('segSenhaValidade').value = config.senha_validade_dias ?? 0;
+    document.getElementById('segExigir2fa').value = config.exigir_2fa || 'nao';
   } catch (err) {
     console.error(err);
   }
@@ -4678,7 +4685,10 @@ document.getElementById('btnSalvarSeguranca').addEventListener('click', async ()
     const resposta = await apiFetch('/api/seguranca/configuracao', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tempo_inatividade_minutos: valor === '' ? null : Number(valor) }),
+      body: JSON.stringify({ tempo_inatividade_minutos: valor === '' ? null : Number(valor),
+        senha_min: Number(document.getElementById('segSenhaMin').value) || 8, senha_variedade: document.getElementById('segSenhaVariedade').checked,
+        bloqueio_tentativas: Number(document.getElementById('segBloqueioTentativas').value) || 0, bloqueio_minutos: Number(document.getElementById('segBloqueioMinutos').value) || 15,
+        senha_validade_dias: Number(document.getElementById('segSenhaValidade').value) || 0, exigir_2fa: document.getElementById('segExigir2fa').value }),
     });
     const dados = await resposta.json();
     if (!resposta.ok) {

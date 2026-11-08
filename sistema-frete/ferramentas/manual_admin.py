@@ -84,14 +84,46 @@ def parte_admin(g):
                'todos. Faturas, coletas, cotações e MDF-e ainda não têm filial no sistema e aparecem inteiros.'))
     s += h2('Senhas')
     s += lista([
-        'Mínimo de 8 caracteres.',
+        'As regras ficam em <b>Manutenção » Segurança</b>: tamanho mínimo (nunca menos de 8), exigir letras e números e, se '
+        'quiser, troca obrigatória a cada N dias (quem está com a senha vencida cadastra uma nova ao entrar).',
+        '<b>Bloqueio por senhas erradas</b>: depois de N senhas erradas seguidas (padrão 5), a conta fica bloqueada por alguns '
+        'minutos (padrão 15) e os administradores recebem um aviso por e-mail. Para liberar antes: Cadastros » Usuários » '
+        'Editar » <b>Desbloquear</b>.',
+        '<b>Esqueci minha senha</b> (tela de login): a pessoa digita o e-mail e recebe um código de 8 números, que vale 30 '
+        'minutos e uma vez só (5 tentativas). Com o código, cria a senha nova; as sessões abertas dela são encerradas. Precisa '
+        'do envio de e-mail configurado. A tela não diz se o e-mail existe ou não. É um código, e não um link, para não '
+        'depender do endereço do servidor.',
         '<b>Senha provisória</b>: ao criar ou editar um usuário, marque essa opção para que ele cadastre a própria senha '
         'no primeiro acesso.',
         'Esqueceu a senha e ninguém consegue entrar: use o <b>redefinir-senha-admin.bat</b> no servidor (seção 4).',
     ])
     s += h2('Login em duas etapas (2FA)')
-    s.append(P('Com a opção ligada para um usuário, depois do email e da senha o sistema manda um código de 6 números '
-               'para o email dele, válido por 5 minutos. Só funciona com o envio de email configurado (seção 24).'))
+    s.append(P('Há dois jeitos. <b>Por e-mail</b>: com a opção ligada no cadastro do usuário, depois do e-mail e da senha o '
+               'sistema manda um código de 6 números, válido por 5 minutos (precisa do envio de e-mail configurado). '
+               '<b>Por aplicativo autenticador</b> (recomendado): cada pessoa liga em <b>🔐 Minha segurança</b>, no rodapé do '
+               'menu, lendo o QR Code com o Google Authenticator, Microsoft Authenticator ou Authy. O código sai do celular, '
+               'sem depender do e-mail.'))
+    s += lista([
+        'Ao ligar o aplicativo, aparecem <b>8 códigos de recuperação</b>: guarde. Cada um entra uma vez, se o celular for '
+        'perdido. Em Minha segurança dá para gerar códigos novos (pede a senha).',
+        'O mesmo código do aplicativo não entra duas vezes, e o login aceita no máximo 5 códigos errados.',
+        'Perdeu o celular e os códigos: o administrador desliga o aplicativo da pessoa em Cadastros » Usuários » Editar » '
+        '<b>Desligar o aplicativo autenticador</b>.',
+        '<b>Obrigatório</b> (Manutenção » Segurança): para ninguém, para os administradores ou para todos. Quem ainda não tem '
+        'nenhum dos dois configura o aplicativo no próximo login, antes de usar o sistema. Para ligar a exigência, o '
+        'administrador precisa ter a dele.',
+    ])
+    s += h2('Sessões')
+    s.append(P('Cada login abre uma <b>sessão</b> (aparelho, IP, quando entrou e o último uso). Em <b>🔐 Minha segurança</b> '
+               'cada um vê as próprias sessões e encerra uma ou todas as outras; no cadastro do usuário, quem gerencia '
+               'usuários vê as sessões da pessoa e pode <b>encerrar todas</b>.'))
+    s += lista([
+        'Sair encerra a sessão no servidor: o acesso daquele computador para de valer na hora.',
+        'Trocar a senha encerra as outras sessões; a senha trocada pelo administrador, a redefinida pelo "Esqueci minha '
+        'senha" e o usuário desativado encerram todas.',
+        'Quem já estava no sistema antes desta versão continua até a sessão vencer (8 horas) e passa a ter a sessão '
+        'controlada no próximo login.',
+    ])
     s += h2('Auditoria e Logs')
     s.append(P('Todo login, importação, criação, edição, exclusão, aprovação, glosa, decisão de quem levou a nota e '
                'mudança de configuração fica registrado com usuário, data/hora e detalhe. A tela mostra o dia de hoje; '
@@ -144,7 +176,8 @@ def parte_admin(g):
         ['Importação automática da planilha do ERP', 'Se a planilha é salva sempre no mesmo caminho, o sistema confere a '
          'cada X minutos se ela mudou e importa sozinho. "Verificar e importar agora" força a importação.'],
         ['Usuários no sistema', 'Quem está usando agora e a última atividade de cada um.'],
-        ['Segurança', 'Tempo de inatividade até o logout automático (em branco = desligado).'],
+        ['Segurança', 'Tempo de inatividade até o logout automático (em branco = desligado), regras de senha, bloqueio por '
+         'senhas erradas, troca periódica e verificação em duas etapas obrigatória (capítulo 22).'],
         ['Margem de tolerância da auditoria', 'Diferença aceitável para liberar sozinho: usa o que for <b>maior</b> entre '
          'o valor fixo (R$) e o percentual. Também: limite de alçada e o % da reentrega/devolução (padrão 50%).'],
         ['Leitura automática de e-mail', 'Aceita várias caixas (uma para cada pessoa que envia devoluções). Lê uma pasta de cada caixa (IMAP; no webmail da hospedagem: servidor '

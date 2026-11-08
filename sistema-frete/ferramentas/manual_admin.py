@@ -238,7 +238,21 @@ def parte_admin(g):
 
     # 24
     s += h1('24. Manutenção')
-    s.append(P('Configurações gerais do sistema. Cada quadro da tela:'))
+    s.append(P('Só o <b>administrador</b> vê e muda. A tela tem duas abas (no menu Configuração: <b>Manutenção</b>, 903, e '
+               '<b>Integrações</b>, 904):'))
+    s += lista([
+        '<b>🖥 Sistema</b>: licença, atualização, usuários conectados, atalho, fuso do banco, HTTPS, segurança, margem da '
+        'auditoria, limpezas, resumo semanal, aviso aos usuários, backup, LGPD e zerar o banco.',
+        '<b>🔗 Integrações</b>: tudo o que liga o Nexofrete a outro sistema: NF-Stock (Alterdata), chaves de API e webhooks do '
+        'ERP, modelos de planilha, leitura automática de e-mail, envio de e-mail (SMTP), WhatsApp, pasta monitorada de XML, '
+        'planilha automática do ERP e leitura de comprovantes por IA (capítulo 53).',
+        'O quadro <b>Outras integrações</b>, no fim da aba, leva direto às que ficam na tela do assunto: seguro da carga '
+        '(averbação), CT-e na SEFAZ, NF-e contra o CNPJ, PIX com baixa automática, boleto, CIOT e vale-pedágio, gerenciamento '
+        'de risco, NFS-e, mapas e roteirização, EDI e rastreio nos portais das transportadoras. Essas também só o '
+        'administrador configura: os outros usuários veem a configuração, mas não mudam (a do boleto, a busca automática '
+        'de NF-e e a senha do portal da transportadora passaram a ser só do administrador).',
+    ])
+    s.append(P('Cada quadro da tela:'))
     s += tabela(['Quadro', 'Para que serve'], [
         ['Atualizar o sistema', 'Instala uma versão nova a partir do .zip, com backup antes (seção 9).'],
         ['Zerar o banco de dados', 'Apaga a movimentação para começar sem informações (veja "Zerar o banco de dados", abaixo).'],

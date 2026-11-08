@@ -62,7 +62,7 @@ def parte_operacao(g):
         ['Cadastros', 'Clientes, Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tipos de mercadoria, '
          'Tabelas de preço, Regiões de atendimento, Tipos de operação, Condições de pagamento, Departamentos, Usuários, Empresa',
          '910, 911, 905, 912, 913, 914, 915, 916, 906, 917, 918, 919, 920, 908, 909', '22, 23, 15'],
-        ['Configuração', 'Filiais, Configuração fiscal, Manutenção, Integração', '901, 902, 903, 904', '36, 32, 24, 53'],
+        ['Configuração', 'Filiais, Configuração fiscal, Manutenção (Sistema), Integrações (aba da Manutenção; só administrador)', '901, 902, 903, 904', '36, 32, 24, 53'],
     ], [0.2, 0.46, 0.17, 0.17])
     s += h2('Telas parecidas juntas')
     s.append(P('Algumas telas tratam do mesmo assunto e ficavam em lugares diferentes do menu. Agora cada assunto é <b>um item '
@@ -128,7 +128,7 @@ def parte_operacao(g):
         ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 905 Transportadoras contratadas · 906 Tabelas de preço · 907 Cadastros básicos · '
          '908 Usuários · 909 Empresa · 910 Clientes · 911 Fornecedores · 912 Veículos e motoristas · 913 Conjuntos · 914 Ajudantes · 915 Produtos · '
          '916 Tipos de mercadoria · 917 Regiões de atendimento · 918 Tipos de operação · 919 Condições de pagamento · 920 Departamentos · '
-         '903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos'],
+         '903 Manutenção · 904 Integrações (aba da Manutenção) · 990 Modo compacto · 991 Tema · 999 Lista de códigos'],
     ], [0.2, 0.8])
     s += h2('Filtro de período')
     s.append(P('As telas com período (Painel e Margem, Frota, Fiscal e contabilidade, Movimentação do caixa, '
@@ -965,7 +965,9 @@ def parte_integracoes(g):
 
     # 53
     s += h1('53. Integração com ERP: API e webhooks')
-    s.append(P('Em <b>Configuração » Integração (API e ERP)</b> (904, só administrador). Cada empresa usa um ERP; a '
+    s.append(P('Em <b>Manutenção » 🔗 Integrações</b> (menu Configuração » Integrações, código 904, só administrador). Na mesma '
+               'aba ficam também e-mail, WhatsApp, pasta de XML, planilha automática do ERP e leitura por IA (capítulo 24).'))
+    s.append(P('Cada empresa usa um ERP; a '
                'integração serve para qualquer um que chame um endereço web.'))
     s += h2('NF-Stock (Alterdata)')
     s.append(P('No alto da tela, o quadro <b>NF-Stock (Alterdata)</b> liga o Nexofrete ao NF-Stock, onde a Alterdata guarda os XML '
@@ -983,7 +985,7 @@ def parte_integracoes(g):
     ])
     s += passos([
         'No site do NF-Stock, entre em <b>Opções da Conta » Integração</b> e copie o token.',
-        'Na tela Integração, cole o token, informe o <b>código CRM</b> da Alterdata (6 dígitos; o sistema completa com zeros à '
+        'Em Manutenção » Integrações, cole o token, informe o <b>código CRM</b> da Alterdata (6 dígitos; o sistema completa com zeros à '
         'esquerda) e o CNPJ da empresa no NF-Stock.',
         'Clique em <b>Testar conexão</b>. Depois marque <b>Buscar</b> e/ou <b>Enviar</b>, escolha o que enviar e salve.',
         'Para conhecer sem a Alterdata, use o ambiente <b>Simulador</b>: traz documentos de exemplo e confirma os envios.',
@@ -1022,7 +1024,7 @@ def parte_integracoes(g):
     s += h1('54. Modelos de planilha (ERP que só troca planilha)')
     s += h2('Importar a planilha que o ERP gera')
     s += passos([
-        'Em Integração, <b>Modelo de importação</b>: suba uma planilha de exemplo (.xlsx, .xls ou .csv).',
+        'Em Manutenção » Integrações, <b>Modelo de importação</b>: suba uma planilha de exemplo (.xlsx, .xls ou .csv).',
         'O sistema sugere qual coluna é qual pelo nome (pedido, NF, chave, cliente, CNPJ, cidade, peso, volumes, valor, '
         'CIF/FOB, cancelado). Confira e troque o que precisar; ao lado aparece um exemplo de cada coluna.',
         '<b>Usar na importação</b>: a importação manual e a automática (pela pasta) passam a ler por esse modelo.',

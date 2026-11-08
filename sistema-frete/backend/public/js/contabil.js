@@ -328,6 +328,8 @@
     });
     const salvarCfg = () => api('/dfe/config', { method: 'PUT', body: JSON.stringify({ ativo: $('dfeAuto').checked, ciencia_automatica: $('dfeCiencia').checked, cte_automatico: $('dfeCte').checked }) }).then(() => mostrarAlerta('Salvo.', { tipo: 'sucesso' })).catch(erro);
     $('dfeAuto').addEventListener('change', salvarCfg); $('dfeCiencia').addEventListener('change', salvarCfg); $('dfeCte').addEventListener('change', salvarCfg);
+    // A busca automática é integração com a SEFAZ: só o administrador liga ou desliga.
+    if (usuario?.perfil !== 'admin') ['dfeAuto', 'dfeCiencia', 'dfeCte'].forEach((id) => { $(id).disabled = true; $(id).title = 'Só o administrador muda a busca automática.'; });
     document.querySelectorAll('[data-dfe-filtro]').forEach((b) => b.addEventListener('click', () => { dfe.filtro = b.dataset.dfeFiltro; recarregar(); }));
     let tm = null;
     $('dfeBusca').addEventListener('input', (ev) => { clearTimeout(tm); tm = setTimeout(() => { dfe.busca = ev.target.value.trim(); telaDfe().then(() => { const x = $('dfeBusca'); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }).catch(erro); }, 400); });

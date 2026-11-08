@@ -266,6 +266,11 @@
         <div style="font-size:12px; color:var(--texto-fraco); margin-bottom:10px;">O banco informa no contrato: carteira, convênio/código do beneficiário e a versão do layout CNAB 240. O nosso número segue a sequência daqui (se já usa boleto em outro sistema, continue a numeração).</div>
         <div style="display:flex; justify-content:flex-end;"><button class="btn btn-primario" id="fbSalvar" style="width:auto;">💾 Salvar</button></div></div>`;
     $('fbBanco').addEventListener('change', () => { const b = cfg.bancos[$('fbBanco').value]; if (b && !$('fbCarteira').value) $('fbCarteira').value = b.carteira; });
+    // Contrato com o banco é integração: só o administrador muda.
+    if (usuario?.perfil !== 'admin') {
+      $('fbSalvar').closest('.painel').querySelectorAll('input, select').forEach((el) => { el.disabled = true; });
+      $('fbSalvar').replaceWith(Object.assign(document.createElement('small'), { textContent: 'Só o administrador muda a configuração do boleto.', style: 'color:var(--texto-fraco);' }));
+    }
     $('fbSalvar').addEventListener('click', async (e) => {
       const btn = e.currentTarget; btn.disabled = true;
       try {

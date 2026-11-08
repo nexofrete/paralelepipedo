@@ -13,7 +13,7 @@ window.Navegar = (() => {
   const ATRIBUTO_ABA = {
     'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba',
     filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba', comissoes: 'data-cm-aba', centros: 'data-ccu-aba',
-    cadastros: 'data-subpagina', 'cadastros-basicos': 'data-cb-aba',
+    cadastros: 'data-subpagina', 'cadastros-basicos': 'data-cb-aba', manutencao: 'data-mn-aba',
   };
   const FAMILIAS = {
     indicadores: { titulo: '📊 Painel de indicadores', membros: [

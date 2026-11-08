@@ -2,7 +2,7 @@
 const fs = require('fs');
 const express = require('express');
 const pool = require('../db');
-const { autenticar } = require('../middlewareAuth');
+const { autenticar, apenasAdmin } = require('../middlewareAuth');
 const { permitirAlguma } = require('../permissoes');
 const { registrar } = require('../auditoria');
 const contabil = require('../contabil');
@@ -92,7 +92,7 @@ router.post('/entradas/:id(\\d+)/cancelar', autenticar, pode, rota(async (req, r
 // ---------- NF-e contra o CNPJ (SEFAZ: Distribuição DF-e e manifestação; regras em src/dfe.js) ----------
 const dfe = require('../dfe');
 router.get('/dfe', autenticar, pode, rota(async (req, res) => res.json({ ...(await dfe.estado()), ...(await dfe.listar(req.query)) }), 'Erro ao listar as NF-e recebidas.'));
-router.put('/dfe/config', autenticar, pode, rota(async (req, res) => {
+router.put('/dfe/config', autenticar, apenasAdmin, rota(async (req, res) => {
   const c = await dfe.salvarConfig(req.body || {});
   log(req, `Busca automática de NF-e na SEFAZ ${c.ativo ? 'ligada' : 'desligada'}${c.ciencia_automatica ? ', com ciência automática' : ''}`);
   res.json(c);

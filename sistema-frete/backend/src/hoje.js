@@ -58,7 +58,7 @@ async function montar(req) {
       try {
         const ns = await require('./integracao/nfstock').pendencias();
         add('operacao', { chave: 'nfstock', icone: '📤', titulo: 'Documentos que não chegaram ao NF-Stock', qtd: ns.problemas, nivel: 'atencao', detalhe: 'recusados pela Alterdata ou sem conexão: veja o motivo e reenvie',
-          destino: { ir: 'integracao', clicar: '#itgNfstockEnvios' } });
+          destino: { ir: 'manutencao', aba: 'integracoes', clicar: '#itgNfstockEnvios' } });
       } catch (e) { console.error('[hoje]', e.message); }
     }
     try {

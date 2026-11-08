@@ -55,7 +55,7 @@
     't:cadastros-basicos:tipos_mercadoria': ['916', 'tipo mercadoria carga perigosa refrigerada'], 't:cadastros-basicos:regioes_atendimento': ['917', 'regiao atendimento cep cidade prazo'],
     't:cadastros-basicos:tipos_operacao': ['918', 'tipo operacao cfop tomador servico'], 't:cadastros-basicos:condicoes_pagamento': ['919', 'condicao pagamento parcelas 30 60 90 prazo'],
     't:cadastros-basicos:departamentos': ['920', 'departamento setor'],
-    't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'], 'p:integracao': ['904', 'integracao api erp webhook chave'],
+    't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 't:manutencao:sistema': ['903', 'manutencao sistema backup atualizacao seguranca lgpd zerar'], 't:manutencao:integracoes': ['904', 'integracao integracoes api erp webhook chave nfstock alterdata whatsapp email smtp pasta xml ia'],
   };
   // Ações diretas: abrem a tela e clicam no botão de "novo" (código = o da tela + 1).
   const ACOES = [

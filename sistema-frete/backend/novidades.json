@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Segurança",
+          "texto": "Integrações num lugar só e só para o administrador: Manutenção agora tem as abas Sistema e Integrações (NF-Stock, API e webhooks do ERP, e-mail, WhatsApp, pasta de XML, planilha do ERP, IA e atalhos para as demais). A configuração do boleto, a busca automática de NF-e na SEFAZ e a senha do portal das transportadoras passaram a ser só do administrador."
+        },
+        {
           "area": "Menu",
           "texto": "Os cadastros ganharam um grupo próprio no menu, 📇 Cadastros, logo abaixo de Operação: Clientes, Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tabelas de preço, Condições de pagamento, Usuários, Empresa e os demais, cada um abrindo direto a sua aba (códigos 905 a 920 no Ctrl+K)."
         },

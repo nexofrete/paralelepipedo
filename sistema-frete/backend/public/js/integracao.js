@@ -4,9 +4,9 @@
 // Usa do dashboard.js: usuario, apiFetch, mostrarAlerta, confirmar.
 // =====================================================================
 (() => {
-  const nav = document.getElementById('navIntegracao');
-  if (!nav || usuario?.perfil !== 'admin') return;
-  nav.classList.remove('oculto');
+  // Fica em Manutenção » 🔗 Integrações (só administrador); carrega quando a aba abre.
+  const aba = document.querySelector('[data-mn-aba="integracoes"]');
+  if (!aba || !document.getElementById('itgConteudo') || usuario?.perfil !== 'admin') return;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const quando = (v) => (v ? new Date(v).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
@@ -48,7 +48,33 @@
     desenhar(ent);
   }
   const recarregar = () => carregar().catch(erro);
-  nav.addEventListener('click', recarregar);
+  // Integrações configuradas na tela de cada assunto: um atalho para cada (só as telas que existem para a empresa).
+  const OUTRAS = [
+    ['t:emissao-cte:config', null, '🛡 Seguro da carga (averbação AT&M / Porto)', 'Configuração fiscal » Seguro da carga e averbação'],
+    ['p:ctes-recebidos', '#ctrSefaz', '📡 CT-e na SEFAZ (busca automática)', 'CT-e recebidos » CT-e na SEFAZ'],
+    ['t:contabil:dfe', null, '📡 NF-e contra o CNPJ (SEFAZ)', 'Fiscal e contabilidade » NF-e contra o CNPJ'],
+    ['t:faturamento:config', null, '💠 PIX com baixa automática (API do banco)', 'Faturamento » Cobrança (PIX e banco)'],
+    ['t:faturamento:boletos', null, '🏦 Boleto registrado (CNAB 240)', 'Faturamento » Boletos'],
+    ['t:pagar:acertos', '#axCfgCiot', '🛣 CIOT e vale-pedágio', 'Acerto de viagem » CIOT e vale-pedágio'],
+    ['t:emissao-cte:mdfe', '#mdfeGr', '🛡 Gerenciamento de risco', 'MDF-e » Gerenciamento de risco'],
+    ['t:emissao-cte:nfse', '#nsConfig', '🧾 NFS-e (Padrão Nacional)', 'NFS-e » Configurar'],
+    ['r:roteirizar', null, '🗺 Mapas e roteirização (OSRM / OpenRouteService)', 'Roteirizar entregas » configuração'],
+    ['t:edi:', null, '🔁 EDI PROCEDA (NOTFIS, CONEMB, OCOREN, DOCCOB)', 'EDI'],
+    ['t:cadastros:transportadoras', null, '🚛 Rastreio nos portais das transportadoras', 'Cadastros » Transportadoras » portal (senha)'],
+  ];
+  function desenharOutras() {
+    const caixa = $('mnOutrasIntegracoes'); if (!caixa || !window.Navegar) return;
+    const lista = OUTRAS.filter(([d]) => window.Navegar.acessivel(d));
+    caixa.innerHTML = lista.map(([d, clicar, titulo, onde], i) => `<button type="button" class="btn btn-secundario" data-mn-outra="${i}" style="text-align:left; white-space:normal; height:auto; padding:8px 12px;">
+      <b>${esc(titulo)}</b><br><small style="color:var(--texto-fraco); font-weight:400;">${esc(onde)}</small></button>`).join('') || '<small style="color:var(--texto-fraco);">Nenhuma.</small>';
+    caixa.querySelectorAll('[data-mn-outra]').forEach((b) => b.addEventListener('click', () => {
+      const [d, clicar] = lista[Number(b.dataset.mnOutra)];
+      window.Navegar.ir(d);
+      if (clicar) { let n = 0; const tentar = () => { const el = document.querySelector(clicar); if (el && el.offsetParent !== null) el.click(); else if ((n += 1) < 30) setTimeout(tentar, 150); }; setTimeout(tentar, 300); }
+    }));
+  }
+  aba.addEventListener('click', desenharOutras);
+  aba.addEventListener('click', recarregar);
 
   function desenhar(entregas) {
     const base = `${location.origin}/api/v1`;

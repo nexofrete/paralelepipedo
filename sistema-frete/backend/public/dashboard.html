@@ -170,6 +170,7 @@
       </div>
 
       <!-- Cadastros: as páginas ficam escondidas aqui (guardam a permissão); o grupo "Cadastros" abre cada aba. -->
+      <div class="nav-item nav-no-grupo oculto" data-pagina="manutencao" id="navManutencao">🛠 Manutenção</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cadastros" id="navCadastros">👥 Cadastros</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cadastros-basicos" id="navCadastrosBasicos">🗂 Cadastros básicos</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="emissao-cte" id="navEmissaoCte" data-modulo="transportadora">🚛 Emissão de CT-e</div>
@@ -216,8 +217,8 @@
       <div class="nav-sub oculto" data-grupo="config">
         <div class="nav-tsub" data-ir="filiais" data-aba="unidades" data-so-admin="1" data-modulo="transportadora">🏢 Filiais (unidades)</div>
         <div class="nav-tsub" data-ir="emissao-cte" data-aba="config" data-so-admin="1" data-modulo="transportadora">⚙️ Configuração fiscal</div>
-        <div class="nav-item oculto" data-pagina="manutencao" id="navManutencao">🛠 Manutenção</div>
-        <div class="nav-item oculto" data-pagina="integracao" id="navIntegracao">🔗 Integração (API e ERP)</div>
+        <div class="nav-tsub" data-ir="manutencao" data-aba="sistema" data-so-admin="1">🛠 Manutenção</div>
+        <div class="nav-tsub" data-ir="manutencao" data-aba="integracoes" data-so-admin="1">🔗 Integrações</div>
       </div>
 
       <div class="perfil-usuario">
@@ -460,19 +461,6 @@
         <div class="painel modal-card" style="max-width:860px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="cmModalConteudo"></div>
       </div>
 
-      <section id="pagina-integracao" class="oculto">
-        <div class="cabecalho-pagina">
-          <div>
-            <h2>🔗 Integração (API e ERP)</h2>
-            <p>NF-Stock (Alterdata), chaves de API para o ERP consultar CT-e, entregas e faturas (e mandar NF-e), e avisos automáticos (webhooks) quando algo muda</p>
-          </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-secundario" id="itgNovaChave" style="width:auto;">🔑 Nova chave de API</button>
-            <button class="btn btn-primario" id="itgNovoWebhook" style="width:auto;">＋ Webhook</button>
-          </div>
-        </div>
-        <div id="itgConteudo"></div>
-      </section>
       <div class="modal-overlay oculto" id="modalItg">
         <div class="painel modal-card" style="max-width:720px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="itgModalConteudo"></div>
       </div>
@@ -3336,12 +3324,16 @@
       <section id="pagina-manutencao" class="oculto">
         <div class="cabecalho-pagina">
           <div>
-            <h2>Manutenção</h2>
-            <p>Backup automático do banco de dados e avisos aos usuários</p>
+            <h2>🛠 Manutenção</h2>
+            <p>Só o administrador: o sistema (backup, atualização, segurança, LGPD) e todas as integrações com outros sistemas</p>
           </div>
         </div>
+        <div class="cte-abas" id="mnAbas">
+          <div class="cte-aba ativo" data-mn-aba="sistema">🖥 Sistema</div>
+          <div class="cte-aba" data-mn-aba="integracoes">🔗 Integrações</div>
+        </div>
+        <div id="mnAbaSistema">
         <div class="painel" style="padding:24px; margin-bottom:22px;" id="painelLicenca"></div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">⬆️ Atualizar o sistema</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3353,60 +3345,6 @@
           <button class="btn btn-primario" id="btnAtualizarSistema" style="width:auto; padding:10px 20px;">Escolher o .zip e atualizar</button>
           <div id="statusAtualizacao" style="font-size:12.5px; color:var(--texto-fraco); margin-top:12px;"></div>
         </div>
-
-        <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">📂 Pasta monitorada de XML (NF-e, CT-e e eventos)</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            Aponte a pasta onde os XML chegam (a que o e-mail ou o ERP salva, pode ser uma pasta da rede). O sistema confere de tempos em tempos
-            e importa sozinho os XML novos (soltos ou dentro de arquivos .zip) — notas primeiro, depois CT-e, depois cancelamentos — sem ninguém precisar subir os arquivos.
-          </p>
-          <label class="ag-check" style="margin-bottom:12px;"><input type="checkbox" id="pxAtivo" /> Ativar a importação automática da pasta</label>
-          <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
-            <div class="campo" style="margin-bottom:0;"><label>Caminho da pasta (no servidor)</label><input type="text" id="pxCaminho" placeholder="Ex: C:\XML-Fretes  ou  \\SERVIDOR\Compartilhada\XML" /></div>
-            <div class="campo" style="margin-bottom:0;"><label>Conferir a cada (minutos)</label><input type="number" id="pxIntervalo" min="1" max="1440" value="5" /></div>
-          </div>
-          <label class="ag-check" style="margin-top:10px;"><input type="checkbox" id="pxMover" checked /> Depois de importar, mover o arquivo para as subpastas "Importados" ou "Com erro"</label>
-          <div style="display:flex; gap:10px; margin-top:14px;">
-            <button class="btn btn-primario" id="btnSalvarPastaXml" style="width:auto; padding:10px 20px;">Salvar</button>
-            <button class="btn btn-secundario" id="btnExecutarPastaXml" style="width:auto; padding:10px 20px;">Importar agora</button>
-          </div>
-          <div id="statusPastaXml" style="font-size:12.5px; color:var(--texto-fraco); margin-top:12px;"></div>
-          <div id="ultimosPastaXml" style="margin-top:10px; max-height:220px; overflow-y:auto;"></div>
-        </div>
-
-        <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">📊 Importação automática da planilha do ERP</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            Se a planilha do ERP for salva sempre no mesmo caminho (ex: uma pasta compartilhada na rede), o sistema pode
-            checar sozinho se ela mudou e importar automaticamente, sem precisar subir manualmente.
-          </p>
-
-          <div class="campo" style="max-width:340px;">
-            <label style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" id="erpAtivo" /> Ativar verificação automática
-            </label>
-          </div>
-
-          <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px 16px; margin-top:8px;">
-            <div class="campo" style="margin-bottom:0;">
-              <label>Caminho completo do arquivo da planilha</label>
-              <input type="text" id="erpCaminhoArquivo" placeholder='Ex: C:\ERP\Exportacoes\TIMELINE_PEDIDOS.xlsx' />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Checar a cada quantos minutos</label>
-              <input type="number" id="erpIntervaloMinutos" min="1" />
-            </div>
-          </div>
-
-          <div id="statusImportacaoErp" style="font-size:12.5px; color:var(--texto-fraco); margin-top:10px;"></div>
-
-          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
-            <button class="btn btn-primario" id="btnSalvarConfigErp" style="width:auto; padding:10px 20px;">Salvar configuração</button>
-            <button class="btn btn-secundario" id="btnImportarErpAgora" style="width:auto; padding:10px 20px;">Verificar e importar agora</button>
-          </div>
-          <div id="erroImportacaoErp" class="mensagem-erro" style="margin-top:14px;"></div>
-        </div>
-
         <div class="painel" style="margin-bottom:22px;">
           <div class="painel-header">
             <h3>🟢 Usuários no sistema</h3>
@@ -3423,25 +3361,6 @@
             </table>
           </div>
         </div>
-
-        <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">🤖 Leitura de comprovantes por IA (opcional)</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            Ao importar fotos de canhotos (Entregas previstas » Lançar entregas do WhatsApp), a IA lê o <b>número da NF</b> e a <b>data
-            de recebimento escrita à mão</b> e já preenche os campos — você só confere. Usa a API da Anthropic (Claude): precisa de uma
-            <b>chave de API</b> (criada em console.anthropic.com), internet, e tem um custo pequeno por foto. Sem a chave, a importação
-            funciona do jeito manual. A chave fica guardada criptografada.
-          </p>
-          <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-            <div class="campo" style="margin-bottom:0; min-width:280px; flex:1;"><label>Chave da API</label><input type="password" id="iaChave" placeholder="sk-ant-... (deixe em branco para manter a atual)" autocomplete="off" /></div>
-            <div class="campo" style="margin-bottom:0;"><label>Modelo</label><input type="text" id="iaModelo" style="width:230px;" /></div>
-            <label style="display:flex; gap:6px; align-items:center; font-size:13px;"><input type="checkbox" id="iaAtiva" /> Ligada</label>
-            <button class="btn btn-primario" id="btnIaSalvar" style="width:auto;">Salvar</button>
-            <button class="btn btn-secundario" id="btnIaTestar" style="width:auto;">🔌 Testar</button>
-          </div>
-          <div id="iaStatus" style="font-size:12.5px; margin-top:8px;"></div>
-        </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">📌 Atalho do Nexofrete na área de trabalho</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3450,7 +3369,6 @@
           </p>
           <button id="btnInstalarAtalho" class="btn btn-secundario" style="width:auto;">📌 Baixar o instalador do atalho</button>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;" id="painelFuso">
           <h3 style="margin-top:0; font-size:15px;">🕒 Fuso do banco</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3464,7 +3382,6 @@
             <button class="btn btn-primario oculto" id="btnFusoCorrigir" style="width:auto;">Corrigir pelo protocolo da SEFAZ</button>
           </div>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🔐 HTTPS — cadeado na rede da empresa</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3485,7 +3402,6 @@
           </div>
           <div id="httpsStatus" style="font-size:12.5px; margin-top:10px;"></div>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🔒 Segurança — senhas, bloqueio, duas etapas e inatividade</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3518,7 +3434,6 @@
           </p>
           <div id="erroSeguranca" class="mensagem-erro" style="margin-top:14px;"></div>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🎯 Margem de tolerância da auditoria</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3551,47 +3466,6 @@
           <button class="btn btn-primario" id="btnSalvarAuditoriaConfig" style="width:auto; padding:10px 20px;">Salvar</button>
           <div id="erroAuditoriaConfig" class="mensagem-erro" style="margin-top:14px;"></div>
         </div>
-
-        <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">📧 Leitura automática de e-mail</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            O sistema lê uma pasta de cada caixa cadastrada: registra sozinho as <b>devoluções / trocas de nota</b> escritas no modelo
-            padrão e importa os <b>XML anexados</b> (NF-e, CT-e, cancelamentos). Cadastre a caixa de cada pessoa que envia esses e-mails,
-            com a pasta de <b>Enviados</b> e o remetente. Cada e-mail é lido uma vez só, e nada na caixa é alterado.
-            <br><b>Transportadora:</b> cadastre a caixa que recebe as NF-e dos clientes (ex.: nfe@suaempresa.com.br, pasta INBOX) escolhendo
-            "NF-e dos clientes viram rascunho de CT-e": cada NF-e anexada vira um rascunho de CT-e, com o frete pela tabela, para conferir e transmitir.
-          </p>
-          <div id="emListaContas" style="font-size:12.5px; margin-bottom:12px;"></div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <button class="btn btn-secundario" id="btnEmNova" style="width:auto;">+ Adicionar caixa de e-mail</button>
-            <button class="btn btn-secundario" id="btnEmLerTodas" style="width:auto;">📥 Ler todas agora</button>
-          </div>
-          <div id="emFormConta" class="oculto" style="border:1px solid var(--borda); border-radius:var(--raio); padding:14px;">
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
-              <div><label for="emNome">Nome (para identificar)</label><input type="text" id="emNome" placeholder="Ex.: Comercial – Maria" /></div>
-              <div><label for="emServidor">Servidor (IMAP)</label><input type="text" id="emServidor" placeholder="mail.imporiente.com.br" /></div>
-              <div><label for="emPorta">Porta</label><input type="number" id="emPorta" value="993" /></div>
-              <div><label for="emUsuario">E-mail (usuário)</label><input type="text" id="emUsuario" autocomplete="off" /></div>
-              <div><label for="emSenha">Senha</label><input type="password" id="emSenha" autocomplete="new-password" placeholder="Digite só para cadastrar ou trocar" />
-                <small id="emSenhaInfo" style="color:var(--texto-fraco);"></small></div>
-              <div><label for="emPasta">Pasta</label><input type="text" id="emPasta" placeholder="INBOX.Sent (Enviados)" list="emPastasLista" /><datalist id="emPastasLista"></datalist></div>
-              <div><label for="emIntervalo">Ler a cada (minutos)</label><input type="number" id="emIntervalo" value="15" min="5" /></div>
-              <div style="grid-column:1/-1;"><label for="emFinalidade">O que fazer com os e-mails</label>
-                <select id="emFinalidade"><option value="auditoria">Devoluções/trocas e XML para a auditoria de frete (embarcador)</option>
-                  <option value="cte">NF-e dos clientes viram rascunho de CT-e (transportadora)</option>
-                  <option value="sac">Chamados do SAC: cada e-mail abre ou responde um chamado (transportadora)</option></select></div>
-              <div style="grid-column:1/-1;"><label for="emRemetentes">Só e-mails enviados por</label>
-                <input type="text" id="emRemetentes" placeholder="Ex.: maria@imporiente.com.br, joao@imporiente.com.br" />
-                <small style="color:var(--texto-fraco);">Um ou mais e-mails, separados por vírgula. Em branco = todos os e-mails da pasta.</small></div>
-            </div>
-            <label style="display:flex; gap:8px; align-items:center; margin-top:10px; font-weight:500;"><input type="checkbox" id="emAtivo" style="width:auto;" checked /> Caixa ativa (lida automaticamente)</label>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-              <button class="btn btn-primario" id="btnEmSalvar" style="width:auto;">Salvar</button>
-              <button class="btn btn-secundario" id="btnEmCancelar" style="width:auto;">Cancelar</button>
-            </div>
-          </div>
-        </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🧹 Limpeza: notas "Aguardando CT-e"</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3606,7 +3480,6 @@
           </div>
           <div id="limpezaResultado" style="margin-top:14px;"></div>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🔄 Recalcular Valor Frete Tabelado (todos os registros)</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3632,56 +3505,6 @@
             </div>
           </div>
         </div>
-
-        <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">📧 Envio de Email (espelho de cálculo pra transportadora)</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            Configure aqui o servidor de email (SMTP) da empresa pra poder mandar o espelho do cálculo direto pra
-            transportadora quando houver divergência. Se usar Gmail, precisa gerar uma "senha de app" (não a senha normal da conta).
-          </p>
-
-          <div class="campo" style="max-width:340px;">
-            <label style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" id="emailAtivo" /> Ativar envio de email
-            </label>
-          </div>
-
-          <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px 16px;">
-            <div class="campo" style="margin-bottom:0;">
-              <label>Servidor SMTP (host)</label>
-              <input type="text" id="emailSmtpHost" placeholder="Ex: smtp.gmail.com" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Porta</label>
-              <input type="number" id="emailSmtpPorta" placeholder="587" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label style="display:flex; align-items:center; gap:8px; margin-top:22px;">
-                <input type="checkbox" id="emailSmtpSeguro" /> Conexão segura (SSL)
-              </label>
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Usuário SMTP</label>
-              <input type="text" id="emailSmtpUsuario" placeholder="seuemail@empresa.com" autocomplete="off" name="smtp-usuario-nao-e-login" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Senha SMTP</label>
-              <input type="password" id="emailSmtpSenha" placeholder="••••••••" autocomplete="new-password" name="smtp-senha-nao-e-login" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Nome do remetente</label>
-              <input type="text" id="emailNomeRemetente" placeholder="Ex: Financeiro - Sua Empresa" />
-            </div>
-            <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
-              <label>Email do remetente (deixe igual ao usuário SMTP na maioria dos casos)</label>
-              <input type="text" id="emailRemetente" placeholder="seuemail@empresa.com" />
-            </div>
-          </div>
-
-          <button class="btn btn-primario" id="btnSalvarEmail" style="width:auto; padding:10px 20px;">Salvar configuração</button>
-          <div id="erroEmail" class="mensagem-erro" style="margin-top:14px;"></div>
-        </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">📧 Resumo Executivo Semanal</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3703,43 +3526,6 @@
           </div>
           <div id="erroResumoSemanal" class="mensagem-erro" style="margin-top:14px;"></div>
         </div>
-
-        <div class="painel" style="padding:24px; margin-bottom:22px;">
-          <h3 style="margin-top:0; font-size:15px;">💬 Notificações por WhatsApp</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            Todo dia de manhã, manda um WhatsApp resumindo se tem frete retido ou pagamento vencido — só quando tem
-            algo urgente (não fica mandando toda hora). Usa o Twilio como provedor.
-          </p>
-          <div class="campo" style="max-width:340px;">
-            <label style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" id="whatsappAtivo" /> Ativar alertas por WhatsApp
-            </label>
-          </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; max-width:700px;">
-            <div class="campo" style="margin-bottom:0;">
-              <label>Twilio Account SID</label>
-              <input type="text" id="whatsappAccountSid" placeholder="ACxxxxxxxxxxxxxxxx" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Twilio Auth Token</label>
-              <input type="password" id="whatsappAuthToken" placeholder="Deixe vazio pra manter" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Número do Twilio (remetente)</label>
-              <input type="text" id="whatsappNumeroTwilio" placeholder="+14155238886" />
-            </div>
-            <div class="campo" style="margin-bottom:0;">
-              <label>Número de destino (com DDI)</label>
-              <input type="text" id="whatsappNumeroDestino" placeholder="+5511999999999" />
-            </div>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <button class="btn btn-primario" id="btnSalvarWhatsapp" style="width:auto; padding:10px 20px;">Salvar</button>
-            <button class="btn btn-secundario" id="btnTestarWhatsapp" style="width:auto; padding:10px 20px;">Enviar teste agora</button>
-          </div>
-          <div id="erroWhatsapp" class="mensagem-erro" style="margin-top:14px;"></div>
-        </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">📢 Avisar todos os usuários logados</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3789,7 +3575,6 @@
           </div>
           <div id="erroAviso" class="mensagem-erro" style="margin-top:14px;"></div>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">Backup automático</h3>
 
@@ -3854,7 +3639,6 @@
           </div>
           <div id="erroBackup" class="mensagem-erro" style="margin-top:14px;"></div>
         </div>
-
         <div class="painel">
           <div class="painel-header">
             <h3>Backups salvos</h3>
@@ -3889,7 +3673,6 @@
           </div>
           <button class="btn btn-secundario" id="lgpdSalvar" style="width:auto; margin-top:10px;">Salvar prazo e aviso</button>
         </div>
-
         <div class="painel" style="padding:24px; margin-bottom:22px; border:1px solid var(--vermelho);">
           <h3 style="margin-top:0; font-size:15px; color:var(--vermelho);">🧨 Zerar o banco de dados (começar sem informações)</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3899,6 +3682,212 @@
             A numeração do CT-e, MDF-e e NFS-e em produção continua de onde parou.
           </p>
           <button class="btn btn-secundario" id="btnZerarBanco" style="width:auto; padding:10px 20px; color:var(--vermelho); border-color:var(--vermelho);">🧨 Zerar o banco de dados…</button>
+        </div>
+        </div>
+        <div id="mnAbaIntegracoes" class="oculto">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <p style="margin:0; font-size:13px; color:var(--texto-fraco);">NF-Stock (Alterdata), API e webhooks para o ERP, modelos de planilha, e-mail, WhatsApp, pasta de XML e leitura por IA.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="itgNovaChave" style="width:auto;">🔑 Nova chave de API</button>
+            <button class="btn btn-primario" id="itgNovoWebhook" style="width:auto;">＋ Webhook</button>
+          </div>
+        </div>
+        <div id="itgConteudo"></div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">📧 Leitura automática de e-mail</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            O sistema lê uma pasta de cada caixa cadastrada: registra sozinho as <b>devoluções / trocas de nota</b> escritas no modelo
+            padrão e importa os <b>XML anexados</b> (NF-e, CT-e, cancelamentos). Cadastre a caixa de cada pessoa que envia esses e-mails,
+            com a pasta de <b>Enviados</b> e o remetente. Cada e-mail é lido uma vez só, e nada na caixa é alterado.
+            <br><b>Transportadora:</b> cadastre a caixa que recebe as NF-e dos clientes (ex.: nfe@suaempresa.com.br, pasta INBOX) escolhendo
+            "NF-e dos clientes viram rascunho de CT-e": cada NF-e anexada vira um rascunho de CT-e, com o frete pela tabela, para conferir e transmitir.
+          </p>
+          <div id="emListaContas" style="font-size:12.5px; margin-bottom:12px;"></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button class="btn btn-secundario" id="btnEmNova" style="width:auto;">+ Adicionar caixa de e-mail</button>
+            <button class="btn btn-secundario" id="btnEmLerTodas" style="width:auto;">📥 Ler todas agora</button>
+          </div>
+          <div id="emFormConta" class="oculto" style="border:1px solid var(--borda); border-radius:var(--raio); padding:14px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+              <div><label for="emNome">Nome (para identificar)</label><input type="text" id="emNome" placeholder="Ex.: Comercial – Maria" /></div>
+              <div><label for="emServidor">Servidor (IMAP)</label><input type="text" id="emServidor" placeholder="mail.imporiente.com.br" /></div>
+              <div><label for="emPorta">Porta</label><input type="number" id="emPorta" value="993" /></div>
+              <div><label for="emUsuario">E-mail (usuário)</label><input type="text" id="emUsuario" autocomplete="off" /></div>
+              <div><label for="emSenha">Senha</label><input type="password" id="emSenha" autocomplete="new-password" placeholder="Digite só para cadastrar ou trocar" />
+                <small id="emSenhaInfo" style="color:var(--texto-fraco);"></small></div>
+              <div><label for="emPasta">Pasta</label><input type="text" id="emPasta" placeholder="INBOX.Sent (Enviados)" list="emPastasLista" /><datalist id="emPastasLista"></datalist></div>
+              <div><label for="emIntervalo">Ler a cada (minutos)</label><input type="number" id="emIntervalo" value="15" min="5" /></div>
+              <div style="grid-column:1/-1;"><label for="emFinalidade">O que fazer com os e-mails</label>
+                <select id="emFinalidade"><option value="auditoria">Devoluções/trocas e XML para a auditoria de frete (embarcador)</option>
+                  <option value="cte">NF-e dos clientes viram rascunho de CT-e (transportadora)</option>
+                  <option value="sac">Chamados do SAC: cada e-mail abre ou responde um chamado (transportadora)</option></select></div>
+              <div style="grid-column:1/-1;"><label for="emRemetentes">Só e-mails enviados por</label>
+                <input type="text" id="emRemetentes" placeholder="Ex.: maria@imporiente.com.br, joao@imporiente.com.br" />
+                <small style="color:var(--texto-fraco);">Um ou mais e-mails, separados por vírgula. Em branco = todos os e-mails da pasta.</small></div>
+            </div>
+            <label style="display:flex; gap:8px; align-items:center; margin-top:10px; font-weight:500;"><input type="checkbox" id="emAtivo" style="width:auto;" checked /> Caixa ativa (lida automaticamente)</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+              <button class="btn btn-primario" id="btnEmSalvar" style="width:auto;">Salvar</button>
+              <button class="btn btn-secundario" id="btnEmCancelar" style="width:auto;">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">📧 Envio de Email (espelho de cálculo pra transportadora)</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Configure aqui o servidor de email (SMTP) da empresa pra poder mandar o espelho do cálculo direto pra
+            transportadora quando houver divergência. Se usar Gmail, precisa gerar uma "senha de app" (não a senha normal da conta).
+          </p>
+
+          <div class="campo" style="max-width:340px;">
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="emailAtivo" /> Ativar envio de email
+            </label>
+          </div>
+
+          <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px 16px;">
+            <div class="campo" style="margin-bottom:0;">
+              <label>Servidor SMTP (host)</label>
+              <input type="text" id="emailSmtpHost" placeholder="Ex: smtp.gmail.com" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Porta</label>
+              <input type="number" id="emailSmtpPorta" placeholder="587" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label style="display:flex; align-items:center; gap:8px; margin-top:22px;">
+                <input type="checkbox" id="emailSmtpSeguro" /> Conexão segura (SSL)
+              </label>
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Usuário SMTP</label>
+              <input type="text" id="emailSmtpUsuario" placeholder="seuemail@empresa.com" autocomplete="off" name="smtp-usuario-nao-e-login" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Senha SMTP</label>
+              <input type="password" id="emailSmtpSenha" placeholder="••••••••" autocomplete="new-password" name="smtp-senha-nao-e-login" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Nome do remetente</label>
+              <input type="text" id="emailNomeRemetente" placeholder="Ex: Financeiro - Sua Empresa" />
+            </div>
+            <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
+              <label>Email do remetente (deixe igual ao usuário SMTP na maioria dos casos)</label>
+              <input type="text" id="emailRemetente" placeholder="seuemail@empresa.com" />
+            </div>
+          </div>
+
+          <button class="btn btn-primario" id="btnSalvarEmail" style="width:auto; padding:10px 20px;">Salvar configuração</button>
+          <div id="erroEmail" class="mensagem-erro" style="margin-top:14px;"></div>
+        </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">💬 Notificações por WhatsApp</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Todo dia de manhã, manda um WhatsApp resumindo se tem frete retido ou pagamento vencido — só quando tem
+            algo urgente (não fica mandando toda hora). Usa o Twilio como provedor.
+          </p>
+          <div class="campo" style="max-width:340px;">
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="whatsappAtivo" /> Ativar alertas por WhatsApp
+            </label>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; max-width:700px;">
+            <div class="campo" style="margin-bottom:0;">
+              <label>Twilio Account SID</label>
+              <input type="text" id="whatsappAccountSid" placeholder="ACxxxxxxxxxxxxxxxx" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Twilio Auth Token</label>
+              <input type="password" id="whatsappAuthToken" placeholder="Deixe vazio pra manter" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Número do Twilio (remetente)</label>
+              <input type="text" id="whatsappNumeroTwilio" placeholder="+14155238886" />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Número de destino (com DDI)</label>
+              <input type="text" id="whatsappNumeroDestino" placeholder="+5511999999999" />
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primario" id="btnSalvarWhatsapp" style="width:auto; padding:10px 20px;">Salvar</button>
+            <button class="btn btn-secundario" id="btnTestarWhatsapp" style="width:auto; padding:10px 20px;">Enviar teste agora</button>
+          </div>
+          <div id="erroWhatsapp" class="mensagem-erro" style="margin-top:14px;"></div>
+        </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">📂 Pasta monitorada de XML (NF-e, CT-e e eventos)</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Aponte a pasta onde os XML chegam (a que o e-mail ou o ERP salva, pode ser uma pasta da rede). O sistema confere de tempos em tempos
+            e importa sozinho os XML novos (soltos ou dentro de arquivos .zip) — notas primeiro, depois CT-e, depois cancelamentos — sem ninguém precisar subir os arquivos.
+          </p>
+          <label class="ag-check" style="margin-bottom:12px;"><input type="checkbox" id="pxAtivo" /> Ativar a importação automática da pasta</label>
+          <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+            <div class="campo" style="margin-bottom:0;"><label>Caminho da pasta (no servidor)</label><input type="text" id="pxCaminho" placeholder="Ex: C:\XML-Fretes  ou  \\SERVIDOR\Compartilhada\XML" /></div>
+            <div class="campo" style="margin-bottom:0;"><label>Conferir a cada (minutos)</label><input type="number" id="pxIntervalo" min="1" max="1440" value="5" /></div>
+          </div>
+          <label class="ag-check" style="margin-top:10px;"><input type="checkbox" id="pxMover" checked /> Depois de importar, mover o arquivo para as subpastas "Importados" ou "Com erro"</label>
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <button class="btn btn-primario" id="btnSalvarPastaXml" style="width:auto; padding:10px 20px;">Salvar</button>
+            <button class="btn btn-secundario" id="btnExecutarPastaXml" style="width:auto; padding:10px 20px;">Importar agora</button>
+          </div>
+          <div id="statusPastaXml" style="font-size:12.5px; color:var(--texto-fraco); margin-top:12px;"></div>
+          <div id="ultimosPastaXml" style="margin-top:10px; max-height:220px; overflow-y:auto;"></div>
+        </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">📊 Importação automática da planilha do ERP</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Se a planilha do ERP for salva sempre no mesmo caminho (ex: uma pasta compartilhada na rede), o sistema pode
+            checar sozinho se ela mudou e importar automaticamente, sem precisar subir manualmente.
+          </p>
+
+          <div class="campo" style="max-width:340px;">
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="erpAtivo" /> Ativar verificação automática
+            </label>
+          </div>
+
+          <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px 16px; margin-top:8px;">
+            <div class="campo" style="margin-bottom:0;">
+              <label>Caminho completo do arquivo da planilha</label>
+              <input type="text" id="erpCaminhoArquivo" placeholder='Ex: C:\ERP\Exportacoes\TIMELINE_PEDIDOS.xlsx' />
+            </div>
+            <div class="campo" style="margin-bottom:0;">
+              <label>Checar a cada quantos minutos</label>
+              <input type="number" id="erpIntervaloMinutos" min="1" />
+            </div>
+          </div>
+
+          <div id="statusImportacaoErp" style="font-size:12.5px; color:var(--texto-fraco); margin-top:10px;"></div>
+
+          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn btn-primario" id="btnSalvarConfigErp" style="width:auto; padding:10px 20px;">Salvar configuração</button>
+            <button class="btn btn-secundario" id="btnImportarErpAgora" style="width:auto; padding:10px 20px;">Verificar e importar agora</button>
+          </div>
+          <div id="erroImportacaoErp" class="mensagem-erro" style="margin-top:14px;"></div>
+        </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">🤖 Leitura de comprovantes por IA (opcional)</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Ao importar fotos de canhotos (Entregas previstas » Lançar entregas do WhatsApp), a IA lê o <b>número da NF</b> e a <b>data
+            de recebimento escrita à mão</b> e já preenche os campos — você só confere. Usa a API da Anthropic (Claude): precisa de uma
+            <b>chave de API</b> (criada em console.anthropic.com), internet, e tem um custo pequeno por foto. Sem a chave, a importação
+            funciona do jeito manual. A chave fica guardada criptografada.
+          </p>
+          <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="campo" style="margin-bottom:0; min-width:280px; flex:1;"><label>Chave da API</label><input type="password" id="iaChave" placeholder="sk-ant-... (deixe em branco para manter a atual)" autocomplete="off" /></div>
+            <div class="campo" style="margin-bottom:0;"><label>Modelo</label><input type="text" id="iaModelo" style="width:230px;" /></div>
+            <label style="display:flex; gap:6px; align-items:center; font-size:13px;"><input type="checkbox" id="iaAtiva" /> Ligada</label>
+            <button class="btn btn-primario" id="btnIaSalvar" style="width:auto;">Salvar</button>
+            <button class="btn btn-secundario" id="btnIaTestar" style="width:auto;">🔌 Testar</button>
+          </div>
+          <div id="iaStatus" style="font-size:12.5px; margin-top:8px;"></div>
+        </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;">
+          <h3 style="margin-top:0; font-size:15px;">🧭 Outras integrações (configuradas na tela de cada assunto)</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 12px;">Estas ficam junto da tela que usa, mas também só o administrador muda a configuração. Clique para ir direto.</p>
+          <div id="mnOutrasIntegracoes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px;"></div>
+        </div>
         </div>
       </section>
 

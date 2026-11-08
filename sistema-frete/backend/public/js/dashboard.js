@@ -115,6 +115,12 @@ const podeVerFaturas = usuario.perfil === 'admin' || (!!usuario.pode_ver_todos &
 if (!podeEnviarXml) document.getElementById('navUpload').classList.add('oculto');
 if (podeAcessarCadastros) document.getElementById('navCadastros').classList.remove('oculto');
 if (usuario.perfil === 'admin') document.getElementById('navManutencao').classList.remove('oculto');
+document.querySelectorAll('[data-mn-aba]').forEach((aba) => aba.addEventListener('click', () => {
+  document.querySelectorAll('[data-mn-aba]').forEach((x) => x.classList.toggle('ativo', x === aba));
+  document.getElementById('mnAbaSistema')?.classList.toggle('oculto', aba.dataset.mnAba !== 'sistema');
+  document.getElementById('mnAbaIntegracoes')?.classList.toggle('oculto', aba.dataset.mnAba !== 'integracoes');
+  document.dispatchEvent(new Event('tela-mudou'));
+}));
 if (!podeEditar) document.getElementById('btnNovoRegistro').classList.add('oculto');
 
 // Esconde as sub-abas de Cadastros que o usuário não tem permissão de ver,
@@ -2082,6 +2088,9 @@ function abrirFormularioTransportadora(transportadora = null) {
   document.getElementById('tRastreamentoSsw').checked = !!transportadora?.rastreamento_ssw;
   document.getElementById('tPortalTipo').value = transportadora?.portal_tipo || '';
   document.getElementById('tPortalSenha').value = '';
+  // Senha do portal é integração: só o administrador cadastra.
+  document.getElementById('tPortalSenha').disabled = usuario.perfil !== 'admin';
+  if (usuario.perfil !== 'admin') document.getElementById('tPortalSenha').placeholder = 'Só o administrador cadastra a senha';
   document.getElementById('tPortalSenhaInfo').textContent = transportadora?.portal_tem_senha ? '✓ Senha cadastrada (deixe em branco para manter).' : '';
   atualizarCamposPortal();
   painelFormTransportadora.classList.remove('oculto');

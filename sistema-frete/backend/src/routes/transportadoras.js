@@ -126,6 +126,8 @@ router.get('/', autenticar, permitir('pode_gerenciar_transportadoras'), async (r
 
 // POST /api/transportadoras  (cadastro manual)
 router.post('/', autenticar, permitir('pode_gerenciar_transportadoras'), async (req, res) => {
+  // Senha do portal da transportadora (rastreio automático) é integração: só o administrador grava.
+  if (req.body?.portal_senha && req.usuario?.perfil !== 'admin') return res.status(403).json({ erro: 'Só o administrador cadastra a senha do portal da transportadora.' });
   try {
     if (!req.body.razao_social) {
       return res.status(400).json({ erro: 'Informe ao menos a razão social.' });
@@ -156,6 +158,8 @@ router.post('/', autenticar, permitir('pode_gerenciar_transportadoras'), async (
 
 // PUT /api/transportadoras/:id
 router.put('/:id', autenticar, permitir('pode_gerenciar_transportadoras'), async (req, res) => {
+  // Senha do portal da transportadora (rastreio automático) é integração: só o administrador grava.
+  if (req.body?.portal_senha && req.usuario?.perfil !== 'admin') return res.status(403).json({ erro: 'Só o administrador cadastra a senha do portal da transportadora.' });
   try {
     prepararPortal(req.body);
     const campos = Object.keys(req.body).filter((c) => CAMPOS_TRANSPORTADORA.includes(c));

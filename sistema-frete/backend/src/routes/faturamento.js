@@ -20,7 +20,7 @@ const { boletoDaFatura, comBoleto, enviarFaturaEmail } = require('../faturamento
 
 // ---------------- Boleto registrado (CNAB 240) ----------------
 router.get('/boleto/config', autenticar, pode, rota(async (req, res) => res.json(await cobranca.config()), 'Erro ao carregar.'));
-router.put('/boleto/config', autenticar, pode, rota(async (req, res) => {
+router.put('/boleto/config', autenticar, apenasAdmin, rota(async (req, res) => {
   const c = await cobranca.salvarConfig(req.body || {});
   log(req, 'fatura', `Configurou o boleto (${c.banco_nome}, agência ${c.agencia})`);
   res.json(c);

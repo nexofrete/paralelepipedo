@@ -3193,3 +3193,80 @@ ALTER TABLE configuracao_backup ADD COLUMN IF NOT EXISTS criptografar_tudo BOOLE
 -- LGPD (src/lgpd.js): prazo de guarda do histórico de alterações e dos registros arquivados (0 = sem prazo) e aviso de privacidade.
 ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS lgpd_retencao_dias INTEGER NOT NULL DEFAULT 1825;
 ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS aviso_privacidade TEXT;
+
+-- Cadastros básicos (src/cadastrosBasicos.js, tela Configuração » Cadastros básicos).
+CREATE TABLE IF NOT EXISTS condicoes_pagamento (
+  id SERIAL PRIMARY KEY, nome VARCHAR(60) NOT NULL UNIQUE,
+  parcelas INTEGER[] NOT NULL DEFAULT '{0}',          -- dias de cada parcela, contados da emissão (ex.: {30,60,90})
+  observacoes VARCHAR(300), ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO condicoes_pagamento (nome, parcelas) SELECT x.n, x.p FROM (VALUES ('À vista', '{0}'::int[]), ('7 dias', '{7}'::int[]), ('15 dias', '{15}'::int[]), ('28 dias', '{28}'::int[]),
+  ('30 dias', '{30}'::int[]), ('30/60 dias', '{30,60}'::int[]), ('30/60/90 dias', '{30,60,90}'::int[])) AS x(n, p)
+  WHERE NOT EXISTS (SELECT 1 FROM condicoes_pagamento);
+CREATE TABLE IF NOT EXISTS fornecedores (
+  id SERIAL PRIMARY KEY, documento VARCHAR(20) UNIQUE, razao_social VARCHAR(200) NOT NULL, nome_fantasia VARCHAR(150), ie VARCHAR(30),
+  email VARCHAR(150), telefone VARCHAR(40), cep VARCHAR(10), logradouro VARCHAR(200), numero VARCHAR(20), bairro VARCHAR(100), municipio VARCHAR(100), uf VARCHAR(2),
+  categoria_padrao VARCHAR(30), condicao_pagamento_id INTEGER REFERENCES condicoes_pagamento(id) ON DELETE SET NULL, pix VARCHAR(150),
+  observacoes VARCHAR(500), ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ajudantes (
+  id SERIAL PRIMARY KEY, nome VARCHAR(150) NOT NULL, cpf VARCHAR(11) UNIQUE, telefone VARCHAR(40), diaria NUMERIC(12,2) NOT NULL DEFAULT 0, pix VARCHAR(150),
+  unidade_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL, observacoes VARCHAR(500), ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS conjuntos_veiculo (
+  id SERIAL PRIMARY KEY, cavalo_id INTEGER NOT NULL UNIQUE REFERENCES veiculos(id) ON DELETE CASCADE,
+  reboques INTEGER[] NOT NULL DEFAULT '{}', motorista_id INTEGER REFERENCES motoristas(id) ON DELETE SET NULL, descricao VARCHAR(150),
+  ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS tipos_mercadoria (
+  id SERIAL PRIMARY KEY, nome VARCHAR(80) NOT NULL UNIQUE, descricao VARCHAR(300), perigosa BOOLEAN NOT NULL DEFAULT FALSE, refrigerada BOOLEAN NOT NULL DEFAULT FALSE,
+  exige_escolta BOOLEAN NOT NULL DEFAULT FALSE, ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO tipos_mercadoria (nome, perigosa, refrigerada, exige_escolta) SELECT x.n, x.p, x.r, x.e FROM (VALUES ('Carga geral', FALSE, FALSE, FALSE), ('Carga fracionada', FALSE, FALSE, FALSE),
+  ('Frigorificada / refrigerada', FALSE, TRUE, FALSE), ('Produtos perigosos', TRUE, FALSE, FALSE), ('Granel sólido', FALSE, FALSE, FALSE), ('Granel líquido', FALSE, FALSE, FALSE),
+  ('Alto valor (eletrônicos, medicamentos)', FALSE, FALSE, TRUE), ('Frágil', FALSE, FALSE, FALSE), ('Mudança', FALSE, FALSE, FALSE)) AS x(n, p, r, e)
+  WHERE NOT EXISTS (SELECT 1 FROM tipos_mercadoria);
+CREATE TABLE IF NOT EXISTS produtos (
+  id SERIAL PRIMARY KEY, codigo VARCHAR(60) NOT NULL UNIQUE, descricao VARCHAR(250) NOT NULL, ncm VARCHAR(10), unidade VARCHAR(10), embalagem VARCHAR(60),
+  peso_kg NUMERIC(14,3), altura_cm NUMERIC(10,2), largura_cm NUMERIC(10,2), comprimento_cm NUMERIC(10,2), valor_unitario NUMERIC(14,2),
+  tipo_mercadoria_id INTEGER REFERENCES tipos_mercadoria(id) ON DELETE SET NULL, perigoso BOOLEAN NOT NULL DEFAULT FALSE, onu VARCHAR(6), classe_risco VARCHAR(10),
+  cliente_documento VARCHAR(20), observacoes VARCHAR(500), ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS departamentos (
+  id SERIAL PRIMARY KEY, nome VARCHAR(80) NOT NULL UNIQUE, responsavel VARCHAR(150), centro_custo_id INTEGER REFERENCES centros_custo(id) ON DELETE SET NULL,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS regioes_atendimento (
+  id SERIAL PRIMARY KEY, nome VARCHAR(100) NOT NULL, unidade_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL,
+  ufs TEXT[] NOT NULL DEFAULT '{}', cidades TEXT[] NOT NULL DEFAULT '{}',     -- cidades no formato "CIDADE/UF"
+  ceps TEXT[] NOT NULL DEFAULT '{}',                                        -- faixas "01000000-05999999" (ou um CEP só)
+  prazo_dias INTEGER, dias_semana INTEGER[] NOT NULL DEFAULT '{1,2,3,4,5}',   -- 0 domingo … 6 sábado
+  observacoes VARCHAR(500), ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS tipos_operacao (
+  id SERIAL PRIMARY KEY, nome VARCHAR(80) NOT NULL UNIQUE, cfop_estadual VARCHAR(4), cfop_interestadual VARCHAR(4), natureza VARCHAR(60),
+  tp_serv SMALLINT NOT NULL DEFAULT 0, tomador SMALLINT, tipo_mercadoria_id INTEGER REFERENCES tipos_mercadoria(id) ON DELETE SET NULL,
+  observacoes VARCHAR(500), ativo BOOLEAN NOT NULL DEFAULT TRUE, criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO tipos_operacao (nome, cfop_estadual, cfop_interestadual, natureza, tp_serv, tomador) SELECT x.n, x.e, x.i, x.nat, x.s, x.t FROM (VALUES
+  ('Frete para comércio (CIF)', '5353', '6353', 'PRESTACAO DE SERVICO DE TRANSPORTE', 0, 0),
+  ('Frete para indústria', '5352', '6352', 'PRESTACAO DE SERVICO DE TRANSPORTE', 0, 0),
+  ('Frete para não contribuinte (pessoa física)', '5357', '6357', 'PRESTACAO DE SERVICO DE TRANSPORTE', 0, 0),
+  ('Frete FOB (pago pelo destinatário)', '5353', '6353', 'PRESTACAO DE SERVICO DE TRANSPORTE', 0, 3),
+  ('Subcontratação', '5353', '6353', 'PRESTACAO DE SERVICO DE TRANSPORTE', 1, NULL),
+  ('Redespacho', '5353', '6353', 'PRESTACAO DE SERVICO DE TRANSPORTE', 2, NULL),
+  ('Prestação iniciada em outra UF', '5932', '6932', 'PRESTACAO DE SERVICO DE TRANSPORTE', 0, NULL)) AS x(n, e, i, nat, s, t)
+  WHERE NOT EXISTS (SELECT 1 FROM tipos_operacao);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS condicao_pagamento_id INTEGER REFERENCES condicoes_pagamento(id) ON DELETE SET NULL;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS departamento_id INTEGER REFERENCES departamentos(id) ON DELETE SET NULL;
+ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS fornecedor_id INTEGER REFERENCES fornecedores(id) ON DELETE SET NULL;
+ALTER TABLE contas_pagar ADD COLUMN IF NOT EXISTS departamento_id INTEGER REFERENCES departamentos(id) ON DELETE SET NULL;
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['fornecedores', 'ajudantes', 'conjuntos_veiculo', 'produtos', 'tipos_mercadoria', 'departamentos', 'regioes_atendimento', 'tipos_operacao', 'condicoes_pagamento'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_alteracoes ON %I', t);
+    EXECUTE format('CREATE TRIGGER trg_alteracoes AFTER INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION registrar_alteracao()', t);
+  END LOOP;
+END $$;

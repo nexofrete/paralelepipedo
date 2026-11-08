@@ -59,7 +59,7 @@ def parte_operacao(g):
         ['Gestão e relatórios', 'Montar relatório (BI), Comparar cotações, Anomalias e duplicidades', '316, 317, 318', '19'],
         ['Clientes', 'SAC (chamados), Portal do cliente', '090, 080', '39'],
         ['Mensagens e Agenda', 'Mensagens, Agenda', '500, 501', '21'],
-        ['Configuração', 'Filiais, Configuração fiscal, Cadastros, Manutenção, Integração', '901, 902, 900, 903, 904', '36, 32, 22, 24, 53'],
+        ['Configuração', 'Filiais, Configuração fiscal, Cadastros, Cadastros básicos, Manutenção, Integração', '901, 902, 900, 907, 903, 904', '36, 32, 22, 23, 24, 53'],
     ], [0.2, 0.46, 0.17, 0.17])
     s += h2('Telas parecidas juntas')
     s.append(P('Algumas telas tratam do mesmo assunto e ficavam em lugares diferentes do menu. Agora cada assunto é <b>um item '
@@ -122,7 +122,7 @@ def parte_operacao(g):
         ['3xx Gestão', '300 Painel gerencial · 301 Margem por CT-e e cliente · 302 Centros de custo · 309 Indicadores dos '
          'fretes contratados · 310 a 323 Relatórios · 330 Auditoria de frete'],
         ['4xx Fretes contratados', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 404 CT-e recebidos · 410 Sinistros'],
-        ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 905 Transportadoras contratadas · 906 Tabelas de preço · '
+        ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 905 Transportadoras contratadas · 906 Tabelas de preço · 907 Cadastros básicos · '
          '903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos'],
     ], [0.2, 0.8])
     s += h2('Filtro de período')

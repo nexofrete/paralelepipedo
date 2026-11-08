@@ -47,7 +47,7 @@
     'p:visao-geral': ['400', 'inicio'], 'p:upload': ['401', 'xml importar nota'], 'p:registros': ['402', 'registros fretes notas'], 'p:notas-fiscais': ['403', 'notas fiscais nfe nf-e danfe xml emitente serie chave consulta pesquisa nota cancelada denegada'], 'p:ctes-recebidos': ['404', 'cte recebidos conhecimento transporte dacte xml chave tomador remetente destinatario modal icms cfop carta correcao evento consulta'],
     'p:sinistros': ['410', 'sinistro avaria'],
     'p:mensagens': ['500', 'mensagem'], 'p:agenda': ['501', 'agenda compromisso'],
-    'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:cadastros:transportadoras': ['905', 'transportadoras contratadas cadastro embarcador'], 't:cadastros:tabelas-preco': ['906', 'tabela de preco frete contratado faixa peso'], 't:filiais:unidades': ['901', 'filial unidade'],
+    'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:cadastros:transportadoras': ['905', 'transportadoras contratadas cadastro embarcador'], 't:cadastros:tabelas-preco': ['906', 'tabela de preco frete contratado faixa peso'], 'p:cadastros-basicos': ['907', 'cadastros basicos fornecedor ajudante conjunto cavalo carreta implemento produto mercadoria departamento regiao atendimento cep tipo operacao cfop condicao pagamento parcelas'], 't:filiais:unidades': ['901', 'filial unidade'],
     't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'], 'p:integracao': ['904', 'integracao api erp webhook chave'],
   };
   // Ações diretas: abrem a tela e clicam no botão de "novo" (código = o da tela + 1).

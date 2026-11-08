@@ -9,7 +9,9 @@ const { TABELAS } = require('../contextoUsuario');
 
 const router = express.Router();
 const NOMES = { fretes: 'Frete', usuarios: 'Usuário', perfis_acesso: 'Perfil de acesso', transportadoras: 'Transportadora', parceiros: 'Parceiro', clientes: 'Cliente',
-  tabelas_preco: 'Tabela de preço', tabela_preco_faixas: 'Faixa de tabela de preço', faturas_frete: 'Fatura da transportadora', faturas_transporte: 'Fatura (contas a receber)', contas_pagar: 'Conta a pagar' };
+  tabelas_preco: 'Tabela de preço', tabela_preco_faixas: 'Faixa de tabela de preço', faturas_frete: 'Fatura da transportadora', faturas_transporte: 'Fatura (contas a receber)', contas_pagar: 'Conta a pagar',
+  fornecedores: 'Fornecedor', ajudantes: 'Ajudante', conjuntos_veiculo: 'Conjunto de veículos', produtos: 'Produto', tipos_mercadoria: 'Tipo de mercadoria', departamentos: 'Departamento',
+  regioes_atendimento: 'Região de atendimento', tipos_operacao: 'Tipo de operação', condicoes_pagamento: 'Condição de pagamento' };
 
 router.get('/', autenticar, async (req, res) => {
   try {

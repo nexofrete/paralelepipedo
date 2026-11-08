@@ -173,6 +173,34 @@ def parte_admin(g):
                'as <b>novidades de cada versão</b> e um link para baixar este manual. Quando o sistema é atualizado, o botão mostra o selo '
                '<b>Novo</b> para cada usuário até ele abrir e ver o que mudou. As novidades ficam no arquivo backend/novidades.json, '
                'atualizado junto com cada versão.'))
+    s += h2('Cadastros básicos (907)')
+    s.append(P('Em <b>Configuração » 🗂 Cadastros básicos</b>, uma aba para cada cadastro de apoio. Cada aba tem busca, '
+               '"só ativos", <b>＋ Novo</b>, Editar e o botão 🕘 com as alterações daquele registro. Um cadastro já usado em '
+               'outro lugar não é excluído: desmarque <b>Ativo</b> para tirá-lo das listas.'))
+    s += tabela(['Cadastro', 'Para que serve', 'Quem edita'], [
+        ['Fornecedores', 'Quem a empresa paga (posto, oficina, seguradora, aluguel...): CNPJ/CPF (completa sozinho pela '
+         'Receita), endereço, categoria de despesa padrão, condição de pagamento e PIX. "Trazer dos lançamentos" cadastra os '
+         'fornecedores que já aparecem nas contas a pagar e nas notas de entrada.', 'Financeiro'],
+        ['Ajudantes', 'Ajudantes de carga e descarga: nome, CPF, telefone, diária, PIX e filial.', 'Emitir CT-e'],
+        ['Conjuntos (cavalo + carretas)', 'O cavalo mecânico com até 3 carretas/implementos e o motorista de costume. As '
+         'carretas são cadastradas em Veículos e motoristas, com o tipo reboque.', 'Emitir CT-e'],
+        ['Produtos', 'Código, descrição, NCM, unidade, embalagem, peso e medidas por unidade, valor, tipo de mercadoria, '
+         'perigoso (ONU e classe de risco) e o cliente dono.', 'Emitir CT-e'],
+        ['Tipos de mercadoria', 'Natureza da carga: geral, fracionada, refrigerada, perigosa, granel, alto valor, frágil, '
+         'mudança (já vêm cadastrados), com as marcas perigosa, refrigerada e exige escolta.', 'Emitir CT-e'],
+        ['Departamentos', 'Setores da empresa, com responsável e centro de custo.', 'Gerenciar usuários ou Financeiro'],
+        ['Regiões de atendimento', 'O que cada filial atende: estados, cidades (CIDADE/UF) e faixas de CEP, prazo de entrega '
+         'e dias da semana. Para achar a região de um destino, a faixa de CEP vale mais que a cidade, e a cidade mais que o '
+         'estado.', 'Emitir CT-e'],
+        ['Tipos de operação', 'Modelos de CT-e com CFOP dentro e fora do estado, natureza, tipo de serviço, tomador e tipo de '
+         'mercadoria. Já vêm: frete para comércio, indústria e não contribuinte, FOB, subcontratação, redespacho e prestação '
+         'iniciada em outra UF (confira os CFOP com o seu contador).', 'Emitir CT-e'],
+        ['Condições de pagamento', 'Prazos em dias, uma parcela por número: à vista (0), 30, 30/60, 30/60/90... Já vêm as mais '
+         'comuns.', 'Financeiro'],
+    ], [0.22, 0.6, 0.18])
+    s.append(P('Também fazem parte dos cadastros: empresa e usuários (Cadastros), filiais (901), clientes, transportadoras, '
+               'parceiros, motoristas e veículos (Veículos e motoristas), centros de custo (302) e tabelas de frete. Cidades e '
+               'estados vêm da lista oficial do IBGE e não precisam ser cadastrados.'))
     s += h2('Dados da empresa')
     s.append(P('Razão social, nome fantasia, CNPJ, IE, contato e endereço da empresa que usa o sistema. No alto do quadro, a '
                '<b>logo da empresa</b> (🖼 Escolher imagem — PNG, JPG ou WEBP até 1 MB, de preferência com fundo transparente ou branco): '

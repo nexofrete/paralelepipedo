@@ -9,7 +9,8 @@ const rodar = (usuario, fn) => contexto.run({ id: usuario.id, nome: usuario.nome
 
 // Tabelas com histórico de alterações (o mesmo conjunto dos gatilhos no schema.sql).
 const TABELAS = ['fretes', 'usuarios', 'perfis_acesso', 'transportadoras', 'parceiros', 'clientes', 'tabelas_preco', 'tabela_preco_faixas',
-  'faturas_frete', 'faturas_transporte', 'contas_pagar'];
+  'faturas_frete', 'faturas_transporte', 'contas_pagar',
+  'fornecedores', 'ajudantes', 'conjuntos_veiculo', 'produtos', 'tipos_mercadoria', 'departamentos', 'regioes_atendimento', 'tipos_operacao', 'condicoes_pagamento'];
 const GRAVA = new RegExp(`\\b(UPDATE|INSERT\\s+INTO|DELETE\\s+FROM)\\s+"?(public\\.)?(${TABELAS.join('|')})"?\\b`, 'i');
 const ehGravacaoAcompanhada = (sql) => GRAVA.test(typeof sql === 'string' ? sql : sql?.text || '');
 

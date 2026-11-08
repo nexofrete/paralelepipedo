@@ -10,6 +10,10 @@
           "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
         },
         {
+          "area": "Cadastros",
+          "texto": "Cadastros básicos (código 907): fornecedores, ajudantes, conjuntos de veículos (cavalo + carretas), produtos, tipos de mercadoria, departamentos, regiões de atendimento (UF, cidade e faixa de CEP), tipos de operação (CFOP e tomador do CT-e) e condições de pagamento (30/60/90...), numa tela só."
+        },
+        {
           "area": "Segurança",
           "texto": "Histórico de alterações campo a campo: o valor de antes, o de depois, quem mudou e quando, em fretes, usuários, transportadoras, parceiros, clientes, tabelas de preço, faturas e contas a pagar (Cadastros » Auditoria e Logs e no detalhe do frete)."
         },

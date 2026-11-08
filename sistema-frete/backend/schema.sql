@@ -3356,3 +3356,5 @@ CREATE TABLE IF NOT EXISTS nfstock_envios (
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_nfstock_envios_status ON nfstock_envios (status);
+-- Começar a busca pelos documentos emitidos a partir desta data (os anteriores são pulados).
+ALTER TABLE configuracao_nfstock ADD COLUMN IF NOT EXISTS buscar_desde DATE;

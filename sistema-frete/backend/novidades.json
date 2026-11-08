@@ -7,7 +7,7 @@
       "itens": [
         {
           "area": "Integração",
-          "texto": "NF-Stock (Alterdata): em Configuração » Integração (904), o sistema busca sozinho os XML guardados no NF-Stock (NF-e, CT-e e eventos, cada um no seu lugar) e manda para lá os CT-e, MDF-e e NFS-e emitidos, conferindo se a Alterdata importou. Token guardado criptografado; tem simulador para testar."
+          "texto": "NF-Stock (Alterdata): em Configuração » Integração (904), o sistema busca sozinho os XML guardados no NF-Stock (NF-e, CT-e e eventos, cada um no seu lugar) e manda para lá os CT-e, MDF-e e NFS-e emitidos, conferindo se a Alterdata importou. Dá para começar a busca a partir de um NSU ou só pelos documentos emitidos desde uma data. Token guardado criptografado; tem simulador para testar."
         },
         {
           "area": "SEFAZ",

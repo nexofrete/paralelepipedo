@@ -70,3 +70,12 @@ test('NF-Stock: sem o XML no retorno, baixa pela url_download', () => comFetch(X
   assert.deepStrictEqual(await ns.xmlsDoDocumento(cfg, { xml: null, url_download: 'https://exemplo/doc.xml' }), [XML]);
   assert.strictEqual(ch[0].url, 'https://exemplo/doc.xml');
 }));
+
+test('NF-Stock: "buscar só os emitidos desde" usa a data de emissão no horário de Brasília', () => {
+  assert.strictEqual(ns.antesDe({ data_emissao: '2026-01-09T12:00:00Z' }, '2026-01-10'), true);
+  assert.strictEqual(ns.antesDe({ data_emissao: '2026-01-10T12:00:00Z' }, '2026-01-10'), false);
+  // 01:30 UTC do dia 10 ainda é dia 9 em Brasília
+  assert.strictEqual(ns.antesDe({ data_emissao: '2026-01-10T01:30:00Z' }, '2026-01-10'), true);
+  assert.strictEqual(ns.antesDe({ data_emissao: '2026-01-09T12:00:00Z' }, null), false);
+  assert.strictEqual(ns.antesDe({}, '2026-01-10'), false);
+});

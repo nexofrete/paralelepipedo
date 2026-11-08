@@ -983,6 +983,13 @@ def parte_integracoes(g):
         'Clique em <b>Testar conexão</b>. Depois marque <b>Buscar</b> e/ou <b>Enviar</b>, escolha o que enviar e salve.',
         'Para conhecer sem a Alterdata, use o ambiente <b>Simulador</b>: traz documentos de exemplo e confirma os envios.',
     ])
+    s.append(P('<b>Por onde começar a busca</b> (para não trazer o histórico inteiro na primeira vez):'))
+    s += lista([
+        '<b>Começar a partir do NSU</b>: a próxima busca traz só o que vem depois desse número (o campo mostra o NSU atual). '
+        '0 = tudo desde o começo. Deixe vazio para continuar de onde parou. O sistema pede confirmação antes de mudar.',
+        '<b>Buscar só os emitidos desde</b>: os documentos com emissão (horário de Brasília) antes da data são pulados e não '
+        'entram no sistema; a busca segue pelo NSU normalmente. O resultado mostra quantos foram pulados. Deixe vazio para trazer todos.',
+    ])
     s.append(P('O token fica guardado criptografado e nunca volta para a tela (para trocar, cole outro; "Remover token" desliga tudo). '
                'As listas <b>Recebidos do NF-Stock</b> e <b>Enviados ao NF-Stock</b> mostram cada documento e o resultado.'))
     s += h2('Chaves de API')

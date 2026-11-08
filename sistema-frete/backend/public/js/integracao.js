@@ -125,6 +125,8 @@
         <div class="campo"><label for="nsCnpj">CNPJ no NF-Stock</label><input id="nsCnpj" value="${esc(Doc.formatar(c.cnpj || ''))}" placeholder="o da empresa" /></div>
         <div class="campo"><label for="nsAmb">Ambiente</label><select id="nsAmb">${[['producao', 'Produção'], ['desenvolvimento', 'Desenvolvimento (testes da Alterdata)'], ['simulador', 'Simulador (sem a Alterdata)']].map(([v, n]) => `<option value="${v}" ${c.ambiente === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
         <div class="campo"><label for="nsIntervalo">Buscar a cada (min)</label><input id="nsIntervalo" type="number" min="15" max="1440" value="${esc(c.intervalo_min || 30)}" /></div>
+        <div class="campo"><label for="nsNsu" title="A próxima busca traz o que vem depois deste número (0 = tudo desde o começo). Deixe vazio para continuar de onde parou.">Começar a partir do NSU</label><input id="nsNsu" inputmode="numeric" placeholder="atual: ${esc(e.ult_nsu ?? 0)}" /></div>
+        <div class="campo"><label for="nsBuscarDesde" title="Os documentos emitidos antes desta data são pulados (não entram no sistema).">Buscar só os emitidos desde</label><input id="nsBuscarDesde" type="date" value="${esc(c.buscar_desde || '')}" /></div>
         <div class="campo"><label for="nsDesde">Enviar o que foi autorizado desde</label><input id="nsDesde" type="date" value="${esc(c.enviar_desde || '')}" /></div>
       </div>
       <div style="margin:8px 0;"><label style="display:inline-flex; gap:6px; align-items:center; margin-right:18px;"><input type="checkbox" id="nsBusca" ${c.busca_ativa ? 'checked' : ''} style="width:auto;" /> <b>Buscar os XML no NF-Stock</b></label>
@@ -138,24 +140,29 @@
         ${c.tem_token ? '<button class="btn btn-secundario" id="nsRemover" style="width:auto;">Remover token</button>' : ''}
       </div>
       <div class="oc-resumo" style="margin-bottom:12px;">
-        <div>Última busca<b style="font-size:15px;">${e.ultima_busca ? quando(e.ultima_busca) : 'nunca'}</b><span>${e.erro_busca ? `<span style="color:var(--vermelho);">${esc(e.erro_busca)}</span>` : u ? `${u.importados} importado(s) de ${u.documentos} · último NSU ${esc(e.ult_nsu ?? 0)}` : ''}</span></div>
+        <div>Última busca<b style="font-size:15px;">${e.ultima_busca ? quando(e.ultima_busca) : 'nunca'}</b><span>${e.erro_busca ? `<span style="color:var(--vermelho);">${esc(e.erro_busca)}</span>` : u ? `${u.importados} importado(s) de ${u.documentos}${u.antigos ? ` · ${u.antigos} antigo(s) pulado(s)` : ''} · último NSU ${esc(e.ult_nsu ?? 0)}` : ''}</span></div>
         <div>Envios<b style="font-size:15px;">${k.importados || 0} importado(s)</b><span>${k.pendentes || 0} na fila · ${k.enviados || 0} aguardando · ${(k.recusados || 0) + (k.erros || 0)} com problema</span></div>
         <div>Último envio<b style="font-size:15px;">${e.ultimo_envio ? quando(e.ultimo_envio) : 'nunca'}</b><span>${ue ? `${ue.enviados} enviado(s), ${ue.importados} confirmado(s)${ue.erros ? `, ${ue.erros} com erro` : ''}` : ''}</span></div>
       </div>
       <details ${ns.docs.length ? 'open' : ''}><summary style="cursor:pointer; font-weight:600; margin-bottom:6px;">📥 Recebidos do NF-Stock</summary>${docs}</details>
       <details id="itgNfstockEnviosBloco" style="margin-top:10px;" ${ns.envios.some((v) => ['erro', 'recusado'].includes(v.status)) ? 'open' : ''}><summary id="itgNfstockEnvios" style="cursor:pointer; font-weight:600; margin-bottom:6px;">📤 Enviados ao NF-Stock</summary>${envios}</details>`;
     const corpo = (extra = {}) => ({ token_novo: $('nsToken').value.trim() || undefined, codigo_crm: $('nsCrm').value, cnpj: $('nsCnpj').value, ambiente: $('nsAmb').value,
-      intervalo_min: $('nsIntervalo').value, enviar_desde: $('nsDesde').value || null, busca_ativa: $('nsBusca').checked, envio_ativo: $('nsEnvio').checked,
+      intervalo_min: $('nsIntervalo').value, enviar_desde: $('nsDesde').value || null, buscar_desde: $('nsBuscarDesde').value || null,
+      nsu_inicial: $('nsNsu').value.trim() === '' ? undefined : $('nsNsu').value.trim(), busca_ativa: $('nsBusca').checked, envio_ativo: $('nsEnvio').checked,
       enviar_tipos: [...document.querySelectorAll('[data-ns-tipo]:checked')].map((x) => x.dataset.nsTipo), ...extra });
     const comBotao = async (b, fn) => { const t = b.textContent; b.disabled = true; b.textContent = 'Aguarde…'; try { await fn(); } catch (err) { erro(err); } finally { b.disabled = false; b.textContent = t; } };
-    $('nsSalvar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => { await enviar('/api/integracao/nfstock', 'PUT', corpo()); mostrarAlerta('NF-Stock salvo.', { tipo: 'sucesso' }); await carregarNfstock(); }));
+    $('nsSalvar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
+      const nsu = $('nsNsu').value.trim();
+      if (nsu !== '' && !await confirmar(`A próxima busca vai trazer os documentos que vêm depois do NSU ${nsu}${Number(nsu) === 0 ? ' (tudo desde o começo)' : ''}. Hoje a busca está no NSU ${e.ult_nsu ?? 0}. Continuar?`, { textoOk: 'Usar este NSU' })) return;
+      await enviar('/api/integracao/nfstock', 'PUT', corpo()); mostrarAlerta('NF-Stock salvo.', { tipo: 'sucesso' }); await carregarNfstock();
+    }));
     $('nsTestar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
-      if ($('nsToken').value.trim() || $('nsCrm').value !== (c.codigo_crm || '')) await enviar('/api/integracao/nfstock', 'PUT', corpo());
+      if ($('nsToken').value.trim() || $('nsCrm').value !== (c.codigo_crm || '')) await enviar('/api/integracao/nfstock', 'PUT', corpo({ nsu_inicial: undefined }));
       const r = await enviar('/api/integracao/nfstock/testar', 'POST'); mostrarAlerta(r.mensagem, { tipo: 'sucesso' }); await carregarNfstock();
     }));
     $('nsBuscar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {
       const r = await enviar('/api/integracao/nfstock/buscar', 'POST');
-      mostrarAlerta(`NF-Stock: ${r.documentos} documento(s) — ${r.importados} importado(s), ${r.ja_existiam} já estava(m), ${r.proprios} da própria empresa, ${r.ignorados} ignorado(s)${r.erros ? `, ${r.erros} com erro` : ''}.`, { tipo: r.erros ? 'aviso' : 'sucesso' });
+      mostrarAlerta(`NF-Stock: ${r.documentos} documento(s) — ${r.importados} importado(s), ${r.ja_existiam} já estava(m), ${r.proprios} da própria empresa, ${r.ignorados} ignorado(s)${r.antigos ? `, ${r.antigos} pulado(s) por serem anteriores à data` : ''}${r.erros ? `, ${r.erros} com erro` : ''}.`, { tipo: r.erros ? 'aviso' : 'sucesso' });
       await carregarNfstock();
     }));
     $('nsEnviar').addEventListener('click', (ev) => comBotao(ev.currentTarget, async () => {

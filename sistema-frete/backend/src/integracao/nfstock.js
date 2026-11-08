@@ -32,10 +32,18 @@ async function config() {
   const { rows: [c] } = await pool.query('SELECT * FROM configuracao_nfstock WHERE id = 1');
   return c;
 }
+const dataIso = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).slice(0, 10) : null);
+// Documento emitido antes da data "buscar desde" (pela data de emissão, no horário de Brasília). Sem data: não pula.
+function antesDe(d, desde) {
+  if (!desde || !d?.data_emissao) return false;
+  const t = Date.parse(d.data_emissao);
+  if (!Number.isFinite(t)) return false;
+  return new Date(t - 3 * 3600000).toISOString().slice(0, 10) < dataIso(desde);
+}
 const paraTela = (c) => ({
   busca_ativa: c.busca_ativa, envio_ativo: c.envio_ativo, tem_token: !!c.token, codigo_crm: c.codigo_crm, cnpj: c.cnpj, ambiente: c.ambiente,
   intervalo_min: c.intervalo_min, enviar_desde: c.enviar_desde ? String(c.enviar_desde instanceof Date ? c.enviar_desde.toISOString() : c.enviar_desde).slice(0, 10) : null,
-  enviar_tipos: c.enviar_tipos, estado: c.estado || {},
+  enviar_tipos: c.enviar_tipos, estado: c.estado || {}, buscar_desde: dataIso(c.buscar_desde),
 });
 const crm6 = (v) => { const d = String(v || '').replace(/\D/g, ''); return d ? d.padStart(6, '0').slice(-6) : ''; };
 
@@ -52,14 +60,23 @@ async function salvarConfig(b = {}) {
   if (envio && !desde) desde = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);   // ligou o envio: a partir de hoje
   const busca = b.busca_ativa !== undefined ? !!b.busca_ativa : atual.busca_ativa;
   const token = String(b.token_novo || '').trim();
+  const buscarDesde = b.buscar_desde !== undefined ? (/^\d{4}-\d{2}-\d{2}$/.test(String(b.buscar_desde || '')) ? b.buscar_desde : null) : atual.buscar_desde;
+  let nsuInicial = null;
+  if (b.nsu_inicial !== undefined && b.nsu_inicial !== null && String(b.nsu_inicial).trim() !== '') {
+    const txt = String(b.nsu_inicial).trim().replace(/[.\s]/g, '');
+    nsuInicial = /^\d+$/.test(txt) ? Number(txt) : NaN;
+    if (!Number.isSafeInteger(nsuInicial)) throw falha('NSU inválido: use só números (0 = desde o começo).');
+  }
   if ((busca || envio) && ambiente !== 'simulador') {
     if (!token && !atual.token) throw falha('Informe o token do NF-Stock (Opções da Conta » Integração no site do NF-Stock).');
     if (!crm) throw falha('Informe o código CRM da Alterdata.');
     if (!cnpj) throw falha('Informe o CNPJ da empresa no NF-Stock.');
   }
   await pool.query(`UPDATE configuracao_nfstock SET busca_ativa = $1, envio_ativo = $2, codigo_crm = $3, cnpj = $4, ambiente = $5, intervalo_min = $6,
-      enviar_desde = $7, enviar_tipos = $8, token = COALESCE($9, token), atualizado_em = NOW() WHERE id = 1`,
-  [busca, envio, crm || null, cnpj || null, ambiente, intervalo, desde, tipos, token ? criptografar(Buffer.from(token, 'utf8')) : null]);
+      enviar_desde = $7, enviar_tipos = $8, token = COALESCE($9, token), buscar_desde = $10, atualizado_em = NOW() WHERE id = 1`,
+  [busca, envio, crm || null, cnpj || null, ambiente, intervalo, desde, tipos, token ? criptografar(Buffer.from(token, 'utf8')) : null, buscarDesde]);
+  // "Começar a partir do NSU": a próxima busca pede o que vem DEPOIS dele (0 = tudo desde o começo).
+  if (nsuInicial !== null) await salvarEstado({ ult_nsu: nsuInicial, nsu_definido: nsuInicial, nsu_definido_em: new Date().toISOString() });
   if (b.remover_token) await pool.query('UPDATE configuracao_nfstock SET token = NULL, busca_ativa = FALSE, envio_ativo = FALSE WHERE id = 1');
   return paraTela(await config());
 }
@@ -189,12 +206,22 @@ async function buscar({ automatico = false } = {}) {
     if (c.ambiente !== 'simulador' && (!c.codigo_crm || !c.cnpj)) throw falha('Configure o código CRM e o CNPJ do NF-Stock.');
     const cnpjEmpresa = Doc.limpar(c.cnpj) || Doc.limpar((await pool.query('SELECT cnpj FROM empresa WHERE id = 1')).rows[0]?.cnpj);
     let ult = Number(c.estado?.ult_nsu) || 0;
-    const cont = { documentos: 0, importados: 0, ja_existiam: 0, proprios: 0, ignorados: 0, erros: 0 };
+    const cont = { documentos: 0, importados: 0, ja_existiam: 0, proprios: 0, ignorados: 0, erros: 0, antigos: 0 };
     try {
-      for (let rodada = 0; rodada < 40; rodada += 1) {
+      // Até 40 páginas com documentos de verdade por busca; as páginas só de documentos antigos (antes de "buscar desde") não contam, até 400.
+      for (let rodada = 0, uteis = 0; rodada < 400 && uteis < 40; rodada += 1) {
         const r = await http.novos(c, ult);
-        const docs = (Array.isArray(r?.documentos) ? r.documentos : []).filter((d) => Number(d.nsu) > ult).sort((a, b) => Number(a.nsu) - Number(b.nsu));
-        if (!docs.length) break;
+        const todos = (Array.isArray(r?.documentos) ? r.documentos : []).filter((d) => Number(d.nsu) > ult).sort((a, b) => Number(a.nsu) - Number(b.nsu));
+        if (!todos.length) break;
+        const docs = todos.filter((d) => !antesDe(d, c.buscar_desde));
+        cont.antigos += todos.length - docs.length;
+        if (!docs.length) {
+          ult = Math.max(ult, ...todos.map((d) => Number(d.nsu)));
+          await salvarEstado({ ult_nsu: ult });
+          if (todos.length < TAMANHO_PAGINA) break;
+          continue;
+        }
+        uteis += 1;
         // Primeiro os documentos, depois os eventos (o evento precisa achar o documento).
         const ordem = [];
         for (const d of docs) {
@@ -224,8 +251,9 @@ async function buscar({ automatico = false } = {}) {
           cont[k] += 1;
           ult = Math.max(ult, Number(d.nsu));
         }
+        ult = Math.max(ult, ...todos.map((d) => Number(d.nsu)));
         await salvarEstado({ ult_nsu: ult });
-        if (docs.length < TAMANHO_PAGINA) break;
+        if (todos.length < TAMANHO_PAGINA) break;
       }
       await salvarEstado({ ultima_busca: new Date().toISOString(), ultimo_resultado: cont, erro_busca: null });
       return { ...cont, ult_nsu: ult, automatico };
@@ -423,4 +451,4 @@ const simulador = (() => {
   };
 })();
 
-module.exports = { config, salvarConfig, buscar, enviar, enfileirar, reenviar, testar, painel, pendencias, agendar, rotear, xmlsDoConteudo, xmlsDoDocumento, crm6, http, URLS, TIPOS_ENVIO, simulador };
+module.exports = { antesDe, config, salvarConfig, buscar, enviar, enfileirar, reenviar, testar, painel, pendencias, agendar, rotear, xmlsDoConteudo, xmlsDoDocumento, crm6, http, URLS, TIPOS_ENVIO, simulador };

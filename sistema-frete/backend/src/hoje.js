@@ -55,6 +55,12 @@ async function montar(req) {
         destino: { ir: 'emissao-cte', aba: 'lista', clicar: '#btnCteSefaz' } });
     } catch (e) { console.error('[hoje]', e.message); }
     try {
+      // SEFAZ do CT-e fora do ar (verificada a cada 15 min) ou de volta com a contingência ainda ligada.
+      const a = await require('./sefazServicos').avisoHoje();
+      if (a) add('operacao', { chave: 'sefaz_status', icone: '📡', titulo: a.titulo, qtd: 1, rotulo: a.nivel === 'perigo' ? 'fora' : 'ok', nivel: a.nivel, detalhe: a.detalhe,
+        destino: { ir: 'emissao-cte', aba: 'config' } });
+    } catch (e) { console.error('[hoje]', e.message); }
+    try {
       const d = await require('./frotaDocumentos').pendencias();
       add('operacao', { chave: 'docs_vencidos', icone: '📄', titulo: 'Documentos da frota vencidos', qtd: d.vencidos, nivel: 'perigo', detalhe: 'CRLV, RNTRC, tacógrafo, CNH, toxicológico… (barram o MDF-e)',
         destino: { ir: 'frota', aba: 'documentos' } });

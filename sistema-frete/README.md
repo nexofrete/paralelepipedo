@@ -746,6 +746,10 @@ Depois de autorizado, também dá para baixar o XML, consultar na SEFAZ, registr
 
 **Contingência (SEFAZ fora do ar):** em Configuração fiscal → Contingência, marque **Contingência ligada** e escreva o motivo. Os CT-e passam a ser autorizados pela SEFAZ Virtual de Contingência da UF: SVC-RS para SP, MS, MT, PE, AP e RR, e SVC-SP para as demais. O DACTE sai marcado "emitido em contingência". Desligue assim que a SEFAZ voltar. O CT-e de substituição não pode ser emitido em contingência.
 
+**Situação da SEFAZ** (`src/sefazServicos.js`, `/api/sefaz/status`): a cada 15 min, `statusServico` da SEFAZ da UF e da SVC, gravado em `sefaz_status` (7 dias). Duas falhas seguidas = fora do ar: aviso na tela Hoje (`sefaz_status`) com a sugestão de ligar a contingência, e outro quando a SEFAZ volta com a contingência ligada. Em Configuração fiscal, o quadro Contingência mostra as últimas verificações e o botão Verificar agora.
+
+**IE na SEFAZ** (`/api/sefaz/cadastro?doc=&uf=&ie=`): Consulta Cadastro (`CadConsultaCadastro4`, NF-e 4.00) na UF; endereços próprios de BA, GO, MG, MS, MT, PE, PR, RS e SP, e SVRS para as demais (a UF que não oferece o serviço volta "indisponível"). Resultado guardado 24 h em `sefaz_cadastros`. Usada no cadastro do cliente (botão 🔎 SEFAZ, com "Usar a IE ...") e na emissão do CT-e (aviso quando a IE do tomador está não habilitada ou não confere).
+
 Se um CT-e foi enviado à SEFAZ de origem, ficou sem resposta e depois foi reemitido na contingência, a lista mostra **⚠ Chave pendente**. Quando a SEFAZ voltar e a contingência for desligada, clique nesse aviso. Se a origem também tiver autorizado aquela chave, o sistema oferece cancelá-la.
 
 O CT-e 4.00 não tem mais inutilização de numeração nem CT-e de anulação: a SEFAZ eliminou os dois nessa versão. No lugar da anulação, use o evento de desacordo seguido do CT-e de substituição.
@@ -849,6 +853,8 @@ Em **Documentos → 🧾 Notas fiscais** (código **403**). Regras em `src/notas
 ## CT-e recebidos (embarcador)
 
 Em **Documentos → 🚛 CT-e recebidos** (código **404**). Regras em `src/ctesRecebidos.js`, rotas em `/api/ctes-recebidos`, tela em `public/js/ctesRecebidos.js`.
+
+- **📡 CT-e na SEFAZ** (`src/sefazServicos.js`, rotas `/api/sefaz/ctes`): distribuição DF-e do CT-e no Ambiente Nacional (`CTeDistribuicaoDFe`, `cteDistDFeInteresse`, por NSU), com o certificado A1 e o ambiente da Configuração fiscal. Cada `procCTe` entra por `importarXmlInterno` (o mesmo caminho do XML enviado à mão); os `procEventoCTe` vêm depois dos CT-e do lote. CT-e emitido pelo próprio CNPJ fica de fora. Cada documento fica registrado em `cte_dist_docs` (resultado e mensagem); o NSU e a próxima consulta em `empresa.cte_dist_estado`. Regra da SEFAZ: com 137 (nada novo) ou 656, só 1 hora depois. Busca automática (`cte_dist_config.ativo`) a cada hora; no modo demonstração, simulada.
 
 - **Dados completos do CT-e**, lidos do XML (`parseCTe` em `src/utils/xmlParser.js`) e gravados em colunas próprias: série, remetente e destinatário (nome e CNPJ/CPF), municípios de origem e destino, modal (`cte_modal`: 01 rodoviário … 06 multimodal), CFOP, ICMS (CST, base, alíquota e valor — também ICMSOutraUF, ICMS60 e Simples Nacional) e protocolo. Os CT-e antigos são lidos do XML guardado ao ligar o sistema e ao abrir a tela (`cte_dados_em`; o gatilho `trg_fretes_cte_reler` limpa a marca quando o XML do CT-e muda).
 - **Consulta** com filtros (número/chave/NF/pedido, transportadora, tomador, remetente, destinatário, município e UF de origem e destino, modal, tipo de serviço, CFOP, período, situação — os cancelados também aparecem) e totais de frete e ICMS; **Excel**; **XML** do CT-e e **.zip** dos filtrados com os XML dos eventos (`GET /api/ctes-recebidos/zip`).

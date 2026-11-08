@@ -381,6 +381,7 @@
         <div class="campo largo"><label for="cteCfopTipo">Natureza (CFOP)</label><select id="cteCfopTipo">${CFOPS.map(([s, t]) => `<option value="${s}">Transporte ${t}</option>`).join('')}</select></div>
         ${campo('cteCfop', 'CFOP', { extra: 'readonly' })}
         <div class="campo inteiro" id="cteAvisoPrestacao" style="font-size:12px; color:var(--amarelo);"></div>
+        <div class="campo inteiro oculto" id="cteAvisoIe" style="font-size:12px; color:var(--vermelho);"></div>
       </div></div>
       <div class="cte-secao" id="cteSecaoCarga"><h4>Carga</h4><div class="cte-grade">
         ${campo('carga_pro', 'Produto predominante', { classe: 'largo', extra: 'list="cteListaProdutos" autocomplete="off"' })}<datalist id="cteListaProdutos"></datalist>${campo('carga_out', 'Outras características')}
@@ -585,6 +586,26 @@
 
   // CFOP, alíquota interestadual e avisos.
   const SUL_SUDESTE = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
+  // IE do tomador na SEFAZ (Consulta Cadastro, guardada por 24 h): avisa se está não habilitada ou não confere.
+  const consultasIe = new Map(); let tIe = null;
+  function conferirIeTomador() {
+    clearTimeout(tIe);
+    tIe = setTimeout(async () => {
+      const pre = { 0: 'rem', 1: 'exp', 2: 'rec', 3: 'dest', 4: 'toma' }[$('cteTomador')?.value];
+      const caixa = $('cteAvisoIe');
+      if (!pre || !caixa || !$(`${pre}_doc`)) return;
+      const doc = $(`${pre}_doc`).value.replace(/[^0-9A-Za-z]/g, ''); const uf = $(`${pre}_uf`)?.value; const ie = $(`${pre}_ie`).value.replace(/\W/g, '').toUpperCase();
+      if (doc.length !== 14 || !uf || !ie || ie === 'ISENTO') { caixa.classList.add('oculto'); return; }
+      const k = `${doc}|${uf}|${ie}`;
+      if (!consultasIe.has(k)) consultasIe.set(k, apiFetch(`/api/sefaz/cadastro?${new URLSearchParams({ doc, uf, ie, papel: 'tomador' })}`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+      const r = await consultasIe.get(k);
+      const atual = `${$(`${pre}_doc`).value.replace(/[^0-9A-Za-z]/g, '')}|${$(`${pre}_uf`)?.value}|${$(`${pre}_ie`).value.replace(/\W/g, '').toUpperCase()}`;
+      if (atual !== k) return;
+      caixa.textContent = r?.aviso ? `⚠️ ${r.aviso} Confira antes de transmitir.` : '';
+      caixa.classList.toggle('oculto', !r?.aviso);
+    }, 700);
+  }
+  document.addEventListener('change', (e) => { if (/^(rem|exp|rec|dest|toma)_(doc|ie|uf)$/.test(e.target?.id || '')) conferirIeTomador(); });
   function sugerirImpostos() {
     const ufIni = $('ini_uf').value; const ufFim = $('fim_uf').value; const ufEmit = config?.uf;
     let cfop = $('cteCfopTipo').value;
@@ -601,6 +622,7 @@
       avisos.push('Tomador não contribuinte em operação interestadual: pode haver diferencial de alíquota (DIFAL) para a UF de destino — confira com a contabilidade.');
     }
     $('cteAvisoPrestacao').textContent = avisos.join(' ');
+    conferirIeTomador();
     // Alíquota: interestadual 7% (Sul/Sudeste → N/NE/CO/ES) ou 12%; interna, a da configuração.
     if (!$('icms_aliq').dataset.editado && ufIni && ufFim) {
       const aliq = ufIni !== ufFim ? (SUL_SUDESTE.includes(ufIni) && !SUL_SUDESTE.includes(ufFim) ? 7 : 12) : (config?.cte_aliquota_interna ?? '');
@@ -903,6 +925,8 @@
           <div class="campo inteiro"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="cfg_cont" ${c.cte_contingencia ? 'checked' : ''} style="width:auto;" />
             <b>Contingência ligada</b>${c.cte_contingencia && c.cte_contingencia_inicio ? `&nbsp;desde ${new Date(c.cte_contingencia_inicio).toLocaleString('pt-BR')}` : ''}</label></div>
           ${campo('cfg_cont_motivo', 'Motivo (aparece no registro; mínimo 15 letras)', { classe: 'inteiro', valor: c.cte_contingencia_motivo || '', ph: 'ex.: SEFAZ SP fora do ar desde as 9h' })}
+          <div class="campo inteiro"><b style="font-size:13px;">Situação da SEFAZ</b> <small style="color:var(--texto-fraco);">(verificada sozinha a cada 15 minutos; duas falhas seguidas = fora do ar, com aviso na tela Hoje)</small>
+            <div id="cfgSefazStatus" style="font-size:12.5px; margin-top:6px;">Carregando…</div></div>
         </div></div>
         <div class="cte-secao"><h4>Seguro da carga e averbação</h4><div class="cte-grade">
           <div class="campo inteiro" style="font-size:12.5px;">Cada CT-e autorizado é mandado na hora para a averbadora da seguradora (AT&amp;M ou AverbePorto). O protocolo e o número da averbação ficam no CT-e, e o número vai sozinho para o MDF-e. Cancelamentos e encerramentos também são avisados. No modo demonstração a averbação é simulada.</div>
@@ -956,6 +980,7 @@
         </div>
       </div>`;
     $('cfgSalvar').addEventListener('click', (e) => comBotaoCfg(e.currentTarget, salvarConfig));
+    mostrarStatusSefaz().catch(() => { if ($('cfgSefazStatus')) $('cfgSefazStatus').textContent = 'Não consegui ler a situação.'; });
     $('cfgEnviarPfx').addEventListener('click', (e) => comBotaoCfg(e.currentTarget, enviarCertificado));
     $('cfgRemoverPfx')?.addEventListener('click', async () => {
       if (!await confirmar('Remover o certificado digital? Sem ele não dá para transmitir.', { tipo: 'perigo', textoOk: 'Remover' })) return;
@@ -971,6 +996,26 @@
       mostrarAlerta(`SEFAZ (${r.autorizador}): ${r.cStat} - ${r.xMotivo}${r.tMed ? ` · tempo médio ${r.tMed}s` : ''}`, { tipo: r.cStat === '107' ? 'sucesso' : 'aviso' });
     }));
     $('cfgBuscarCnpj').addEventListener('click', (e) => comBotaoCfg(e.currentTarget, preencherPeloCnpj));
+  }
+  // Situação da SEFAZ normal e da SVC: a última verificação e as anteriores (bolinhas verdes/vermelhas).
+  async function mostrarStatusSefaz(verificar = false) {
+    const resp = await apiFetch(`/api/sefaz/status${verificar ? '/verificar' : ''}`, verificar ? { method: 'POST' } : {});
+    const r = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(r.erro || 'Erro ao ler a situação da SEFAZ.');
+    const caixa = $('cfgSefazStatus'); if (!caixa) return;
+    const linha = (x, nome) => {
+      if (!x) return `<div>${esc(nome)}: <span style="color:var(--texto-fraco);">ainda não verificada${r.demonstracao ? '' : ' (precisa do certificado digital)'}</span></div>`;
+      const cor = x.ok ? 'var(--verde)' : x.fora_do_ar ? 'var(--vermelho)' : 'var(--amarelo)';
+      const texto = x.ok ? 'no ar' : x.fora_do_ar ? `FORA DO AR${x.desde ? ` desde ${new Date(x.desde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}` : 'falhou na última verificação';
+      const bolinhas = [...x.historico].reverse().map((h) => `<span title="${esc(new Date(h.verificado_em).toLocaleString('pt-BR'))}: ${esc(h.cstat || '')} ${esc(h.motivo || '')}" style="display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:2px; background:${h.ok ? 'var(--verde)' : 'var(--vermelho)'};"></span>`).join('');
+      return `<div style="margin:3px 0;"><b>${esc(x.autorizador)}</b>: <b style="color:${cor};">${texto}</b> · ${esc(x.cstat || '—')} ${esc(x.motivo || '')}${x.ms != null ? ` · respondeu em ${(x.ms / 1000).toFixed(1).replace('.', ',')} s` : ''}
+        · ${new Date(x.verificado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${bolinhas}</div>`;
+    };
+    const dica = r.normal?.fora_do_ar && !r.contingencia_ligada ? `<div class="cte-aviso erro" style="margin:6px 0;">A ${esc(r.normal.autorizador)} está fora do ar.${r.contingencia?.ok ? ` A ${esc(r.contingencia.autorizador)} está no ar: marque <b>Contingência ligada</b> acima, escreva o motivo e salve.` : ''}</div>`
+      : r.contingencia_ligada && r.normal?.ok ? `<div class="cte-aviso" style="margin:6px 0;">A ${esc(r.normal.autorizador)} voltou: desmarque <b>Contingência ligada</b> e salve.</div>` : '';
+    caixa.innerHTML = `${dica}${linha(r.normal, `SEFAZ ${r.uf || ''}`)}${linha(r.contingencia, 'Contingência (SVC)')}
+      <button type="button" class="btn btn-secundario" id="cfgSefazVerificar" style="width:auto; margin-top:6px; padding:5px 12px;">🔄 Verificar agora</button>`;
+    $('cfgSefazVerificar').addEventListener('click', (e) => comBotaoCfg(e.currentTarget, () => mostrarStatusSefaz(true)));
   }
   async function comBotaoCfg(botao, fn) {
     const texto = botao.textContent; botao.disabled = true; botao.textContent = 'Aguarde...';

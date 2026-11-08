@@ -133,6 +133,9 @@ def parte_uso(g):
     ])
     s += aviso('dica', 'A transportadora que aparece num CT-e novo é cadastrada sozinha em Cadastros » '
                        'Transportadoras.')
+    s += h2('CT-e direto da SEFAZ (automático)')
+    s.append(P('Com o certificado digital A1 cadastrado, os CT-e em que a empresa aparece podem vir direto da SEFAZ, sem '
+               'depender da transportadora mandar o XML: veja "CT-e na SEFAZ" no capítulo 14 (CT-e recebidos, código 404).'))
     s += h2('Pasta monitorada de XML (automático)')
     s.append(P('Em <b>Manutenção » Pasta monitorada de XML</b>, aponte a pasta onde os XML chegam (a que o e-mail ou o ERP '
                'salva — pode ser uma pasta da rede). O sistema confere a pasta de tempos em tempos e importa sozinho os '
@@ -350,6 +353,21 @@ def parte_uso(g):
         '<b>Excel</b>: a lista com todas as colunas.',
         'No detalhe do frete (Todos os registros) também aparecem os botões <b>DACTE</b> e <b>XML do CT-e</b>, e o histórico '
         'traz os eventos com o XML de cada um.',
+    ])
+    s.append(P('<b>CT-e na SEFAZ (busca automática)</b>'))
+    s.append(P('<b>📡 CT-e na SEFAZ</b>, no alto da tela: busca no Ambiente Nacional da SEFAZ os CT-e em que a sua empresa aparece '
+               '(tomadora, remetente, destinatária, expedidora, recebedora ou autorizada a baixar o XML), com o certificado digital '
+               'A1 cadastrado na Configuração fiscal da emissão de CT-e (o mesmo ambiente, produção ou homologação). Cada CT-e entra '
+               'como se o XML tivesse sido enviado à mão: liga à nota, cadastra a transportadora e passa pela auditoria. Os eventos '
+               '(cancelamento, carta de correção) também chegam e são aplicados.'))
+    s += lista([
+        '<b>Buscar agora</b> (quem pode enviar XML) e <b>Buscar sozinho (a cada hora)</b> (administrador).',
+        'A janela mostra a última consulta, o resultado e cada documento: Importado (com o link "ver o CT-e"), Já estava no '
+        'sistema, Emitido pela empresa (os CT-e emitidos pela própria empresa ficam em CT-e emitidos), Evento aplicado ou Não '
+        'importado (com o motivo).',
+        'Regra da SEFAZ: quando ela responde "nenhum documento novo", a próxima consulta só é aceita 1 hora depois. O botão '
+        'fica bloqueado até lá e mostra o horário liberado.',
+        'No modo demonstração a SEFAZ é simulada: vêm dois CT-e de exemplo e um "emitido pela empresa".',
     ])
 
     # 15

@@ -126,6 +126,76 @@
         MODAIS[c.cte_modal] || '', SERVICOS[c.tp_serv_cte] || '', c.cte_cfop || '', c.valor_frete, c.cte_icms_base, c.cte_icms_aliquota, c.cte_icms_valor, c.numero_nf || '', c.numero_pedido || '', SIT[c.situacao][1]]) }])
       .catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
   });
+  // CT-e na SEFAZ (distribuição DF-e): busca agora, busca automática e o que veio.
+  const RESULTADOS = { importado: ['entregue', 'Importado'], ja_existia: ['em_transito', 'Já estava no sistema'], proprio: ['agendada', 'Emitido pela empresa'],
+    evento: ['entregue', 'Evento aplicado'], ignorado: ['em_transito', 'Só resumo'], erro: ['ocorrencia', 'Não importado'] };
+  async function abrirSefaz() {
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay';
+    document.body.appendChild(fundo);
+    fundo.addEventListener('click', (ev) => { if (ev.target === fundo || ev.target.closest('[data-ctr-fechar]')) fundo.remove(); });
+    const ehAdmin = usuario?.perfil === 'admin';
+    const podeBuscar = ehAdmin || !!usuario?.pode_enviar_xml;
+    const desenhar = async () => {
+      const r = await apiFetch('/api/sefaz/ctes');
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Erro ao ler a situação.');
+      const e = j.estado || {};
+      const prox = e.proxima_consulta && Date.parse(e.proxima_consulta) > Date.now() ? new Date(e.proxima_consulta) : null;
+      const u = e.ultimo_resultado;
+      fundo.innerHTML = `<div class="painel modal-card" style="max-width:860px; width:100%; max-height:92vh; overflow-y:auto; padding:20px 22px;">
+        <div style="display:flex; justify-content:space-between;"><h3 style="margin:0;">📡 CT-e na SEFAZ</h3><span style="cursor:pointer; font-size:18px;" data-ctr-fechar>✕</span></div>
+        <p style="font-size:13px; color:var(--texto-fraco); margin:8px 0 12px;">Os CT-e em que a sua empresa aparece (tomadora, remetente, destinatária, expedidora, recebedora ou autorizada a baixar o XML)
+          são buscados no Ambiente Nacional com o certificado digital da Configuração fiscal e entram aqui sozinhos, com os eventos (cancelamento, carta de correção).
+          A SEFAZ só aceita uma nova consulta 1 hora depois de responder "nenhum documento novo".${j.demo ? ' <b>Modo demonstração:</b> a SEFAZ é simulada.' : ''}</p>
+        <div class="oc-resumo" style="margin-bottom:12px;">
+          <div>Última consulta<b style="font-size:15px;">${e.ultima_consulta ? dataHora(e.ultima_consulta) : 'nunca'}</b><span>${e.ultimo_cstat ? `${esc(e.ultimo_cstat)} — ${esc(e.ultimo_motivo || '')}` : '—'}</span></div>
+          <div>Resultado<b style="font-size:15px;">${u ? `${u.importados} novo(s)` : '—'}</b><span>${u ? `${u.documentos} documento(s) · ${u.ja_existiam} já existia(m) · ${u.eventos} evento(s)${u.erros ? ` · ${u.erros} com erro` : ''}` : ''}</span></div>
+          <div>Próxima consulta<b style="font-size:15px;">${prox ? prox.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'liberada'}</b><span>último NSU ${esc(e.ult_nsu ?? 0)}</span></div>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+          ${podeBuscar ? `<button class="btn btn-primario" id="ctrSefazBuscar" style="width:auto;" ${prox && !j.demo ? 'disabled' : ''}>🔄 Buscar agora</button>` : ''}
+          <label style="display:flex; gap:6px; align-items:center; font-size:13px;"><input type="checkbox" id="ctrSefazAuto" ${j.config?.ativo ? 'checked' : ''} ${ehAdmin ? '' : 'disabled'} style="width:auto;" />
+            Buscar sozinho (a cada hora)${ehAdmin ? '' : ' — só o administrador muda'}</label>
+        </div>
+        <table class="edi-tabela"><thead><tr><th>NSU</th><th>Quando</th><th>CT-e / emitente</th><th>Resultado</th></tr></thead><tbody>
+        ${(j.docs || []).map((d) => `<tr><td>${esc(d.nsu)}</td><td>${dataHora(d.criado_em)}</td>
+          <td>${d.chave ? `<span style="font-family:monospace; font-size:11px;">${esc(d.chave)}</span>` : '—'}${pequeno(esc([d.emitente_nome, doc(d.emitente_doc)].filter(Boolean).join(' · ')))}</td>
+          <td><span class="oc-sit ${(RESULTADOS[d.resultado] || RESULTADOS.erro)[0]}">${(RESULTADOS[d.resultado] || [0, d.resultado])[1]}</span>${pequeno(esc(d.mensagem || ''))}
+            ${d.frete_id && d.chave ? `<br><a href="#" data-ctr-chave="${esc(d.chave)}">ver o CT-e</a>` : ''}</td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--texto-fraco);">Nenhum documento buscado ainda.</td></tr>'}
+        </tbody></table></div>`;
+      fundo.querySelector('#ctrSefazBuscar')?.addEventListener('click', async (ev) => {
+        const b = ev.currentTarget; b.disabled = true; b.textContent = 'Buscando…';
+        try {
+          const rr = await apiFetch('/api/sefaz/ctes/consultar', { method: 'POST' });
+          const jj = await rr.json().catch(() => ({}));
+          if (!rr.ok) throw new Error(jj.erro || 'Erro ao buscar.');
+          mostrarAlerta(`SEFAZ: ${jj.importados} CT-e novo(s), ${jj.ja_existiam} já existia(m), ${jj.eventos} evento(s)${jj.erros ? `, ${jj.erros} com erro` : ''}.`, { tipo: jj.erros ? 'aviso' : 'sucesso' });
+          if (montado) carregar();
+        } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+        await desenhar().catch(() => {});
+      });
+      fundo.querySelector('#ctrSefazAuto')?.addEventListener('change', async (ev) => {
+        const rr = await apiFetch('/api/sefaz/ctes/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ativo: ev.target.checked }) });
+        if (!rr.ok) { ev.target.checked = !ev.target.checked; mostrarAlerta('Não consegui salvar.', { tipo: 'erro' }); return; }
+        mostrarAlerta(ev.target.checked ? 'Busca automática ligada: a cada hora o sistema pergunta à SEFAZ.' : 'Busca automática desligada.', { tipo: 'sucesso' });
+      });
+      fundo.querySelectorAll('[data-ctr-chave]').forEach((a) => a.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const rr = await apiFetch(`/api/ctes-recebidos?${new URLSearchParams({ busca: a.dataset.ctrChave })}`);
+        const jj = await rr.json().catch(() => ({}));
+        const c = (jj.ctes || []).find((x) => x.chave_cte === a.dataset.ctrChave);
+        if (!c) { mostrarAlerta('CT-e não encontrado (ou fora das suas permissões).', { tipo: 'aviso' }); return; }
+        if (!dados) dados = { ctes: [] };
+        if (!dados.ctes.some((x) => x.id === c.id)) dados.ctes.push(c);
+        detalhe(c.id);
+      }));
+    };
+    fundo.innerHTML = '<div class="painel modal-card" style="padding:20px;">Carregando…</div>';
+    try { await desenhar(); } catch (err) { fundo.remove(); mostrarAlerta(err.message, { tipo: 'erro' }); }
+  }
+  $('ctrSefaz')?.addEventListener('click', () => abrirSefaz());
+
   $('ctrZip')?.addEventListener('click', () => {
     if (!montado) return;
     const url = link(`/api/ctes-recebidos/zip?${filtros()}`);

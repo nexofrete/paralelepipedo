@@ -50,7 +50,7 @@
   }
 
   function cartao(it, i) {
-    const numero = it.so_valor ? brl(it.valor) : it.qtd;
+    const numero = it.rotulo ? esc(it.rotulo) : it.so_valor ? brl(it.valor) : it.qtd;
     return `<button type="button" class="hj-cartao" data-hj="${i}" style="--hj-cor:${NIVEL[it.nivel]};">
       <div class="hj-topo"><span class="hj-icone">${it.icone}</span><span class="hj-num" style="${it.so_valor && it.valor < 0 ? 'color:var(--vermelho);' : ''}">${numero}</span></div>
       <div class="hj-titulo">${esc(it.titulo)}</div>

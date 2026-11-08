@@ -362,6 +362,7 @@
             <p>Os CT-e das transportadoras com todos os dados: emitente, tomador, remetente, destinatário, cidades e UF de origem e destino, modal, serviço, valor do frete e ICMS; XML, DACTE e eventos</p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secundario" id="ctrSefaz" style="width:auto;" title="Os CT-e em que a sua empresa aparece (tomadora, remetente, destinatária...), buscados na SEFAZ com o certificado digital">📡 CT-e na SEFAZ</button>
             <button class="btn btn-secundario" id="ctrExcel" style="width:auto;">⬇ Excel</button>
             <button class="btn btn-secundario" id="ctrZip" style="width:auto;" title="Os XML dos CT-e filtrados (e dos eventos deles), num arquivo .zip">🗜 XML dos CT-e (.zip)</button>
           </div>
@@ -1654,7 +1655,8 @@
               <div><label>CNPJ / CPF</label><input type="text" id="clDocumento" disabled /></div>
               <div style="grid-column:span 2;"><label>Razão social</label><input type="text" id="clRazaoSocial" /></div>
               <div><label>Nome fantasia</label><input type="text" id="clNomeFantasia" /></div>
-              <div><label>Inscrição estadual</label><input type="text" id="clIe" /></div>
+              <div><label>Inscrição estadual</label><div style="display:flex; gap:6px; align-items:center;"><input type="text" id="clIe" style="flex:1; min-width:0;" />
+                <button type="button" class="btn btn-secundario" id="clIeSefaz" style="width:auto; padding:3px 8px; font-size:12px; white-space:nowrap;" title="Consulta a situação da inscrição estadual na SEFAZ da UF do cliente (certificado digital da Configuração fiscal)">🔎 SEFAZ</button></div></div>
               <div><label>Contribuinte do ICMS</label>
                 <select id="clIndIe"><option value="">—</option><option value="1">Contribuinte (tem IE)</option><option value="2">Isento de IE</option><option value="9">Não contribuinte</option></select></div>
               <div><label>Telefone</label><input type="text" id="clTelefone" /></div>
@@ -1666,6 +1668,7 @@
               <div><label>Cidade</label><input type="text" id="clMunicipio" /></div>
               <div><label>UF</label><input type="text" id="clUf" maxlength="2" /></div>
               <div><label>CEP</label><input type="text" id="clCep" /></div>
+              <div id="clIeResultado" style="grid-column:1/-1; font-size:12.5px;" class="oculto"></div>
               <div style="grid-column:1/-1;"><label>Observações</label><textarea id="clObservacoes" rows="2" style="width:100%;"></textarea></div>
               <div><label>Condição de pagamento (vencimento das faturas)</label><select id="clCondicao"><option value="">Prazo padrão da empresa</option></select></div>
               <div style="grid-column:1/-1;"><label style="display:flex; gap:8px; align-items:center; font-weight:600;"><input type="checkbox" id="clExigeAgenda" style="width:auto;" /> 📅 Exige agendamento da entrega</label>

@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "SEFAZ",
+          "texto": "CT-e direto da SEFAZ: em CT-e recebidos » 📡 CT-e na SEFAZ, os CT-e em que a empresa é tomadora, remetente ou destinatária chegam sozinhos (a cada hora, com o certificado digital), com os eventos. Consulta da IE na SEFAZ no cadastro do cliente e aviso na emissão do CT-e quando a IE do tomador não está habilitada. Situação da SEFAZ verificada a cada 15 minutos, com aviso na tela Hoje para ligar (e desligar) a contingência."
+        },
+        {
           "area": "Menu",
           "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
         },

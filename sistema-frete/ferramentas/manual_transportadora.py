@@ -193,6 +193,14 @@ def parte_operacao(g):
         '<b>Complementar</b>: cobra um valor a mais (estadia, reentrega). <b>Substituir</b>: corrige um CT-e autorizado '
         'há até 60 dias, depois do evento de desacordo do tomador.',
         '<b>Contingência</b>: com a SEFAZ fora do ar, ligue a contingência (SVC). Desligue quando ela voltar.',
+        '<b>Situação da SEFAZ</b>: a cada 15 minutos o sistema consulta o status da SEFAZ da UF da empresa e da SVC (com o '
+        'certificado digital). Em Configuração fiscal, no quadro Contingência, aparecem a última resposta, o tempo e as '
+        'verificações anteriores (bolinhas verdes e vermelhas), com o botão <b>Verificar agora</b>. Duas falhas seguidas = '
+        '<b>fora do ar</b>: a tela Hoje mostra o aviso e diz se a SVC está no ar para ligar a contingência. Quando a SEFAZ '
+        'volta com a contingência ainda ligada, a tela Hoje avisa para desligar.',
+        '<b>IE do tomador</b>: ao preencher o tomador (CNPJ, IE e UF), o sistema consulta a SEFAZ da UF dele (guardado por 24 '
+        'horas) e avisa, em vermelho no quadro Prestação, se a IE está não habilitada ou não confere com o CNPJ. É só um aviso: '
+        'confira antes de transmitir.',
         '<b>Averbação do seguro</b>: com AT&amp;M ou Porto Seguro, cada CT-e autorizado é averbado na hora.',
         '<b>Carta de correção, consulta e cancelamento</b> ficam na lista. Se a SEFAZ não responder, '
         '<b>Tentar de novo</b> consulta antes, para não emitir duas vezes.',

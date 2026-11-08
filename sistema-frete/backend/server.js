@@ -232,6 +232,7 @@ app.use('/api/ctes-recebidos', require('./src/routes/ctesRecebidos'));
 app.use('/api/perfis-acesso', require('./src/routes/perfisAcesso'));
 app.use('/api/alteracoes', require('./src/routes/alteracoes'));
 app.use('/api/cadastros-basicos', require('./src/routes/cadastrosBasicos'));
+app.use('/api/sefaz', require('./src/routes/sefaz'));
 // Aviso de privacidade (público: tela de login e portal do cliente).
 app.get('/api/privacidade', async (req, res) => {
   try { res.json({ texto: await require('./src/lgpd').avisoPrivacidade() }); } catch (err) { res.status(500).json({ erro: 'Erro.' }); }
@@ -372,6 +373,7 @@ async function iniciar() {
     require('./src/integracao/webhooks').agendar();
     require('./src/faturamento/pixApi').agendar();
     require('./src/dfe').agendar();
+    require('./src/sefazServicos').agendar();
     require('./src/avisosSeguranca').iniciar();
     require('./src/fusoBanco').verificarAoLigar();
     licenca.agendarConferencia();

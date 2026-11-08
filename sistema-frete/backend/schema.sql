@@ -3274,3 +3274,41 @@ END $$;
 -- Ajudantes da viagem no romaneio (a diária vira conta a pagar ao fechar).
 ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS ajudante_ids INTEGER[] NOT NULL DEFAULT '{}';
 ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS diarias_lancadas BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Serviços da SEFAZ (src/sefazServicos.js): CT-e na SEFAZ (distribuição), consulta de cadastro (IE) e situação.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_dist_config JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS cte_dist_estado JSONB NOT NULL DEFAULT '{}';
+CREATE TABLE IF NOT EXISTS cte_dist_docs (
+    id            SERIAL PRIMARY KEY,
+    nsu           BIGINT NOT NULL UNIQUE,
+    schema        VARCHAR(40),
+    chave         VARCHAR(44),
+    emitente_nome VARCHAR(200),
+    emitente_doc  VARCHAR(20),
+    resultado     VARCHAR(20) NOT NULL,          -- importado, ja_existia, proprio, evento, ignorado, erro
+    mensagem      VARCHAR(500),
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS sefaz_cadastros (
+    doc           VARCHAR(14) NOT NULL,
+    uf            CHAR(2) NOT NULL,
+    situacao      VARCHAR(20) NOT NULL,          -- habilitada, nao_habilitada, nao_cadastrado
+    cstat         VARCHAR(4),
+    motivo        VARCHAR(300),
+    resposta      JSONB NOT NULL,
+    consultado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (doc, uf)
+);
+CREATE TABLE IF NOT EXISTS sefaz_status (
+    id            SERIAL PRIMARY KEY,
+    servico       VARCHAR(10) NOT NULL DEFAULT 'cte',
+    autorizador   VARCHAR(20),
+    contingencia  BOOLEAN NOT NULL DEFAULT FALSE,
+    ok            BOOLEAN NOT NULL,
+    cstat         VARCHAR(4),
+    motivo        VARCHAR(300),
+    tmed          INTEGER,
+    ms            INTEGER,
+    verificado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sefaz_status_quando ON sefaz_status (servico, contingencia, verificado_em DESC);

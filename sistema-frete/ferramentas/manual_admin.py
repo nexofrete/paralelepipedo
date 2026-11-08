@@ -167,6 +167,11 @@ def parte_admin(g):
         'mostra quem foi corrigido.',
         'Clicando no cliente: dados completos e o resumo dos fretes dele (notas, frete cobrado, faturado e % de frete).',
         'Busca por nome, CNPJ, IE ou cidade, e exportação para Excel.',
+        '<b>🔎 SEFAZ</b>, ao lado da inscrição estadual: consulta a situação da IE na SEFAZ da UF do cliente (serviço Consulta '
+        'Cadastro, com o certificado digital da Configuração fiscal): habilitada, não habilitada (baixada, suspensa ou inapta) ou '
+        'sem IE naquela UF, com a razão social, o regime de apuração e a data da baixa. Se a SEFAZ tiver uma IE habilitada '
+        'diferente da cadastrada, aparece o botão "Usar a IE ...". A consulta fica guardada por 24 horas e aparece de novo ao '
+        'abrir o cliente. Nem toda UF oferece o serviço: quando não oferece, o sistema avisa "Consulta indisponível".',
     ])
     s += h2('Sobre o sistema')
     s.append(P('O botão <b>ℹ️ Sobre o sistema</b>, no rodapé do menu, explica para que serve o Nexofrete, mostra a versão instalada, '

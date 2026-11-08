@@ -9556,6 +9556,10 @@ async function abrirCliente(id) {
     document.getElementById('clDocumento').value = clDoc(c.documento);
     CL_CAMPOS.forEach(([el, campo]) => { document.getElementById(el).value = c[campo] ?? ''; });
     document.getElementById('clExigeAgenda').checked = !!c.exige_agendamento;
+    clMostrarIe(null);
+    // Última consulta da IE na SEFAZ (guardada por 24 h), sem ir à SEFAZ de novo.
+    if (c.documento && c.uf) apiFetch(`/api/sefaz/cadastro?${new URLSearchParams({ doc: c.documento, uf: c.uf, ie: c.ie || '', so_guardada: '1', papel: 'cliente' })}`)
+      .then((x) => (x.ok ? x.json() : null)).then((r) => { if (r && clEstado.editandoId === id) clMostrarIe(r); }).catch(() => {});
     // Condições de pagamento (Cadastros básicos): a 1ª parcela dá o vencimento das faturas deste cliente.
     const conds = await apiFetch('/api/cadastros-basicos/opcoes/condicoes_pagamento').then((x) => (x.ok ? x.json() : [])).catch(() => []);
     document.getElementById('clCondicao').innerHTML = `<option value="">Prazo padrão da empresa</option>${conds.map((o) => `<option value="${o.id}" ${Number(c.condicao_pagamento_id) === o.id ? 'selected' : ''}>${cfEsc(o.nome)}</option>`).join('')}`;
@@ -9568,6 +9572,42 @@ async function abrirCliente(id) {
     painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
 }
+// Situação da IE na SEFAZ (Consulta Cadastro): mostra o resultado e oferece a IE habilitada que a SEFAZ devolveu.
+const CL_SIT_IE = { habilitada: ['entregue', '✅ Habilitada'], nao_habilitada: ['ocorrencia', '⛔ Não habilitada'], nao_cadastrado: ['em_transito', 'Sem IE nesta UF'], indisponivel: ['em_transito', 'Consulta indisponível'] };
+function clMostrarIe(r) {
+  const caixa = document.getElementById('clIeResultado');
+  if (!caixa) return;
+  if (!r) { caixa.classList.add('oculto'); caixa.innerHTML = ''; return; }
+  const [classe, rotulo] = CL_SIT_IE[r.situacao] || CL_SIT_IE.indisponivel;
+  const atual = document.getElementById('clIe').value.replace(/\W/g, '').toUpperCase();
+  const habilitadas = (r.cadastros || []).filter((c) => c.habilitada && c.ie);
+  const sugerida = habilitadas.find((c) => c.ie !== atual);
+  caixa.innerHTML = `<div class="cte-aviso ${r.aviso || r.situacao === 'nao_habilitada' ? 'erro' : r.situacao === 'habilitada' ? 'ok' : ''}" style="margin:0;">
+    <b>SEFAZ ${cfEsc(r.uf || '')}:</b> <span class="oc-sit ${classe}">${rotulo}</span>
+    ${(r.cadastros || []).map((c) => ` · IE <b>${cfEsc(c.ie || '—')}</b> ${c.habilitada ? 'habilitada' : `não habilitada${c.baixa ? ` (baixa em ${formatoData(c.baixa)})` : ''}`}${c.regime ? ` · ${cfEsc(c.regime)}` : ''}`).join('')}
+    ${r.situacao === 'indisponivel' ? ` · ${cfEsc(r.xMotivo || '')}` : ''}${r.aviso ? `<br>⚠️ ${cfEsc(r.aviso)}` : ''}
+    <br><small style="color:var(--texto-fraco);">${r.cadastros?.[0]?.nome ? `${cfEsc(r.cadastros[0].nome)} · ` : ''}consultado em ${new Date(r.consultado_em).toLocaleString('pt-BR')}${r.guardada ? ' (guardado)' : ''}${r.demonstracao ? ' · DEMONSTRAÇÃO' : ''}</small>
+    ${sugerida && habilitadas.length === 1 ? ` <button type="button" class="btn btn-secundario" id="clUsarIe" data-ie="${cfEsc(sugerida.ie)}" style="width:auto; padding:3px 10px; font-size:12px;">Usar a IE ${cfEsc(sugerida.ie)}</button>` : ''}</div>`;
+  caixa.classList.remove('oculto');
+  document.getElementById('clUsarIe')?.addEventListener('click', (e) => {
+    document.getElementById('clIe').value = e.currentTarget.dataset.ie;
+    document.getElementById('clIndIe').value = '1';
+    e.currentTarget.remove();
+  });
+}
+document.getElementById('clIeSefaz')?.addEventListener('click', async (e) => {
+  const b = e.currentTarget;
+  const doc = document.getElementById('clDocumento').value.replace(/[^0-9A-Za-z]/g, '');
+  const uf = document.getElementById('clUf').value.trim().toUpperCase();
+  if (!uf) { mostrarAlerta('Preencha a UF do cliente para consultar a SEFAZ dela.', { tipo: 'aviso' }); return; }
+  b.disabled = true; const texto = b.textContent; b.textContent = '…';
+  try {
+    const r = await apiFetch(`/api/sefaz/cadastro?${new URLSearchParams({ doc, uf, ie: document.getElementById('clIe').value, forcar: '1', papel: 'cliente' })}`);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || 'Erro na consulta.');
+    clMostrarIe(j);
+  } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); } finally { b.disabled = false; b.textContent = texto; }
+});
 document.getElementById('btnSalvarCliente')?.addEventListener('click', async () => {
   const corpo = {};
   CL_CAMPOS.forEach(([el, campo]) => { corpo[campo] = document.getElementById(el).value.trim(); });

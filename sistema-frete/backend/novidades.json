@@ -10,6 +10,10 @@
           "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
         },
         {
+          "area": "Manutenção",
+          "texto": "Zerar o banco de dados para começar sem informações: mostra antes o que vai sair, pede ZERAR e a senha do administrador e faz um backup antes (dá para voltar). Usuários, dados da empresa e configurações ficam; os cadastros ficam se você quiser; a numeração do CT-e, MDF-e e NFS-e continua de onde parou."
+        },
+        {
           "area": "Segurança",
           "texto": "Perfis de acesso com nome (ex.: Faturamento, Operador de CT-e, Auditor): aplicam as permissões e os módulos de uma vez, e mudar o perfil atualiza todos os usuários dele."
         },

@@ -139,6 +139,7 @@ def parte_admin(g):
     s.append(P('Configurações gerais do sistema. Cada quadro da tela:'))
     s += tabela(['Quadro', 'Para que serve'], [
         ['Atualizar o sistema', 'Instala uma versão nova a partir do .zip, com backup antes (seção 9).'],
+        ['Zerar o banco de dados', 'Apaga a movimentação para começar sem informações (veja "Zerar o banco de dados", abaixo).'],
         ['Pasta monitorada de XML', 'Importação automática dos XML que chegam numa pasta (seção 12).'],
         ['Importação automática da planilha do ERP', 'Se a planilha é salva sempre no mesmo caminho, o sistema confere a '
          'cada X minutos se ela mudou e importa sozinho. "Verificar e importar agora" força a importação.'],
@@ -177,6 +178,27 @@ def parte_admin(g):
                           'não foram decididas. As já aprovadas por uma pessoa, faturadas ou canceladas não mudam.')
     s += aviso('dica', 'Antes de uma manutenção no servidor, use "Avisar todos os usuários" com a mensagem pronta '
                        '"Manutenção em 5 min", e "Manutenção concluída" no final.')
+
+    s += h2('Zerar o banco de dados')
+    s.append(P('No fim da tela de Manutenção, o quadro <b>Zerar o banco de dados</b> apaga as informações para começar do zero '
+               '(por exemplo, depois de testar o sistema). Só o administrador vê.'))
+    s += passos([
+        'Clique em <b>Zerar o banco de dados</b>. A janela mostra o que vai sair e quanto há de cada coisa: fretes e notas, '
+        'CT-e, MDF-e, NFS-e, coletas, cotações, romaneios, faturas, contas a pagar, caixa e bancos, ocorrências, agenda, '
+        'frota, registro de atividades etc., mais as fotos de canhoto, assinaturas e anexos.',
+        'Marque <b>Apagar também os cadastros</b> se quiser tirar também transportadoras, tabelas de preço, clientes, '
+        'parceiros, veículos, motoristas, filiais e contas bancárias. Sem marcar, os cadastros ficam.',
+        'Digite <b>ZERAR</b> e a sua senha e clique em <b>Fazer backup e zerar</b>. A tela recarrega já vazia.',
+    ])
+    s += lista([
+        '<b>Nunca são apagados</b>: os usuários, os perfis de acesso, os dados da empresa (certificado digital, séries) e as '
+        'configurações (e-mail, backup, segurança, WhatsApp, pasta de XML, ERP, chaves de API).',
+        '<b>Backup antes, sempre</b>: o sistema faz um backup completo antes de apagar. Se o backup falhar, nada é apagado. '
+        'Para voltar atrás: Backups salvos » Restaurar o backup feito na hora.',
+        '<b>Numeração fiscal</b>: o próximo número do CT-e, MDF-e e NFS-e em produção continua de onde parou, porque a SEFAZ '
+        'rejeita número repetido. Os documentos de homologação (teste) não contam.',
+        'O que foi feito fica no novo registro de atividades (quem zerou, quando e o nome do backup).',
+    ])
 
     # 25
     s += h1('25. Backup do banco de dados')

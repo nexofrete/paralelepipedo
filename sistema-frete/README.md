@@ -153,6 +153,8 @@ O backup é um arquivo **.zip completo**, conferido depois de gravado, que leva:
 
 Os backups antigos, que são só `.sql`, continuam restaurando normalmente.
 
+**Zerar o banco de dados** (Manutenção, só administrador; `src/zerarBanco.js`, rotas `GET /api/manutencao/zerar/previa` e `POST /api/manutencao/zerar` com `confirmacao: "ZERAR"` e a senha do admin): faz o backup antes (falhou = não apaga), guarda o próximo número de CT-e/MDF-e/NFS-e de produção em `empresa`, e dá `TRUNCATE … RESTART IDENTITY` em todas as tabelas menos as que ficam sempre (usuários, perfis, empresa, `configuracao_*`, contas de e-mail, chaves de API, webhooks, modelos de ERP, feriados) e, se não marcar, os cadastros (transportadoras, tabelas de preço, clientes, parceiros, veículos, motoristas, filiais, centros de custo, contas bancárias...). Tabela que fica e aponta para uma que sai tem o campo limpo (ou, se for obrigatório, a apontada fica também) — nada é apagado em cascata sem querer. Também esvazia `dados/comprovantes-cte`, `comprovantes-coleta` e `anexos`.
+
 ## Criar login para os clientes e funcionários
 
 Agora isso é feito direto pela tela: logado como administrador, vá em **Usuários → + Novo usuário**. Você escolhe o tipo:

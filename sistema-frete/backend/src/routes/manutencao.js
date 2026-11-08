@@ -75,6 +75,26 @@ router.post('/fuso/corrigir', async (req, res) => {
   }
 });
 
+// Zerar o banco (começar sem informações): mostra antes o que sai; apaga com backup antes,
+// a palavra ZERAR e a senha do administrador. Regras em src/zerarBanco.js.
+router.get('/zerar/previa', async (req, res) => {
+  try { res.json(await require('../zerarBanco').previa()); } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao montar a prévia.' }); }
+});
+router.post('/zerar', async (req, res) => {
+  if (String(req.body?.confirmacao || '').trim().toUpperCase() !== 'ZERAR') return res.status(400).json({ erro: 'Para zerar, digite ZERAR na confirmação.' });
+  try {
+    const { rows: [u] } = await pool.query('SELECT senha_hash FROM usuarios WHERE id = $1', [req.usuario.id]);
+    if (!u || !(await require('bcryptjs').compare(String(req.body?.senha || ''), u.senha_hash))) return res.status(403).json({ erro: 'Senha incorreta.' });
+    const r = await require('../zerarBanco').zerar({ apagarCadastros: !!req.body?.apagar_cadastros });
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'zerar_banco',
+      detalhes: `Zerou o banco de dados (${r.cadastros ? 'movimentação e cadastros' : 'só a movimentação'}; ${r.tabelas} tabela(s), ${r.arquivos} arquivo(s)). Backup antes: ${r.backup}` });
+    res.json({ ...r, mensagem: `Banco zerado: ${r.cadastros ? 'a movimentação e os cadastros foram apagados' : 'a movimentação foi apagada; cadastros e configurações ficaram'}. Antes, foi feito o backup ${r.backup} (para voltar: Backups » Restaurar).` });
+  } catch (err) {
+    console.error('[zerar]', err);
+    res.status(500).json({ erro: err.message || 'Erro ao zerar o banco.' });
+  }
+});
+
 // POST /api/manutencao/backups/:arquivo/restaurar  — volta o banco para esse backup.
 router.post('/backups/:arquivo/restaurar', async (req, res) => {
   if (String(req.body?.confirmacao || '').trim().toUpperCase() !== 'RESTAURAR') {

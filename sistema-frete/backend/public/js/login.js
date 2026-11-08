@@ -361,3 +361,18 @@ $l('cfg2faConfirmar').addEventListener('click', confirmarConfigurar2fa);
 $l('cfg2faCodigo').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarConfigurar2fa(); });
 $l('cfg2faContinuar').addEventListener('click', () => { window.location.href = 'dashboard.html'; });
 $l('cfg2faSair').addEventListener('click', () => $l('btnCancelarNovaSenha').click());
+
+// ---------- Aviso de privacidade (LGPD) ----------
+$l('btnPrivacidade').addEventListener('click', async () => {
+  const d = await fetch('/api/privacidade').then((r) => r.json()).catch(() => ({}));
+  const fundo = document.createElement('div');
+  fundo.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:9999; padding:16px;';
+  const caixa = document.createElement('div');
+  caixa.style.cssText = 'background:var(--bg-card, #fff); color:var(--texto, #111); max-width:620px; width:100%; max-height:85vh; overflow-y:auto; border-radius:12px; padding:20px 22px; font-size:13.5px; white-space:pre-wrap; line-height:1.5;';
+  caixa.textContent = d.texto || 'Aviso de privacidade indisponível.';
+  const titulo = document.createElement('h3'); titulo.textContent = 'Aviso de privacidade'; titulo.style.marginTop = '0'; caixa.prepend(titulo);
+  const fechar = document.createElement('button'); fechar.className = 'btn btn-primario'; fechar.textContent = 'Fechar'; fechar.style.marginTop = '14px';
+  caixa.appendChild(fechar);
+  fundo.appendChild(caixa); document.body.appendChild(fundo);
+  fundo.addEventListener('click', (e) => { if (e.target === fundo || e.target === fechar) fundo.remove(); });
+});

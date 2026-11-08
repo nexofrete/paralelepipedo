@@ -94,6 +94,19 @@
     } catch (err) { $('ptErroEntrar').textContent = err.message; $('ptErroEntrar').classList.remove('oculto'); }
     b.disabled = false;
   });
+  // Aviso de privacidade (LGPD): o mesmo texto da tela de login do sistema.
+  $('ptPrivacidade')?.addEventListener('click', async () => {
+    const d = await fetch('/api/privacidade').then((r) => r.json()).catch(() => ({}));
+    const fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:9999; padding:16px;';
+    const caixa = document.createElement('div');
+    caixa.style.cssText = 'background:#fff; color:#111; max-width:620px; width:100%; max-height:85vh; overflow-y:auto; border-radius:12px; padding:20px 22px; font-size:14px; white-space:pre-wrap; line-height:1.5;';
+    const titulo = document.createElement('h3'); titulo.textContent = 'Aviso de privacidade'; titulo.style.marginTop = '0';
+    const texto = document.createElement('div'); texto.textContent = d.texto || 'Aviso de privacidade indisponível.';
+    const fechar = document.createElement('button'); fechar.type = 'button'; fechar.textContent = 'Fechar'; fechar.style.marginTop = '14px';
+    caixa.append(titulo, texto, fechar); fundo.appendChild(caixa); document.body.appendChild(fundo);
+    fundo.addEventListener('click', (e) => { if (e.target === fundo || e.target === fechar) fundo.remove(); });
+  });
   $('ptEsqueci').addEventListener('click', () => { $('ptEsqEmail').value = $('ptEmail').value; $('ptMsgEsqueci').classList.add('oculto'); mostrarForm('ptFormEsqueci'); });
   document.querySelectorAll('[data-pt-voltar]').forEach((b) => b.addEventListener('click', () => mostrarForm('ptFormEntrar')));
   $('ptFormEsqueci').addEventListener('submit', async (e) => {

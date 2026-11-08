@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./db');
 
-const SEMPRE = ['usuarios', 'perfis_acesso', 'empresa', 'configuracao_auditoria', 'configuracao_backup', 'configuracao_email', 'configuracao_importacao_erp',
+const SEMPRE = ['usuarios', 'perfis_acesso', 'sessoes', 'empresa', 'configuracao_auditoria', 'configuracao_backup', 'configuracao_email', 'configuracao_importacao_erp',
   'configuracao_pasta_xml', 'configuracao_roteirizacao', 'configuracao_seguranca', 'configuracao_whatsapp', 'contas_email', 'api_chaves', 'webhooks',
   'erp_modelos', 'feriados', 'geocodificacao_cache'];
 const CADASTROS = ['transportadoras', 'tabelas_preco', 'tabela_preco_faixas', 'tabelas_preco_versoes', 'clientes', 'parceiros', 'parceiro_tabela', 'parceiro_documentos',

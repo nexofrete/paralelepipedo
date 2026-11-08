@@ -70,11 +70,39 @@ async function fusoPadraoServidor() {
   try { return (await c.query('SHOW TimeZone')).rows[0].TimeZone; } finally { await c.end().catch(() => {}); }
 }
 
+// Histórico de alterações: numa gravação de tabela acompanhada feita por uma pessoa (src/contextoUsuario.js),
+// o PostgreSQL fica sabendo quem é (app.usuario) e os gatilhos anotam antes → depois com o nome dela.
+const contextoUsuario = require('./contextoUsuario');
+const marcarUsuario = (cliente, quem) => cliente.query("SELECT set_config('app.usuario', $1, false)", [JSON.stringify(quem)]);
+const desmarcar = (cliente) => cliente.query("SELECT set_config('app.usuario', '', false)").catch(() => {});
+async function query(...args) {
+  const quem = contextoUsuario.atual();
+  if (!quem || !contextoUsuario.ehGravacaoAcompanhada(args[0])) return pool.query(...args);
+  const cliente = await pool.connect();
+  try {
+    await marcarUsuario(cliente, quem);
+    return await cliente.query(...args);
+  } finally {
+    await desmarcar(cliente);
+    cliente.release();
+  }
+}
+// Cliente dedicado (transações): já sai marcado com o usuário, e a marca sai antes de voltar ao pool.
+async function connect() {
+  const cliente = await pool.connect();
+  const quem = contextoUsuario.atual();
+  if (!quem) return cliente;
+  await marcarUsuario(cliente, quem);
+  const devolver = cliente.release;
+  cliente.release = (...a) => { desmarcar(cliente); return devolver.apply(cliente, a); };
+  return cliente;
+}
+
 module.exports = {
   inicializarBanco,
   aplicarSchema,
   fusoPadraoServidor,
-  query: (...args) => pool.query(...args),
+  query,
   // Cliente dedicado, pra operações em transação (BEGIN/COMMIT).
-  connect: () => pool.connect(),
+  connect,
 };

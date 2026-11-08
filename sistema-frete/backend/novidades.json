@@ -11,6 +11,18 @@
         },
         {
           "area": "Segurança",
+          "texto": "Histórico de alterações campo a campo: o valor de antes, o de depois, quem mudou e quando, em fretes, usuários, transportadoras, parceiros, clientes, tabelas de preço, faturas e contas a pagar (Cadastros » Auditoria e Logs e no detalhe do frete)."
+        },
+        {
+          "area": "Segurança",
+          "texto": "LGPD: consultar e exportar os dados de uma pessoa (CPF, CNPJ, e-mail ou nome), anonimizar os cadastros de um CPF, prazo de guarda do histórico e aviso de privacidade na tela de login e no portal."
+        },
+        {
+          "area": "Backup",
+          "texto": "Backup inteiro protegido pela senha do backup (banco, fotos, anexos e chave): sem a senha, o arquivo não abre. O backup também passou a levar as fotos das coletas."
+        },
+        {
+          "area": "Segurança",
           "texto": "Sessões de verdade: em 🔐 Minha segurança cada um vê onde está conectado e encerra as outras sessões; sair, trocar a senha ou ser desativado derruba o acesso na hora."
         },
         {

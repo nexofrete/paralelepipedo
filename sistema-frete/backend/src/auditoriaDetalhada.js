@@ -185,6 +185,11 @@ async function historico(id) {
       WHERE e.chave IN ($1, (SELECT chave_nfe FROM fretes WHERE id = $2)) ORDER BY e.id`, [f.chave_cte || '', id]);
   evs.forEach((e) => ev.push({ quando: e.dh_evento || e.criado_em, tipo: 'evento', evento_id: e.id,
     texto: `${e.tipo_documento === 'cte' ? 'CT-e' : 'NF-e'}: ${e.descricao}${e.detalhe ? ` — ${e.detalhe}` : ''}${e.protocolo ? ` (protocolo ${e.protocolo})` : ''}`, quem: e.usuario_nome }));
+  // Alterações campo a campo feitas por pessoas (antes → depois).
+  const { rows: alts } = await pool.query(`SELECT campo, antes, depois, operacao, usuario_nome, quando FROM alteracoes WHERE tabela = 'fretes' AND registro_id = $1 ORDER BY id LIMIT 500`, [String(id)]);
+  const curto = (v) => (v == null || v === '' ? '(vazio)' : String(v).length > 60 ? `${String(v).slice(0, 60)}…` : v);
+  alts.forEach((a) => ev.push({ quando: a.quando, tipo: 'alteracao', quem: a.usuario_nome,
+    texto: a.operacao === 'alterou' ? `Alterou ${String(a.campo).replace(/_/g, ' ')}: ${curto(a.antes)} → ${curto(a.depois)}` : a.operacao === 'criou' ? 'Criou o registro' : 'Excluiu o registro' }));
   // O que ficou no registro de atividades ligado a este frete.
   const { rows: log } = await pool.query('SELECT criado_em, acao, detalhes, usuario_nome FROM auditoria WHERE registro_id = $1 ORDER BY criado_em LIMIT 500', [id]);
   log.forEach((l) => ev.push({ quando: l.criado_em, tipo: 'registro', texto: l.detalhes || l.acao, quem: l.usuario_nome }));

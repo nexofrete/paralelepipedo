@@ -9,8 +9,9 @@ const PASTA_BACKUPS = path.join(PASTA_DADOS, 'backups');
 // Além do banco, o backup completo leva o que fica fora dele: as fotos e
 // assinaturas de entrega, os anexos e o config.json (a chave que abre o
 // certificado digital e as senhas guardadas criptografadas no banco).
-const PASTAS_DE_ARQUIVOS = ['comprovantes-cte', 'anexos'];
-const ARQUIVO_BACKUP = /^backup_.*\.(sql|zip)$/;
+const PASTAS_DE_ARQUIVOS = ['comprovantes-cte', 'comprovantes-coleta', 'anexos'];
+// .nxbk = o backup completo (.zip) inteiro protegido pela senha do backup.
+const ARQUIVO_BACKUP = /^backup_.*\.(sql|zip|nxbk)$/;
 fs.mkdirSync(PASTA_BACKUPS, { recursive: true });
 
 let tarefaAgendada = null;
@@ -25,7 +26,7 @@ async function buscarConfiguracao() {
 }
 
 async function salvarConfiguracao(dados) {
-  const campos = ['ativo', 'frequencia', 'horario', 'dia_semana', 'manter_ultimos', 'caminho_pg_dump', 'pasta_copia', 'senha_cripto'];
+  const campos = ['ativo', 'frequencia', 'horario', 'dia_semana', 'manter_ultimos', 'caminho_pg_dump', 'pasta_copia', 'senha_cripto', 'criptografar_tudo'];
   // Senha do backup: só grava quando vem uma nova; remover_senha apaga.
   dados = { ...dados };
   delete dados.senha_cripto;
@@ -33,6 +34,13 @@ async function salvarConfiguracao(dados) {
     if (String(dados.senha_backup).length < 8) throw new Error('A senha do backup precisa ter pelo menos 8 caracteres.');
     dados.senha_cripto = require('./cte/certificado').criptografar(Buffer.from(String(dados.senha_backup), 'utf8'));
   } else if (dados.remover_senha) dados.senha_cripto = null;
+  if (dados.criptografar_tudo !== undefined) dados.criptografar_tudo = !!dados.criptografar_tudo;
+  if (dados.criptografar_tudo) {
+    const atual = await buscarConfiguracao();
+    const vaiTerSenha = dados.senha_cripto !== undefined ? !!dados.senha_cripto : !!atual.senha_cripto;
+    if (!vaiTerSenha) throw new Error('Para proteger o backup inteiro, defina a senha do backup.');
+  }
+  if (dados.remover_senha) dados.criptografar_tudo = false;
   const presentes = campos.filter((c) => dados[c] !== undefined);
   if (presentes.length === 0) return buscarConfiguracao();
 
@@ -86,7 +94,7 @@ async function executarBackupAgora() {
 
   const agora = new Date();
   const carimbo = agora.toISOString().replace(/[:T]/g, '-').slice(0, 19);
-  const nomeArquivo = `backup_${carimbo}.zip`;
+  let nomeArquivo = `backup_${carimbo}.zip`;
   const caminhoZip = path.join(PASTA_BACKUPS, nomeArquivo);
   // O pg_dump grava num .sql temporário, que depois entra no .zip como banco.sql.
   const caminhoArquivo = path.join(PASTA_BACKUPS, `.temp_${carimbo}.sql`);
@@ -121,7 +129,18 @@ async function executarBackupAgora() {
   } finally {
     fs.rmSync(caminhoArquivo, { force: true });
   }
-  const caminhoFinal = caminhoZip;
+  let caminhoFinal = caminhoZip;
+  // Backup inteiro protegido pela senha (banco, fotos, anexos e chave): vira .nxbk.
+  const senhaInteira = config.criptografar_tudo ? senhaGuardada(config) : null;
+  if (config.criptografar_tudo && !senhaInteira) {
+    resumoZip.descricao += ' — ⚠ NÃO protegido: "proteger o backup inteiro" está ligado, mas não há senha do backup';
+  } else if (senhaInteira) {
+    const cifrado = caminhoZip.replace(/\.zip$/, '.nxbk');
+    try { await cifrarArquivo(caminhoZip, cifrado, senhaInteira); } catch (err) { fs.rmSync(cifrado, { force: true }); throw err; }
+    fs.rmSync(caminhoZip, { force: true });
+    caminhoFinal = cifrado; nomeArquivo = path.basename(cifrado);
+    resumoZip.descricao += ' — arquivo inteiro protegido pela senha';
+  }
 
   await aplicarRotacao(config.manter_ultimos || 7);
 
@@ -174,6 +193,38 @@ function destrancar(texto, senha) {
   const d = crypto.createDecipheriv('aes-256-gcm', crypto.scryptSync(senha, Buffer.from(j.sal, 'base64'), 32), Buffer.from(j.iv, 'base64'));
   d.setAuthTag(Buffer.from(j.tag, 'base64'));
   try { return Buffer.concat([d.update(Buffer.from(j.dados, 'base64')), d.final()]); } catch { throw new Error('Senha do backup incorreta.'); }
+}
+// Arquivo inteiro protegido pela senha (scrypt + AES-256-GCM), lido e gravado em partes:
+// "NXBK1" + sal(16) + iv(12) + dados cifrados + etiqueta(16).
+const MAGICO = Buffer.from('NXBK1');
+async function cifrarArquivo(entrada, saida, senha) {
+  const crypto = require('crypto');
+  const { pipeline } = require('stream/promises');
+  const sal = crypto.randomBytes(16); const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', crypto.scryptSync(senha, sal, 32), iv);
+  const fd = fs.openSync(saida, 'w');
+  fs.writeSync(fd, Buffer.concat([MAGICO, sal, iv]));
+  await pipeline(fs.createReadStream(entrada), c, fs.createWriteStream(null, { fd, autoClose: false }));
+  fs.writeSync(fd, c.getAuthTag());
+  fs.closeSync(fd);
+}
+async function decifrarArquivo(entrada, saida, senha) {
+  const crypto = require('crypto');
+  const { pipeline } = require('stream/promises');
+  const tam = fs.statSync(entrada).size;
+  const fd = fs.openSync(entrada, 'r');
+  const cab = Buffer.alloc(33); fs.readSync(fd, cab, 0, 33, 0);
+  const tag = Buffer.alloc(16); fs.readSync(fd, tag, 0, 16, tam - 16);
+  fs.closeSync(fd);
+  if (tam < 49 || !cab.subarray(0, 5).equals(MAGICO)) throw new Error('Este arquivo não é um backup protegido do Nexofrete.');
+  const d = crypto.createDecipheriv('aes-256-gcm', crypto.scryptSync(senha, cab.subarray(5, 21), 32), cab.subarray(21, 33));
+  d.setAuthTag(tag);
+  try {
+    await pipeline(fs.createReadStream(entrada, { start: 33, end: tam - 17 }), d, fs.createWriteStream(saida));
+  } catch (err) {
+    fs.rmSync(saida, { force: true });
+    throw new Error('Senha do backup incorreta (ou arquivo danificado).');
+  }
 }
 function senhaGuardada(config) {
   if (!config?.senha_cripto) return null;
@@ -244,7 +295,7 @@ function listarBackups() {
     .map((f) => {
       const stat = fs.statSync(path.join(PASTA_BACKUPS, f));
       // .zip = completo (banco + arquivos); .sql = só o banco (backups antigos).
-      return { nome: f, tamanho: stat.size, criado_em: stat.mtime, completo: f.endsWith('.zip') };
+      return { nome: f, tamanho: stat.size, criado_em: stat.mtime, completo: /\.(zip|nxbk)$/.test(f), protegido: f.endsWith('.nxbk') };
     })
     .sort((a, b) => b.criado_em - a.criado_em);
 }
@@ -281,10 +332,23 @@ async function reagendarTarefa() {
 async function restaurarBackup(nomeArquivo, { senha } = {}) {
   const original = path.join(PASTA_BACKUPS, path.basename(nomeArquivo));
   if (!fs.existsSync(original)) throw new Error('Arquivo de backup não encontrado.');
+  // Backup protegido inteiro (.nxbk): abre com a senha num .zip temporário (senha errada = nada muda).
+  let zipOrigem = original; let zipTemporario = null;
+  if (original.endsWith('.nxbk')) {
+    if (!senha) throw new Error('Este backup é protegido: digite a senha do backup.');
+    zipTemporario = path.join(PASTA_BACKUPS, `.abrir_${Date.now()}.zip`);
+    await decifrarArquivo(original, zipTemporario, senha);
+    zipOrigem = zipTemporario;
+  }
+  try {
+    return await restaurarDoZip(original, zipOrigem, senha);
+  } finally { if (zipTemporario) fs.rmSync(zipTemporario, { force: true }); }
+}
+async function restaurarDoZip(original, zipOrigem, senha) {
   // Backup completo (.zip): tira o banco.sql para um arquivo temporário e confere tudo antes de mexer em algo.
   let arquivo = original; let zip = null;
-  if (original.endsWith('.zip')) {
-    zip = require('./utils/zip').abrirZip(original);
+  if (zipOrigem.endsWith('.zip')) {
+    zip = require('./utils/zip').abrirZip(zipOrigem);
     const banco = zip.entradas.find((e) => e.nome === 'banco.sql');
     if (!banco) { zip.fechar(); throw new Error('Esse .zip não tem o banco.sql — não é um backup do Nexofrete.'); }
     // Chave protegida por senha: confere a senha antes de mexer no banco.
@@ -333,7 +397,7 @@ async function restaurarBackup(nomeArquivo, { senha } = {}) {
 function restaurarArquivos(zip) {
   let n = 0; let chaveTrocada = false;
   for (const e of zip.entradas) {
-    const m = /^dados\/(comprovantes-cte|anexos)\/(.+)$/.exec(e.nome);
+    const m = /^dados\/(comprovantes-cte|comprovantes-coleta|anexos)\/(.+)$/.exec(e.nome);
     if (m) {
       const destino = path.join(PASTA_DADOS, m[1], ...m[2].split('/'));
       if (!destino.startsWith(path.join(PASTA_DADOS, m[1]) + path.sep)) continue;   // nada fora da pasta
@@ -354,6 +418,8 @@ function restaurarArquivos(zip) {
 }
 
 module.exports = {
+  cifrarArquivo,
+  decifrarArquivo,
   restaurarBackup,
   PASTA_BACKUPS,
   buscarConfiguracao,

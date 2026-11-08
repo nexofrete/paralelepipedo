@@ -3128,3 +3128,68 @@ ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS bloqueio_tentativas 
 ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS bloqueio_minutos INTEGER NOT NULL DEFAULT 15;
 ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS senha_validade_dias INTEGER NOT NULL DEFAULT 0;   -- 0 = não vence
 ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS exigir_2fa VARCHAR(10) NOT NULL DEFAULT 'nao';    -- nao | admins | todos
+
+-- Histórico de alterações campo a campo (antes → depois, quem e quando), só das mudanças feitas por pessoas:
+-- o sistema passa o usuário em app.usuario (src/db.js); sem ele (rotinas automáticas), nada é anotado.
+CREATE TABLE IF NOT EXISTS alteracoes (
+  id BIGSERIAL PRIMARY KEY,
+  tabela VARCHAR(40) NOT NULL, registro_id VARCHAR(40), operacao VARCHAR(10) NOT NULL,   -- criou | alterou | excluiu
+  campo VARCHAR(60), antes TEXT, depois TEXT,
+  usuario_id INTEGER, usuario_nome VARCHAR(150), quando TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_alteracoes_registro ON alteracoes (tabela, registro_id, quando DESC);
+CREATE INDEX IF NOT EXISTS idx_alteracoes_quando ON alteracoes (quando DESC);
+CREATE OR REPLACE FUNCTION registrar_alteracao() RETURNS TRIGGER AS $$
+DECLARE
+  quem TEXT := current_setting('app.usuario', true);
+  j JSONB; velho JSONB; novo JSONB; k TEXT; rid TEXT;
+  ignorar TEXT[] := TG_ARGV || ARRAY['atualizado_em', 'criado_em'];
+  sigilo TEXT[] := ARRAY['senha_hash', 'smtp_senha', 'certificado_senha', 'senha_cripto'];
+BEGIN
+  IF quem IS NULL OR quem = '' THEN RETURN NULL; END IF;
+  j := quem::jsonb;
+  IF TG_OP = 'UPDATE' THEN
+    velho := to_jsonb(OLD); novo := to_jsonb(NEW); rid := novo->>'id';
+    FOR k IN SELECT jsonb_object_keys(novo) LOOP
+      CONTINUE WHEN k = ANY(ignorar);
+      IF (velho->k) IS DISTINCT FROM (novo->k) THEN
+        INSERT INTO alteracoes (tabela, registro_id, operacao, campo, antes, depois, usuario_id, usuario_nome)
+        VALUES (TG_TABLE_NAME, rid, 'alterou', k,
+                CASE WHEN k = ANY(sigilo) THEN '***' ELSE left(velho->>k, 500) END,
+                CASE WHEN k = ANY(sigilo) THEN '(nova)' ELSE left(novo->>k, 500) END,
+                NULLIF(j->>'id', '')::int, j->>'nome');
+      END IF;
+    END LOOP;
+  ELSIF TG_OP = 'INSERT' THEN
+    INSERT INTO alteracoes (tabela, registro_id, operacao, usuario_id, usuario_nome) VALUES (TG_TABLE_NAME, to_jsonb(NEW)->>'id', 'criou', NULLIF(j->>'id', '')::int, j->>'nome');
+  ELSE
+    velho := to_jsonb(OLD) - ignorar - sigilo;
+    INSERT INTO alteracoes (tabela, registro_id, operacao, antes, usuario_id, usuario_nome) VALUES (TG_TABLE_NAME, velho->>'id', 'excluiu', left(velho::text, 4000), NULLIF(j->>'id', '')::int, j->>'nome');
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+DO $$
+DECLARE t RECORD;
+BEGIN
+  FOR t IN SELECT * FROM (VALUES
+      ('fretes', ARRAY['xml_nfe_original', 'xml_cte_original', 'auditoria_calculo', 'impostos_cte', 'cte_dados_em', 'nf_dados_em']),
+      ('usuarios', ARRAY['ultimo_acesso', 'totp_segredo', 'totp_pendente', 'totp_ultimo_passo', 'totp_recuperacao', 'tentativas_falhas', 'bloqueado_ate', 'sessoes_invalidadas_em', 'senha_alterada_em']),
+      ('perfis_acesso', ARRAY[]::text[]), ('transportadoras', ARRAY[]::text[]), ('parceiros', ARRAY[]::text[]), ('clientes', ARRAY[]::text[]),
+      ('tabelas_preco', ARRAY[]::text[]), ('tabela_preco_faixas', ARRAY[]::text[]), ('faturas_frete', ARRAY[]::text[]),
+      ('faturas_transporte', ARRAY[]::text[]), ('contas_pagar', ARRAY[]::text[])) AS x(tabela, ignorar)
+  LOOP
+    IF to_regclass(t.tabela) IS NOT NULL THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS trg_alteracoes ON %I', t.tabela);
+      EXECUTE format('CREATE TRIGGER trg_alteracoes AFTER INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION registrar_alteracao(%s)',
+        t.tabela, COALESCE((SELECT string_agg(quote_literal(c), ', ') FROM unnest(t.ignorar) c), ''));
+    END IF;
+  END LOOP;
+END $$;
+
+-- Backup inteiro (banco, fotos, anexos e chave) protegido pela senha do backup: vira .nxbk.
+ALTER TABLE configuracao_backup ADD COLUMN IF NOT EXISTS criptografar_tudo BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- LGPD (src/lgpd.js): prazo de guarda do histórico de alterações e dos registros arquivados (0 = sem prazo) e aviso de privacidade.
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS lgpd_retencao_dias INTEGER NOT NULL DEFAULT 1825;
+ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS aviso_privacidade TEXT;

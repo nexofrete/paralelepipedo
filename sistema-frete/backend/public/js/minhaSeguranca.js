@@ -120,8 +120,10 @@ window.MinhaSeguranca = (() => {
       ${listaSessoes(s.sessoes, null, false)}
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <button type="button" class="btn btn-secundario" data-ms-acao="encerrar-sessoes" style="width:auto; padding:5px 12px; font-size:12.5px;">Encerrar todas as sessões</button>
+        <button type="button" class="btn btn-secundario" id="msAlteracoesUsuario" style="width:auto; padding:5px 12px; font-size:12.5px;">🕘 Alterações deste usuário</button>
         ${s.bloqueado || s.tentativas_falhas ? '<button type="button" class="btn btn-secundario" data-ms-acao="desbloquear" style="width:auto; padding:5px 12px; font-size:12.5px;">Desbloquear</button>' : ''}
         ${s.totp_ativo ? '<button type="button" class="btn btn-secundario" data-ms-acao="desligar-2fa-app" style="width:auto; padding:5px 12px; font-size:12.5px;" title="Para quem perdeu o celular: no próximo login, configura de novo (se for obrigatório)">Desligar o aplicativo autenticador</button>' : ''}</div>`;
+    div.querySelector('#msAlteracoesUsuario')?.addEventListener('click', () => window.Alteracoes?.abrir({ tabela: 'usuarios', registro_id: String(u.id), titulo: `usuário ${u.nome}` }));
     div.querySelectorAll('[data-ms-acao]').forEach((b) => b.addEventListener('click', async () => {
       if (!(await confirmar(`${b.textContent.trim()} de ${u.nome}?`))) return;
       try { const r = await post(`/api/auth/usuarios/${u.id}/seguranca/${b.dataset.msAcao}`); mostrarAlerta(r.mensagem, { tipo: 'sucesso' }); formularioUsuario(u); }

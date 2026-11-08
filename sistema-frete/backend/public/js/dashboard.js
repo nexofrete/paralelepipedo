@@ -3013,6 +3013,7 @@ async function carregarConfigBackup() {
     document.getElementById('bkPastaCopia').value = c.pasta_copia || '';
     document.getElementById('bkSenha').value = '';
     document.getElementById('bkRemoverSenha').checked = false;
+    document.getElementById('bkCriptografarTudo').checked = !!c.criptografar_tudo;
     document.getElementById('bkSenhaInfo').textContent = c.tem_senha ? '— ✓ senha cadastrada' : '— sem senha';
     document.getElementById('campoDiaSemana').classList.toggle('oculto', c.frequencia !== 'semanal');
 
@@ -3058,6 +3059,7 @@ document.getElementById('btnSalvarConfigBackup').addEventListener('click', async
     pasta_copia: document.getElementById('bkPastaCopia').value.trim() || null,
     ...(document.getElementById('bkSenha').value ? { senha_backup: document.getElementById('bkSenha').value } : {}),
     ...(document.getElementById('bkRemoverSenha').checked ? { remover_senha: true } : {}),
+    criptografar_tudo: document.getElementById('bkCriptografarTudo').checked,
   };
 
   try {
@@ -3115,7 +3117,7 @@ async function carregarBackups() {
     const corpo = document.querySelector('#tabelaBackups tbody');
     corpo.innerHTML = arquivos.map((a) => `
       <tr>
-        <td>${a.nome}<br><small style="color:var(--texto-fraco);">${a.completo ? '📦 completo: banco + fotos/assinaturas + chave' : 'só o banco (formato antigo)'}</small></td>
+        <td>${a.nome}<br><small style="color:var(--texto-fraco);">${a.protegido ? '🔒 completo e protegido pela senha do backup' : a.completo ? '📦 completo: banco + fotos/assinaturas + chave' : 'só o banco (formato antigo)'}</small></td>
         <td>${formatoTamanho(a.tamanho)}</td>
         <td>${formatoDataHora(a.criado_em)}</td>
         <td style="text-align:right;">
@@ -3142,7 +3144,11 @@ async function restaurarBackup(nome) {
   if (texto.trim().toUpperCase() !== 'RESTAURAR') { mostrarAlerta('Restauração cancelada: a palavra digitada não foi RESTAURAR.', { tipo: 'aviso' }); return; }
   // Backup completo: a senha do backup abre a chave do sistema (só precisa num computador novo).
   let senha = '';
-  if (/\.zip$/i.test(nome)) {
+  if (/\.nxbk$/i.test(nome)) {
+    const s = await pedirTexto('Este backup é protegido por inteiro: digite a senha do backup.', { titulo: 'Senha do backup', placeholder: 'senha do backup', textoOk: 'Restaurar', senha: true });
+    if (!s) return;
+    senha = s;
+  } else if (/\.zip$/i.test(nome)) {
     const s = await pedirTexto('Se o backup foi feito com senha, digite a senha do backup (precisa num computador novo, para o certificado digital voltar a funcionar). No mesmo computador pode deixar em branco.',
       { titulo: 'Senha do backup', placeholder: 'senha do backup (opcional)', textoOk: 'Continuar' });
     if (s === null) return;

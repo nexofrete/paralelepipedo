@@ -95,6 +95,50 @@ router.post('/zerar', async (req, res) => {
   }
 });
 
+// ---------- LGPD (src/lgpd.js) ----------
+router.get('/lgpd/titular', async (req, res) => {
+  try { res.json(await require('../lgpd').consultar(req.query.busca)); }
+  catch (err) { if (!err.status) console.error(err); res.status(err.status || 500).json({ erro: err.status ? err.message : 'Erro na consulta.' }); }
+});
+router.post('/lgpd/exportar', async (req, res) => {
+  try {
+    const dados = await require('../lgpd').exportar(req.body?.busca);
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'lgpd_exportar',
+      detalhes: `Exportou os dados pessoais do titular "${String(req.body?.busca || '').slice(0, 80)}" (${Object.keys(dados.fontes).length} fonte(s))` });
+    res.json(dados);
+  } catch (err) { if (!err.status) console.error(err); res.status(err.status || 500).json({ erro: err.status ? err.message : 'Erro ao exportar.' }); }
+});
+router.post('/lgpd/anonimizar', async (req, res) => {
+  if (String(req.body?.confirmacao || '').trim().toUpperCase() !== 'ANONIMIZAR') return res.status(400).json({ erro: 'Para anonimizar, digite ANONIMIZAR na confirmação.' });
+  try {
+    const { rows: [u] } = await pool.query('SELECT senha_hash FROM usuarios WHERE id = $1', [req.usuario.id]);
+    if (!u || !(await require('bcryptjs').compare(String(req.body?.senha || ''), u.senha_hash))) return res.status(403).json({ erro: 'Senha incorreta.' });
+    const r = await require('../lgpd').anonimizar(req.body?.cpf);
+    const cpf = String(req.body?.cpf || '').replace(/\D/g, '');
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'lgpd_anonimizar',
+      detalhes: `Anonimizou o titular de CPF ***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-** (${r.map((x) => `${x.quantidade} em ${x.rotulo}`).join(', ') || 'nada encontrado nos cadastros'})` });
+    res.json({ resultado: r });
+  } catch (err) { if (!err.status) console.error(err); res.status(err.status || 500).json({ erro: err.status ? err.message : 'Erro ao anonimizar.' }); }
+});
+router.get('/lgpd/config', async (req, res) => {
+  try {
+    const { rows: [c] } = await pool.query('SELECT lgpd_retencao_dias, aviso_privacidade FROM configuracao_seguranca WHERE id = 1');
+    res.json({ lgpd_retencao_dias: c?.lgpd_retencao_dias ?? 1825, aviso_privacidade: c?.aviso_privacidade || '', aviso_padrao: await require('../lgpd').avisoPrivacidade() });
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro.' }); }
+});
+router.put('/lgpd/config', async (req, res) => {
+  try {
+    const dias = Math.max(0, Math.min(36500, Math.round(Number(req.body?.lgpd_retencao_dias) || 0)));
+    if (dias > 0 && dias < 365) return res.status(400).json({ erro: 'O prazo mínimo é de 365 dias (ou 0 para não apagar).' });
+    const aviso = String(req.body?.aviso_privacidade || '').trim().slice(0, 20000) || null;
+    await pool.query('INSERT INTO configuracao_seguranca (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+    await pool.query('UPDATE configuracao_seguranca SET lgpd_retencao_dias = $1, aviso_privacidade = $2 WHERE id = 1', [dias, aviso]);
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'lgpd_config',
+      detalhes: `LGPD: prazo de guarda ${dias ? `${dias} dias` : 'sem prazo'}; aviso de privacidade ${aviso ? 'personalizado' : 'padrão'}` });
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao salvar.' }); }
+});
+
 // POST /api/manutencao/backups/:arquivo/restaurar  — volta o banco para esse backup.
 router.post('/backups/:arquivo/restaurar', async (req, res) => {
   if (String(req.body?.confirmacao || '').trim().toUpperCase() !== 'RESTAURAR') {

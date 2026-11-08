@@ -70,7 +70,7 @@ async function autenticar(req, res, next) {
       return res.status(403).json({ erro: `Seu usuário não tem acesso ao módulo ${MODULOS[modulo].nome}. Fale com o administrador.`, modulo });
     }
     req.usuario = usuario;
-    next();
+    require('./contextoUsuario').rodar(usuario, next);
   } catch (err) {
     console.error('Erro ao validar o usuário:', err.message);
     return res.status(500).json({ erro: 'Erro ao validar o usuário.' });

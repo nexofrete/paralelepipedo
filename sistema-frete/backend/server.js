@@ -230,6 +230,11 @@ app.use('/api/nfe-cte', require('./src/routes/nfeCte'));
 app.use('/api/notas', require('./src/routes/notas'));
 app.use('/api/ctes-recebidos', require('./src/routes/ctesRecebidos'));
 app.use('/api/perfis-acesso', require('./src/routes/perfisAcesso'));
+app.use('/api/alteracoes', require('./src/routes/alteracoes'));
+// Aviso de privacidade (público: tela de login e portal do cliente).
+app.get('/api/privacidade', async (req, res) => {
+  try { res.json({ texto: await require('./src/lgpd').avisoPrivacidade() }); } catch (err) { res.status(500).json({ erro: 'Erro.' }); }
+});
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);
@@ -383,6 +388,9 @@ async function iniciar() {
     // Sessões e códigos de senha velhos: limpa ao ligar e uma vez por dia.
     const limparContas = () => require('./src/segurancaContas').limparVelhas().catch((e) => console.error('[segurança]', e.message));
     setTimeout(limparContas, 8000); setInterval(limparContas, 24 * 3600 * 1000).unref();
+    // LGPD: o que passou do prazo de guarda (histórico de alterações e registros arquivados).
+    const prazoLgpd = () => require('./src/lgpd').limparPorPrazo().catch((e) => console.error('[lgpd]', e.message));
+    setTimeout(prazoLgpd, 15000); setInterval(prazoLgpd, 24 * 3600 * 1000).unref();
     require('./src/ctesVinculados').vincularCtesAntigos().then(() => require('./src/ctesVinculados').reconciliarCtesSoltos()).then(() => require('./src/ctesVinculados').revisarCtesDeOutraTransportadora()).then(() => require('./src/ctesVinculados').calcularRedespachosSemCalculo());
 
     app.listen(PORT, '0.0.0.0', () => {

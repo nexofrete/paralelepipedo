@@ -124,6 +124,19 @@ def parte_admin(g):
         'Quem já estava no sistema antes desta versão continua até a sessão vencer (8 horas) e passa a ter a sessão '
         'controlada no próximo login.',
     ])
+    s += h2('Histórico de alterações campo a campo')
+    s.append(P('Toda mudança feita por uma pessoa em fretes, usuários, perfis de acesso, transportadoras, parceiros, '
+               'clientes, tabelas de preço (e faixas), faturas e contas a pagar fica guardada: <b>o campo, o valor de antes, '
+               'o de depois, quem mudou e quando</b>. Também a criação e a exclusão (com o que havia no registro).'))
+    s += lista([
+        'Em <b>Cadastros » Auditoria e Logs » 🕘 Alterações campo a campo</b>: filtros por cadastro, número do registro, '
+        'quem, campo e período.',
+        'No detalhe de cada frete, o histórico mostra as alterações junto com cálculo, aprovação, eventos e fatura.',
+        'No cadastro do usuário, <b>Alterações deste usuário</b> mostra o que mudou nele (permissões, perfil, módulos...).',
+        'Senhas nunca aparecem: só "*** → (nova)". As mudanças automáticas do sistema (cálculo, conferência, rastreio) não '
+        'entram aqui; ficam no histórico do frete.',
+        'O histórico é guardado pelo prazo definido em Manutenção » LGPD (padrão: 5 anos).',
+    ])
     s += h2('Auditoria e Logs')
     s.append(P('Todo login, importação, criação, edição, exclusão, aprovação, glosa, decisão de quem levou a nota e '
                'mudança de configuração fica registrado com usuário, data/hora e detalhe. A tela mostra o dia de hoje; '
@@ -247,6 +260,13 @@ def parte_admin(g):
     s.append(P('Os backups ficam em backend/dados/backups e podem ser baixados pela lista "Backups salvos". O sistema '
                'também faz um backup sozinho antes de cada atualização. O sino avisa se nenhum backup foi feito ou se o '
                'último está atrasado.'))
+    s += h2('Backup inteiro protegido pela senha')
+    s.append(P('Com a <b>senha do backup</b> definida, marque <b>Proteger o backup inteiro com a senha</b>: o arquivo todo '
+               '(banco, fotos de canhoto, assinaturas, anexos e a chave do sistema) sai embaralhado, com a extensão .nxbk, e '
+               'aparece com um cadeado na lista. Uma cópia na nuvem ou num pendrive não serve para nada sem a senha.'))
+    s += aviso('importante', '<b>Anote a senha do backup em lugar seguro.</b> Sem ela, um backup .nxbk não abre de jeito '
+                             'nenhum, nem para restaurar. Ao restaurar, o sistema pede a senha e confere antes de mexer no '
+                             'banco: senha errada não muda nada.')
     s += h2('Restaurar um backup')
     s.append(P('Na lista "Backups salvos", clique em <b>Restaurar</b> e digite RESTAURAR para confirmar. Antes de '
                'restaurar, o sistema faz um backup de segurança do banco do jeito que está, para dar para voltar atrás.'))
@@ -256,6 +276,24 @@ def parte_admin(g):
     s.append(P('O backup usa o programa pg_dump, que vem com o PostgreSQL. Informe o caminho completo dele em "Caminho do '
                'pg_dump", algo como:'))
     s += codigo('C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe')
+
+    s += h2('LGPD: dados pessoais')
+    s.append(P('Em <b>Manutenção » 🛡 LGPD</b> (só administrador), para atender o pedido de uma pessoa (o titular):'))
+    s += lista([
+        '<b>Consultar</b> pelo CPF, CNPJ, e-mail ou nome: mostra em que lugares do sistema há dados dela, quantos registros '
+        'e por que são guardados.',
+        '<b>Exportar tudo</b> em JSON ou Excel, para entregar ao titular. Cada exportação fica no registro de atividades.',
+        '<b>Anonimizar</b> (por CPF, pessoa física): troca o nome por "TITULAR ANONIMIZADO" e apaga CPF, e-mail, telefone e '
+        'endereço nos cadastros e registros que não são obrigatórios por lei: clientes, motoristas, vendedores, parceiros, '
+        'cotações, coletas e SAC. Pede ANONIMIZAR e a senha, e não dá para desfazer (só restaurando um backup). O histórico '
+        'de alterações desses registros também é apagado.',
+        '<b>Ficam guardados por obrigação legal</b> (LGPD, art. 16): notas fiscais e CT-e, financeiro e contas a pagar, '
+        'acertos de viagem, romaneios e a jornada do motorista. Usuários e acessos ao portal saem desativando o acesso.',
+        '<b>Prazo de guarda</b>: o histórico de alterações e os registros de atividades arquivados mais antigos que o prazo '
+        '(padrão 1825 dias = 5 anos; mínimo 365; 0 = sem prazo) são apagados sozinhos, uma vez por dia.',
+        '<b>Aviso de privacidade</b>: aparece no link "Aviso de privacidade" da tela de login e do portal do cliente. Há um '
+        'texto padrão (o que é tratado, para quê, com quem e os direitos do titular); escreva o da empresa no quadro se quiser.',
+    ])
 
     # 26
     s += h1('26. Segurança do sistema')

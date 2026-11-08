@@ -3807,6 +3807,7 @@
               <div style="font-size:11px; color:var(--texto-fraco); margin-top:4px;">O backup leva o banco, as fotos e assinaturas de entrega e a <b>chave do sistema</b> (que abre o certificado digital).
                 Com senha, essa chave vai protegida: uma cópia na nuvem não abre o certificado sem ela. <b>Anote a senha em lugar seguro</b> — ela é pedida para restaurar num computador novo.
                 <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;"><input type="checkbox" id="bkRemoverSenha" style="width:auto;" /> remover a senha</label></div>
+              <label class="ac-opcao" style="margin-top:8px;"><input type="checkbox" id="bkCriptografarTudo" /> <b>Proteger o backup inteiro com a senha</b> (banco, fotos, anexos e chave). Sem a senha, ninguém abre o arquivo — nem para restaurar.</label>
             </div>
             <div class="campo" style="margin-bottom:0; grid-column: 1 / -1;">
               <label>Caminho do pg_dump (só preencha se der erro "não encontrado")</label>
@@ -3839,6 +3840,25 @@
             </table>
           </div>
         </div>
+        <div class="painel" style="padding:24px; margin-bottom:22px;" id="painelLgpd">
+          <h3 style="margin-top:0; font-size:15px;">🛡 LGPD — dados pessoais</h3>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
+            Atenda o pedido de um titular: veja onde o sistema guarda os dados dele (pelo CPF/CNPJ, e-mail ou nome), exporte tudo, e anonimize os cadastros
+            de uma pessoa física (CPF). Documentos fiscais (NF-e, CT-e), financeiro, acertos e jornada do motorista ficam guardados por obrigação legal.
+            Toda consulta exportada e toda anonimização ficam no registro de atividades.
+          </p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="campo" style="margin:0; flex:1; min-width:240px;"><label>Titular: CPF, CNPJ, e-mail ou nome</label><input id="lgpdBusca" /></div>
+            <button class="btn btn-primario" id="lgpdConsultar" style="width:auto;">🔎 Consultar</button>
+          </div>
+          <div id="lgpdResultado" style="margin-top:12px;"></div>
+          <div style="display:grid; grid-template-columns:240px 1fr; gap:12px; margin-top:16px; align-items:start;">
+            <div class="campo" style="margin:0;"><label>Prazo de guarda do histórico de alterações e dos registros de atividades (dias; 0 = sem prazo)</label><input type="number" id="lgpdRetencao" min="0" /></div>
+            <div class="campo" style="margin:0;"><label>Aviso de privacidade (tela de login e portal do cliente). Em branco = o texto padrão</label><textarea id="lgpdAviso" rows="6"></textarea></div>
+          </div>
+          <button class="btn btn-secundario" id="lgpdSalvar" style="width:auto; margin-top:10px;">Salvar prazo e aviso</button>
+        </div>
+
         <div class="painel" style="padding:24px; margin-bottom:22px; border:1px solid var(--vermelho);">
           <h3 style="margin-top:0; font-size:15px; color:var(--vermelho);">🧨 Zerar o banco de dados (começar sem informações)</h3>
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
@@ -3905,6 +3925,8 @@
   <script src="js/hoje.js"></script>
   <script src="js/acessos.js"></script>
   <script src="js/minhaSeguranca.js"></script>
+  <script src="js/alteracoes.js"></script>
+  <script src="js/lgpd.js"></script>
   <script src="js/zerarBanco.js"></script>
   <script src="js/familias.js"></script>
   <script src="js/menuTransporte.js"></script>

@@ -59,7 +59,10 @@ def parte_operacao(g):
         ['Gestão e relatórios', 'Montar relatório (BI), Comparar cotações, Anomalias e duplicidades', '316, 317, 318', '19'],
         ['Clientes', 'SAC (chamados), Portal do cliente', '090, 080', '39'],
         ['Mensagens e Agenda', 'Mensagens, Agenda', '500, 501', '21'],
-        ['Configuração', 'Filiais, Configuração fiscal, Cadastros, Cadastros básicos, Manutenção, Integração', '901, 902, 900, 907, 903, 904', '36, 32, 22, 23, 24, 53'],
+        ['Cadastros', 'Clientes, Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tipos de mercadoria, '
+         'Tabelas de preço, Regiões de atendimento, Tipos de operação, Condições de pagamento, Departamentos, Usuários, Empresa',
+         '910, 911, 905, 912, 913, 914, 915, 916, 906, 917, 918, 919, 920, 908, 909', '22, 23, 15'],
+        ['Configuração', 'Filiais, Configuração fiscal, Manutenção, Integração', '901, 902, 903, 904', '36, 32, 24, 53'],
     ], [0.2, 0.46, 0.17, 0.17])
     s += h2('Telas parecidas juntas')
     s.append(P('Algumas telas tratam do mesmo assunto e ficavam em lugares diferentes do menu. Agora cada assunto é <b>um item '
@@ -123,6 +126,8 @@ def parte_operacao(g):
          'fretes contratados · 310 a 323 Relatórios · 330 Auditoria de frete'],
         ['4xx Fretes contratados', '400 Visão geral · 401 Enviar XML · 402 Todos os registros · 403 Notas fiscais · 404 CT-e recebidos · 410 Sinistros'],
         ['5xx e 9xx', '500 Mensagens · 501 Agenda · 900 Cadastros · 901 Filiais · 902 Configuração fiscal · 905 Transportadoras contratadas · 906 Tabelas de preço · 907 Cadastros básicos · '
+         '908 Usuários · 909 Empresa · 910 Clientes · 911 Fornecedores · 912 Veículos e motoristas · 913 Conjuntos · 914 Ajudantes · 915 Produtos · '
+         '916 Tipos de mercadoria · 917 Regiões de atendimento · 918 Tipos de operação · 919 Condições de pagamento · 920 Departamentos · '
          '903 Manutenção · 904 Integração (API e ERP) · 990 Modo compacto · 991 Tema · 999 Lista de códigos'],
     ], [0.2, 0.8])
     s += h2('Filtro de período')

@@ -13,7 +13,7 @@ window.Navegar = (() => {
   const ATRIBUTO_ABA = {
     'emissao-cte': 'data-cte-aba', ocorrencias: 'data-oc-aba', faturamento: 'data-fat-aba', 'painel-transporte': 'data-pt-aba', conferencia: 'data-bp-aba',
     filiais: 'data-fl-aba', pagar: 'data-cp-aba', frota: 'data-fv-aba', contabil: 'data-cbl-aba', bancos: 'data-bx-aba', comissoes: 'data-cm-aba', centros: 'data-ccu-aba',
-    cadastros: 'data-subpagina',
+    cadastros: 'data-subpagina', 'cadastros-basicos': 'data-cb-aba',
   };
   const FAMILIAS = {
     indicadores: { titulo: '📊 Painel de indicadores', membros: [
@@ -54,6 +54,9 @@ window.Navegar = (() => {
     const { pagina, subaba } = partes(dest);
     const item = itemDa(pagina);
     if (!item || item.classList.contains('oculto') || window.Modulos?.fora(item, { empresa: true })) return false;
+    // Aba que a tela esconde deste usuário (ex.: Usuários sem a permissão de gerenciar).
+    const { aba } = partes(dest);
+    if (aba && ATRIBUTO_ABA[pagina]) { const el = document.querySelector(`[${ATRIBUTO_ABA[pagina]}="${aba}"]`); if (el && el.classList.contains('oculto')) return false; }
     return subaba ? !!subabas()[subaba] : true;
   }
   const membrosDe = (familia) => (FAMILIAS[familia]?.membros || []).map(([d]) => d);
@@ -64,8 +67,14 @@ window.Navegar = (() => {
     const { pagina, aba, subaba } = partes(dest);
     if (!aberto(pagina)) (typeof irParaPagina === 'function' ? irParaPagina(pagina) : itemDa(pagina)?.click());
     if (subaba) mostrarSubabaRelatorio(subaba);
-    else if (aba && ATRIBUTO_ABA[pagina]) document.querySelector(`[${ATRIBUTO_ABA[pagina]}="${aba}"]`)?.click();
+    else if (aba && ATRIBUTO_ABA[pagina]) clicarAba(ATRIBUTO_ABA[pagina], aba);
     avisar();
+  }
+  // Algumas telas montam as abas depois de abrir (Cadastros básicos): espera a aba aparecer.
+  function clicarAba(atributo, aba, tentativa = 0) {
+    const el = document.querySelector(`[${atributo}="${aba}"]`);
+    if (el) { el.click(); if (tentativa) avisar(); return; }
+    if (tentativa < 40) setTimeout(() => clicarAba(atributo, aba, tentativa + 1), 100);
   }
 
   // A tela aberta agora é este destino?

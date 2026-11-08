@@ -48,6 +48,13 @@
     'p:sinistros': ['410', 'sinistro avaria'],
     'p:mensagens': ['500', 'mensagem'], 'p:agenda': ['501', 'agenda compromisso'],
     'p:cadastros': ['900', 'cadastro usuario transportadora tabela preco'], 't:cadastros:transportadoras': ['905', 'transportadoras contratadas cadastro embarcador'], 't:cadastros:tabelas-preco': ['906', 'tabela de preco frete contratado faixa peso'], 'p:cadastros-basicos': ['907', 'cadastros basicos fornecedor ajudante conjunto cavalo carreta implemento produto mercadoria departamento regiao atendimento cep tipo operacao cfop condicao pagamento parcelas'], 't:filiais:unidades': ['901', 'filial unidade'],
+    't:cadastros:usuarios': ['908', 'usuarios login senha acesso permissao'], 't:cadastros:empresa': ['909', 'empresa dados cnpj logo modulos'],
+    't:cadastros:clientes': ['910', 'clientes cadastro destinatario tomador ie inscricao estadual'], 't:cadastros-basicos:fornecedores': ['911', 'fornecedor posto oficina'],
+    't:emissao-cte:frota': ['912', 'veiculos motoristas placa cavalo carreta reboque cnh'], 't:cadastros-basicos:conjuntos_veiculo': ['913', 'conjunto cavalo carreta implemento'],
+    't:cadastros-basicos:ajudantes': ['914', 'ajudante diaria carga descarga'], 't:cadastros-basicos:produtos': ['915', 'produto ncm embalagem peso cubagem'],
+    't:cadastros-basicos:tipos_mercadoria': ['916', 'tipo mercadoria carga perigosa refrigerada'], 't:cadastros-basicos:regioes_atendimento': ['917', 'regiao atendimento cep cidade prazo'],
+    't:cadastros-basicos:tipos_operacao': ['918', 'tipo operacao cfop tomador servico'], 't:cadastros-basicos:condicoes_pagamento': ['919', 'condicao pagamento parcelas 30 60 90 prazo'],
+    't:cadastros-basicos:departamentos': ['920', 'departamento setor'],
     't:emissao-cte:config': ['902', 'configuracao fiscal certificado'], 'p:manutencao': ['903', 'manutencao sistema backup atualizacao'], 'p:integracao': ['904', 'integracao api erp webhook chave'],
   };
   // Ações diretas: abrem a tela e clicam no botão de "novo" (código = o da tela + 1).

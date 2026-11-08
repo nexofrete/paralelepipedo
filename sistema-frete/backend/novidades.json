@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Menu",
+          "texto": "Os cadastros ganharam um grupo próprio no menu, 📇 Cadastros, logo abaixo de Operação: Clientes, Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tabelas de preço, Condições de pagamento, Usuários, Empresa e os demais, cada um abrindo direto a sua aba (códigos 905 a 920 no Ctrl+K)."
+        },
+        {
           "area": "Integração",
           "texto": "NF-Stock (Alterdata): em Configuração » Integração (904), o sistema busca sozinho os XML guardados no NF-Stock (NF-e, CT-e e eventos, cada um no seu lugar) e manda para lá os CT-e, MDF-e e NFS-e emitidos, conferindo se a Alterdata importou. Dá para começar a busca a partir de um NSU ou só pelos documentos emitidos desde uma data. Token guardado criptografado; tem simulador para testar."
         },

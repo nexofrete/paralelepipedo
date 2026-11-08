@@ -179,7 +179,11 @@ def parte_admin(g):
                '<b>Novo</b> para cada usuário até ele abrir e ver o que mudou. As novidades ficam no arquivo backend/novidades.json, '
                'atualizado junto com cada versão.'))
     s += h2('Cadastros básicos (907)')
-    s.append(P('Em <b>Configuração » 🗂 Cadastros básicos</b>, uma aba para cada cadastro de apoio. Cada aba tem busca, '
+    s.append(P('No menu, o grupo <b>📇 Cadastros</b> (logo abaixo de Operação) tem um item para cada cadastro: Clientes, '
+               'Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tipos de mercadoria, Tabelas de '
+               'preço, Regiões de atendimento, Tipos de operação, Condições de pagamento, Departamentos, Usuários e Empresa (códigos '
+               '905 a 920 no "Ir para"). Cada item abre direto a aba daquele cadastro.'))
+    s.append(P('Na tela <b>🗂 Cadastros básicos</b> (907), uma aba para cada cadastro de apoio. Cada aba tem busca, '
                '"só ativos", <b>＋ Novo</b>, Editar e o botão 🕘 com as alterações daquele registro. Um cadastro já usado em '
                'outro lugar não é excluído: desmarque <b>Ativo</b> para tirá-lo das listas.'))
     s += tabela(['Cadastro', 'Para que serve', 'Quem edita'], [

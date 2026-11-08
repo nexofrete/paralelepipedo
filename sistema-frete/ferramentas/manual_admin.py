@@ -39,6 +39,49 @@ def parte_admin(g):
     ], [0.32, 0.68])
     s += aviso('nota', 'O servidor confere a permissão em cada ação: esconder um botão na tela não é a única proteção. '
                        'Mesmo quem tenta acessar direto pelo endereço da ação recebe "sem permissão".')
+    s += h2('Perfis de acesso')
+    s.append(P('Um perfil junta as permissões e os módulos de uma função (ex.: Faturamento, Operador de CT-e, Auditor de '
+               'frete, Consulta). Crie em <b>Cadastros » Usuários » Perfis de acesso</b>: nome, descrição, as permissões e '
+               'os módulos que o perfil usa.'))
+    s += lista([
+        'No cadastro do usuário interno, escolha o perfil em <b>Perfil de acesso</b>: as permissões e os módulos dele são '
+        'marcados de uma vez (dá para ajustar à mão depois).',
+        'Mudar um perfil atualiza na hora todos os usuários que seguem esse perfil (administradores não mudam). A tela de '
+        'quem está usando o sistema se atualiza sozinha em até um minuto.',
+        'Excluir um perfil não tira acesso de ninguém: os usuários ficam com as permissões que já têm.',
+        'O login em duas etapas é de cada pessoa e não faz parte do perfil. Só o administrador cria um perfil com '
+        '"Gerenciar usuários".',
+    ])
+    s += h2('Módulos da transportadora por usuário')
+    s.append(P('As permissões "Emitir CT-e" e "Financeiro" abrem várias telas da transportadora. Em <b>Módulos da '
+               'transportadora que este usuário usa</b> (no cadastro do usuário interno ou no perfil), desmarque o que ele '
+               'não deve usar: o módulo some do menu e do "Ir para", os cartões dele saem da tela Hoje e o servidor recusa '
+               'o acesso direto.'))
+    s += tabela(['Módulo', 'Telas'], [
+        ['Operação', 'CT-e, MDF-e, NFS-e, coletas, cotações, romaneios, ocorrências, conferência e etiquetas, monitoramento, '
+         'filiais e transferências, paletes, parceiros'],
+        ['Frota', 'Custos, abastecimentos, manutenções, documentos, pneus, jornada'],
+        ['Armazém', 'Armazenagem (contratos, entradas, saídas, cobrança)'],
+        ['Faturamento e contas a receber', 'Faturas, contas a receber, boletos, régua de cobrança, serviços extras'],
+        ['Contas a pagar', 'Contas a pagar, acerto de viagem, comissões'],
+        ['Caixa e bancos', 'Contas, conciliação, fluxo de caixa'],
+        ['Fiscal e contabilidade', 'Livros, notas de entrada, NF-e contra o CNPJ, GNRE, pacote do contador'],
+        ['SAC', 'Chamados'],
+        ['Painel gerencial', 'Painel, margem por CT-e e cliente, centros de custo'],
+    ], [0.3, 0.7])
+    s += aviso('nota', 'O módulo só tira acesso: quem não tem a permissão de base (Emitir CT-e ou Financeiro) continua sem a '
+                       'tela, mesmo com o módulo marcado. O administrador sempre vê tudo.')
+    s += h2('Filiais por usuário')
+    s.append(P('Em <b>Filiais que este usuário enxerga</b>, marque as filiais dele. Nenhuma marcada = todas. Com filiais '
+               'marcadas, ele só vê:'))
+    s += lista([
+        '<b>CT-e</b> que saem, estão ou vão para uma dessas filiais (abrir, DACTE, XML e as ações de um CT-e de outra filial '
+        'respondem "não encontrado");',
+        '<b>Romaneios</b> e <b>contas a pagar</b> lançados nessas filiais;',
+        '<b>Onde está a mercadoria</b> só com as filiais dele.',
+    ])
+    s.append(P('Os documentos sem filial (empresa que não usa filiais, ou lançados sem escolher) continuam aparecendo para '
+               'todos. Faturas, coletas, cotações e MDF-e ainda não têm filial no sistema e aparecem inteiros.'))
     s += h2('Senhas')
     s += lista([
         'Mínimo de 8 caracteres.',

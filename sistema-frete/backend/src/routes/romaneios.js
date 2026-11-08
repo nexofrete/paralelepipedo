@@ -14,6 +14,7 @@ const ag = require('../cte/agendamento');
 
 const router = express.Router();
 const emitir = permitir('pode_emitir_cte');
+const { condicaoUnidades } = require('../permissoes');
 const log = (req, acao, detalhes, registroId) => registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao, detalhes, registroId });
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const erro = (res, err, padrao) => { console.error('[romaneios]', err.message); res.status(err.status || 400).json({ erro: err.message || padrao }); };
@@ -82,6 +83,7 @@ function lerCabecalho(b) {
 // Lista (abertos e em rota primeiro).
 router.get('/', autenticar, emitir, async (req, res) => {
   try {
+    const params = [];   // filiais do usuário (vazio = todas)
     const { rows } = await pool.query(
       `SELECT r.id, r.data, r.motorista_nome, r.placa, r.veiculo, r.status, r.codigo_acesso, r.saiu_em, r.fechado_em, r.criado_em,
               COUNT(i.cte_id)::int AS ctes,
@@ -90,8 +92,8 @@ router.get('/', autenticar, emitir, async (req, res) => {
               (SELECT COUNT(*)::int FROM coletas k WHERE k.romaneio_id = r.id) AS coletas,
               (SELECT COUNT(*)::int FROM coletas k WHERE k.romaneio_id = r.id AND k.status = 'coletada') AS coletadas
          FROM romaneios r LEFT JOIN romaneio_itens i ON i.romaneio_id = r.id LEFT JOIN ctes_emitidos c ON c.id = i.cte_id
-        WHERE r.status <> 'fechado' OR r.data >= CURRENT_DATE - 30
-        GROUP BY r.id ORDER BY (r.status = 'fechado'), r.data DESC, r.id DESC LIMIT 200`);
+        WHERE (r.status <> 'fechado' OR r.data >= CURRENT_DATE - 30) AND ${condicaoUnidades(req, ['r.unidade_id'], params)}
+        GROUP BY r.id ORDER BY (r.status = 'fechado'), r.data DESC, r.id DESC LIMIT 200`, params);
     res.json(rows);
   } catch (err) { erro(res, err, 'Erro ao listar os romaneios.'); }
 });
@@ -106,7 +108,8 @@ router.get('/link-app', autenticar, emitir, async (req, res) => {
 });
 router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM romaneios WHERE id = $1', [req.params.id]);
+    const pr = [req.params.id];
+    const { rows } = await pool.query(`SELECT * FROM romaneios r WHERE r.id = $1 AND ${condicaoUnidades(req, ['r.unidade_id'], pr)}`, pr);
     if (!rows[0]) return res.status(404).json({ erro: 'Romaneio não encontrado.' });
     const { rows: conf } = await pool.query(
       `SELECT id, status, resumo, concluida_em FROM conferencias WHERE romaneio_id = $1 AND tipo = 'carga' ORDER BY id DESC LIMIT 1`, [rows[0].id]);

@@ -51,7 +51,7 @@ unidades.put('/:id(\\d+)', autenticar, apenasAdmin, async (req, res) => {
 
 // Onde está a mercadoria: CT-e em andamento por unidade.
 unidades.get('/estoque', autenticar, emitir, async (req, res) => {
-  try { res.json(await un.estoque()); } catch (err) { erro(res, err, 'Erro ao montar o estoque.'); }
+  try { res.json(await un.estoque(require('../permissoes').unidadesDo(req))); } catch (err) { erro(res, err, 'Erro ao montar o estoque.'); }
 });
 
 // Acerto manual (mercadoria que chegou por outro caminho, cadastro errado...).

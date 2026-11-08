@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('./config');
 const pool = require('./db');
-const { CAMPOS_PERMISSAO } = require('./permissoes');
+const { CAMPOS_PERMISSAO, MODULOS, moduloDaRota, moduloBloqueado } = require('./permissoes');
 const ticket = require('./ticketDownload');
 
 // Protege rotas: exige um token JWT válido no cabeçalho Authorization. Links diretos de
@@ -35,7 +35,7 @@ async function autenticar(req, res, next) {
   try {
     const { rows } = await pool.query(
       `UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = $1
-       RETURNING id, nome, funcao, perfil, cliente_nome, ativo, trocar_senha, ${CAMPOS_PERMISSAO.join(', ')}`,
+       RETURNING id, nome, funcao, perfil, cliente_nome, ativo, trocar_senha, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, ${CAMPOS_PERMISSAO.join(', ')}`,
       [payload.id]
     );
     const usuario = rows[0];
@@ -46,6 +46,11 @@ async function autenticar(req, res, next) {
     // (e sair). Qualquer outra rota responde pedindo a troca.
     if (usuario.trocar_senha && !ROTAS_LIBERADAS_TROCA_SENHA.some((r) => req.originalUrl.split('?')[0] === r)) {
       return res.status(403).json({ erro: 'Cadastre a sua senha antes de continuar.', trocar_senha: true });
+    }
+    // Módulo bloqueado para este usuário (Cadastros » Usuários » Módulos): a API do módulo não responde.
+    const modulo = moduloDaRota(req.originalUrl);
+    if (moduloBloqueado(usuario, modulo)) {
+      return res.status(403).json({ erro: `Seu usuário não tem acesso ao módulo ${MODULOS[modulo].nome}. Fale com o administrador.`, modulo });
     }
     req.usuario = usuario;
     next();

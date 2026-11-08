@@ -34,6 +34,11 @@ contasPagar.get('/', autenticar, financeiro, async (req, res) => {
     const filtro = FILTROS[req.query.filtro] ? req.query.filtro : 'abertas';
     const valores = [hoje]; const onde = ['$1::date IS NOT NULL', FILTROS[filtro]];
     if (cp.CATEGORIAS[req.query.categoria]) { valores.push(req.query.categoria); onde.push(`c.categoria = $${valores.length}`); }
+    // Usuário limitado a filiais: só as contas delas (ou sem filial).
+    const { condicaoUnidades } = require('../permissoes');
+    const pResumo = [hoje];
+    const escopoResumo = condicaoUnidades(req, ['unidade_id'], pResumo);
+    onde.push(condicaoUnidades(req, ['c.unidade_id'], valores));
     const busca = String(req.query.busca || '').trim();
     if (busca) { valores.push(`%${busca}%`); onde.push(`(c.descricao ILIKE $${valores.length} OR c.fornecedor_nome ILIKE $${valores.length} OR c.documento ILIKE $${valores.length})`); }
     if (['pagas', 'todas', 'canceladas'].includes(filtro)) {
@@ -49,8 +54,9 @@ contasPagar.get('/', autenticar, financeiro, async (req, res) => {
               COALESCE(SUM(valor - valor_pago) FILTER (WHERE status = 'aberta' AND vencimento = $1::date), 0)::float AS hoje,
               COALESCE(SUM(valor - valor_pago) FILTER (WHERE status = 'aberta' AND vencimento BETWEEN $1::date + 1 AND $1::date + 7), 0)::float AS semana,
               COALESCE(SUM(valor - valor_pago) FILTER (WHERE status = 'aberta'), 0)::float AS aberto,
-              (SELECT COALESCE(SUM(p.valor), 0)::float FROM contas_pagar_pagamentos p WHERE p.data >= date_trunc('month', $1::date)) AS pago_mes
-         FROM contas_pagar`, [hoje]);
+              (SELECT COALESCE(SUM(p.valor), 0)::float FROM contas_pagar_pagamentos p JOIN contas_pagar cc ON cc.id = p.conta_id
+                WHERE p.data >= date_trunc('month', $1::date) AND ${escopoResumo.replace(/unidade_id/g, 'cc.unidade_id')}) AS pago_mes
+         FROM contas_pagar WHERE ${escopoResumo}`, pResumo);
     // Fluxo dos próximos 30 dias: o que entra (faturas) e o que sai (contas).
     const { rows: f } = await pool.query(
       `SELECT (SELECT COALESCE(SUM(valor_bruto - desconto - valor_pago), 0)::float FROM faturas_transporte WHERE status IN ('aberta', 'parcial') AND vencimento <= $1::date + 30) AS receber,

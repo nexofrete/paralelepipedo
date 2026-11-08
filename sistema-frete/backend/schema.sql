@@ -3084,3 +3084,16 @@ CREATE TABLE IF NOT EXISTS documento_eventos (
   UNIQUE (chave, hash)
 );
 CREATE INDEX IF NOT EXISTS idx_documento_eventos_chave ON documento_eventos (chave);
+
+-- Segurança: perfis de acesso com nome (aplicam as permissões de uma vez), módulos bloqueados e filiais do usuário.
+CREATE TABLE IF NOT EXISTS perfis_acesso (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL UNIQUE,
+  descricao VARCHAR(300),
+  permissoes JSONB NOT NULL DEFAULT '{}'::jsonb,          -- { "pode_emitir_cte": true, ... }
+  modulos_bloqueados TEXT[] NOT NULL DEFAULT '{}',
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS perfil_acesso_id INTEGER REFERENCES perfis_acesso(id) ON DELETE SET NULL;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS modulos_bloqueados TEXT[] NOT NULL DEFAULT '{}';   -- módulos da transportadora que o usuário NÃO usa
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS unidades_permitidas INTEGER[] NOT NULL DEFAULT '{}'; -- filiais que ele enxerga (vazio = todas)

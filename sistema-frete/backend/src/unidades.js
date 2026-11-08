@@ -88,9 +88,11 @@ function lerUnidade(b = {}) {
 }
 
 // ---------- Onde está a mercadoria ----------
-async function estoque() {
+// filiais: as do usuário (null = todas). Só mostra as filiais dele e os CT-e que estão nelas ou vão para elas.
+async function estoque(filiais = null) {
   await garantirMatriz();
-  const { rows: unidades } = await pool.query('SELECT * FROM unidades ORDER BY matriz DESC, sigla');
+  const { rows: todas } = await pool.query('SELECT * FROM unidades ORDER BY matriz DESC, sigla');
+  const unidades = filiais ? todas.filter((u) => filiais.includes(u.id)) : todas;
   const { rows } = await pool.query(
     `SELECT c.id, c.serie, c.numero, c.destinatario_nome, c.remetente_nome, c.cidade_fim, c.uf_fim, c.previsao_entrega, c.situacao_entrega, c.valor_total, c.dados->'carga' AS carga,
             c.unidade_atual_id, c.unidade_destino_id, c.em_transferencia_id, c.autorizado_em,
@@ -99,7 +101,8 @@ async function estoque() {
        FROM ctes_emitidos c WHERE ${ABERTOS} ORDER BY c.previsao_entrega NULLS LAST, c.numero`);
   const vol = (carga) => (carga?.quantidades || []).filter((x) => String(x.cUnid) === '03').reduce((s, x) => s + (Number(x.qCarga) || 0), 0);
   const kg = (carga) => (carga?.quantidades || []).filter((x) => String(x.cUnid) === '01').reduce((s, x) => s + (Number(x.qCarga) || 0), 0);
-  const ctes = rows.map(({ carga, ...c }) => ({ ...c, volumes: vol(carga), peso: kg(carga) }));
+  const ctes = rows.map(({ carga, ...c }) => ({ ...c, volumes: vol(carga), peso: kg(carga) }))
+    .filter((c) => !filiais || filiais.includes(c.unidade_atual_id) || filiais.includes(c.unidade_destino_id) || (!c.unidade_atual_id && !c.unidade_destino_id));
   return {
     unidades: unidades.map((u) => {
       const aqui = ctes.filter((c) => c.unidade_atual_id === u.id);

@@ -1517,6 +1517,7 @@ function abrirFormularioUsuario(usuarioParaEditar = null) {
   document.getElementById('pDoisFatores').checked = !!usuarioParaEditar?.dois_fatores_ativo;
 
   atualizarCamposConformePerfil();
+  window.Acessos?.preencherFormulario(usuarioParaEditar);   // perfil de acesso, módulos e filiais (js/acessos.js)
   painelFormUsuario.classList.remove('oculto');
 }
 
@@ -1551,6 +1552,7 @@ document.getElementById('btnSalvarUsuario').addEventListener('click', async () =
     pode_conferir_fatura: document.getElementById('pConferirFatura').checked,
     pode_emitir_cte: document.getElementById('pEmitirCte').checked,
     dois_fatores_ativo: document.getElementById('pDoisFatores').checked,
+    ...(fPerfil.value === 'interno' ? window.Acessos?.valoresDoFormulario() || {} : {}),
   };
 
   if (!corpo.nome || (!editandoUsuarioId && (!corpo.email || !corpo.senha))) {
@@ -1604,7 +1606,8 @@ function resumoPermissoes(u) {
   if (u.pode_conferir_fatura) lista.push('Conferir fatura');
   if (u.pode_emitir_cte) lista.push('Emitir CT-e');
   if (u.dois_fatores_ativo) lista.push('Login em duas etapas');
-  return lista.join(', ') || 'Nenhuma';
+  const extra = window.Acessos?.resumo(u);
+  return `${lista.join(', ') || 'Nenhuma'}${extra ? ` · ${extra}` : ''}`;
 }
 
 async function carregarUsuarios() {
@@ -8386,7 +8389,9 @@ const CAMPOS_PERMISSAO_TELA = ['perfil', 'cliente_nome', 'pode_ver_todos', 'pode
   'pode_excluir_registros', 'pode_gerenciar_usuarios', 'pode_gerenciar_transportadoras', 'pode_gerenciar_tabelas_preco',
   'pode_aprovar_pagamento', 'pode_aprovar_valores_altos', 'pode_ver_auditoria', 'pode_ver_financeiro',
   'pode_ver_relatorios', 'pode_ver_sinistros', 'pode_conferir_fatura', 'pode_emitir_cte'];
-const assinaturaPermissoes = (u) => JSON.stringify(CAMPOS_PERMISSAO_TELA.map((c) => (c === 'perfil' || c === 'cliente_nome' ? u?.[c] ?? null : !!u?.[c])));
+// Módulos bloqueados e filiais também contam (listas: comparadas em ordem fixa).
+const assinaturaPermissoes = (u) => JSON.stringify([...CAMPOS_PERMISSAO_TELA.map((c) => (c === 'perfil' || c === 'cliente_nome' ? u?.[c] ?? null : !!u?.[c])),
+  [...(u?.modulos_bloqueados || [])].sort(), [...(u?.unidades_permitidas || [])].map(Number).sort((a, b) => a - b)]);
 
 let permissoesAvisoAberto = false;
 async function sincronizarPermissoes(naAbertura) {

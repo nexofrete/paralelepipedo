@@ -8,7 +8,8 @@ const { registrar } = require('../auditoria');
 
 const router = express.Router();
 
-const { CAMPOS_PERMISSAO } = require('../permissoes');
+const { CAMPOS_PERMISSAO, limparModulos } = require('../permissoes');
+const limparUnidades = (v) => [...new Set((Array.isArray(v) ? v : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
 
 // Guarda os códigos de 2FA pendentes em memória (bem curta duração — não
 // precisa de tabela no banco pra isso). Chave = tempToken aleatório.
@@ -29,7 +30,8 @@ function gerarDadosTokenEResposta(usuario) {
   };
   CAMPOS_PERMISSAO.forEach((c) => { dadosToken[c] = usuario[c]; });
   const token = jwt.sign(dadosToken, config.jwtSecret, { expiresIn: '8h' });
-  return { token, usuario: { ...dadosToken, email: usuario.email, trocar_senha: !!usuario.trocar_senha, funcao: usuario.funcao || null } };
+  return { token, usuario: { ...dadosToken, email: usuario.email, trocar_senha: !!usuario.trocar_senha, funcao: usuario.funcao || null,
+    modulos_bloqueados: usuario.modulos_bloqueados || [], unidades_permitidas: usuario.unidades_permitidas || [], perfil_acesso_id: usuario.perfil_acesso_id || null } };
 }
 
 // POST /api/auth/login
@@ -109,7 +111,7 @@ router.post('/verificar-codigo-2fa', async (req, res) => {
   }
 });
 
-const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, ${CAMPOS_PERMISSAO.join(', ')}`;
+const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, ${CAMPOS_PERMISSAO.join(', ')}`;
 
 // POST /api/auth/ticket { caminho } — ticket de download para um link direto (ver ticketDownload.js).
 router.post('/ticket', autenticar, (req, res) => {
@@ -247,9 +249,10 @@ router.post('/usuarios', autenticar, permitir('pode_gerenciar_usuarios'), async 
     const senha_hash = await bcrypt.hash(senha, 10);
     // Senha criada pelo administrador é provisória por padrão: o usuário
     // cadastra a própria no primeiro acesso (dá pra desmarcar no formulário).
-    const colunas = ['nome', 'email', 'funcao', 'senha_hash', 'perfil', 'cliente_nome', 'trocar_senha', ...CAMPOS_PERMISSAO];
+    const colunas = ['nome', 'email', 'funcao', 'senha_hash', 'perfil', 'cliente_nome', 'trocar_senha', 'perfil_acesso_id', 'modulos_bloqueados', 'unidades_permitidas', ...CAMPOS_PERMISSAO];
     const valores = [
       nome, email, String(req.body.funcao || '').trim().slice(0, 100) || null, senha_hash, perfil || 'cliente', cliente_nome || null, req.body.trocar_senha !== false,
+      Number(req.body.perfil_acesso_id) || null, limparModulos(req.body.modulos_bloqueados), limparUnidades(req.body.unidades_permitidas),
       ...CAMPOS_PERMISSAO.map((c) => !!req.body[c]),
     ];
     const placeholders = valores.map((_, i) => `$${i + 1}`);
@@ -293,6 +296,9 @@ router.put('/usuarios/:id', autenticar, permitir('pode_gerenciar_usuarios'), asy
     if (ativo !== undefined) add('ativo', !!ativo);
     if (perfil !== undefined) add('perfil', perfil);
     CAMPOS_PERMISSAO.forEach((c) => { if (req.body[c] !== undefined) add(c, !!req.body[c]); });
+    if (req.body.perfil_acesso_id !== undefined) add('perfil_acesso_id', Number(req.body.perfil_acesso_id) || null);
+    if (req.body.modulos_bloqueados !== undefined) add('modulos_bloqueados', limparModulos(req.body.modulos_bloqueados));
+    if (req.body.unidades_permitidas !== undefined) add('unidades_permitidas', limparUnidades(req.body.unidades_permitidas));
     if (senha) {
       if (senha.length < 8) {
         return res.status(400).json({ erro: 'A senha precisa ter pelo menos 8 caracteres.' });

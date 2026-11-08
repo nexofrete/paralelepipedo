@@ -197,6 +197,9 @@ async function montar(req) {
     } catch (e) { console.error('[hoje]', e.message); }
   }
 
+  // Cartões que abrem tela de módulo bloqueado para o usuário saem da lista.
+  const { paginaBloqueada } = require('./permissoes');
+  for (let i = itens.length - 1; i >= 0; i -= 1) if (itens[i].destino?.ir && paginaBloqueada(req.usuario, itens[i].destino.ir)) itens.splice(i, 1);
   const ordem = { perigo: 0, atencao: 1, info: 2 };
   itens.sort((x, y) => ordem[x.nivel] - ordem[y.nivel]);
   return {

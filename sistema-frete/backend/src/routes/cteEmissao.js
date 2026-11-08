@@ -253,6 +253,9 @@ router.post('/calcular-frete', autenticar, emitir, async (req, res) => {
 router.get('/', autenticar, emitir, async (req, res) => {
   try {
     const cond = []; const val = [];
+    // Usuário limitado a filiais: só os CT-e delas (ou sem filial).
+    const { unidadesDo, condicaoUnidades } = require('../permissoes');
+    if (unidadesDo(req)) cond.push(condicaoUnidades(req, ['unidade_origem_id', 'unidade_atual_id', 'unidade_destino_id'], val));
     if (req.query.status) { val.push(req.query.status); cond.push(`status = $${val.length}`); }
     if (req.query.busca) {
       val.push(`%${String(req.query.busca).trim()}%`);
@@ -276,11 +279,27 @@ router.get('/', autenticar, emitir, async (req, res) => {
 router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   try {
     const reg = await emissao.carregar(req.params.id);
-    if (!reg) return res.status(404).json({ erro: 'CT-e não encontrado.' });
+    if (!reg || !(await cteDaFilialDoUsuario(req, reg.id))) return res.status(404).json({ erro: 'CT-e não encontrado.' });
     delete reg.xml_assinado; delete reg.xml_autorizado;
     reg.eventos = (reg.eventos || []).map(({ xml, ...ev }) => ev);
     res.json(reg);
   } catch (err) { responderErro(res, err, 'Erro ao carregar o CT-e.'); }
+});
+
+// O CT-e é de uma filial que o usuário enxerga? (sem limite de filial: sempre)
+async function cteDaFilialDoUsuario(req, id) {
+  const { unidadesDo, condicaoUnidades } = require('../permissoes');
+  if (!unidadesDo(req)) return true;
+  const p = [id];
+  const { rows } = await pool.query(`SELECT 1 FROM ctes_emitidos WHERE id = $1 AND ${condicaoUnidades(req, ['unidade_origem_id', 'unidade_atual_id', 'unidade_destino_id'], p)}`, p);
+  return !!rows[0];
+}
+// Rotas de um CT-e (/:id/...): usuário limitado a filiais não mexe em CT-e de outra filial.
+router.use('/:id(\\d+)', autenticar, async (req, res, next) => {
+  try {
+    if (await cteDaFilialDoUsuario(req, Number(req.params.id))) return next();
+    return res.status(404).json({ erro: 'CT-e não encontrado.' });
+  } catch (err) { return next(err); }
 });
 
 const EDITAVEL = ['rascunho', 'rejeitado'];

@@ -10,6 +10,47 @@ const CAMPOS_PERMISSAO = [
   'pode_conferir_fatura', 'pode_emitir_cte',
 ];
 
+// Módulos da transportadora que podem ser bloqueados por usuário (além das permissões acima, que dizem o papel).
+// prefixos: rotas da API do módulo; paginas: telas do menu (para esconder). livres: rotas que outras telas usam.
+const MODULOS = {
+  operacao: { nome: 'Operação (CT-e, MDF-e, coletas, cotações, entregas, parceiros)', prefixos: ['/api/cte-emissao', '/api/mdfe', '/api/nfse', '/api/coletas', '/api/cotacoes', '/api/romaneios', '/api/ocorrencias', '/api/conferencias', '/api/etiquetas', '/api/monitoramento', '/api/transferencias', '/api/gr', '/api/paletes', '/api/parceiros'],
+    paginas: ['emissao-cte', 'coletas', 'cotacoes', 'conferencia', 'ocorrencias', 'monitoramento', 'paletes', 'parceiros', 'filiais'] },
+  frota: { nome: 'Frota', prefixos: ['/api/frota'], paginas: ['frota'] },
+  armazem: { nome: 'Armazém', prefixos: ['/api/armazem'], paginas: ['armazem'] },
+  faturamento: { nome: 'Faturamento e contas a receber', prefixos: ['/api/faturamento', '/api/regua', '/api/servicos-extras'], paginas: ['faturamento'] },
+  pagar: { nome: 'Contas a pagar, acerto de viagem e comissões', prefixos: ['/api/contas-pagar', '/api/acertos', '/api/comissoes', '/api/pef'], paginas: ['pagar', 'comissoes'] },
+  bancos: { nome: 'Caixa e bancos', prefixos: ['/api/bancos'], livres: ['/api/bancos/contas/opcoes'], paginas: ['bancos'] },
+  fiscal: { nome: 'Fiscal e contabilidade', prefixos: ['/api/contabil', '/api/gnre'], paginas: ['contabil'] },
+  sac: { nome: 'SAC (chamados)', prefixos: ['/api/sac'], paginas: ['sac'] },
+  gerencial: { nome: 'Painel gerencial, margem e centros de custo', prefixos: ['/api/painel-transporte', '/api/centros-custo'], paginas: ['painel-transporte', 'centros'] },
+};
+function moduloDaRota(url) {
+  const c = String(url || '').split('?')[0];
+  return Object.keys(MODULOS).find((k) => {
+    const m = MODULOS[k];
+    if ((m.livres || []).some((l) => c === l || c.startsWith(`${l}/`))) return false;
+    return m.prefixos.some((p) => c === p || c.startsWith(`${p}/`));
+  }) || null;
+}
+const moduloBloqueado = (usuario, modulo) => !!modulo && usuario?.perfil !== 'admin' && (usuario?.modulos_bloqueados || []).includes(modulo);
+const paginaBloqueada = (usuario, pagina) => Object.keys(MODULOS).some((k) => MODULOS[k].paginas.includes(pagina) && moduloBloqueado(usuario, k));
+const limparModulos = (lista) => [...new Set((Array.isArray(lista) ? lista : []).filter((m) => MODULOS[m]))];
+
+// Filiais do usuário: vazio = todas. unidadesDo(req) devolve null quando não há limite.
+const unidadesDo = (req) => {
+  if (req.usuario?.perfil === 'admin') return null;
+  const u = (req.usuario?.unidades_permitidas || []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  return u.length ? u : null;
+};
+// Condição SQL "o documento é de uma das filiais do usuário" (ou não tem filial). colunas: as colunas de filial do documento.
+function condicaoUnidades(req, colunas, params) {
+  const u = unidadesDo(req);
+  if (!u) return 'TRUE';
+  params.push(u);
+  const n = params.length;
+  return `(${colunas.map((c) => `${c} = ANY($${n}::int[])`).join(' OR ')} OR (${colunas.map((c) => `${c} IS NULL`).join(' AND ')}))`;
+}
+
 const ehAdmin = (req) => req.usuario?.perfil === 'admin';
 
 // Admin e quem tem "Ver tudo" enxergam os fretes de todos os clientes.
@@ -104,4 +145,4 @@ function freteDoCliente(nomeParametro = 'id') {
   };
 }
 
-module.exports = { textoLimpo, bloquearCteCancelado, freteDoCliente, CAMPOS_PERMISSAO, ehAdmin, vePotudo, temAlguma, permitirAlguma, consultaCliente, sqlComEscopoCliente, podeVerCliente };
+module.exports = { MODULOS, moduloDaRota, moduloBloqueado, paginaBloqueada, limparModulos, unidadesDo, condicaoUnidades, textoLimpo, bloquearCteCancelado, freteDoCliente, CAMPOS_PERMISSAO, ehAdmin, vePotudo, temAlguma, permitirAlguma, consultaCliente, sqlComEscopoCliente, podeVerCliente };

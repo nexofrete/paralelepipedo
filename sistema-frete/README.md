@@ -161,6 +161,11 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 - **Usuário interno**: você escolhe manualmente o que essa pessoa pode fazer (ver todos os registros, enviar XML, editar, excluir, gerenciar outros usuários)
 - **Administrador**: acesso total (só o admin pode criar outro admin)
 
+**Perfis de acesso, módulos e filiais** (usuário interno):
+- **Perfis de acesso** (`perfis_acesso`, rotas `/api/perfis-acesso`, tela `public/js/acessos.js`): nome + permissões + módulos bloqueados. O usuário guarda `perfil_acesso_id`; escolher o perfil no cadastro marca tudo; `PUT` no perfil copia para os usuários dele (menos administradores). O 2FA não faz parte do perfil; só o admin cria perfil com "Gerenciar usuários".
+- **Módulos bloqueados** (`usuarios.modulos_bloqueados`): `MODULOS` em `src/permissoes.js` (operação, frota, armazém, faturamento, contas a pagar, bancos, fiscal, SAC, gerencial) liga cada módulo às rotas da API e às telas. `autenticar` recusa (403) a rota de módulo bloqueado (`moduloDaRota`); a tela esconde o menu e o "Ir para"; a Hoje tira os cartões. Só restringe: as permissões de base continuam valendo; admin nunca é bloqueado.
+- **Filiais** (`usuarios.unidades_permitidas`, vazio = todas): `condicaoUnidades` filtra CT-e emitidos (origem, atual ou destino; abrir e ações de um CT-e de outra filial = 404), romaneios, contas a pagar (lista e resumo) e "Onde está a mercadoria". Documentos sem filial aparecem para todos.
+
 **Links de download sem a senha de acesso.** Os links que abrem em outra aba (DACTE, XML, boleto, fatura, planilhas, anexos, imagens do mapa) não levam o token da sessão: na hora do clique a tela pede `POST /api/auth/ticket` (no portal, `POST /api/portal/ticket`) e troca o `?token=` por um ticket que só vale para aquele caminho, só GET, por 2 minutos (mapa da roteirização: 8 horas, só `/api/roteirizacao/mapa/`). O servidor recusa o token da sessão na URL e o ticket no cabeçalho. Na tela, isso fica em `public/js/linkSeguro.js` (cliques, nova aba, `window.open` e `LinkSeguro.ir(url)` para baixar na mesma aba); no servidor, em `src/ticketDownload.js`.
 
 ## Importar vários XML de uma vez

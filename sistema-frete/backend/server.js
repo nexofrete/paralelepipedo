@@ -225,6 +225,7 @@ app.use('/api/indicadores', require('./src/routes/indicadores'));
 app.use('/api/nfe-cte', require('./src/routes/nfeCte'));
 app.use('/api/notas', require('./src/routes/notas'));
 app.use('/api/ctes-recebidos', require('./src/routes/ctesRecebidos'));
+app.use('/api/perfis-acesso', require('./src/routes/perfisAcesso'));
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/pasta-xml', pastaXmlRoutes);
 app.use('/api/cte-emissao', cteEmissaoRoutes);

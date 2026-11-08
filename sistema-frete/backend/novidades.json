@@ -10,6 +10,14 @@
           "texto": "Menu organizado por área (Operação, Financeiro, Frota, Gestão, Notas e fretes, Configuração), tela \"Hoje\" com o que precisa de atenção, códigos de tela no \"Ir para\" (Ctrl+K) e menu em gaveta no celular."
         },
         {
+          "area": "Segurança",
+          "texto": "Perfis de acesso com nome (ex.: Faturamento, Operador de CT-e, Auditor): aplicam as permissões e os módulos de uma vez, e mudar o perfil atualiza todos os usuários dele."
+        },
+        {
+          "area": "Segurança",
+          "texto": "Módulos por usuário: Operação, Frota, Armazém, Faturamento, Contas a pagar, Caixa e bancos, Fiscal, SAC e Painel gerencial podem ser tirados de cada usuário (somem do menu e o servidor recusa o acesso). E filiais por usuário: quem é limitado a filiais só vê os CT-e, romaneios, contas a pagar e o estoque delas."
+        },
+        {
           "area": "Documentos",
           "texto": "Notas fiscais: imprimir vários DANFE de uma vez (as notas marcadas ou as do filtro), um por folha, para imprimir ou salvar tudo num PDF só; a nota cancelada sai com a marca CANCELADA. E os eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega) aparecem ao abrir a nota, com o XML de cada um."
         },

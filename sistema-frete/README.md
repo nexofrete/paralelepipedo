@@ -217,6 +217,8 @@ Juros ao mês, multa, protesto e baixa automática são configurados uma vez e v
 
 ## Tabela de frete por cliente
 
+Trechos da tabela (`linhaFaixa` em `public/js/dashboard.js`): "Cidades dessa praça" é um `textarea` que cresce com o texto (`ajustarAlturaCidades`; quebras de linha viram vírgula em `lerFaixasDoFormulario`), com larguras mínimas nas colunas Origem, Destino, Região, Tipo de carga e Cidades.
+
 Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadastros → Tabelas de Preço**, na tabela da própria empresa.
 
 - **⭐ Copiar para um cliente** (abra a tabela geral):

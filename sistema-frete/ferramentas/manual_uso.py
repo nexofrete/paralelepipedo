@@ -401,7 +401,8 @@ def parte_uso(g):
     s.append(P('Cada tabela tem trechos por destino, região e tipo de carga. Preencha as <b>cidades dessa praça</b> '
                '(separadas por vírgula, ou pelo seletor de cidades): é por elas que o sistema acha o trecho certo de cada '
                'frete. Algumas transportadoras organizam a capital por <b>bairro</b> — o sistema aceita bairro ou cidade. '
-               'Os trechos também podem ser importados de uma planilha ("Importar via Excel").'))
+               'Os trechos também podem ser importados de uma planilha ("Importar via Excel"). A caixa de cidades cresce para '
+               'mostrar a lista inteira (Enter vira vírgula ao salvar), e as colunas Região e Tipo de carga são mais largas.'))
     s += h3('Modo de cálculo por volume (padrão)')
     s += lista(['Volumes menor ou igual ao Volume Mínimo: cobra o <b>Frete Mínimo</b>.',
                 'Volumes acima do mínimo: <b>Valor por Volume × quantidade de volumes</b>.'])

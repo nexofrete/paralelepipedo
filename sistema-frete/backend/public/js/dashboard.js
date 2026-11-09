@@ -2441,12 +2441,13 @@ function linhaFaixa(faixa = {}) {
   tr.innerHTML = `
     <td style="padding:4px;"><input type="text" class="fx-origem" value="${faixa.origem ?? ''}" placeholder="Ex: RIO I" style="${estiloInput}" /></td>
     <td style="padding:4px;"><input type="text" class="fx-destino" value="${faixa.destino ?? ''}" placeholder="Ex: CAPITAL - SP" style="${estiloInput}" /></td>
-    <td style="padding:4px;"><input type="text" class="fx-regiao" value="${faixa.regiao ?? ''}" placeholder="Ex: Capital, Interior 1, Litorânea" style="${estiloInput}" /></td>
-    <td style="padding:4px;"><input type="text" class="fx-tipo" value="${faixa.tipo_carga ?? ''}" placeholder="Ex: CAIXA / TAPETE" style="${estiloInput}" /></td>
-    <td style="padding:4px; display:flex; gap:4px;">
-      <input type="text" class="fx-cidades" value="${faixa.cidades ?? ''}" placeholder="Ex: São Paulo, Guarulhos, Osasco" style="${estiloInput}" />
+    <td style="padding:4px;"><input type="text" class="fx-regiao" value="${faixa.regiao ?? ''}" title="${faixa.regiao ?? ''}" placeholder="Ex: Capital, Interior 1, Litorânea" style="${estiloInput}" /></td>
+    <td style="padding:4px;"><input type="text" class="fx-tipo" value="${faixa.tipo_carga ?? ''}" title="${faixa.tipo_carga ?? ''}" placeholder="Ex: CAIXA / TAPETE" style="${estiloInput}" /></td>
+    <td style="padding:4px; vertical-align:top;"><div style="display:flex; gap:4px; align-items:flex-start;">
+      <textarea class="fx-cidades" rows="1" placeholder="Ex: São Paulo, Guarulhos, Osasco" style="${estiloInput} resize:vertical; min-height:36px; line-height:1.35; font:inherit; overflow:hidden;" oninput="ajustarAlturaCidades(this)">${faixa.cidades ?? ''}</textarea>
       <button type="button" style="flex-shrink:0; padding:0 8px; border-radius:8px; border:1px solid var(--borda); background:var(--bg-elevado); color:var(--texto); cursor:pointer;" title="Selecionar cidades por checkbox" onclick="abrirSeletorCidades(this)">🗺️</button>
     </td>
+    </div></td>
     <td style="padding:4px;">
       <select class="fx-modo" style="${estiloInput}" onchange="alternarModoCalculoTrecho(this)">
         <option value="volume" ${modo === 'volume' ? 'selected' : ''}>Por Volume</option>
@@ -2462,7 +2463,14 @@ function linhaFaixa(faixa = {}) {
     <td style="padding:4px; text-align:center;"><span style="cursor:pointer; color:var(--vermelho);" onclick="this.closest('tr').remove()">✕</span></td>
   `;
   alternarModoCalculoTrecho(tr.querySelector('.fx-modo'));
+  // A caixa de cidades cresce para mostrar o texto todo (depois de entrar na tela, quando já tem largura).
+  requestAnimationFrame(() => ajustarAlturaCidades(tr.querySelector('.fx-cidades')));
   return tr;
+}
+function ajustarAlturaCidades(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.max(36, el.scrollHeight + 2)}px`;
 }
 
 // Mostra só os campos relevantes pro modo escolhido (Volume x Peso), pra não
@@ -2497,7 +2505,7 @@ function lerFaixasDoFormulario() {
     destino: tr.querySelector('.fx-destino').value,
     regiao: tr.querySelector('.fx-regiao').value,
     tipo_carga: tr.querySelector('.fx-tipo').value,
-    cidades: tr.querySelector('.fx-cidades').value,
+    cidades: tr.querySelector('.fx-cidades').value.replace(/\s*\n+\s*/g, ', ').replace(/,\s*,/g, ',').trim(),
     modo_calculo: tr.querySelector('.fx-modo').value,
     valor_por_kg: paraNumeroMoeda(tr.querySelector('.fx-valor').value),
     volume_minimo: tr.querySelector('.fx-vol-min').value,
@@ -4669,6 +4677,7 @@ document.getElementById('btnAdicionarCidadesSelecionadas').addEventListener('cli
     if (!todas.some((c) => semAcento(c) === semAcento(nome))) todas.push(nome);
   });
   inputCidadesAlvo.value = todas.join(', ');
+  ajustarAlturaCidades(inputCidadesAlvo);
   painelSeletorCidades.classList.add('oculto');
 });
 

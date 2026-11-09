@@ -76,6 +76,35 @@ def parte_admin(g):
         'também abria o Faturamento e o Painel gerencial; eles aparecem como "Opera" para esses usuários até você mudar.',
         'O administrador sempre vê tudo. Usuário do tipo Cliente não usa a grade.',
     ])
+    s += h2('Modelos prontos por função')
+    s.append(P('Para não montar a grade do zero, há modelos com as telas, as ações e as permissões típicas de cada função. '
+               'Eles são só o ponto de partida: confira e ajuste antes de salvar.'))
+    s += tabela(['Modelo', 'O que já vem marcado'], [
+        ['Comercial', 'Cotações, coletas, clientes e SAC; consulta entregas, monitoramento e cadastros básicos'],
+        ['Emissor de CT-e', 'CT-e, MDF-e, NFS-e, veículos, coletas, romaneios, ocorrências, conferência, EDI e cadastros básicos; '
+         'pode cancelar CT-e e NFS-e'],
+        ['Expedição e entregas', 'Romaneios, ocorrências, conferência, monitoramento, coletas, filiais, paletes e MDF-e; consulta '
+         'CT-e, veículos e armazém'],
+        ['Conferente e armazém', 'Conferência e etiquetas, armazém, filiais e paletes; consulta romaneios e ocorrências'],
+        ['Faturista', 'Faturamento e clientes; consulta CT-e, NFS-e, ocorrências e SAC; pode dar baixa em faturas'],
+        ['Contas a pagar', 'Contas a pagar, acerto de viagem e cadastros básicos (fornecedores); pode pagar e fechar acerto'],
+        ['Tesouraria', 'Caixa e bancos, faturamento e contas a pagar; pode dar baixa, pagar e estornar'],
+        ['Fiscal / contador', 'Fiscal e contabilidade; consulta CT-e, MDF-e, NFS-e, faturamento, contas a pagar e bancos'],
+        ['Frota', 'Frota, veículos e monitoramento; consulta acertos e contas a pagar'],
+        ['SAC / atendimento', 'SAC e ocorrências; consulta monitoramento, CT-e, coletas, cotações e romaneios'],
+        ['Gerente', 'Consulta todas as telas, opera o painel e os relatórios; aprova pagamento e valores altos'],
+        ['Auditor de fretes', 'Auditoria de frete e relatórios (embarcador); consulta notas, CT-e recebidos, financeiro e sinistros'],
+        ['Só consulta', 'Todas as telas em só consulta, sem nenhuma ação'],
+    ], [0.25, 0.75])
+    s += lista([
+        'No cadastro do usuário: <b>Começar de um modelo pronto</b> marca tudo de uma vez (o usuário não fica ligado ao modelo).',
+        'Em <b>Perfis de acesso</b>: <b>A partir de um modelo pronto</b> abre um perfil novo já preenchido; salve com o nome que '
+        'quiser. Quem segue o perfil é atualizado quando ele muda.',
+    ])
+    s += h2('Quem pode o quê (relatório)')
+    s.append(P('Em <b>Cadastros » Usuários</b>, o botão <b>📋 Quem pode o quê</b> mostra todos os usuários ativos lado a lado, tela '
+               'por tela (círculo cheio = opera, meio = só consulta, vazio = não vê), as ações sensíveis, as outras permissões e as '
+               'filiais. <b>Excel</b> baixa a mesma tabela para revisar com a direção. Para mudar, edite o usuário ou o perfil dele.'))
     s += h2('Filiais por usuário')
     s.append(P('Em <b>Filiais que este usuário enxerga</b>, marque as filiais dele. Nenhuma marcada = todas. Com filiais '
                'marcadas, ele só vê:'))

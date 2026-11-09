@@ -57,3 +57,19 @@ test('Acesso: migração = o que as permissões antigas davam; chaves derivadas 
   assert.strictEqual(l.telas.cte, 'opera'); assert.strictEqual(l.telas.mdfe, 'nenhum'); assert.ok(!('inventada' in l.telas));
   assert.deepStrictEqual(l.acoes, ['pagar']);
 });
+
+test('Acesso: os modelos prontos só usam telas, ações e permissões que existem', () => {
+  const telas = new Set(a.TELAS.map((t) => t.id));
+  const { CAMPOS_PERMISSAO } = require('../src/permissoes');
+  assert.ok(a.MODELOS.length >= 13);
+  for (const m of a.MODELOS) {
+    Object.keys(m.telas).forEach((t) => assert.ok(telas.has(t), `${m.id}: tela ${t}`));
+    Object.values(m.telas).forEach((n) => assert.ok(a.NIVEIS[n], `${m.id}: nível ${n}`));
+    m.acoes.forEach((x) => assert.ok(a.ACOES[x], `${m.id}: ação ${x}`));
+    Object.keys(m.permissoes).forEach((p) => assert.ok(CAMPOS_PERMISSAO.includes(p) && !a.CHAVES_DERIVADAS.includes(p), `${m.id}: permissão ${p}`));
+  }
+  const fat = a.catalogo().modelos.find((m) => m.id === 'faturista');
+  assert.strictEqual(fat.telas.faturamento, 'opera');
+  assert.strictEqual(fat.telas.bancos, 'nenhum');   // completado com "Não vê"
+  assert.ok(Object.values(a.catalogo().modelos.find((m) => m.id === 'consulta').telas).every((n) => n === 'consulta'));
+});

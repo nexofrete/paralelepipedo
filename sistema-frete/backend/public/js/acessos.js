@@ -96,6 +96,9 @@ window.Acessos = (() => {
     div.id = 'acSecao';
     div.style.cssText = 'grid-column:1 / -1; margin-top:14px; border-top:1px solid var(--borda); padding-top:12px;';
     div.innerHTML = `<div class="campo" style="margin-bottom:10px;"><label>Departamento</label><select id="acDepartamento"><option value="">—</option></select></div>
+      <div class="campo" style="margin-bottom:10px;"><label>Começar de um modelo pronto</label>
+        <select id="acModelo"><option value="">— escolher a função —</option></select>
+        <small style="color:var(--texto-fraco);">Marca as telas, as ações e as permissões típicas da função; depois é só ajustar. Não liga o usuário ao modelo.</small></div>
       <div class="campo" style="margin-bottom:10px;"><label>Perfil de acesso</label>
         <select id="acPerfil"><option value="">Sem perfil (permissões marcadas à mão)</option></select>
         <small style="color:var(--texto-fraco);">Escolher um perfil marca as permissões e os módulos dele. Quem segue um perfil é atualizado quando o perfil muda.</small></div>
@@ -105,6 +108,14 @@ window.Acessos = (() => {
       <div id="acFiliais" style="display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:6px;"></div></div>`;
     alvo.appendChild(div);
     $('acPerfil').addEventListener('change', () => aplicarPerfil(Number($('acPerfil').value)));
+    $('acModelo').addEventListener('change', () => {
+      const m = catalogo?.modelos.find((x) => x.id === $('acModelo').value);
+      if (!m) return;
+      Object.entries(PERMISSOES).forEach(([el, campo]) => { if ($(el) && !['pode_gerenciar_usuarios'].includes(campo) && !CHAVES_DA_GRADE.includes(el)) $(el).checked = !!m.permissoes?.[campo]; });
+      $('acGrade').innerHTML = htmlGrade('ac', m.telas, m.acoes); ligarGrade($('acGrade'), 'ac');
+      $('acPerfil').value = '';
+      mostrarAlerta(`Modelo "${m.nome}" aplicado. Confira e ajuste antes de salvar.`, { tipo: 'sucesso' });
+    });
   }
   // Grade: uma linha por tela (Não vê / Só consulta / Opera), por área, e as ações sensíveis.
   const NIVEL_COR = { nenhum: 'var(--texto-fraco)', consulta: '#f59e0b', opera: 'var(--verde)' };
@@ -154,6 +165,7 @@ window.Acessos = (() => {
     await carregarListas();
     if (!catalogo) catalogo = await apiFetch('/api/acesso/catalogo').then((r) => (r.ok ? r.json() : null)).catch(() => null);
     // Usuário novo ou sem grade: tudo "Opera" nas telas que as permissões marcadas abririam fica para o servidor; aqui começa vazio.
+    $('acModelo').innerHTML = `<option value="">— escolher a função —</option>${(catalogo?.modelos || []).map((m) => `<option value="${m.id}">${esc(m.nome)} — ${esc(m.descricao)}</option>`).join('')}`;
     $('acGrade').innerHTML = htmlGrade('ac', u?.acesso_telas || {}, u?.acesso_acoes || (u ? [] : []));
     ligarGrade($('acGrade'), 'ac');
     esconderChavesDaGrade(true);
@@ -204,6 +216,59 @@ window.Acessos = (() => {
   }
   botaoPerfis();
 
+  // ---------- Relatório "quem pode o quê" ----------
+  const SIMBOLO = { opera: ['●', 'var(--verde)', 'Opera'], consulta: ['◐', '#f59e0b', 'Só consulta'], nenhum: ['·', 'var(--texto-fraco)', 'Não vê'] };
+  function botaoRelatorio() {
+    const novo = $('btnNovoUsuario');
+    if (!novo || $('btnQuemPode')) return;
+    const b = document.createElement('button');
+    b.id = 'btnQuemPode'; b.className = 'btn btn-secundario'; b.style.cssText = 'width:auto; margin-right:8px;';
+    b.textContent = '📋 Quem pode o quê';
+    b.addEventListener('click', () => abrirRelatorio().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })));
+    novo.parentNode.insertBefore(b, $('btnPerfisAcesso') || novo);
+  }
+  botaoRelatorio();
+  async function abrirRelatorio() {
+    const r = await apiFetch('/api/perfis-acesso/relatorio');
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.erro || 'Erro ao montar o relatório.');
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay';
+    document.body.appendChild(fundo);
+    fundo.addEventListener('click', (e) => { if (e.target === fundo || e.target.closest('[data-ac-fechar]')) fundo.remove(); });
+    const areas = [...new Set(d.telas.map((t) => t.area))];
+    const us = d.usuarios;
+    const cab = `<tr><th style="text-align:left; position:sticky; left:0; background:var(--fundo-card, #fff); min-width:220px;">Tela</th>${us.map((u) => `<th title="${esc(u.email || '')}" style="font-size:11.5px; min-width:84px; vertical-align:bottom;">${esc(u.nome)}<br><small style="font-weight:400; color:var(--texto-fraco);">${u.perfil === 'admin' ? 'administrador' : esc(u.perfil_acesso || u.funcao || 'interno')}</small></th>`).join('')}</tr>`;
+    const linha = (rotulo, celula) => `<tr><td style="position:sticky; left:0; background:var(--fundo-card, #fff); font-size:12.5px;">${rotulo}</td>${us.map((u) => `<td style="text-align:center;">${celula(u)}</td>`).join('')}</tr>`;
+    const BOLA = { opera: 'background:var(--verde); border:2px solid var(--verde);', consulta: 'background:linear-gradient(90deg, #f59e0b 50%, transparent 50%); border:2px solid #f59e0b;', nenhum: 'background:transparent; border:2px solid var(--borda);' };
+    const nivelCel = (n) => `<span title="${(SIMBOLO[n] || SIMBOLO.nenhum)[2]}" style="display:inline-block; width:12px; height:12px; border-radius:50%; box-sizing:border-box; ${BOLA[n] || BOLA.nenhum}"></span>`;
+    const sim = (v) => (v ? '<span style="color:var(--verde); font-weight:700;">✓</span>' : '<span style="color:var(--texto-fraco);">·</span>');
+    const corpo = `${areas.map((a) => `<tr><td colspan="${us.length + 1}" style="background:var(--fundo-sutil, rgba(127,127,127,.08)); font-weight:700; font-size:12px;">${esc(a)}</td></tr>
+        ${d.telas.filter((t) => t.area === a).map((t) => linha(esc(t.nome), (u) => nivelCel(u.telas[t.id]))).join('')}`).join('')}
+      <tr><td colspan="${us.length + 1}" style="background:var(--fundo-sutil, rgba(127,127,127,.08)); font-weight:700; font-size:12px;">Ações sensíveis</td></tr>
+      ${Object.entries(d.acoes).map(([k, n]) => linha(esc(n), (u) => sim(u.acoes.includes(k)))).join('')}
+      <tr><td colspan="${us.length + 1}" style="background:var(--fundo-sutil, rgba(127,127,127,.08)); font-weight:700; font-size:12px;">Outras permissões</td></tr>
+      ${Object.entries(d.chaves).map(([k, n]) => linha(esc(n), (u) => sim(u.chaves[k]))).join('')}
+      ${linha('Filiais', (u) => `<small>${esc(u.filiais ? u.filiais.join(', ') : 'todas')}</small>`)}`;
+    fundo.innerHTML = `<div class="painel modal-card" style="max-width:96vw; width:100%; max-height:92vh; overflow:auto; padding:18px 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><h3 style="margin:0;">📋 Quem pode o quê</h3>
+        <span><button class="btn btn-secundario" id="acRelExcel" style="width:auto;">⬇ Excel</button> <span style="cursor:pointer; font-size:18px; margin-left:8px;" data-ac-fechar>✕</span></span></div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin:6px 0 10px;">${us.length} usuário(s) ativo(s). ${['opera', 'consulta', 'nenhum'].map((k) => `${nivelCel(k)} ${SIMBOLO[k][2].toLowerCase()}`).join(' · ')}.
+        Para mudar, clique em Editar no usuário (ou no perfil de acesso dele).</p>
+      <div style="overflow:auto;"><table class="edi-tabela" style="font-size:12.5px;"><thead>${cab}</thead><tbody>${corpo}</tbody></table></div></div>`;
+    fundo.querySelector('#acRelExcel').addEventListener('click', () => {
+      const colunas = ['Área', 'Tela / permissão', ...us.map((u) => u.nome)];
+      const linhas = [
+        ...d.telas.map((t) => [t.area, t.nome, ...us.map((u) => SIMBOLO[u.telas[t.id]]?.[2] || 'Não vê')]),
+        ...Object.entries(d.acoes).map(([k, n]) => ['Ações sensíveis', n, ...us.map((u) => (u.acoes.includes(k) ? 'Sim' : 'Não'))]),
+        ...Object.entries(d.chaves).map(([k, n]) => ['Outras permissões', n, ...us.map((u) => (u.chaves[k] ? 'Sim' : 'Não'))]),
+        ['Filiais', 'Filiais que enxerga', ...us.map((u) => (u.filiais ? u.filiais.join(', ') : 'todas'))],
+        ['Usuário', 'Perfil de acesso', ...us.map((u) => (u.perfil === 'admin' ? 'administrador' : u.perfil_acesso || '—'))],
+      ];
+      window.exportarExcel?.(`quem-pode-o-que-${new Date().toISOString().slice(0, 10)}`, [{ nome: 'Quem pode o quê', colunas, linhas }]).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+    });
+  }
+
   async function abrirPerfis() {
     await carregarListas();
     const fundo = document.createElement('div');
@@ -224,8 +289,11 @@ window.Acessos = (() => {
           <td style="white-space:nowrap; text-align:right;"><button class="btn btn-secundario" data-ac-editar="${p.id}" style="width:auto; padding:4px 10px; font-size:12px;">Editar</button>
             <button class="btn btn-secundario" data-ac-excluir="${p.id}" style="width:auto; padding:4px 10px; font-size:12px;">Excluir</button></td></tr>`).join('')}</tbody></table>`
         : '<p style="color:var(--texto-fraco);">Nenhum perfil ainda.</p>'}
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;"><button class="btn btn-primario" id="acNovoPerfil" style="width:auto;">＋ Novo perfil</button><button class="btn btn-secundario" data-ac-fechar style="width:auto;">Fechar</button></div>`;
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:14px; flex-wrap:wrap;">
+        <select id="acModeloPerfil" style="width:auto;"><option value="">＋ A partir de um modelo pronto…</option>${(catalogo?.modelos || []).filter((m) => !perfis.some((p) => p.nome === m.nome)).map((m) => `<option value="${m.id}">${esc(m.nome)}</option>`).join('')}</select>
+        <button class="btn btn-primario" id="acNovoPerfil" style="width:auto;">＋ Novo perfil</button><button class="btn btn-secundario" data-ac-fechar style="width:auto;">Fechar</button></div>`;
     $('acNovoPerfil').addEventListener('click', () => formPerfil(null));
+    $('acModeloPerfil').addEventListener('change', () => { const m = catalogo?.modelos.find((x) => x.id === $('acModeloPerfil').value); if (m) formPerfil({ nome: m.nome, descricao: m.descricao, telas: m.telas, acoes: m.acoes, permissoes: m.permissoes }); });
     corpo.querySelectorAll('[data-ac-editar]').forEach((b) => b.addEventListener('click', () => formPerfil(perfis.find((p) => p.id === Number(b.dataset.acEditar)))));
     corpo.querySelectorAll('[data-ac-excluir]').forEach((b) => b.addEventListener('click', async () => {
       const p = perfis.find((x) => x.id === Number(b.dataset.acExcluir));
@@ -237,7 +305,7 @@ window.Acessos = (() => {
   }
   function formPerfil(p) {
     const corpo = $('acPerfisCorpo');
-    corpo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">${p ? `Editar perfil "${esc(p.nome)}"` : 'Novo perfil de acesso'}</h3><span style="cursor:pointer; font-size:18px;" data-ac-fechar>✕</span></div>
+    corpo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">${p?.id ? `Editar perfil "${esc(p.nome)}"` : 'Novo perfil de acesso'}</h3><span style="cursor:pointer; font-size:18px;" data-ac-fechar>✕</span></div>
       <div style="display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-top:12px;">
         <div class="campo" style="margin:0;"><label>Nome</label><input id="acPNome" maxlength="80" value="${esc(p?.nome || '')}" placeholder="Ex.: Faturamento" /></div>
         <div class="campo" style="margin:0;"><label>Descrição (opcional)</label><input id="acPDesc" maxlength="300" value="${esc(p?.descricao || '')}" /></div></div>
@@ -257,10 +325,10 @@ window.Acessos = (() => {
         modulos_bloqueados: [],
         ...(() => { const g = lerGrade($('acPGrade'), 'acp'); return { telas: g.telas, acoes: g.acoes }; })(),
       };
-      const r = await apiFetch(p ? `/api/perfis-acesso/${p.id}` : '/api/perfis-acesso', { method: p ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpoReq) });
+      const r = await apiFetch(p?.id ? `/api/perfis-acesso/${p.id}` : '/api/perfis-acesso', { method: p?.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpoReq) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { $('acPErro').textContent = j.erro || 'Erro ao salvar.'; $('acPErro').classList.add('visivel'); return; }
-      if (p && j.usuarios_atualizados) mostrarAlerta(`Perfil salvo: ${j.usuarios_atualizados} usuário(s) atualizado(s).`, { tipo: 'sucesso' });
+      if (p?.id && j.usuarios_atualizados) mostrarAlerta(`Perfil salvo: ${j.usuarios_atualizados} usuário(s) atualizado(s).`, { tipo: 'sucesso' });
       await carregarListas(); listaPerfis();
       if (typeof carregarUsuarios === 'function') carregarUsuarios();
     });

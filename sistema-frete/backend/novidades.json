@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "Segurança",
+          "texto": "Modelos prontos por função (Comercial, Emissor de CT-e, Expedição, Conferente, Faturista, Contas a pagar, Tesouraria, Fiscal, Frota, SAC, Gerente, Auditor de fretes, Só consulta) no cadastro do usuário e nos perfis de acesso, e o relatório \"Quem pode o quê\": todos os usuários lado a lado, tela por tela, com as ações e as permissões, e exportação para Excel."
+        },
+        {
+          "area": "Segurança",
           "texto": "Acesso por tela: no cadastro do usuário, cada tela do sistema tem Não vê, Só consulta ou Opera, e as ações sensíveis (cancelar CT-e, dar baixa, pagar, estornar, cancelar faturas e contas, fechar acerto) têm chave própria. O servidor confere em cada pedido. Os usuários atuais ficaram com o mesmo acesso que tinham: revise e tire o que não deve (quem emite CT-e via o Faturamento e o Painel gerencial)."
         },
         {

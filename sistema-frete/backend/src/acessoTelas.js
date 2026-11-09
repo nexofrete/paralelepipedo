@@ -156,13 +156,71 @@ async function migrar(pool) {
   if (rows.length || perfis.length) console.log(`[acesso] grade de telas criada para ${rows.length} usuário(s) e ${perfis.length} perfil(is), igual ao acesso que já tinham.`);
 }
 
+// Modelos prontos por função: ponto de partida (o administrador ajusta). Tela que não aparece = "Não vê".
+// permissoes: as chaves que continuam no formulário (ver todos, editar registros, aprovar...).
+const O = 'opera'; const C = 'consulta';
+const todas = (nivel, exceto = {}) => ({ ...Object.fromEntries(TELAS.map((t) => [t.id, nivel])), ...exceto });
+const MODELOS = [
+  { id: 'comercial', nome: 'Comercial', descricao: 'Cotações e coletas, cadastro de clientes e acompanhamento das entregas',
+    telas: { cotacoes: O, coletas: O, clientes: O, cadastros_basicos: C, ocorrencias: C, monitoramento: C, sac: O }, acoes: [], permissoes: { pode_editar_registros: true } },
+  { id: 'emissor_cte', nome: 'Emissor de CT-e', descricao: 'CT-e, MDF-e e NFS-e, com a carga, a coleta e o EDI',
+    telas: { cte: O, mdfe: O, nfse: O, veiculos: O, coletas: O, cotacoes: C, romaneios: O, ocorrencias: O, conferencia: O, edi: O, monitoramento: C, clientes: C, cadastros_basicos: O }, acoes: ['cancelar_documento'], permissoes: {} },
+  { id: 'expedicao', nome: 'Expedição e entregas', descricao: 'Romaneios, ocorrências, conferência, monitoramento e MDF-e da viagem',
+    telas: { romaneios: O, ocorrencias: O, conferencia: O, monitoramento: O, coletas: O, filiais: O, paletes: O, mdfe: O, veiculos: C, cte: C, armazem: C, cadastros_basicos: C }, acoes: [], permissoes: {} },
+  { id: 'conferente', nome: 'Conferente e armazém', descricao: 'Bipagem, etiquetas, armazém e transferências entre filiais',
+    telas: { conferencia: O, armazem: O, filiais: O, paletes: O, romaneios: C, ocorrencias: C }, acoes: [], permissoes: {} },
+  { id: 'faturista', nome: 'Faturista', descricao: 'Faturas, boletos e cobrança; vê os CT-e e as entregas',
+    telas: { faturamento: O, cte: C, nfse: C, ocorrencias: C, sac: C, clientes: O, cadastros_basicos: C }, acoes: ['receber'], permissoes: { pode_editar_registros: true } },
+  { id: 'contas_pagar', nome: 'Contas a pagar', descricao: 'Lança e paga as contas, acerto de viagem e fornecedores',
+    telas: { pagar: O, acertos: O, centros: C, frota: C, fiscal: C, cadastros_basicos: O }, acoes: ['pagar', 'fechar_acerto'], permissoes: {} },
+  { id: 'tesouraria', nome: 'Tesouraria', descricao: 'Caixa e bancos, recebimentos e pagamentos, conciliação',
+    telas: { bancos: O, faturamento: O, pagar: O, acertos: C, comissoes: C, centros: C, cadastros_basicos: C }, acoes: ['receber', 'pagar', 'estornar'], permissoes: {} },
+  { id: 'fiscal', nome: 'Fiscal / contador', descricao: 'Livros, notas de entrada, GNRE e pacote do contador; vê documentos e financeiro',
+    telas: { fiscal: O, cte: C, mdfe: C, nfse: C, faturamento: C, pagar: C, bancos: C, centros: C, cadastros_basicos: C }, acoes: [], permissoes: {} },
+  { id: 'frota', nome: 'Frota', descricao: 'Veículos, abastecimentos, manutenções, documentos, pneus e jornada',
+    telas: { frota: O, veiculos: O, monitoramento: O, acertos: C, pagar: C, cadastros_basicos: O }, acoes: [], permissoes: {} },
+  { id: 'sac', nome: 'SAC / atendimento', descricao: 'Chamados e ocorrências; consulta coletas, cotações e CT-e',
+    telas: { sac: O, ocorrencias: O, monitoramento: C, cte: C, coletas: C, cotacoes: C, romaneios: C, clientes: C }, acoes: [], permissoes: {} },
+  { id: 'gerente', nome: 'Gerente', descricao: 'Consulta tudo, painel e relatórios; aprova os valores acima da alçada',
+    telas: todas(C, { painel: O, relatorios: O }), acoes: [], permissoes: { pode_ver_todos: true, pode_aprovar_pagamento: true, pode_aprovar_valores_altos: true } },
+  { id: 'auditor', nome: 'Auditor de fretes (embarcador)', descricao: 'Auditoria de frete, conferência de faturas das transportadoras e relatórios',
+    telas: { auditoria: O, relatorios: O, notas: C, ctes_recebidos: C, financeiro_emb: C, sinistros: C, cadastros_basicos: C }, acoes: [], permissoes: { pode_ver_todos: true, pode_conferir_fatura: true } },
+  { id: 'consulta', nome: 'Só consulta', descricao: 'Vê todas as telas, sem alterar nada',
+    telas: todas(C), acoes: [], permissoes: { pode_ver_todos: true } },
+];
+
 // Para a tela (menu, formulário).
 function catalogo() {
   return {
     niveis: NIVEIS,
     telas: TELAS.map(({ id, area, nome, desc, menu, abas }) => ({ id, area, nome, desc, menu, abas: abas || [] })),
     acoes: Object.fromEntries(Object.entries(ACOES).map(([k, a]) => [k, a.nome])),
+    modelos: MODELOS.map((m) => ({ ...m, telas: limparGrade(m.telas, m.acoes).telas })),
   };
+}
+
+// Relatório "quem pode o quê": cada usuário ativo (administradores e internos) com o nível de cada tela,
+// as ações e as chaves que continuam no formulário.
+const CHAVES_RELATORIO = { pode_ver_todos: 'Ver todos os registros', pode_enviar_xml: 'Enviar XML', pode_editar_registros: 'Editar / lançar registros',
+  pode_excluir_registros: 'Excluir registros', pode_gerenciar_usuarios: 'Gerenciar usuários', pode_gerenciar_transportadoras: 'Gerenciar transportadoras',
+  pode_gerenciar_tabelas_preco: 'Gerenciar tabelas de preço', pode_aprovar_pagamento: 'Aprovar pagamento', pode_aprovar_valores_altos: 'Aprovar valores altos',
+  pode_conferir_fatura: 'Conferir fatura da transportadora' };
+async function relatorio(pool) {
+  const { rows } = await pool.query(`SELECT u.*, p.nome AS perfil_acesso_nome FROM usuarios u LEFT JOIN perfis_acesso p ON p.id = u.perfil_acesso_id
+    WHERE u.ativo AND u.perfil IN ('admin', 'interno') ORDER BY (u.perfil = 'admin') DESC, u.nome`);
+  const { rows: unidades } = await pool.query('SELECT id, COALESCE(sigla, nome) AS nome FROM unidades').catch(() => ({ rows: [] }));
+  const usuarios = rows.map((u) => {
+    const admin = u.perfil === 'admin';
+    const grade = admin ? null : (u.acesso_telas || gradeDoLegado(u).telas);
+    return {
+      id: u.id, nome: u.nome, email: u.email, funcao: u.funcao, perfil: u.perfil, perfil_acesso: u.perfil_acesso_nome || null, ultimo_acesso: u.ultimo_acesso,
+      telas: Object.fromEntries(TELAS.map((t) => [t.id, admin ? 'opera' : (grade[t.id] || 'nenhum')])),
+      acoes: admin ? Object.keys(ACOES) : (u.acesso_acoes == null ? Object.keys(ACOES) : u.acesso_acoes),
+      chaves: Object.fromEntries(Object.keys(CHAVES_RELATORIO).map((c) => [c, admin || !!u[c]])),
+      filiais: (u.unidades_permitidas || []).length ? unidades.filter((x) => u.unidades_permitidas.includes(x.id)).map((x) => x.nome) : null,
+    };
+  });
+  return { ...catalogo(), chaves: CHAVES_RELATORIO, usuarios };
 }
 
 // O destino da tela Hoje (ir + aba) pertence a uma tela bloqueada?
@@ -173,4 +231,4 @@ function destinoBloqueado(u, destino) {
   return !!t && nivelDe(u, t.id) === 'nenhum';
 }
 
-module.exports = { NIVEIS, TELAS, ACOES, CHAVES_DERIVADAS, PORID, telaDaRota, acaoDaRota, nivelDe, temAcao, conferir, gradeDoLegado, limparGrade, chavesDaGrade, migrar, catalogo, destinoBloqueado, usaGrade };
+module.exports = { MODELOS, relatorio, NIVEIS, TELAS, ACOES, CHAVES_DERIVADAS, PORID, telaDaRota, acaoDaRota, nivelDe, temAcao, conferir, gradeDoLegado, limparGrade, chavesDaGrade, migrar, catalogo, destinoBloqueado, usaGrade };

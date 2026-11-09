@@ -44,6 +44,11 @@ router.get('/', autenticar, gerenciar, async (req, res) => {
   } catch (err) { falha(res, err, 'Erro ao listar os perfis.'); }
 });
 
+// Relatório "quem pode o quê" (telas × usuários, ações e chaves).
+router.get('/relatorio', autenticar, gerenciar, async (req, res) => {
+  try { res.json(await require('../acessoTelas').relatorio(pool)); } catch (err) { falha(res, err, 'Erro ao montar o relatório.'); }
+});
+
 router.post('/', autenticar, gerenciar, async (req, res) => {
   try {
     const d = lerCorpo(req);

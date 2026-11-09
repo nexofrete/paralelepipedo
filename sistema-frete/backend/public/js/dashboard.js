@@ -1617,6 +1617,36 @@ function resumoPermissoes(u) {
   return `${lista.join(', ') || 'Nenhuma'}${extra ? ` · ${extra}` : ''}`;
 }
 
+// Sugestões do campo Função (o campo aceita qualquer texto): as funções comuns de transportadora e de logística do
+// embarcador, as dos modelos de acesso e as que já existem nos usuários.
+const FUNCOES_COMUNS = [
+  // Direção e gestão
+  'Diretor', 'Diretor Comercial', 'Diretor Financeiro', 'Diretor de Operações', 'Sócio', 'Gerente Geral', 'Gerente de Filial',
+  'Gerente de Operações', 'Gerente Comercial', 'Gerente Financeiro', 'Gerente Administrativo', 'Gerente de Logística', 'Gerente de Frota',
+  'Coordenador de Operações', 'Coordenador de Logística', 'Coordenador de Transportes', 'Coordenador Financeiro', 'Coordenador de Frota',
+  'Supervisor de Operações', 'Supervisor de Expedição', 'Supervisor de Armazém', 'Supervisor de Frota', 'Encarregado de Pátio',
+  // Operação
+  'Emissor de CT-e', 'Analista de Transportes', 'Assistente de Transportes', 'Auxiliar de Transportes', 'Programador de Cargas',
+  'Programador de Coletas', 'Roteirizador', 'Despachante', 'Operador de Expedição', 'Auxiliar de Expedição', 'Conferente',
+  'Líder de Conferência', 'Operador de Empilhadeira', 'Almoxarife', 'Auxiliar de Armazém', 'Analista de Armazém', 'Monitor de Rastreamento',
+  'Analista de Monitoramento', 'Analista de Gerenciamento de Risco', 'Controlador de Tráfego', 'Analista de Ocorrências', 'Analista de Entregas',
+  'Motorista', 'Motorista de Entregas', 'Ajudante de Carga e Descarga', 'Analista de EDI',
+  // Comercial e atendimento
+  'Comercial', 'Vendedor', 'Representante Comercial', 'Executivo de Contas', 'Analista Comercial', 'Assistente Comercial',
+  'Cotação de Fretes', 'SAC / Atendimento', 'Atendente', 'Analista de Atendimento', 'Pós-venda',
+  // Financeiro e administrativo
+  'Financeiro', 'Analista Financeiro', 'Assistente Financeiro', 'Auxiliar Financeiro', 'Faturista', 'Faturamento', 'Contas a Receber',
+  'Cobrança', 'Contas a Pagar', 'Tesouraria', 'Tesoureiro', 'Fiscal', 'Analista Fiscal', 'Contador', 'Assistente Contábil', 'Controladoria',
+  'Analista de Custos', 'Compras', 'Comprador', 'Administrativo', 'Assistente Administrativo', 'Auxiliar Administrativo', 'Recepção',
+  'Recursos Humanos', 'Departamento Pessoal',
+  // Frota
+  'Analista de Frota', 'Assistente de Frota', 'Mecânico', 'Encarregado de Manutenção', 'Borracheiro', 'Controle de Combustível',
+  // Logística do embarcador (fretes contratados)
+  'Analista de Fretes', 'Assistente de Logística', 'Analista de Logística', 'Auditor de Fretes', 'Analista de Auditoria de Fretes',
+  'Conferência de Faturas', 'Comprador de Fretes', 'Analista de Supply Chain',
+  // Tecnologia e outros
+  'TI', 'Analista de Sistemas', 'Suporte', 'Estagiário', 'Jovem Aprendiz', 'Consultor', 'Auditor Externo', 'Só consulta',
+];
 async function carregarUsuarios() {
   try {
     const resposta = await apiFetch('/api/auth/usuarios');
@@ -1624,8 +1654,7 @@ async function carregarUsuarios() {
     const usuarios = await resposta.json();
 
     // Sugestões pro campo Função: as que já existem + algumas comuns.
-    const funcoes = new Set(['Analista de Fretes', 'Assistente de Logística', 'Coordenador de Logística', 'Gerente de Logística',
-      'Financeiro', 'Faturamento', 'Expedição', 'Compras', 'Diretoria']);
+    const funcoes = new Set([...FUNCOES_COMUNS, ...((window.Acessos?.modelos?.() || []).map((m) => m.nome))]);
     usuarios.forEach((u) => { if (u.funcao) funcoes.add(u.funcao); });
     document.getElementById('listaFuncoes').innerHTML = [...funcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
       .map((f) => `<option value="${cfEsc(f)}"></option>`).join('');

@@ -19,6 +19,11 @@ def parte_admin(g):
         ['Cliente', 'Só vê os registros do próprio cliente. O nome do cliente precisa ser escrito exatamente como aparece '
          'na coluna "Cliente" dos registros.'],
     ], [0.25, 0.75])
+    s.append(P('O campo <b>Função</b> (cargo da pessoa) sugere uma lista com as funções comuns de transportadora e de '
+               'embarcador (direção, operação, comercial e atendimento, financeiro, frota, logística, tecnologia), os nomes '
+               'dos modelos prontos de acesso e as funções já usadas em outros usuários. Comece a digitar para filtrar; se a '
+               'função não estiver na lista, escreva como quiser. A função é só informativa: o que a pessoa pode fazer vem '
+               'das permissões e da grade de telas.'))
     s += h2('Permissões')
     s += tabela(['Permissão', 'Libera'], [
         ['Ver todos os registros', 'Ver fretes de todos os clientes. Sem ela, só os do cliente vinculado.'],

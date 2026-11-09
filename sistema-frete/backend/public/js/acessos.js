@@ -336,5 +336,5 @@ window.Acessos = (() => {
 
   // A lista de usuários já pode mostrar perfil, módulos e filiais.
   if (usuario?.perfil === 'admin' || usuario?.pode_gerenciar_usuarios) carregarListas().catch(() => {});
-  return { preencherFormulario, valoresDoFormulario, resumo, paginasBloqueadas, MODULOS, destinoBloqueado, nivel, esconderChavesDaGrade };
+  return { preencherFormulario, valoresDoFormulario, resumo, paginasBloqueadas, MODULOS, destinoBloqueado, nivel, esconderChavesDaGrade, modelos: () => catalogo?.modelos || [] };
 })();

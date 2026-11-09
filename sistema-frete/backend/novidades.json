@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "Cadastros",
+          "texto": "Usuários: o campo Função agora sugere mais de cem funções comuns (direção, operação, comercial e atendimento, financeiro, frota, logística do embarcador, tecnologia), os modelos prontos de acesso e as funções já usadas; continua aceitando qualquer texto."
+        },
+        {
+          "area": "Cadastros",
           "texto": "Clientes: dois cliques na linha abrem o cadastro numa janela por cima da lista (antes ele aparecia lá embaixo, depois de todos os clientes), com os campos no padrão dos outros formulários."
         },
         {

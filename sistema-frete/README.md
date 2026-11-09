@@ -163,6 +163,8 @@ Agora isso é feito direto pela tela: logado como administrador, vá em **Usuár
 - **Usuário interno**: você escolhe manualmente o que essa pessoa pode fazer (ver todos os registros, enviar XML, editar, excluir, gerenciar outros usuários)
 - **Administrador**: acesso total (só o admin pode criar outro admin)
 
+O campo **Função** (`#fFuncao`, datalist `#listaFuncoes`) sugere `FUNCOES_COMUNS` (em `public/js/dashboard.js`, mais de cem funções agrupadas por área), os nomes dos modelos de acesso (`Acessos.modelos()`) e as funções já gravadas nos usuários; aceita texto livre e é só informativo.
+
 **Segurança das contas** (`src/segurancaContas.js`):
 - **Sessões** (`sessoes`): cada login cria uma sessão e o JWT leva o `sid`; `autenticar` recusa sessão encerrada. Sair (`/api/auth/sair`), encerrar pela tela (`/api/auth/sessoes`), trocar a senha (as outras), senha trocada pelo admin, senha redefinida e usuário desativado encerram. Tokens antigos sem `sid` param de valer com `usuarios.sessoes_invalidadas_em`.
 - **Política** (`configuracao_seguranca`: `senha_min`, `senha_variedade`, `bloqueio_tentativas`, `bloqueio_minutos`, `senha_validade_dias`, `exigir_2fa`): validada na criação, troca e redefinição; bloqueio por senhas erradas com aviso por e-mail aos admins; senha vencida liga o `trocar_senha` no login.

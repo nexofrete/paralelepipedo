@@ -54,6 +54,11 @@ async function montar(req) {
       add('operacao', { chave: 'dfe_sem_cte', icone: '📡', titulo: 'NF-e de carga na SEFAZ sem CT-e', qtd: nf.sem_cte, nivel: 'atencao', detalhe: 'a sua empresa é a transportadora: gere os rascunhos de CT-e',
         destino: { ir: 'emissao-cte', aba: 'lista', clicar: '#btnCteSefaz' } });
     } catch (e) { console.error('[hoje]', e.message); }
+    try {
+      const e = await require('./ediEntrada').pendencias();
+      add('operacao', { chave: 'edi_recebidos', icone: '🔁', titulo: 'Arquivos EDI para conferir', qtd: (e.aguardando || 0) + (e.erros || 0), nivel: e.erros ? 'perigo' : 'atencao',
+        detalhe: 'CONEMB, DOCCOB e NOTFIS que chegaram sozinhos (e-mail/SFTP)', destino: { ir: 'edi', clicar: '#ediAbaRecebidos' } });
+    } catch (e) { console.error('[hoje]', e.message); }
     if (req.usuario?.perfil === 'admin') {
       try {
         const ns = await require('./integracao/nfstock').pendencias();

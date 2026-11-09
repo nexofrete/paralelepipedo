@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "EDI",
+          "texto": "EDI chegando sozinho por e-mail: cadastre uma caixa com a finalidade \"EDI das transportadoras\" (ex.: edi@suaempresa.com.br). O OCOREN é aplicado na hora (ocorrências nos CT-e dos parceiros, data de entrega nas notas das transportadoras contratadas); CONEMB, DOCCOB e NOTFIS ficam em EDI » Recebidos automaticamente para conferir. O mesmo arquivo nunca entra duas vezes."
+        },
+        {
           "area": "Segurança",
           "texto": "Integrações num lugar só e só para o administrador: Manutenção agora tem as abas Sistema e Integrações (NF-Stock, API e webhooks do ERP, e-mail, WhatsApp, pasta de XML, planilha do ERP, IA e atalhos para as demais). A configuração do boleto, a busca automática de NF-e na SEFAZ e a senha do portal das transportadoras passaram a ser só do administrador."
         },

@@ -9435,7 +9435,7 @@ async function carregarContasEmail() {
     alvo.innerHTML = contas.length ? `<table style="width:100%;"><thead><tr><th style="text-align:left;">Caixa</th><th style="text-align:left;">Pasta</th>
       <th style="text-align:left;">Remetentes</th><th style="text-align:left;">Última leitura</th><th></th></tr></thead><tbody>
       ${contas.map((c) => `<tr style="${c.ativo ? '' : 'opacity:0.55;'}">
-        <td><b>${cfEsc(c.nome || c.usuario || '—')}</b><br><small style="color:var(--texto-fraco);">${cfEsc(c.usuario || '')}${c.ativo ? '' : ' · desligada'}${c.finalidade === 'cte' ? ' · 🚛 NF-e → CT-e' : ''}</small></td>
+        <td><b>${cfEsc(c.nome || c.usuario || '—')}</b><br><small style="color:var(--texto-fraco);">${cfEsc(c.usuario || '')}${c.ativo ? '' : ' · desligada'}${c.finalidade === 'cte' ? ' · 🚛 NF-e → CT-e' : c.finalidade === 'edi' ? ' · 🔁 EDI das transportadoras' : c.finalidade === 'sac' ? ' · 🎧 SAC' : ''}</small></td>
         <td>${cfEsc(c.pasta || '—')}</td>
         <td><small>${cfEsc(c.remetentes || 'todos')}</small></td>
         <td><small>${c.ultima_execucao ? new Date(c.ultima_execucao).toLocaleString('pt-BR') : '—'}<br>
@@ -9466,7 +9466,7 @@ function emAbrirForm(c) {
 }
 // Para NF-e de clientes a pasta é a caixa de entrada (não a de enviados).
 function emAjustarFinalidade() {
-  const cte = ['cte', 'sac'].includes(document.getElementById('emFinalidade')?.value);
+  const cte = ['cte', 'sac', 'edi'].includes(document.getElementById('emFinalidade')?.value);
   document.getElementById('emPasta').placeholder = cte ? 'INBOX (Caixa de entrada)' : 'INBOX.Sent (Enviados)';
   document.getElementById('emRemetentes').placeholder = cte ? 'Em branco = NF-e de qualquer cliente' : 'Ex.: maria@imporiente.com.br, joao@imporiente.com.br';
 }

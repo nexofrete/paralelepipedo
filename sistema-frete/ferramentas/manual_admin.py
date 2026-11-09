@@ -264,7 +264,8 @@ def parte_admin(g):
          'senhas erradas, troca periódica e verificação em duas etapas obrigatória (capítulo 22).'],
         ['Margem de tolerância da auditoria', 'Diferença aceitável para liberar sozinho: usa o que for <b>maior</b> entre '
          'o valor fixo (R$) e o percentual. Também: limite de alçada e o % da reentrega/devolução (padrão 50%).'],
-        ['Leitura automática de e-mail', 'Aceita várias caixas (uma para cada pessoa que envia devoluções). Lê uma pasta de cada caixa (IMAP; no webmail da hospedagem: servidor '
+        ['Leitura automática de e-mail', 'Finalidades: devoluções/trocas e XML (embarcador), NF-e que viram CT-e, SAC e '
+         '<b>EDI das transportadoras</b> (OCOREN, CONEMB, DOCCOB e NOTFIS anexados; capítulo 38). Aceita várias caixas (uma para cada pessoa que envia devoluções). Lê uma pasta de cada caixa (IMAP; no webmail da hospedagem: servidor '
          'mail.dominio, porta 993, o mesmo usuário e senha do webmail). Registra sozinho as devoluções/trocas de nota escritas no '
          'modelo padrão e importa os XML anexados. O mais simples é apontar a pasta de Enviados (ex.: INBOX.Sent) de quem manda '
          'esses e-mails e preencher "Só e-mails enviados por" com o(s) endereço(s). Lê por data (1ª vez: últimos 30 dias), cada '

@@ -149,7 +149,7 @@ async function lerDoccob(texto) {
 async function aplicarOcoren(itens, { parceiroNome, usuarioNome }) {
   const lista = (Array.isArray(itens) ? itens : []).filter((i) => Number.isInteger(Number(i.cte_id)) && oc.PORID.get(i.tipo_id));
   if (!lista.length) throw falha('Nenhuma ocorrência para lançar.');
-  const lancadas = []; const puladas = [];
+  const lancadas = []; const puladas = []; const erros = [];
   for (const i of lista) {
     const item = oc.PORID.get(i.tipo_id);
     const quem = parceiroNome ? `parceiro ${parceiroNome}` : 'parceiro (EDI)';
@@ -169,11 +169,12 @@ async function aplicarOcoren(itens, { parceiroNome, usuarioNome }) {
     } catch (e) {
       await cliente.query('ROLLBACK').catch(() => {});
       puladas.push(i.cte_id);
+      erros.push({ nf: i.nf || null, cte_id: Number(i.cte_id), motivo: e.message });
       if (!e.status) console.error('[edi parceiro]', e.message);
     } finally { cliente.release(); }
   }
   if (lancadas.length) oc.depoisDeLancar(lancadas);
-  return { lancadas: lancadas.length, puladas: puladas.length };
+  return { lancadas: lancadas.length, puladas: puladas.length, erros };
 }
 
 // CONEMB: o custo previsto passa a ser o valor do CT-e do parceiro. itens: [{ lancamento_id, valor, cte_parceiro }]

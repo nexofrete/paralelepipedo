@@ -667,6 +667,7 @@
           <div class="cte-aba ativo" data-edi-aba="embarcador" id="ediAbaEmbarcador">Com a transportadora <small style="font-weight:400;">(sou embarcador)</small></div>
           <div class="cte-aba" data-edi-aba="transportadora" id="ediAbaTransportadora">Com o cliente <small style="font-weight:400;">(sou transportadora)</small></div>
           <div class="cte-aba" data-edi-aba="parceiro" id="ediAbaParceiro">Dos parceiros <small style="font-weight:400;">(redespacho)</small></div>
+          <div class="cte-aba" data-edi-aba="recebidos" id="ediAbaRecebidos">📬 Recebidos automaticamente <span id="ediBadgeRecebidos" class="badge badge-pendente oculto" style="margin-left:4px;">0</span></div>
         </div>
 
         <div id="edi-aba-embarcador">
@@ -722,6 +723,19 @@
             <label class="edi-arquivo"><input type="file" id="ediArquivoParceiro" accept=".txt,.edi,.rem,.ret,text/plain" /><span>Escolher o arquivo do parceiro (.txt)</span></label>
           </div>
           <div id="ediResultadoParceiro"></div>
+        </div>
+        <div id="edi-aba-recebidos" class="oculto">
+          <div class="painel edi-cartao">
+            <h3>📬 Arquivos EDI que chegaram sozinhos (e-mail e SFTP/FTP)</h3>
+            <p class="edi-dica">O <b>OCOREN</b> já é aplicado na hora (ocorrências nos CT-e dos parceiros, data de entrega nas notas das transportadoras contratadas).
+              <b>CONEMB</b>, <b>DOCCOB</b> e <b>NOTFIS</b> ficam aguardando: clique em <b>Conferir</b> para abrir no mesmo passo a passo do arquivo escolhido à mão
+              e, depois de conferir, em <b>✓ Conferido</b>. Para receber por e-mail, cadastre uma caixa com a finalidade "EDI das transportadoras" em Manutenção » Integrações.</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <select id="ediRecFiltro" style="width:auto;"><option value="aguardando">Aguardando conferência</option><option value="erro">Com erro</option><option value="aplicado">Aplicados</option><option value="">Todos</option></select>
+              <input type="search" id="ediRecBusca" placeholder="🔍 Arquivo, transportadora, CNPJ ou e-mail" style="flex:1; min-width:220px;" />
+            </div>
+          </div>
+          <div id="ediRecLista"></div>
         </div>
       </section>
 
@@ -3720,7 +3734,9 @@
               <div style="grid-column:1/-1;"><label for="emFinalidade">O que fazer com os e-mails</label>
                 <select id="emFinalidade"><option value="auditoria">Devoluções/trocas e XML para a auditoria de frete (embarcador)</option>
                   <option value="cte">NF-e dos clientes viram rascunho de CT-e (transportadora)</option>
-                  <option value="sac">Chamados do SAC: cada e-mail abre ou responde um chamado (transportadora)</option></select></div>
+                  <option value="sac">Chamados do SAC: cada e-mail abre ou responde um chamado (transportadora)</option>
+                  <option value="edi">EDI das transportadoras (OCOREN, CONEMB, DOCCOB, NOTFIS) — ex.: edi@suaempresa.com.br</option></select>
+                <small style="color:var(--texto-fraco);">Os anexos EDI são lidos em qualquer caixa (menos a do SAC); a caixa "EDI" serve só para isso. O que chega aparece em Operação » EDI » Recebidos automaticamente.</small></div>
               <div style="grid-column:1/-1;"><label for="emRemetentes">Só e-mails enviados por</label>
                 <input type="text" id="emRemetentes" placeholder="Ex.: maria@imporiente.com.br, joao@imporiente.com.br" />
                 <small style="color:var(--texto-fraco);">Um ou mais e-mails, separados por vírgula. Em branco = todos os e-mails da pasta.</small></div>

@@ -31,6 +31,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
   const lerArquivo = (input) => new Promise((resolve, reject) => {
+    if (input._virtual) { const v = input._virtual; input._virtual = null; resolve(v); return; }
     const f = input.files[0];
     if (!f) { reject(new Error('Escolha o arquivo.')); return; }
     const leitor = new FileReader();
@@ -51,7 +52,8 @@
     $('edi-aba-embarcador').classList.toggle('oculto', lado !== 'embarcador');
     $('edi-aba-transportadora').classList.toggle('oculto', lado !== 'transportadora');
     $('edi-aba-parceiro').classList.toggle('oculto', lado !== 'parceiro');
-    if (lado === 'embarcador') carregarTransportadoras(); else if (lado === 'transportadora') carregarClientes();
+    $('edi-aba-recebidos').classList.toggle('oculto', lado !== 'recebidos');
+    if (lado === 'embarcador') carregarTransportadoras(); else if (lado === 'transportadora') carregarClientes(); else if (lado === 'recebidos') carregarRecebidos().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
   };
   document.querySelectorAll('[data-edi-aba]').forEach((a) => a.addEventListener('click', () => abrirAba(a.dataset.ediAba)));
   let iniciado = false;
@@ -61,7 +63,65 @@
     $('ediNfDe').value = hojeIso(-7); $('ediNfAte').value = hojeIso();
     $('ediCtDe').value = hojeIso(-30); $('ediCtAte').value = hojeIso();
     abrirAba(ladoEmbarcador ? 'embarcador' : 'transportadora');
+    contarRecebidos();
   });
+
+  // =================================================================
+  // Recebidos automaticamente (e-mail, SFTP/FTP)
+  // =================================================================
+  const ST_REC = { aplicado: ['entregue', 'Aplicado'], aguardando: ['agendada', 'Aguardando conferência'], conferido: ['entregue', 'Conferido'], erro: ['ocorrencia', 'Erro'], ignorado: ['em_transito', 'Ignorado'] };
+  const LADO_REC = { parceiro: ['parceiro', 'Dos parceiros', 'ediArquivoParceiro'], embarcador: ['embarcador', 'Com a transportadora', 'ediArquivoEmb'], cliente: ['transportadora', 'Do cliente (NOTFIS)', 'ediArquivoNotfis'] };
+  const podeLado = (lado) => { const aba = $(({ parceiro: 'ediAbaParceiro', embarcador: 'ediAbaEmbarcador', cliente: 'ediAbaTransportadora' })[lado]); return aba && !aba.classList.contains('oculto'); };
+  async function contarRecebidos() {
+    try {
+      const r = await api('/recebidos?status=aguardando');
+      const n = r.contagem.aguardando + r.contagem.erros;
+      $('ediBadgeRecebidos').textContent = n; $('ediBadgeRecebidos').classList.toggle('oculto', !n);
+    } catch { /* sem permissão */ }
+  }
+  async function carregarRecebidos() {
+    const q = new URLSearchParams({ status: $('ediRecFiltro').value, busca: $('ediRecBusca').value.trim() });
+    const r = await api(`/recebidos?${q}`);
+    $('ediBadgeRecebidos').textContent = r.contagem.aguardando + r.contagem.erros;
+    $('ediBadgeRecebidos').classList.toggle('oculto', !(r.contagem.aguardando + r.contagem.erros));
+    const quando = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+    $('ediRecLista').innerHTML = r.arquivos.length ? `<div class="painel edi-painel"><div class="edi-rolagem"><table class="edi-tabela"><thead><tr><th>Recebido</th><th>Arquivo</th><th>De quem</th><th>Situação</th><th></th></tr></thead><tbody>
+      ${r.arquivos.map((a) => `<tr><td>${quando(a.criado_em)}<br><small style="color:var(--texto-fraco);">${esc(a.origem === 'email' ? '✉️ e-mail' : a.origem.toUpperCase())}${a.de ? ` · ${esc(a.de)}` : ''}</small></td>
+        <td><b>${esc(a.tipo)}</b> · ${esc(LADO_REC[a.lado]?.[1] || a.lado)}<br><small style="color:var(--texto-fraco);">${esc(a.nome_arquivo || '')}${a.documento ? ` · ${esc(a.documento)}` : ''}</small></td>
+        <td>${esc(a.parceiro_nome || a.nome_emissor || '—')}${a.cnpj_emissor ? `<br><small style="color:var(--texto-fraco);">${esc(Doc.formatar(a.cnpj_emissor))}</small>` : ''}</td>
+        <td><span class="oc-sit ${(ST_REC[a.status] || ST_REC.erro)[0]}">${(ST_REC[a.status] || [0, a.status])[1]}</span><br><small style="color:var(--texto-fraco); white-space:normal;">${esc(a.mensagem || '')}</small>
+          ${a.tratado_por && a.status !== 'aguardando' ? `<br><small style="color:var(--texto-fraco);">${esc(a.tratado_por)} · ${quando(a.tratado_em)}</small>` : ''}</td>
+        <td style="min-width:150px;"><div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end;">
+          ${a.tipo !== 'OCOREN' && podeLado(a.lado) ? `<button class="btn btn-primario" data-rec-conferir="${a.id}" style="width:auto; padding:4px 10px;">Conferir</button>` : ''}
+          ${a.status === 'aguardando' ? `<button class="btn btn-secundario" data-rec-marcar="${a.id}" data-st="conferido" style="width:auto; padding:4px 10px;">✓ Conferido</button>
+            <button class="btn btn-secundario" data-rec-marcar="${a.id}" data-st="ignorado" style="width:auto; padding:4px 10px;" title="Não precisa conferir">Ignorar</button>` : ''}
+          ${a.tipo === 'OCOREN' && a.status === 'erro' ? `<button class="btn btn-secundario" data-rec-reprocessar="${a.id}" style="width:auto; padding:4px 10px;">Aplicar de novo</button>` : ''}
+          <button class="btn btn-secundario" data-rec-baixar="${a.id}" style="width:auto; padding:4px 10px;" title="Baixar o arquivo">⬇</button></div></td></tr>`).join('')}
+      </tbody></table></div></div>` : '<div class="painel edi-painel" style="color:var(--texto-fraco);">Nenhum arquivo aqui.</div>';
+    $('ediRecLista').querySelectorAll('[data-rec-conferir]').forEach((b) => b.addEventListener('click', () => comBotao(b, async () => {
+      const a = await api(`/recebidos/${b.dataset.recConferir}`);
+      const [aba, , input] = LADO_REC[a.lado];
+      abrirAba(aba);
+      $(input)._virtual = { nome: a.nome_arquivo || `${a.tipo}.txt`, texto: a.texto };
+      $(input).dispatchEvent(new Event('change'));
+      mostrarAlerta('Arquivo aberto para conferir. Depois de conferir, volte em "Recebidos automaticamente" e marque como conferido.', { tipo: 'aviso' });
+    })));
+    $('ediRecLista').querySelectorAll('[data-rec-marcar]').forEach((b) => b.addEventListener('click', () => comBotao(b, async () => {
+      await api(`/recebidos/${b.dataset.recMarcar}/marcar`, { method: 'POST', body: JSON.stringify({ status: b.dataset.st }) });
+      await carregarRecebidos();
+    })));
+    $('ediRecLista').querySelectorAll('[data-rec-reprocessar]').forEach((b) => b.addEventListener('click', () => comBotao(b, async () => {
+      const x = await api(`/recebidos/${b.dataset.recReprocessar}/reprocessar`, { method: 'POST' });
+      mostrarAlerta(x.mensagem, { tipo: 'sucesso' }); await carregarRecebidos();
+    })));
+    $('ediRecLista').querySelectorAll('[data-rec-baixar]').forEach((b) => b.addEventListener('click', () => comBotao(b, async () => {
+      const a = await api(`/recebidos/${b.dataset.recBaixar}`);
+      baixar(a.nome_arquivo || `${a.tipo}.txt`, a.texto);
+    })));
+  }
+  $('ediRecFiltro').addEventListener('change', () => carregarRecebidos().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })));
+  let tRec = null;
+  $('ediRecBusca').addEventListener('input', () => { clearTimeout(tRec); tRec = setTimeout(() => carregarRecebidos().catch(() => {}), 400); });
 
   // =================================================================
   // Embarcador

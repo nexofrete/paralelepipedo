@@ -3358,3 +3358,26 @@ CREATE TABLE IF NOT EXISTS nfstock_envios (
 CREATE INDEX IF NOT EXISTS idx_nfstock_envios_status ON nfstock_envios (status);
 -- Começar a busca pelos documentos emitidos a partir desta data (os anteriores são pulados).
 ALTER TABLE configuracao_nfstock ADD COLUMN IF NOT EXISTS buscar_desde DATE;
+
+-- Entrada automática de EDI (src/ediEntrada.js): cada arquivo PROCEDA recebido (e-mail, SFTP/FTP), uma vez só (hash).
+CREATE TABLE IF NOT EXISTS edi_recebidos (
+    id            SERIAL PRIMARY KEY,
+    hash          CHAR(64) NOT NULL UNIQUE,
+    nome_arquivo  VARCHAR(200),
+    origem        VARCHAR(10) NOT NULL,            -- email, sftp, ftp, manual
+    de            VARCHAR(200),                    -- e-mail ou servidor de onde veio
+    tipo          VARCHAR(8) NOT NULL,             -- OCOREN, CONEMB, DOCCOB, NOTFIS
+    lado          VARCHAR(12) NOT NULL,            -- parceiro, embarcador, cliente
+    cnpj_emissor  VARCHAR(14),
+    nome_emissor  VARCHAR(200),
+    parceiro_id   INTEGER REFERENCES parceiros(id) ON DELETE SET NULL,
+    documento     VARCHAR(60),
+    status        VARCHAR(12) NOT NULL DEFAULT 'aguardando',   -- aplicado, aguardando, conferido, erro, ignorado
+    resumo        JSONB NOT NULL DEFAULT '{}',
+    mensagem      VARCHAR(1000),
+    texto         TEXT NOT NULL,
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tratado_em    TIMESTAMPTZ,
+    tratado_por   VARCHAR(150)
+);
+CREATE INDEX IF NOT EXISTS idx_edi_recebidos_status ON edi_recebidos (status, criado_em DESC);

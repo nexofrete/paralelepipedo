@@ -113,13 +113,12 @@ async function fretesDaNota(req, numero, cnpjEmissor) {
   return rows;
 }
 
-// Lê um arquivo da transportadora (CONEMB, OCOREN, DOCCOB) e cruza com os fretes.
-router.post('/embarcador/ler', autenticar, embarcador, async (req, res) => {
-  try {
-    const texto = String(req.body?.texto || '');
+// Leitura do arquivo da transportadora (também usada pela entrada automática de EDI, src/ediEntrada.js).
+async function lerEmbarcador(req, texto) {
+  {
     const tipo = edi.tipoDoArquivo(texto);
-    if (!tipo) return res.status(400).json({ erro: 'Não reconheci o arquivo: não é NOTFIS, CONEMB, OCOREN nem DOCCOB (layout PROCEDA).' });
-    if (tipo === 'NOTFIS') return res.status(400).json({ erro: 'Esse é um NOTFIS (notas para a transportadora). Aqui entram os arquivos que a transportadora devolve: CONEMB, OCOREN e DOCCOB.' });
+    if (!tipo) throw Object.assign(new Error('Não reconheci o arquivo: não é NOTFIS, CONEMB, OCOREN nem DOCCOB (layout PROCEDA).'), { status: 400 });
+    if (tipo === 'NOTFIS') throw Object.assign(new Error('Esse é um NOTFIS (notas para a transportadora). Aqui entram os arquivos que a transportadora devolve: CONEMB, OCOREN e DOCCOB.'), { status: 400 });
 
     if (tipo === 'CONEMB') {
       const a = edi.lerConemb(texto);
@@ -138,7 +137,7 @@ router.post('/embarcador/ler', autenticar, embarcador, async (req, res) => {
           situacao: !f ? 'nota_nao_encontrada' : f.chave_cte ? 'cte_ja_recebido' : 'aguardando_xml_cte',
         });
       }
-      return res.json({ tipo, transportadora: a.transportadora, cabecalho: { data: a.data, documento: a.documento }, totais: a.totais, linhas, avisos: a.avisos });
+      return ({ tipo, transportadora: a.transportadora, cabecalho: { data: a.data, documento: a.documento }, totais: a.totais, linhas, avisos: a.avisos });
     }
 
     if (tipo === 'OCOREN') {
@@ -152,7 +151,7 @@ router.post('/embarcador/ler', autenticar, embarcador, async (req, res) => {
           acao: f && o.entregue && !f.data_entrega && o.data ? 'gravar_entrega' : null,
         });
       }
-      return res.json({ tipo, transportadora: a.transportadora, cabecalho: { data: a.data, documento: a.documento }, linhas, avisos: a.avisos });
+      return ({ tipo, transportadora: a.transportadora, cabecalho: { data: a.data, documento: a.documento }, linhas, avisos: a.avisos });
     }
 
     // DOCCOB: confere os CT-e da fatura com os que estão no Nexofrete.
@@ -178,8 +177,12 @@ router.post('/embarcador/ler', autenticar, embarcador, async (req, res) => {
         }),
       });
     }
-    return res.json({ tipo, transportadora: { ...a.transportadora, nomeCadastro: cad[0]?.razao_social || null }, cabecalho: { data: a.data, documento: a.documento }, faturas, avisos: a.avisos });
-  } catch (err) { responderErro(res, err, 'Erro ao ler o arquivo.'); }
+    return ({ tipo, transportadora: { ...a.transportadora, nomeCadastro: cad[0]?.razao_social || null }, cabecalho: { data: a.data, documento: a.documento }, faturas, avisos: a.avisos });
+  }
+}
+// Lê um arquivo da transportadora (CONEMB, OCOREN, DOCCOB) e cruza com os fretes.
+router.post('/embarcador/ler', autenticar, embarcador, async (req, res) => {
+  try { res.json(await lerEmbarcador(req, String(req.body?.texto || ''))); } catch (err) { responderErro(res, err, 'Erro ao ler o arquivo.'); }
 });
 
 // Grava a Data da Entrega das notas que o OCOREN diz que foram entregues
@@ -454,6 +457,30 @@ router.post('/transportadora/parceiro/doccob', autenticar, permitirAlguma('pode_
   } catch (err) { responderErro(res, err, 'Erro ao registrar a fatura.'); }
 });
 
+// =====================================================================
+// RECEBIDOS AUTOMATICAMENTE (e-mail, SFTP/FTP): lista, conferência e reprocessar (regras em src/ediEntrada.js)
+// =====================================================================
+const ediEntrada = require('../ediEntrada');
+const podeEdi = permitirAlguma('pode_ver_auditoria', 'pode_editar_registros', 'pode_enviar_xml', 'pode_emitir_cte', 'pode_ver_financeiro');
+router.get('/recebidos', autenticar, podeEdi, async (req, res) => {
+  try { res.json(await ediEntrada.listar(req.query)); } catch (err) { responderErro(res, err, 'Erro ao listar os arquivos recebidos.'); }
+});
+router.get('/recebidos/:id(\\d+)', autenticar, podeEdi, async (req, res) => {
+  try { res.json(await ediEntrada.arquivo(Number(req.params.id))); } catch (err) { responderErro(res, err, 'Erro ao abrir o arquivo.'); }
+});
+router.post('/recebidos/:id(\\d+)/marcar', autenticar, podeEdi, async (req, res) => {
+  try {
+    await ediEntrada.marcar(Number(req.params.id), String(req.body?.status || ''), req.usuario.nome);
+    log(req, 'edi_recebido', `Marcou o arquivo EDI recebido #${req.params.id} como ${req.body?.status}`);
+    res.json({ ok: true });
+  } catch (err) { responderErro(res, err, 'Erro ao marcar.'); }
+});
+router.post('/recebidos/:id(\\d+)/reprocessar', autenticar, permitirAlguma('pode_editar_registros', 'pode_emitir_cte'), async (req, res) => {
+  try { const r = await ediEntrada.reprocessar(Number(req.params.id)); log(req, 'edi_recebido', `Aplicou de novo o OCOREN recebido #${req.params.id}: ${r.mensagem}`); res.json(r); }
+  catch (err) { responderErro(res, err, 'Erro ao aplicar de novo.'); }
+});
+
 module.exports = router;
 // Usados pelo faturamento (DOCCOB de uma fatura).
 module.exports.ajudantes = { conhecimentoEdi, cabecalhoTransportadora, nomeArquivo };
+module.exports.lerEmbarcador = lerEmbarcador;

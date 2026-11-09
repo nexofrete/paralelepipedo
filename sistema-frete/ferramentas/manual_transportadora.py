@@ -502,6 +502,24 @@ def parte_operacao(g):
         'fecha os custos dos CT-e da fatura num acerto do parceiro (a diferença entra como ajuste) e cria a conta a pagar '
         '(Frete de terceiro) com o vencimento, o banco do arquivo e o PIX do parceiro. A mesma fatura não entra duas vezes.',
     ])
+    s += h2('Recebidos automaticamente (e-mail)')
+    s.append(P('Os arquivos EDI podem chegar sozinhos, sem ninguém escolher o arquivo. O jeito mais simples: crie um e-mail só '
+               'para isso (ex.: edi@suaempresa.com.br), cadastre em <b>Manutenção » Integrações » Leitura automática de e-mail</b> '
+               'com a finalidade <b>EDI das transportadoras</b> e passe esse endereço para as transportadoras e parceiros. Os anexos '
+               'EDI também são lidos em qualquer outra caixa cadastrada (menos a do SAC).'))
+    s += lista([
+        'O sistema descobre de quem é o arquivo pelo CNPJ do cabeçalho: se está em Parceiros e redespacho, é parceiro; '
+        'senão, é uma transportadora contratada (você é o embarcador). NOTFIS é do cliente.',
+        '<b>OCOREN</b> é aplicado na hora: as ocorrências entram nos CT-e repassados ao parceiro (o cliente é avisado) ou a data '
+        'de entrega entra nas notas da transportadora contratada. Ocorrência que precisa de informação a mais (ex.: entrega '
+        'programada sem a data) aparece no resumo para lançar à mão.',
+        '<b>CONEMB</b>, <b>DOCCOB</b> e <b>NOTFIS</b> mexem com valores e CT-e: ficam <b>Aguardando conferência</b>.',
+        'Na aba <b>📬 Recebidos automaticamente</b> (com o número de pendentes no título): <b>Conferir</b> abre o arquivo no '
+        'mesmo passo a passo de quando você escolhe o arquivo à mão; depois, <b>✓ Conferido</b> (ou <b>Ignorar</b>). '
+        '<b>Aplicar de novo</b> refaz um OCOREN com erro (ex.: o CT-e chegou depois) e ⬇ baixa o arquivo.',
+        'O mesmo arquivo nunca é aplicado duas vezes, mesmo chegando repetido (outro e-mail, outra caixa).',
+        'A tela Hoje mostra os arquivos esperando conferência ou com erro.',
+    ])
 
     # 39
     s += h1('39. Portal do cliente e SAC (atendimento com protocolo)')

@@ -502,7 +502,7 @@ def parte_operacao(g):
         'fecha os custos dos CT-e da fatura num acerto do parceiro (a diferença entra como ajuste) e cria a conta a pagar '
         '(Frete de terceiro) com o vencimento, o banco do arquivo e o PIX do parceiro. A mesma fatura não entra duas vezes.',
     ])
-    s += h2('Recebidos automaticamente (e-mail)')
+    s += h2('Recebidos automaticamente (e-mail, SFTP e FTP)')
     s.append(P('Os arquivos EDI podem chegar sozinhos, sem ninguém escolher o arquivo. O jeito mais simples: crie um e-mail só '
                'para isso (ex.: edi@suaempresa.com.br), cadastre em <b>Manutenção » Integrações » Leitura automática de e-mail</b> '
                'com a finalidade <b>EDI das transportadoras</b> e passe esse endereço para as transportadoras e parceiros. Os anexos '
@@ -520,6 +520,22 @@ def parte_operacao(g):
         'O mesmo arquivo nunca é aplicado duas vezes, mesmo chegando repetido (outro e-mail, outra caixa).',
         'A tela Hoje mostra os arquivos esperando conferência ou com erro.',
     ])
+    s.append(P('<b>Pelo servidor da transportadora (SFTP / FTP)</b>: as transportadoras maiores deixam os arquivos num servidor delas. '
+               'Em <b>Manutenção » Integrações » EDI por SFTP / FTP</b>, clique em <b>＋ Conexão</b> e preencha o que a transportadora '
+               'passar:'))
+    s += tabela(['Campo', 'O que é'], [
+        ['Protocolo', 'SFTP (o mais seguro, porta 22), FTPS (FTP com TLS) ou FTP (sem criptografia: evite). "Simulador" traz '
+         'arquivos de exemplo para conhecer.'],
+        ['Servidor, porta, usuário, senha', 'O acesso que a transportadora liberar. No SFTP também dá para usar uma chave '
+         'privada SSH (a senha vira a senha da chave). Senha e chave ficam criptografadas.'],
+        ['Pasta dos arquivos', 'Onde ela deixa os arquivos (ex.: /saida). "Só os arquivos" filtra pelo nome: *.txt; OCO*.'],
+        ['Depois de ler', 'Mover para a pasta de processados (padrão: a pasta/processados, com a data no nome), apagar do '
+         'servidor ou deixar lá (o sistema lembra e não baixa de novo).'],
+        ['Ler a cada', 'De quantos em quantos minutos o sistema entra no servidor (mínimo 5).'],
+    ], [0.3, 0.7])
+    s.append(P('<b>🔌 Testar</b> conecta e conta os arquivos da pasta; <b>🔄 Buscar agora</b> lê na hora. A lista mostra a última '
+               'leitura e o erro, se houver (servidor não encontrado, senha recusada, pasta inexistente). Os arquivos lidos entram '
+               'na aba Recebidos automaticamente, como os do e-mail. Só o administrador cadastra as conexões.'))
 
     # 39
     s += h1('39. Portal do cliente e SAC (atendimento com protocolo)')

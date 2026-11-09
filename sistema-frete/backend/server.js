@@ -375,6 +375,7 @@ async function iniciar() {
     require('./src/dfe').agendar();
     require('./src/sefazServicos').agendar();
     require('./src/integracao/nfstock').agendar();
+    require('./src/ediConexoes').agendar();
     require('./src/avisosSeguranca').iniciar();
     require('./src/fusoBanco').verificarAoLigar();
     licenca.agendarConferencia();

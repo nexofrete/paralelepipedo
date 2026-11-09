@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "EDI",
+          "texto": "EDI pelo servidor da transportadora: em Manutenção » Integrações » EDI por SFTP / FTP, cadastre o acesso (SFTP, FTPS ou FTP) e a pasta; de tempos em tempos o sistema entra, baixa os arquivos novos, aplica o OCOREN e deixa CONEMB, DOCCOB e NOTFIS para conferir. Depois de lido, o arquivo é movido para processados, apagado ou deixado lá sem baixar de novo."
+        },
+        {
+          "area": "EDI",
           "texto": "EDI chegando sozinho por e-mail: cadastre uma caixa com a finalidade \"EDI das transportadoras\" (ex.: edi@suaempresa.com.br). O OCOREN é aplicado na hora (ocorrências nos CT-e dos parceiros, data de entrega nas notas das transportadoras contratadas); CONEMB, DOCCOB e NOTFIS ficam em EDI » Recebidos automaticamente para conferir. O mesmo arquivo nunca entra duas vezes."
         },
         {

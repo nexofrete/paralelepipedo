@@ -480,6 +480,31 @@ router.post('/recebidos/:id(\\d+)/reprocessar', autenticar, permitirAlguma('pode
   catch (err) { responderErro(res, err, 'Erro ao aplicar de novo.'); }
 });
 
+// Conexões SFTP/FTP com as transportadoras (só administrador; regras em src/ediConexoes.js).
+const { apenasAdmin } = require('../middlewareAuth');
+const ediConexoes = require('../ediConexoes');
+router.get('/conexoes', autenticar, apenasAdmin, async (req, res) => {
+  try { res.json(await ediConexoes.listar()); } catch (err) { responderErro(res, err, 'Erro ao listar as conexões.'); }
+});
+router.post('/conexoes', autenticar, apenasAdmin, async (req, res) => {
+  try { const c = await ediConexoes.salvar(null, req.body || {}); log(req, 'edi_conexao', `Cadastrou a conexão EDI "${c.nome}" (${c.protocolo} ${c.host || ''})`); res.status(201).json(c); }
+  catch (err) { responderErro(res, err, 'Erro ao salvar.'); }
+});
+router.put('/conexoes/:id(\\d+)', autenticar, apenasAdmin, async (req, res) => {
+  try { const c = await ediConexoes.salvar(Number(req.params.id), req.body || {}); log(req, 'edi_conexao', `Alterou a conexão EDI "${c.nome}"${req.body?.senha_nova ? ' (senha trocada)' : ''}`); res.json(c); }
+  catch (err) { responderErro(res, err, 'Erro ao salvar.'); }
+});
+router.delete('/conexoes/:id(\\d+)', autenticar, apenasAdmin, async (req, res) => {
+  try { await ediConexoes.excluir(Number(req.params.id)); log(req, 'edi_conexao', `Excluiu a conexão EDI #${req.params.id}`); res.json({ ok: true }); }
+  catch (err) { responderErro(res, err, 'Erro ao excluir.'); }
+});
+router.post('/conexoes/:id(\\d+)/testar', autenticar, apenasAdmin, async (req, res) => {
+  try { res.json(await ediConexoes.testar(Number(req.params.id))); } catch (err) { responderErro(res, err, 'Erro ao testar.'); }
+});
+router.post('/conexoes/:id(\\d+)/buscar', autenticar, apenasAdmin, async (req, res) => {
+  try { res.json(await ediConexoes.executar(Number(req.params.id), 'manual')); } catch (err) { responderErro(res, err, 'Erro ao buscar os arquivos.'); }
+});
+
 module.exports = router;
 // Usados pelo faturamento (DOCCOB de uma fatura).
 module.exports.ajudantes = { conhecimentoEdi, cabecalhoTransportadora, nomeArquivo };

@@ -3381,3 +3381,35 @@ CREATE TABLE IF NOT EXISTS edi_recebidos (
     tratado_por   VARCHAR(150)
 );
 CREATE INDEX IF NOT EXISTS idx_edi_recebidos_status ON edi_recebidos (status, criado_em DESC);
+
+-- EDI por SFTP/FTP (src/ediConexoes.js): o servidor da transportadora onde ficam os arquivos PROCEDA. Senha/chave criptografadas.
+CREATE TABLE IF NOT EXISTS edi_conexoes (
+    id                SERIAL PRIMARY KEY,
+    nome              VARCHAR(100) NOT NULL,
+    ativo             BOOLEAN NOT NULL DEFAULT TRUE,
+    protocolo         VARCHAR(10) NOT NULL DEFAULT 'sftp',     -- sftp, ftps, ftp, simulador
+    host              VARCHAR(200),
+    porta             INTEGER,
+    usuario           VARCHAR(150),
+    senha             TEXT,
+    chave_privada     TEXT,
+    pasta             VARCHAR(300) NOT NULL DEFAULT '/',
+    pasta_processados VARCHAR(300),
+    padrao_arquivos   VARCHAR(200),
+    depois            VARCHAR(10) NOT NULL DEFAULT 'mover',    -- mover, apagar, manter
+    intervalo_minutos INTEGER NOT NULL DEFAULT 30,
+    parceiro_id       INTEGER REFERENCES parceiros(id) ON DELETE SET NULL,
+    ultima_execucao   TIMESTAMPTZ,
+    ultimo_resultado  VARCHAR(2000),
+    ultimo_erro       VARCHAR(1000),
+    criado_em         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS edi_conexao_vistos (
+    conexao_id INTEGER NOT NULL REFERENCES edi_conexoes(id) ON DELETE CASCADE,
+    nome       VARCHAR(300) NOT NULL,
+    tamanho    BIGINT,
+    modificado VARCHAR(40),
+    visto_em   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (conexao_id, nome, tamanho, modificado)
+);

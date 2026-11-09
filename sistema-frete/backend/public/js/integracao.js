@@ -102,6 +102,7 @@
       : '<p style="color:var(--texto-fraco); margin:0;">Nenhum aviso enviado ainda.</p>';
     $('itgConteudo').innerHTML = `
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;" id="itgNfstock"><h4 style="margin:0;">🗄 NF-Stock (Alterdata)</h4><p style="color:var(--texto-fraco); margin:6px 0 0;">Carregando…</p></div>
+      <div class="painel" style="padding:14px 16px; margin-bottom:14px;" id="itgEdiConexoes"><h4 style="margin:0;">🔁 EDI por SFTP / FTP</h4><p style="color:var(--texto-fraco); margin:6px 0 0;">Carregando…</p></div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">🔑 Chaves de API</h4>${chavesHtml}</div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">📣 Webhooks (avisos automáticos para o ERP)</h4>${whHtml}</div>
       <div class="painel" style="padding:14px 16px; margin-bottom:14px;"><h4 style="margin:0 0 10px;">📬 Últimos avisos</h4>${entHtml}</div>
@@ -115,7 +116,74 @@
     document.querySelectorAll('[data-itg-reenviar]').forEach((b) => b.addEventListener('click', () => enviar(`/api/integracao/entregas/${b.dataset.itgReenviar}/reenviar`, 'POST').then(() => { mostrarAlerta('Vai de novo em até 20 segundos.', { tipo: 'sucesso' }); recarregar(); }).catch(erro)));
     $('itgCopiarDoc').addEventListener('click', (e) => copiar($('itgDoc').textContent, e.currentTarget));
     carregarModelos().catch(erro);
+    carregarConexoesEdi().catch((e) => { $('itgEdiConexoes').innerHTML = `<h4 style="margin:0;">🔁 EDI por SFTP / FTP</h4><p style="color:var(--vermelho);">${esc(e.message)}</p>`; });
     carregarNfstock().catch((e) => { $('itgNfstock').innerHTML = `<h4 style="margin:0;">🗄 NF-Stock (Alterdata)</h4><p style="color:var(--vermelho);">${esc(e.message)}</p>`; });
+  }
+
+  // ---------------- EDI por SFTP / FTP (servidor da transportadora) ----------------
+  let cx = null;
+  async function carregarConexoesEdi() {
+    cx = await api('/api/edi/conexoes');
+    const lista = cx.conexoes.length ? `<div class="tabela-container"><table><thead><tr><th>Conexão</th><th>Servidor / pasta</th><th>Última leitura</th><th></th></tr></thead><tbody>
+      ${cx.conexoes.map((c) => `<tr${c.ativo ? '' : ' style="opacity:.6;"'}><td><b>${esc(c.nome)}</b> ${c.ativo ? '' : '<span class="oc-sit cancelado">Desligada</span>'}<br><small style="color:var(--texto-fraco);">${esc(cx.protocolos[c.protocolo] || c.protocolo)} · a cada ${c.intervalo_minutos} min</small></td>
+        <td>${c.protocolo === 'simulador' ? '—' : `${esc(c.host)}:${c.porta}<br><small style="color:var(--texto-fraco);">${esc(c.usuario || '')}</small>`}<br><small>📁 ${esc(c.pasta || '/')}${c.padrao_arquivos ? ` (${esc(c.padrao_arquivos)})` : ''} → ${esc(cx.depois[c.depois] || c.depois)}</small></td>
+        <td style="white-space:normal; max-width:360px;">${c.ultima_execucao ? `${quando(c.ultima_execucao)}<br>` : 'nunca'}${c.ultimo_erro ? `<span style="color:var(--vermelho);">${esc(c.ultimo_erro)}</span>` : `<small>${esc(String(c.ultimo_resultado || '').slice(0, 220))}</small>`}</td>
+        <td style="white-space:nowrap;"><button class="btn btn-secundario" data-cx-testar="${c.id}" style="width:auto; padding:4px 10px;">🔌 Testar</button>
+          <button class="btn btn-secundario" data-cx-buscar="${c.id}" style="width:auto; padding:4px 10px;">🔄 Buscar agora</button>
+          <button class="btn btn-secundario" data-cx-editar="${c.id}" style="width:auto; padding:4px 10px;">✏️</button></td></tr>`).join('')}</tbody></table></div>`
+      : '<p style="color:var(--texto-fraco); margin:0;">Nenhuma conexão. Peça à transportadora o endereço do SFTP (ou FTP), o usuário, a senha e a pasta onde ela deixa os arquivos.</p>';
+    $('itgEdiConexoes').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;"><h4 style="margin:0;">🔁 EDI por SFTP / FTP</h4>
+        <button class="btn btn-primario" id="cxNova" style="width:auto;">＋ Conexão</button></div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin:6px 0 10px;">Para a transportadora (ou parceiro) que deixa os arquivos EDI (OCOREN, CONEMB, DOCCOB, NOTFIS) num servidor dela. De tempos em tempos o
+        sistema entra, baixa os arquivos novos e trata como os que chegam por e-mail: o OCOREN é aplicado na hora e o resto fica em EDI » Recebidos automaticamente para conferir.</p>${lista}`;
+    $('cxNova').addEventListener('click', () => formConexao(null));
+    document.querySelectorAll('[data-cx-editar]').forEach((b) => b.addEventListener('click', () => formConexao(cx.conexoes.find((c) => c.id === Number(b.dataset.cxEditar)))));
+    const botao = async (b, fn) => { const t = b.textContent; b.disabled = true; b.textContent = 'Aguarde…'; try { await fn(); } catch (err) { erro(err); } finally { b.disabled = false; b.textContent = t; } };
+    document.querySelectorAll('[data-cx-testar]').forEach((b) => b.addEventListener('click', () => botao(b, async () => { const r = await enviar(`/api/edi/conexoes/${b.dataset.cxTestar}/testar`, 'POST'); mostrarAlerta(r.mensagem, { tipo: 'sucesso' }); })));
+    document.querySelectorAll('[data-cx-buscar]').forEach((b) => b.addEventListener('click', () => botao(b, async () => {
+      const r = await enviar(`/api/edi/conexoes/${b.dataset.cxBuscar}/buscar`, 'POST');
+      mostrarAlerta(`${r.mensagem}${r.detalhes?.length ? `\n${r.detalhes.slice(0, 6).join('\n')}` : ''}`, { tipo: r.erros ? 'aviso' : 'sucesso' });
+      await carregarConexoesEdi();
+    })));
+  }
+  function formConexao(c) {
+    const v = (k, p = '') => esc(c?.[k] ?? p);
+    const sel = (id, ops, atual) => `<select id="${id}">${Object.entries(ops).map(([k, n]) => `<option value="${k}" ${k === atual ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+    abrirModal(c ? `✏️ ${esc(c.nome)}` : '＋ Conexão EDI (SFTP / FTP)', `<div class="cte-grade" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
+        <div class="campo"><label for="cxNome">Nome</label><input id="cxNome" maxlength="100" value="${v('nome')}" placeholder="ex.: Braspress" /></div>
+        <div class="campo"><label for="cxProt">Protocolo</label>${sel('cxProt', cx.protocolos, c?.protocolo || 'sftp')}</div>
+        <div class="campo"><label for="cxHost">Servidor</label><input id="cxHost" value="${v('host')}" placeholder="sftp.transportadora.com.br" /></div>
+        <div class="campo"><label for="cxPorta">Porta</label><input id="cxPorta" inputmode="numeric" value="${v('porta')}" placeholder="22 (SFTP) ou 21 (FTP)" /></div>
+        <div class="campo"><label for="cxUsuario">Usuário</label><input id="cxUsuario" autocomplete="off" value="${v('usuario')}" /></div>
+        <div class="campo"><label for="cxSenha">Senha ${c?.tem_senha ? '<small style="color:var(--verde);">✓ cadastrada — preencha só para trocar</small>' : ''}</label><input id="cxSenha" type="password" autocomplete="new-password" /></div>
+        <div class="campo inteiro"><label for="cxChave">Chave privada SSH (opcional, só SFTP) ${c?.tem_chave ? '<small style="color:var(--verde);">✓ cadastrada</small>' : ''}</label>
+          <textarea id="cxChave" rows="2" placeholder="-----BEGIN OPENSSH PRIVATE KEY----- … (com chave, a senha acima vira a senha da chave)"></textarea></div>
+        <div class="campo"><label for="cxPasta">Pasta dos arquivos</label><input id="cxPasta" value="${v('pasta', '/')}" placeholder="/saida" /></div>
+        <div class="campo"><label for="cxPadrao">Só os arquivos (opcional)</label><input id="cxPadrao" value="${v('padrao_arquivos')}" placeholder="*.txt; OCO*" /></div>
+        <div class="campo"><label for="cxDepois">Depois de ler</label>${sel('cxDepois', cx.depois, c?.depois || 'mover')}</div>
+        <div class="campo"><label for="cxProc">Pasta de processados</label><input id="cxProc" value="${v('pasta_processados')}" placeholder="(pasta)/processados" /></div>
+        <div class="campo"><label for="cxIntervalo">Ler a cada (min)</label><input id="cxIntervalo" type="number" min="5" max="1440" value="${v('intervalo_minutos', 30)}" /></div>
+        <div class="campo"><label style="display:flex; gap:6px; align-items:center; margin-top:22px;"><input type="checkbox" id="cxAtivo" ${c?.ativo === false ? '' : 'checked'} style="width:auto;" /> Ligada</label></div>
+      </div>
+      <p style="font-size:12px; color:var(--texto-fraco);">A senha e a chave ficam guardadas criptografadas e não voltam para a tela. Prefira SFTP: o FTP sem criptografia manda a senha aberta pela internet.</p>
+      <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">${c ? '<button class="btn btn-secundario" id="cxExcluir" style="width:auto; color:var(--vermelho);">Excluir</button>' : '<span></span>'}
+        <span><button class="btn btn-secundario" data-itg-fechar style="width:auto;">Cancelar</button> <button class="btn btn-primario" id="cxSalvar" style="width:auto;">💾 Salvar</button></span></div>`);
+    const ajustar = () => { const p = $('cxProt').value; if (!$('cxPorta').value || ['21', '22'].includes($('cxPorta').value)) $('cxPorta').value = p === 'sftp' ? '22' : p === 'simulador' ? '' : '21'; $('cxChave').disabled = p !== 'sftp'; $('cxProc').disabled = $('cxDepois').value !== 'mover'; };
+    $('cxProt').addEventListener('change', ajustar); $('cxDepois').addEventListener('change', ajustar); ajustar();
+    $('cxSalvar').addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        const corpo = { nome: $('cxNome').value, protocolo: $('cxProt').value, host: $('cxHost').value, porta: $('cxPorta').value, usuario: $('cxUsuario').value, senha_nova: $('cxSenha').value || undefined,
+          chave_privada_nova: $('cxChave').value.trim() || undefined, pasta: $('cxPasta').value, padrao_arquivos: $('cxPadrao').value, depois: $('cxDepois').value, pasta_processados: $('cxProc').value,
+          intervalo_minutos: $('cxIntervalo').value, ativo: $('cxAtivo').checked };
+        await enviar(c ? `/api/edi/conexoes/${c.id}` : '/api/edi/conexoes', c ? 'PUT' : 'POST', corpo);
+        fechar(); mostrarAlerta('Conexão salva. Use 🔌 Testar para conferir o acesso.', { tipo: 'sucesso' }); await carregarConexoesEdi();
+      } catch (err) { erro(err); } finally { b.disabled = false; }
+    });
+    $('cxExcluir')?.addEventListener('click', async () => {
+      if (!await confirmar(`Excluir a conexão "${c.nome}"? Os arquivos já recebidos continuam no sistema.`, { tipo: 'perigo', textoOk: 'Excluir' })) return;
+      try { await enviar(`/api/edi/conexoes/${c.id}`, 'DELETE'); fechar(); await carregarConexoesEdi(); } catch (err) { erro(err); }
+    });
   }
 
   // ---------------- NF-Stock (Alterdata): buscar os XML e enviar os documentos emitidos ----------------

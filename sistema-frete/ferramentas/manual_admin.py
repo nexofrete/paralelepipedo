@@ -243,7 +243,7 @@ def parte_admin(g):
     s += lista([
         '<b>🖥 Sistema</b>: licença, atualização, usuários conectados, atalho, fuso do banco, HTTPS, segurança, margem da '
         'auditoria, limpezas, resumo semanal, aviso aos usuários, backup, LGPD e zerar o banco.',
-        '<b>🔗 Integrações</b>: tudo o que liga o Nexofrete a outro sistema: NF-Stock (Alterdata), chaves de API e webhooks do '
+        '<b>🔗 Integrações</b>: tudo o que liga o Nexofrete a outro sistema: NF-Stock (Alterdata), EDI por SFTP / FTP (capítulo 38), chaves de API e webhooks do '
         'ERP, modelos de planilha, leitura automática de e-mail, envio de e-mail (SMTP), WhatsApp, pasta monitorada de XML, '
         'planilha automática do ERP e leitura de comprovantes por IA (capítulo 53).',
         'O quadro <b>Outras integrações</b>, no fim da aba, leva direto às que ficam na tela do assunto: seguro da carga '

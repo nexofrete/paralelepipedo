@@ -698,6 +698,8 @@ Menu **🔁 EDI**: os arquivos texto que embarcadores e transportadoras trocam, 
 
 - **Recebidos automaticamente** (`src/ediEntrada.js`, tabela `edi_recebidos`, rotas `/api/edi/recebidos*`, aba 📬 da tela EDI): os anexos EDI dos e-mails (`caixaEmail.processarMensagem`, qualquer finalidade menos SAC; finalidade `edi` = caixa só para isso) entram por `receber()`: hash do conteúdo (nunca duas vezes), lado pelo CNPJ do cabeçalho (`parceiros` → parceiro; senão embarcador; NOTFIS → cliente). OCOREN aplicado na hora (`ediParceiros.aplicarOcoren` ou data de entrega nas notas via `lerEmbarcador`, agora exportado de `routes/edi.js`); CONEMB/DOCCOB/NOTFIS ficam `aguardando` — **Conferir** reabre o arquivo no passo a passo manual (input com arquivo "virtual"). Tela Hoje: `edi_recebidos`.
 
+- **EDI por SFTP / FTP** (`src/ediConexoes.js`, tabelas `edi_conexoes` e `edi_conexao_vistos`, rotas `/api/edi/conexoes*` só admin, quadro em Manutenção » Integrações): `ssh2-sftp-client` (SFTP, senha ou chave privada) e `basic-ftp` 6.x (FTP/FTPS); lista a pasta (filtro `*.txt; OCO*`), baixa cada arquivo (até 30 MB, 200 por rodada) para `ediEntrada.receber` e depois move para a pasta de processados (com data no nome), apaga ou guarda em `edi_conexao_vistos` (nome+tamanho+data) para não baixar de novo. Agendador a cada 5 min respeitando o intervalo de cada conexão; protocolo `simulador` com OCOREN/CONEMB de exemplo. Senha/chave com `criptografar`, nunca devolvidas.
+
 Cada parceiro às vezes muda um campo ou outro do padrão: se ele mandar o manual dele, o layout fica em `backend/src/edi/arquivos.js` (uma linha por registro, com os tamanhos).
 
 ## Emissão de CT-e (para transportadoras)

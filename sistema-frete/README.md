@@ -217,6 +217,8 @@ Juros ao mês, multa, protesto e baixa automática são configurados uma vez e v
 
 ## Tabela de frete por cliente
 
+Cadastro de clientes (Cadastros » Clientes, `abrirCliente` em `public/js/dashboard.js`): dois cliques na linha abrem o `#painelFormCliente` numa janela (`clJanela`, `#modalCliente`), fechando com Esc, ✕ ou Fechar; estilo dos campos em `public/css/style.css`.
+
 Trechos da tabela (`linhaFaixa` em `public/js/dashboard.js`): "Cidades dessa praça" é um `textarea` que cresce com o texto (`ajustarAlturaCidades`; quebras de linha viram vírgula em `lerFaixasDoFormulario`), com larguras mínimas nas colunas Origem, Destino, Região, Tipo de carga e Cidades.
 
 Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadastros → Tabelas de Preço**, na tabela da própria empresa.

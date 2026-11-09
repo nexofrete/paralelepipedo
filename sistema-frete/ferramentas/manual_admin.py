@@ -199,7 +199,8 @@ def parte_admin(g):
         'Cada nota nova atualiza os dados do cliente (endereço e IE mudam com o tempo) — sempre pela nota mais recente.',
         'Se você corrigir um cliente à mão, as notas seguintes <b>não desfazem</b> a correção: só preenchem campos vazios. O ✎ na lista '
         'mostra quem foi corrigido.',
-        'Clicando no cliente: dados completos e o resumo dos fretes dele (notas, frete cobrado, faturado e % de frete).',
+        '<b>Dois cliques</b> no cliente abrem o cadastro numa janela por cima da lista (sem descer a tela): dados completos e o '
+        'resumo dos fretes dele (notas, frete cobrado, faturado e % de frete). Fecha com Esc, ✕ ou Fechar.',
         'Busca por nome, CNPJ, IE ou cidade, e exportação para Excel.',
         '<b>🔎 SEFAZ</b>, ao lado da inscrição estadual: consulta a situação da IE na SEFAZ da UF do cliente (serviço Consulta '
         'Cadastro, com o certificado digital da Configuração fiscal): habilitada, não habilitada (baixada, suspensa ou inapta) ou '

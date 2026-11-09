@@ -1671,7 +1671,7 @@
           </div>
 
           <div id="painelFormCliente" class="oculto painel" style="padding:18px; margin-top:16px;">
-            <h3 style="margin-top:0; font-size:15px;" id="tituloFormCliente">Cliente</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin-top:0; font-size:15px;" id="tituloFormCliente">Cliente</h3><span style="cursor:pointer; font-size:18px;" title="Fechar (Esc)" onclick="clJanela(false)">✕</span></div>
             <div id="clienteResumoFretes" style="font-size:12.5px; color:var(--texto-fraco); margin-bottom:10px;"></div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px;">
               <div><label>CNPJ / CPF</label><input type="text" id="clDocumento" disabled /></div>

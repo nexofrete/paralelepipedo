@@ -9552,7 +9552,7 @@ async function carregarClientes(pagina = clEstado.pagina) {
     document.getElementById('btnClientesAnterior').disabled = d.pagina <= 1;
     document.getElementById('btnClientesProxima').disabled = d.pagina >= paginas;
     corpo.innerHTML = d.clientes.length ? d.clientes.map((c) => `
-      <tr style="cursor:pointer;" onclick="abrirCliente(${c.id})">
+      <tr style="cursor:pointer;" title="Dois cliques para abrir o cadastro" ondblclick="abrirCliente(${c.id})">
         <td><b>${cfEsc(c.razao_social || '—')}</b>${c.exige_agendamento ? ' <small title="Exige agendamento da entrega">📅</small>' : ''}${c.nome_fantasia ? `<br><small style="color:var(--texto-fraco);">${cfEsc(c.nome_fantasia)}</small>` : ''}${c.editado_manual ? ' <small title="Corrigido à mão">✎</small>' : ''}</td>
         <td style="white-space:nowrap;">${clDoc(c.documento)}</td>
         <td>${clIe(c)}</td>
@@ -9585,9 +9585,7 @@ async function abrirCliente(id) {
     document.getElementById('clienteResumoFretes').innerHTML = `${r.notas || 0} nota(s) no sistema · frete cobrado ${formatoMoeda(r.frete_total)} · faturado ${formatoMoeda(r.faturado_total)}`
       + `${r.faturado_total ? ` · ${(100 * r.frete_total / r.faturado_total).toFixed(2).replace('.', ',')}% de frete` : ''}`
       + `${c.primeira_nf_em ? ` · cliente desde ${formatoData(c.primeira_nf_em)}` : ''}${c.editado_manual ? ' · ✎ corrigido à mão' : ''}`;
-    const painel = document.getElementById('painelFormCliente');
-    painel.classList.remove('oculto');
-    painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    clJanela(true);
   } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
 }
 // Situação da IE na SEFAZ (Consulta Cadastro): mostra o resultado e oferece a IE habilitada que a SEFAZ devolveu.
@@ -9635,10 +9633,30 @@ document.getElementById('btnSalvarCliente')?.addEventListener('click', async () 
   const r = await resposta.json();
   if (!resposta.ok) { mostrarAlerta(r.erro || 'Erro ao salvar.'); return; }
   mostrarAlerta('Cliente salvo. As próximas notas não vão desfazer essa correção.', { tipo: 'sucesso' });
-  document.getElementById('painelFormCliente').classList.add('oculto');
+  clJanela(false);
   carregarClientes();
 });
-document.getElementById('btnCancelarCliente')?.addEventListener('click', () => document.getElementById('painelFormCliente').classList.add('oculto'));
+// O cadastro do cliente abre numa janela por cima da lista (dois cliques na linha), não lá embaixo depois de toda a lista.
+function clJanela(abrir) {
+  const painel = document.getElementById('painelFormCliente');
+  if (!painel) return;
+  let fundo = document.getElementById('modalCliente');
+  if (!fundo) {
+    fundo = document.createElement('div');
+    fundo.id = 'modalCliente';
+    fundo.className = 'modal-overlay oculto';
+    document.body.appendChild(fundo);
+    fundo.appendChild(painel);
+    painel.classList.add('modal-card');
+    painel.style.cssText += '; max-width:1100px; width:100%; max-height:92vh; overflow-y:auto; margin:0;';
+    fundo.addEventListener('mousedown', (e) => { if (e.target === fundo) clJanela(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !fundo.classList.contains('oculto')) clJanela(false); });
+  }
+  painel.classList.toggle('oculto', !abrir);
+  fundo.classList.toggle('oculto', !abrir);
+  if (abrir) painel.scrollTop = 0;
+}
+document.getElementById('btnCancelarCliente')?.addEventListener('click', () => clJanela(false));
 document.getElementById('buscaClientes')?.addEventListener('input', () => { clearTimeout(clTimerBusca); clTimerBusca = setTimeout(() => carregarClientes(1), 350); });
 document.getElementById('btnClientesAnterior')?.addEventListener('click', () => carregarClientes(clEstado.pagina - 1));
 document.getElementById('btnClientesProxima')?.addEventListener('click', () => carregarClientes(clEstado.pagina + 1));

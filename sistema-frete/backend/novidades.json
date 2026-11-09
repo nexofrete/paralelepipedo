@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Cadastros",
+          "texto": "Clientes: dois cliques na linha abrem o cadastro numa janela por cima da lista (antes ele aparecia lá embaixo, depois de todos os clientes), com os campos no padrão dos outros formulários."
+        },
+        {
           "area": "Tabelas de preço",
           "texto": "Nos trechos da tabela de preço, a caixa \"Cidades dessa praça\" agora mostra a lista inteira (cresce com o texto) e as colunas Origem, Destino, Região e Tipo de carga ficaram mais largas."
         },

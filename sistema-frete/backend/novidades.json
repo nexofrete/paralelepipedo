@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Segurança",
+          "texto": "Acesso por tela: no cadastro do usuário, cada tela do sistema tem Não vê, Só consulta ou Opera, e as ações sensíveis (cancelar CT-e, dar baixa, pagar, estornar, cancelar faturas e contas, fechar acerto) têm chave própria. O servidor confere em cada pedido. Os usuários atuais ficaram com o mesmo acesso que tinham: revise e tire o que não deve (quem emite CT-e via o Faturamento e o Painel gerencial)."
+        },
+        {
           "area": "EDI",
           "texto": "EDI pelo servidor da transportadora: em Manutenção » Integrações » EDI por SFTP / FTP, cadastre o acesso (SFTP, FTPS ou FTP) e a pasta; de tempos em tempos o sistema entra, baixa os arquivos novos, aplica o OCOREN e deixa CONEMB, DOCCOB e NOTFIS para conferir. Depois de lido, o arquivo é movido para processados, apagado ou deixado lá sem baixar de novo."
         },

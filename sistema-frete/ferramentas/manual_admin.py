@@ -40,11 +40,10 @@ def parte_admin(g):
     s += aviso('nota', 'O servidor confere a permissão em cada ação: esconder um botão na tela não é a única proteção. '
                        'Mesmo quem tenta acessar direto pelo endereço da ação recebe "sem permissão".')
     s += h2('Perfis de acesso')
-    s.append(P('Um perfil junta as permissões e os módulos de uma função (ex.: Faturamento, Operador de CT-e, Auditor de '
-               'frete, Consulta). Crie em <b>Cadastros » Usuários » Perfis de acesso</b>: nome, descrição, as permissões e '
-               'os módulos que o perfil usa.'))
+    s.append(P('Um perfil junta as permissões, as telas (com o nível) e as ações de uma função (ex.: Faturamento, Operador de '
+               'CT-e, Auditor de frete, Consulta). Crie em <b>Cadastros » Usuários » Perfis de acesso</b>.'))
     s += lista([
-        'No cadastro do usuário interno, escolha o perfil em <b>Perfil de acesso</b>: as permissões e os módulos dele são '
+        'No cadastro do usuário interno, escolha o perfil em <b>Perfil de acesso</b>: as permissões e as telas dele são '
         'marcados de uma vez (dá para ajustar à mão depois).',
         'Mudar um perfil atualiza na hora todos os usuários que seguem esse perfil (administradores não mudam). A tela de '
         'quem está usando o sistema se atualiza sozinha em até um minuto.',
@@ -52,25 +51,31 @@ def parte_admin(g):
         'O login em duas etapas é de cada pessoa e não faz parte do perfil. Só o administrador cria um perfil com '
         '"Gerenciar usuários".',
     ])
-    s += h2('Módulos da transportadora por usuário')
-    s.append(P('As permissões "Emitir CT-e" e "Financeiro" abrem várias telas da transportadora. Em <b>Módulos da '
-               'transportadora que este usuário usa</b> (no cadastro do usuário interno ou no perfil), desmarque o que ele '
-               'não deve usar: o módulo some do menu e do "Ir para", os cartões dele saem da tela Hoje e o servidor recusa '
-               'o acesso direto.'))
-    s += tabela(['Módulo', 'Telas'], [
-        ['Operação', 'CT-e, MDF-e, NFS-e, coletas, cotações, romaneios, ocorrências, conferência e etiquetas, monitoramento, '
-         'filiais e transferências, paletes, parceiros'],
-        ['Frota', 'Custos, abastecimentos, manutenções, documentos, pneus, jornada'],
-        ['Armazém', 'Armazenagem (contratos, entradas, saídas, cobrança)'],
-        ['Faturamento e contas a receber', 'Faturas, contas a receber, boletos, régua de cobrança, serviços extras'],
-        ['Contas a pagar', 'Contas a pagar, acerto de viagem, comissões'],
-        ['Caixa e bancos', 'Contas, conciliação, fluxo de caixa'],
-        ['Fiscal e contabilidade', 'Livros, notas de entrada, NF-e contra o CNPJ, GNRE, pacote do contador'],
-        ['SAC', 'Chamados'],
-        ['Painel gerencial', 'Painel, margem por CT-e e cliente, centros de custo'],
-    ], [0.3, 0.7])
-    s += aviso('nota', 'O módulo só tira acesso: quem não tem a permissão de base (Emitir CT-e ou Financeiro) continua sem a '
-                       'tela, mesmo com o módulo marcado. O administrador sempre vê tudo.')
+    s += h2('Acesso por tela (o que cada funcionário usa)')
+    s.append(P('No cadastro do usuário interno (e no perfil de acesso), o quadro <b>Telas que este usuário usa</b> lista todas as '
+               'telas, por área (Operação, Financeiro, Frota, Gestão, Fretes contratados e Cadastros). Para cada uma, escolha:'))
+    s += tabela(['Nível', 'O que acontece'], [
+        ['Não vê', 'A tela some do menu, do "Ir para" e da tela Hoje, e o servidor recusa o acesso direto.'],
+        ['Só consulta', 'Vê tudo, mas não altera nada: o servidor recusa gravar, lançar, transmitir, excluir. Um aviso no canto '
+         'da tela lembra que é só consulta.'],
+        ['Opera', 'Vê e altera.'],
+    ], [0.2, 0.8])
+    s += lista([
+        'Os links <b>Todas: Não vê · Só consulta · Opera</b> marcam a área inteira de uma vez.',
+        'Listas que uma tela usa de outra continuam funcionando: por exemplo, quem opera Coletas vê a lista de veículos e '
+        'motoristas, e quem opera o Faturamento vê a lista de contas bancárias (mas não o extrato nem o saldo). Os cadastros '
+        '(clientes, cadastros básicos) podem ser lidos por todos; o nível vale para alterar.',
+        '<b>Ações sensíveis</b> têm chave própria, mesmo para quem opera a tela: cancelar CT-e e NFS-e; dar baixa em faturas '
+        '(recebimento, retorno de boleto, PIX); pagar contas; estornar recebimentos e pagamentos e desfazer conciliação; '
+        'cancelar faturas, contas a pagar, acertos e fechamentos de comissão; fechar e reabrir acerto de viagem.',
+        'As chaves antigas "Emitir CT-e", "Financeiro", "Auditoria de frete", "Relatórios" e "Sinistros" agora saem da grade '
+        '(e somem do formulário). As outras continuam: ver todos os registros, enviar XML, editar e excluir registros, '
+        'gerenciar usuários/transportadoras/tabelas, aprovar pagamento e valores altos, conferir fatura.',
+        'Na atualização, cada usuário ganhou a grade igual ao acesso que já tinha (com todas as ações), e os módulos '
+        'bloqueados viraram "Não vê". Ninguém perdeu acesso: revise e tire o que não deve. Atenção: antes, "Emitir CT-e" '
+        'também abria o Faturamento e o Painel gerencial; eles aparecem como "Opera" para esses usuários até você mudar.',
+        'O administrador sempre vê tudo. Usuário do tipo Cliente não usa a grade.',
+    ])
     s += h2('Filiais por usuário')
     s.append(P('Em <b>Filiais que este usuário enxerga</b>, marque as filiais dele. Nenhuma marcada = todas. Com filiais '
                'marcadas, ele só vê:'))

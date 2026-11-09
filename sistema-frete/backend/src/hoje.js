@@ -18,7 +18,8 @@ async function montar(req) {
   const financeiro = temAlguma(req, 'pode_ver_financeiro');
   const itens = [];
   // nivel: perigo (resolver já) · atencao (hoje/em breve) · info (bom saber)
-  const add = (area, it) => { if (it.qtd > 0 || it.sempre) itens.push({ area, ...it }); };
+  const acesso = require('./acessoTelas');
+  const add = (area, it) => { if ((it.qtd > 0 || it.sempre) && !acesso.destinoBloqueado(req.usuario, it.destino)) itens.push({ area, ...it }); };
 
   if (operacao) {
     const c = await um(`SELECT COUNT(*) FILTER (WHERE status = 'rejeitado')::int AS rejeitados, COUNT(*) FILTER (WHERE status = 'erro')::int AS erro,

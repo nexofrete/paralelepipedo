@@ -36,6 +36,7 @@ async function gerarDadosTokenEResposta(usuario, req) {
   const token = jwt.sign({ ...dadosToken, sid }, config.jwtSecret, { expiresIn: '8h' });
   return { token, usuario: { ...dadosToken, email: usuario.email, trocar_senha: !!usuario.trocar_senha, funcao: usuario.funcao || null,
     modulos_bloqueados: usuario.modulos_bloqueados || [], unidades_permitidas: usuario.unidades_permitidas || [], perfil_acesso_id: usuario.perfil_acesso_id || null,
+    acesso_telas: usuario.acesso_telas || null, acesso_acoes: usuario.acesso_acoes || null,
     totp_ativo: !!usuario.totp_ativo, configurar_2fa: await contas.precisaConfigurar2fa(usuario) } };
 }
 
@@ -143,7 +144,7 @@ router.post('/verificar-codigo-2fa', async (req, res) => {
   }
 });
 
-const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, departamento_id, ${CAMPOS_PERMISSAO.join(', ')}`;
+const COLUNAS_USUARIO_RETORNO = `id, nome, email, funcao, perfil, cliente_nome, ativo, trocar_senha, criado_em, ultimo_acesso, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, departamento_id, acesso_telas, acesso_acoes, ${CAMPOS_PERMISSAO.join(', ')}`;
 
 // POST /api/auth/ticket { caminho } — ticket de download para um link direto (ver ticketDownload.js).
 router.post('/ticket', autenticar, (req, res) => {
@@ -275,12 +276,20 @@ router.post('/usuarios', autenticar, permitir('pode_gerenciar_usuarios'), async 
     return res.status(403).json({ erro: 'Apenas o administrador pode criar outro administrador ou dar permissão de gerenciar usuários.' });
   }
 
+  // Usuário interno: a grade de telas (ou a equivalente às permissões marcadas) e as permissões que ela abre.
+  const acesso = require('../acessoTelas');
+  let grade = null;
+  if ((perfil || 'cliente') === 'interno') {
+    grade = req.body.acesso_telas ? acesso.limparGrade(req.body.acesso_telas, req.body.acesso_acoes) : acesso.gradeDoLegado(req.body);
+    Object.assign(req.body, acesso.chavesDaGrade(grade.telas));
+  }
   try {
     const senha_hash = await bcrypt.hash(senha, 10);
     // Senha criada pelo administrador é provisória por padrão: o usuário
     // cadastra a própria no primeiro acesso (dá pra desmarcar no formulário).
-    const colunas = ['nome', 'email', 'funcao', 'senha_hash', 'perfil', 'cliente_nome', 'trocar_senha', 'perfil_acesso_id', 'modulos_bloqueados', 'unidades_permitidas', 'departamento_id', ...CAMPOS_PERMISSAO];
+    const colunas = ['acesso_telas', 'acesso_acoes', 'nome', 'email', 'funcao', 'senha_hash', 'perfil', 'cliente_nome', 'trocar_senha', 'perfil_acesso_id', 'modulos_bloqueados', 'unidades_permitidas', 'departamento_id', ...CAMPOS_PERMISSAO];
     const valores = [
+      grade ? JSON.stringify(grade.telas) : null, grade ? grade.acoes : null,
       nome, email, String(req.body.funcao || '').trim().slice(0, 100) || null, senha_hash, perfil || 'cliente', cliente_nome || null, req.body.trocar_senha !== false,
       Number(req.body.perfil_acesso_id) || null, limparModulos(req.body.modulos_bloqueados), limparUnidades(req.body.unidades_permitidas), Number(req.body.departamento_id) || null,
       ...CAMPOS_PERMISSAO.map((c) => !!req.body[c]),
@@ -325,6 +334,17 @@ router.put('/usuarios/:id', autenticar, permitir('pode_gerenciar_usuarios'), asy
     if (cliente_nome !== undefined) add('cliente_nome', cliente_nome || null);
     if (ativo !== undefined) add('ativo', !!ativo);
     if (perfil !== undefined) add('perfil', perfil);
+    // Grade de telas: grava e acerta as permissões que ela abre (Emitir CT-e, Financeiro, Auditoria, Relatórios, Sinistros).
+    if (req.body.acesso_telas !== undefined && req.body.acesso_telas !== null) {
+      const acesso = require('../acessoTelas');
+      const g = acesso.limparGrade(req.body.acesso_telas, req.body.acesso_acoes);
+      Object.assign(req.body, acesso.chavesDaGrade(g.telas));
+      add('acesso_telas', JSON.stringify(g.telas)); add('acesso_acoes', g.acoes);
+    } else if (perfil === 'interno') {
+      // Virou interno sem grade: a equivalente ao que estiver marcado.
+      const { rows: [atual] } = await pool.query('SELECT * FROM usuarios WHERE id = $1', [req.params.id]);
+      if (atual && !atual.acesso_telas) { const g = require('../acessoTelas').gradeDoLegado({ ...atual, ...req.body }); add('acesso_telas', JSON.stringify(g.telas)); add('acesso_acoes', g.acoes); }
+    }
     CAMPOS_PERMISSAO.forEach((c) => { if (req.body[c] !== undefined) add(c, !!req.body[c]); });
     if (req.body.perfil_acesso_id !== undefined) add('perfil_acesso_id', Number(req.body.perfil_acesso_id) || null);
     if (req.body.modulos_bloqueados !== undefined) add('modulos_bloqueados', limparModulos(req.body.modulos_bloqueados));

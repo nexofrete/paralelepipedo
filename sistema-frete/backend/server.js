@@ -233,6 +233,8 @@ app.use('/api/perfis-acesso', require('./src/routes/perfisAcesso'));
 app.use('/api/alteracoes', require('./src/routes/alteracoes'));
 app.use('/api/cadastros-basicos', require('./src/routes/cadastrosBasicos'));
 app.use('/api/sefaz', require('./src/routes/sefaz'));
+// Catálogo das telas e ações (menu e formulário de usuário).
+app.get('/api/acesso/catalogo', require('./src/middlewareAuth').autenticar, (req, res) => res.json(require('./src/acessoTelas').catalogo()));
 // Aviso de privacidade (público: tela de login e portal do cliente).
 app.get('/api/privacidade', async (req, res) => {
   try { res.json({ texto: await require('./src/lgpd').avisoPrivacidade() }); } catch (err) { res.status(500).json({ erro: 'Erro.' }); }
@@ -376,6 +378,7 @@ async function iniciar() {
     require('./src/sefazServicos').agendar();
     require('./src/integracao/nfstock').agendar();
     require('./src/ediConexoes').agendar();
+    require('./src/acessoTelas').migrar(require('./src/db')).catch((e) => console.error('[acesso] migração:', e.message));
     require('./src/avisosSeguranca').iniciar();
     require('./src/fusoBanco').verificarAoLigar();
     licenca.agendarConferencia();

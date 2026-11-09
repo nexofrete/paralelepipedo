@@ -38,7 +38,7 @@ async function autenticar(req, res, next) {
   try {
     const { rows } = await pool.query(
       `UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = $1
-       RETURNING id, nome, funcao, perfil, cliente_nome, ativo, trocar_senha, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, sessoes_invalidadas_em, totp_ativo, ${CAMPOS_PERMISSAO.join(', ')}`,
+       RETURNING id, nome, funcao, perfil, cliente_nome, ativo, trocar_senha, perfil_acesso_id, modulos_bloqueados, unidades_permitidas, acesso_telas, acesso_acoes, sessoes_invalidadas_em, totp_ativo, ${CAMPOS_PERMISSAO.join(', ')}`,
       [payload.id]
     );
     const usuario = rows[0];
@@ -69,6 +69,9 @@ async function autenticar(req, res, next) {
     if (moduloBloqueado(usuario, modulo)) {
       return res.status(403).json({ erro: `Seu usuário não tem acesso ao módulo ${MODULOS[modulo].nome}. Fale com o administrador.`, modulo });
     }
+    // Acesso por tela (src/acessoTelas.js): nível da tela da rota (não vê / só consulta / opera) e ações sensíveis.
+    const negado = require('./acessoTelas').conferir(usuario, req.method, rota);
+    if (negado) return res.status(negado.status).json({ erro: negado.erro, tela: negado.tela, acao: negado.acao });
     req.usuario = usuario;
     require('./contextoUsuario').rodar(usuario, next);
   } catch (err) {

@@ -54,6 +54,7 @@ window.Navegar = (() => {
     const { pagina, subaba } = partes(dest);
     const item = itemDa(pagina);
     if (!item || item.classList.contains('oculto') || window.Modulos?.fora(item, { empresa: true })) return false;
+    if (window.Acessos?.destinoBloqueado?.(String(dest))) return false;
     // Aba que a tela esconde deste usuário (ex.: Usuários sem a permissão de gerenciar).
     const { aba } = partes(dest);
     if (aba && ATRIBUTO_ABA[pagina]) { const el = document.querySelector(`[${ATRIBUTO_ABA[pagina]}="${aba}"]`); if (el && el.classList.contains('oculto')) return false; }

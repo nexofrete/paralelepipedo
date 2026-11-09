@@ -3413,3 +3413,9 @@ CREATE TABLE IF NOT EXISTS edi_conexao_vistos (
     visto_em   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (conexao_id, nome, tamanho, modificado)
 );
+
+-- Acesso por tela (src/acessoTelas.js): nível por tela (nenhum, consulta, opera) e ações sensíveis permitidas.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS acesso_telas JSONB;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS acesso_acoes TEXT[];
+ALTER TABLE perfis_acesso ADD COLUMN IF NOT EXISTS telas JSONB;
+ALTER TABLE perfis_acesso ADD COLUMN IF NOT EXISTS acoes TEXT[];

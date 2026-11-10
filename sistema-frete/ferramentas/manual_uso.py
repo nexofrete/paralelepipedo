@@ -865,6 +865,28 @@ def parte_uso(g):
     s.append(P('<b>Exportar p/ Excel</b> gera uma planilha .xlsx com filtro no cabeçalho: valores como número e datas como data '
                '(dá para somar, filtrar e montar tabela dinâmica direto). Na prévia, datas em dd/mm/aaaa, valores com vírgula e as '
                'situações como Sim/Não.'))
+    s += h3('Ordem das colunas e ordenação')
+    s += lista([
+        'Os campos marcados aparecem no quadro <b>Colunas, ordem e agrupamento</b>, na ordem das colunas do relatório. '
+        '<b>Arraste</b> uma coluna para outra posição (ou use as setas); o X tira a coluna.',
+        '<b>Ordenar por</b> escolhe a coluna que manda na ordem das linhas e <b>Sentido</b> se é do maior para o menor (ou mais '
+        'recente primeiro) ou o contrário. Sem escolher, vêm os registros mais recentes primeiro.',
+    ])
+    s += h3('Agrupar e totalizar')
+    s.append(P('Em <b>Agrupar por</b>, escolha um campo (transportadora, cliente, UF, status...) e, se quiser, um segundo nível em '
+               '<b>Depois por</b>. Em vez de uma linha por registro, sai uma linha por grupo, com a <b>quantidade de registros</b> e o '
+               'total de cada campo de valor marcado (Valor Faturado, Vlr. CT-e, Valor Total do Frete, pesos, taxas...), e a linha '
+               '<b>TOTAL GERAL</b> no fim. Os campos de texto marcados não entram no agrupado.'))
+    s += lista([
+        'Agrupando por uma data (emissão da NF, do CT-e, entrega...), escolha o <b>período</b>: por mês (padrão), por dia ou por ano. '
+        'Exemplo: Agrupar por Transportadora, Depois por Data Emissão NF (mês), com Valor Faturado e Valor Total do Frete marcados, '
+        'dá o frete de cada transportadora mês a mês.',
+        '<b>Totalizar os valores com</b>: Automático (soma; os percentuais, como % Frete e alíquota do ICMS, pela média), Soma, '
+        'Média, Mínimo ou Máximo. O total geral é calculado sobre todos os registros (a média geral não é a média das médias).',
+        'Agrupado, o <b>Ordenar por</b> oferece o próprio grupo, a quantidade e os totais (ex.: transportadoras do maior frete para '
+        'o menor). Sem escolher: datas em ordem; nos outros grupos, os com mais registros primeiro.',
+        'O Excel sai igual à prévia, com a linha TOTAL GERAL. A ordem das colunas e o agrupamento ficam guardados no modelo salvo.',
+    ])
     s += h3('Modelos salvos')
     s += lista([
         'Marque os campos e os filtros e clique em <b>Salvar como modelo</b>, com um nome (ex.: "Fretes do mês por transportadora"). '

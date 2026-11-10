@@ -1895,54 +1895,113 @@ function filtrosBi(q = {}) {
   return { condicoes, valores };
 }
 
+// ---------- Agrupar, totalizar e ordenar ----------
+const FUNCOES_BI = { soma: ['SUM', 'Soma'], media: ['AVG', 'Média'], min: ['MIN', 'Mínimo'], max: ['MAX', 'Máximo'] };
+const MEDIA_AUTOMATICA = new Set(['percent_frete', 'cte_icms_aliquota', 'prazo_dias_tabela']);   // "automático": média, não soma
+const PERIODOS_BI = { dia: ['YYYY-MM-DD', 'dia'], mes: ['YYYY-MM', 'mês'], ano: ['YYYY', 'ano'] };
+const ehNumeroBi = (c) => ['numero', 'inteiro'].includes(CAMPOS_BI[c]?.tipo);
+const ehDataBi = (c) => ['data', 'datahora'].includes(CAMPOS_BI[c]?.tipo);
+const brutoBi = (c) => CAMPOS_BI[c].sql || `"${c}"`;   // valor sem formatar (para ordenar)
+function lerRotulosBi(q) {
+  try { const r = JSON.parse(q.rotulos || '{}'); return r && typeof r === 'object' && !Array.isArray(r) ? r : {}; } catch { return {}; }
+}
+function grupoBi(c, periodo) {
+  return ehDataBi(c) ? `to_char("${c}", '${PERIODOS_BI[periodo][0]}')` : expressaoBi(c);
+}
+function metricaBi(c, total) {
+  const f = FUNCOES_BI[total] ? total : (MEDIA_AUTOMATICA.has(c) ? 'media' : 'soma');
+  const inteiro = CAMPOS_BI[c].tipo === 'inteiro' && f !== 'media';
+  return { f, tipo: inteiro ? 'inteiro' : 'numero', sql: `ROUND(${FUNCOES_BI[f][0]}("${c}")::numeric, ${inteiro ? 0 : 2})` };
+}
+// Chave de período para mostrar: 2026-10 → 10/2026; 2026-10-05 → 05/10/2026.
+const chaveBi = (v, data) => {
+  if (v == null || v === '') return '(em branco)';
+  if (!data) return v;
+  return String(v).split('-').reverse().join('/');
+};
+
 // Planilha .xlsx do BI: números como número, datas como data (dá para somar e filtrar no Excel).
-function planilhaBi(campos, rotulos, linhas) {
+// colunas: [{ id, rotulo, tipo }]; total (opcional): linha "TOTAL GERAL" no fim.
+function planilhaBi(colunas, linhas, total = null) {
   const XLSX = require('xlsx');
   const serial = (t) => { const m = String(t).match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/); return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) / 86400000 + 25569 : null; };
-  const folha = XLSX.utils.aoa_to_sheet([campos.map((c, i) => rotulos[i] || c)]);
-  linhas.forEach((l, r) => campos.forEach((c, i) => {
-    const v = l[c];
+  const todas = total ? [...linhas, { ...total, [colunas[0].id]: 'TOTAL GERAL' }] : linhas;
+  const folha = XLSX.utils.aoa_to_sheet([colunas.map((c) => c.rotulo)]);
+  todas.forEach((l, r) => colunas.forEach((c, i) => {
+    const v = l[c.id];
     if (v == null || v === '') return;
-    const tipo = CAMPOS_BI[c].tipo;
     const ref = XLSX.utils.encode_cell({ r: r + 1, c: i });
-    if (tipo === 'numero' || tipo === 'inteiro') folha[ref] = { t: 'n', v: Number(v), z: tipo === 'inteiro' ? '0' : '#,##0.00' };
-    else if ((tipo === 'data' || tipo === 'datahora') && serial(v) != null) folha[ref] = { t: 'n', v: serial(v), z: tipo === 'data' ? 'dd/mm/yyyy' : 'dd/mm/yyyy hh:mm' };
+    if (c.tipo === 'numero' || c.tipo === 'inteiro') folha[ref] = { t: 'n', v: Number(v), z: c.tipo === 'inteiro' ? '#,##0' : '#,##0.00' };
+    else if ((c.tipo === 'data' || c.tipo === 'datahora') && serial(v) != null) folha[ref] = { t: 'n', v: serial(v), z: c.tipo === 'data' ? 'dd/mm/yyyy' : 'dd/mm/yyyy hh:mm' };
     else folha[ref] = { t: 's', v: String(v) };
   }));
-  folha['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: linhas.length, c: campos.length - 1 } });
-  folha['!cols'] = campos.map((c, i) => ({ wch: Math.min(50, Math.max(10, String(rotulos[i] || c).length + 2, ...linhas.slice(0, 200).map((l) => String(l[c] ?? '').length + 2))) }));
-  folha['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: campos.length - 1 } }) };
+  folha['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: todas.length, c: colunas.length - 1 } });
+  folha['!cols'] = colunas.map((c) => ({ wch: Math.min(50, Math.max(10, String(c.rotulo).length + 2, ...todas.slice(0, 200).map((l) => String(l[c.id] ?? '').length + 2))) }));
+  folha['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: linhas.length, c: colunas.length - 1 } }) };
   const livro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(livro, folha, 'Relatório');
   return XLSX.write(livro, { type: 'buffer', bookType: 'xlsx' });
 }
 
-// GET /api/fretes/bi?campos=a,b,c&<filtros>[&formato=xlsx&rotulos=...]
-// Monta uma consulta só com os campos escolhidos pela pessoa — usado tanto
-// pra pré-visualizar quanto pra exportar pro Excel (.xlsx).
+// GET /api/fretes/bi/campos — o tipo de cada campo (a tela usa para agrupar e totalizar).
+router.get('/bi/campos', autenticar, permitirAlguma('pode_ver_relatorios'), (req, res) => {
+  res.json(Object.fromEntries(CAMPOS_BI_PERMITIDOS.map((c) => [c, CAMPOS_BI[c].tipo || 'texto'])));
+});
+
+// GET /api/fretes/bi?campos=a,b,c&<filtros>&ordem=&dir=&agrupar=&agrupar2=&periodo=&total=&rotulos={id:rótulo}[&formato=xlsx&nome=]
+// Sem agrupar: uma linha por registro, nos campos e na ordem escolhidos. Agrupando: uma linha por grupo,
+// com a quantidade e o total (soma, média, mínimo ou máximo) de cada campo de valor marcado, e o total geral.
 router.get('/bi', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
   try {
-    const camposPedidos = (req.query.campos || '').split(',').map((c) => c.trim()).filter(Boolean);
-    const campos = camposPedidos.filter((c) => CAMPOS_BI_PERMITIDOS.includes(c));
-    if (campos.length === 0) return res.status(400).json({ erro: 'Selecione pelo menos um campo.' });
-    const xlsx = req.query.formato === 'xlsx';
-    const { condicoes, valores } = filtrosBi(req.query);
+    const q = req.query;
+    const camposPedidos = (q.campos || '').split(',').map((c) => c.trim()).filter(Boolean);
+    const campos = [...new Set(camposPedidos.filter((c) => CAMPOS_BI_PERMITIDOS.includes(c)))];
+    const agrupar = [...new Set([q.agrupar, q.agrupar2].filter((c) => CAMPOS_BI[c] && !ehNumeroBi(c)))];
+    if (campos.length === 0 && !agrupar.length) return res.status(400).json({ erro: 'Selecione pelo menos um campo.' });
+    const xlsx = q.formato === 'xlsx';
+    const rot = lerRotulosBi(q);
+    const rotulo = (c) => String(rot[c] || c).slice(0, 80);
+    const dir = q.dir === 'asc' ? 'ASC' : 'DESC';
+    const { condicoes, valores } = filtrosBi(q);
     const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
+    let colunas; let linhas; let total = null;
 
-    const { rows } = await consultaCliente(req,
-      `SELECT ${campos.map((c) => `${expressaoBi(c, xlsx)} AS "${c}"`).join(', ')} FROM fretes ${where} ORDER BY id DESC LIMIT 50000`,
-      valores
-    );
+    if (agrupar.length) {
+      const periodo = PERIODOS_BI[q.periodo] ? q.periodo : 'mes';
+      const metricas = campos.filter(ehNumeroBi).map((c) => ({ c, ...metricaBi(c, q.total) }));
+      colunas = [
+        ...agrupar.map((c, i) => ({ id: `g${i + 1}`, campo: c, papel: 'grupo', tipo: 'texto', rotulo: `${rotulo(c)}${ehDataBi(c) ? ` (${PERIODOS_BI[periodo][1]})` : ''}` })),
+        { id: 'qtd', campo: 'qtd', papel: 'qtd', tipo: 'inteiro', rotulo: 'Qtd. de registros' },
+        ...metricas.map((m) => ({ id: m.c, campo: m.c, papel: 'metrica', funcao: m.f, tipo: m.tipo, rotulo: `${FUNCOES_BI[m.f][1]} de ${rotulo(m.c)}` })),
+      ];
+      const alvo = colunas.find((x) => x.campo === q.ordem);
+      const ordem = alvo
+        ? `${alvo.papel === 'metrica' ? `"${alvo.id}"` : alvo.id} ${dir} NULLS LAST`
+        : (ehDataBi(agrupar[0]) ? 'g1 ASC NULLS LAST' : 'qtd DESC');
+      const metricasSql = metricas.map((m) => `, ${m.sql} AS "${m.c}"`).join('');
+      const { rows } = await consultaCliente(req,
+        `SELECT ${agrupar.map((c, i) => `${grupoBi(c, periodo)} AS g${i + 1}`).join(', ')}, COUNT(*)::int AS qtd${metricasSql}
+           FROM fretes ${where} GROUP BY ${agrupar.map((_, i) => i + 1).join(', ')} ORDER BY ${ordem}, g1 LIMIT 5000`, valores);
+      linhas = rows.map((r) => { agrupar.forEach((c, i) => { r[`g${i + 1}`] = chaveBi(r[`g${i + 1}`], ehDataBi(c)); }); return r; });
+      const { rows: [t] } = await consultaCliente(req, `SELECT COUNT(*)::int AS qtd${metricasSql} FROM fretes ${where}`, valores);
+      total = t;
+    } else {
+      colunas = campos.map((c) => ({ id: c, campo: c, papel: 'campo', tipo: CAMPOS_BI[c].tipo || 'texto', rotulo: rotulo(c) }));
+      const ordem = CAMPOS_BI[q.ordem] ? `${brutoBi(q.ordem)} ${dir} NULLS LAST, id DESC` : 'id DESC';
+      const { rows } = await consultaCliente(req,
+        `SELECT ${campos.map((c) => `${expressaoBi(c, xlsx)} AS "${c}"`).join(', ')} FROM fretes ${where} ORDER BY ${ordem} LIMIT 50000`, valores);
+      linhas = rows;
+    }
+
     if (xlsx) {
-      let rotulos = [];
-      try { rotulos = JSON.parse(req.query.rotulos || '[]'); } catch { rotulos = []; }
-      const nome = `${String(req.query.nome || 'relatorio-personalizado').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').slice(0, 60) || 'relatorio'}.xlsx`;
+      const nome = `${String(q.nome || 'relatorio-personalizado').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').slice(0, 60) || 'relatorio'}.xlsx`;
       res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.set('Content-Disposition', `attachment; filename="${nome}"`);
-      res.set('X-Total-Linhas', String(rows.length));
-      return res.send(planilhaBi(campos, campos.map((c) => String(rotulos[camposPedidos.indexOf(c)] ?? c).slice(0, 80)), rows));
+      res.set('X-Total-Linhas', String(linhas.length));
+      // No agrupado as datas já vêm como período (texto); só a lista linha a linha leva data do Excel.
+      return res.send(planilhaBi(colunas, linhas, total));
     }
-    res.json({ campos, tipos: Object.fromEntries(campos.map((c) => [c, CAMPOS_BI[c].tipo || 'texto'])), linhas: rows });
+    res.json({ agrupado: !!agrupar.length, colunas, campos: colunas.map((c) => c.id), tipos: Object.fromEntries(colunas.map((c) => [c.id, c.tipo])), linhas, total });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao gerar o relatório personalizado.' });
@@ -1951,7 +2010,8 @@ router.get('/bi', autenticar, permitirAlguma('pode_ver_relatorios'), async (req,
 
 // ---------- Modelos salvos do BI (campos + filtros com um nome) ----------
 // Cada usuário vê os seus e os compartilhados; só o dono (ou o administrador) altera ou apaga.
-const FILTROS_BI = ['transportadora', 'cliente', 'uf', 'status', 'aprovacao', 'data_de', 'data_ate', 'cte_de', 'cte_ate', 'entrega_de', 'entrega_ate', 'divergencia', 'glosa'];
+const FILTROS_BI = ['transportadora', 'cliente', 'uf', 'status', 'aprovacao', 'data_de', 'data_ate', 'cte_de', 'cte_ate', 'entrega_de', 'entrega_ate', 'divergencia', 'glosa',
+  'ordem', 'dir', 'agrupar', 'agrupar2', 'periodo', 'total'];
 function lerModeloBi(b = {}) {
   const nome = String(b.nome || '').trim().slice(0, 100);
   if (!nome) return { erro: 'Dê um nome ao modelo.' };

@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "Relatórios",
+          "texto": "Montar relatório (BI): agrupar por um ou dois campos (transportadora, cliente, UF, mês, dia ou ano de uma data...) com a quantidade e o total dos valores (soma, média, mínimo ou máximo; % pela média) e o total geral; ordem das colunas arrastando; ordenar por qualquer coluna, crescente ou decrescente. Tudo vai para o Excel e fica no modelo salvo."
+        },
+        {
+          "area": "Relatórios",
           "texto": "Montar relatório (BI): modelos salvos (campos e filtros com um nome, só seus ou compartilhados, abrem com um clique), Excel de verdade (.xlsx, com números e datas prontos para somar e filtrar), busca de campo e filtros novos: cliente (nome ou CNPJ), UF, aprovação, períodos do CT-e e da entrega, só com diferença CT-e × tabela e só com glosa."
         },
         {

@@ -431,6 +431,7 @@ thead th.cab-verde { background: #375623; color: #fff; text-transform: none; fon
 }
 #tabelaCompleta td { font-size: 12.5px; }
 tbody td { padding: 11px 14px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+tfoot td { padding: 11px 14px; white-space: nowrap; }
 tbody tr:hover { background: rgba(77,124,255,0.08); }
 #tabelaCompleta tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
 

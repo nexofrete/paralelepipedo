@@ -2809,6 +2809,24 @@
             <div id="listaCamposBI" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:6px 14px; max-height:340px; overflow-y:auto; padding:4px;"></div>
           </div>
 
+          <div class="painel" style="margin-bottom:18px;">
+            <h3 style="margin:0 0 8px; font-size:14px;">Colunas, ordem e agrupamento</h3>
+            <div id="biColunas" style="display:flex; flex-wrap:wrap; gap:6px; min-height:32px; padding:6px; border:1px dashed var(--borda); border-radius:8px;"></div>
+            <small style="color:var(--texto-fraco);">Arraste as colunas (ou use ◀ ▶) para mudar a ordem; ✕ tira a coluna.</small>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; margin-top:12px;">
+              <div class="campo" style="margin-bottom:0;"><label for="biOrdem">Ordenar por</label><select id="biOrdem"></select></div>
+              <div class="campo" style="margin-bottom:0;"><label for="biDir">Sentido</label>
+                <select id="biDir"><option value="desc">Maior → menor (mais recente primeiro)</option><option value="asc">Menor → maior (A → Z, mais antigo primeiro)</option></select></div>
+              <div class="campo" style="margin-bottom:0;"><label for="biAgrupar">Agrupar por</label><select id="biAgrupar"></select></div>
+              <div class="campo" style="margin-bottom:0;"><label for="biAgrupar2">Depois por</label><select id="biAgrupar2"></select></div>
+              <div class="campo oculto" id="biPeriodoCampo" style="margin-bottom:0;"><label for="biPeriodo">Período das datas</label>
+                <select id="biPeriodo"><option value="mes">Por mês</option><option value="dia">Por dia</option><option value="ano">Por ano</option></select></div>
+              <div class="campo" style="margin-bottom:0;"><label for="biTotal">Totalizar os valores com</label>
+                <select id="biTotal"><option value="auto">Automático (soma; % pela média)</option><option value="soma">Soma</option><option value="media">Média</option><option value="min">Mínimo</option><option value="max">Máximo</option></select></div>
+            </div>
+            <p id="biDicaAgrupar" style="font-size:12.5px; color:var(--texto-fraco); margin:8px 0 0;"></p>
+          </div>
+
           <div style="display:flex; gap:10px; margin-bottom:18px;">
             <button class="btn btn-primario" id="btnBiGerarPrevia" style="width:auto; padding:10px 20px;">👁 Ver prévia</button>
             <button class="btn btn-secundario" id="btnBiExportarExcel" style="width:auto; padding:10px 20px;">⬇ Exportar p/ Excel</button>
@@ -2820,6 +2838,7 @@
               <table id="tabelaBI" style="font-size:12.5px;">
                 <thead><tr id="cabecalhoTabelaBI"></tr></thead>
                 <tbody></tbody>
+                <tfoot id="rodapeTabelaBI"></tfoot>
               </table>
             </div>
           </div>

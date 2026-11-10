@@ -6522,7 +6522,79 @@ document.querySelectorAll('.botao-subaba').forEach((botao) => {
 
 // "Marcar todos" com busca ativa marca só os campos que aparecem.
 const camposBiVisiveis = () => Array.from(document.querySelectorAll('.bi-campo')).filter((l) => l.style.display !== 'none').map((l) => l.querySelector('.campo-bi-checkbox'));
-const contarCamposBI = () => { const n = document.querySelectorAll('.campo-bi-checkbox:checked').length; document.getElementById('biContagemCampos').textContent = n ? `(${n} marcado${n > 1 ? 's' : ''})` : ''; };
+const contarCamposBI = () => {
+  const n = document.querySelectorAll('.campo-bi-checkbox:checked').length;
+  document.getElementById('biContagemCampos').textContent = n ? `(${n} marcado${n > 1 ? 's' : ''})` : '';
+  sincronizarOrdemBI();
+};
+// ---------- Colunas na ordem escolhida, agrupar e totalizar ----------
+const ROTULO_BI = Object.fromEntries(CAMPOS_BI.flatMap((g) => g.campos));
+let TIPOS_BI = {};
+let ordemBI = [];
+const escBI = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const ehNumeroBI = (c) => ['numero', 'inteiro'].includes(TIPOS_BI[c]);
+const ehDataBI = (c) => ['data', 'datahora'].includes(TIPOS_BI[c]);
+function sincronizarOrdemBI() {
+  const marcados = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.value);
+  ordemBI = ordemBI.filter((c) => marcados.includes(c));
+  marcados.forEach((c) => { if (!ordemBI.includes(c)) ordemBI.push(c); });
+  desenharColunasBI();
+}
+function desenharColunasBI() {
+  const caixa = document.getElementById('biColunas');
+  caixa.innerHTML = ordemBI.length ? ordemBI.map((c, i) => `<span class="bi-chip" draggable="true" data-col="${c}" style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:14px; background:var(--bg-elevado, rgba(127,127,127,.1)); border:1px solid var(--borda); font-size:12px; cursor:grab;">
+      <b style="color:var(--texto-fraco); font-weight:600;">${i + 1}</b> ${escBI(ROTULO_BI[c] || c)}
+      <a data-bi-mover="-1" title="Para a esquerda" style="cursor:pointer; padding:0 2px;">◀</a><a data-bi-mover="1" title="Para a direita" style="cursor:pointer; padding:0 2px;">▶</a><a data-bi-tirar title="Tirar a coluna" style="cursor:pointer; padding:0 2px; color:var(--vermelho);">✕</a></span>`).join('')
+    : '<span style="font-size:12.5px; color:var(--texto-fraco);">Marque os campos acima: eles aparecem aqui, na ordem das colunas.</span>';
+  atualizarSelectsBI();
+}
+function moverColunaBI(c, destino) {
+  const i = ordemBI.indexOf(c); if (i < 0) return;
+  ordemBI.splice(i, 1); ordemBI.splice(Math.max(0, Math.min(destino, ordemBI.length)), 0, c);
+  desenharColunasBI();
+}
+(() => {
+  const caixa = document.getElementById('biColunas');
+  let arrastando = null;
+  caixa.addEventListener('click', (e) => {
+    const chip = e.target.closest('.bi-chip'); if (!chip) return;
+    const c = chip.dataset.col;
+    if (e.target.closest('[data-bi-tirar]')) { const cb = document.querySelector(`.campo-bi-checkbox[value="${c}"]`); if (cb) cb.checked = false; contarCamposBI(); return; }
+    const m = e.target.closest('[data-bi-mover]'); if (m) moverColunaBI(c, ordemBI.indexOf(c) + Number(m.dataset.biMover));
+  });
+  caixa.addEventListener('dragstart', (e) => { arrastando = e.target.closest('.bi-chip')?.dataset.col || null; e.dataTransfer.effectAllowed = 'move'; });
+  caixa.addEventListener('dragover', (e) => { if (arrastando) e.preventDefault(); });
+  caixa.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const alvo = e.target.closest('.bi-chip');
+    if (arrastando && alvo && alvo.dataset.col !== arrastando) moverColunaBI(arrastando, ordemBI.indexOf(alvo.dataset.col));
+    arrastando = null;
+  });
+})();
+function atualizarSelectsBI() {
+  const opcoesGrupo = (vazio) => `<option value="">${vazio}</option>${CAMPOS_BI.map((g) => {
+    const cs = g.campos.filter(([id]) => TIPOS_BI[id] && !ehNumeroBI(id));
+    return cs.length ? `<optgroup label="${escBI(g.grupo)}">${cs.map(([id, r]) => `<option value="${id}">${escBI(r)}</option>`).join('')}</optgroup>` : '';
+  }).join('')}`;
+  const g1 = document.getElementById('biAgrupar'); const g2 = document.getElementById('biAgrupar2');
+  const v1 = g1.value; const v2 = g2.value;
+  if (!g1.options.length && Object.keys(TIPOS_BI).length) { g1.innerHTML = opcoesGrupo('— não agrupar (uma linha por registro) —'); g2.innerHTML = opcoesGrupo('— só um nível —'); }
+  g1.value = v1; g2.value = v1 ? v2 : ''; g2.disabled = !v1;
+  const grupos = [g1.value, g2.value].filter(Boolean);
+  document.getElementById('biPeriodoCampo').classList.toggle('oculto', !grupos.some(ehDataBI));
+  const ord = document.getElementById('biOrdem'); const vo = ord.value;
+  const opcoes = grupos.length
+    ? [...grupos.map((c) => [c, ROTULO_BI[c]]), ['qtd', 'Qtd. de registros'], ...ordemBI.filter(ehNumeroBI).map((c) => [c, `Total de ${ROTULO_BI[c]}`])]
+    : ordemBI.map((c) => [c, ROTULO_BI[c] || c]);
+  ord.innerHTML = `<option value="">${grupos.length ? 'Padrão (datas em ordem; senão, mais registros primeiro)' : 'Padrão (mais recentes primeiro)'}</option>${opcoes.map(([v, r]) => `<option value="${v}">${escBI(r)}</option>`).join('')}`;
+  ord.value = opcoes.some(([v]) => v === vo) ? vo : '';
+  const valores = ordemBI.filter(ehNumeroBI).map((c) => ROTULO_BI[c]);
+  document.getElementById('biDicaAgrupar').textContent = grupos.length
+    ? `Agrupado: uma linha por ${grupos.map((c) => ROTULO_BI[c]).join(' e ')}, com a quantidade de registros${valores.length ? ` e o total de ${valores.join(', ')}` : ' (marque campos de valor, como Valor Faturado ou Vlr. CT-e, para totalizar)'}, e o total geral no fim. Os outros campos marcados não entram.`
+    : '';
+}
+['biAgrupar', 'biAgrupar2'].forEach((id) => document.getElementById(id).addEventListener('change', atualizarSelectsBI));
+apiFetch('/api/fretes/bi/campos').then((r) => (r.ok ? r.json() : {})).then((t) => { TIPOS_BI = t || {}; atualizarSelectsBI(); }).catch(() => {});
 document.getElementById('btnBiMarcarTodos').addEventListener('click', () => { camposBiVisiveis().forEach((c) => { c.checked = true; }); contarCamposBI(); });
 document.getElementById('btnBiDesmarcarTodos').addEventListener('click', () => { camposBiVisiveis().forEach((c) => { c.checked = false; }); contarCamposBI(); });
 document.getElementById('listaCamposBI').addEventListener('change', contarCamposBI);
@@ -6542,6 +6614,18 @@ document.getElementById('biBuscaCampo').addEventListener('input', (e) => {
 const FILTROS_BI_TELA = { transportadora: 'biFiltroTransportadora', cliente: 'biFiltroCliente', uf: 'biFiltroUf', status: 'biFiltroStatus', aprovacao: 'biFiltroAprovacao',
   data_de: 'biFiltroDataDe', data_ate: 'biFiltroDataAte', cte_de: 'biFiltroCteDe', cte_ate: 'biFiltroCteAte', entrega_de: 'biFiltroEntregaDe', entrega_ate: 'biFiltroEntregaAte',
   divergencia: 'biFiltroDivergencia', glosa: 'biFiltroGlosa' };
+const CONFIG_BI_TELA = { ordem: ['biOrdem', ''], dir: ['biDir', 'desc'], agrupar: ['biAgrupar', ''], agrupar2: ['biAgrupar2', ''], periodo: ['biPeriodo', 'mes'], total: ['biTotal', 'auto'] };
+function lerConfigBI() {
+  const f = {};
+  Object.entries(CONFIG_BI_TELA).forEach(([k, [id]]) => { const v = document.getElementById(id).value; if (v) f[k] = v; });
+  return f;
+}
+function aplicarConfigBI(f = {}) {
+  ['agrupar', 'agrupar2', 'periodo', 'total', 'dir'].forEach((k) => { const [id, padrao] = CONFIG_BI_TELA[k]; document.getElementById(id).value = f[k] || padrao; });
+  atualizarSelectsBI();
+  document.getElementById('biOrdem').value = f.ordem || '';
+  if (document.getElementById('biOrdem').selectedIndex < 0) document.getElementById('biOrdem').value = '';
+}
 function lerFiltrosBI() {
   const f = {};
   Object.entries(FILTROS_BI_TELA).forEach(([k, id]) => {
@@ -6560,9 +6644,12 @@ function aplicarFiltrosBI(f = {}) {
 document.getElementById('btnBiLimparFiltros').addEventListener('click', () => aplicarFiltrosBI({}));
 
 function montarQueryStringBI() {
-  const campos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.value);
-  const params = new URLSearchParams({ campos: campos.join(','), ...lerFiltrosBI() });
-  return { params, campos };
+  sincronizarOrdemBI();
+  const campos = [...ordemBI];
+  const config = lerConfigBI();
+  const usados = [...campos, config.agrupar, config.agrupar2].filter(Boolean);
+  const params = new URLSearchParams({ campos: campos.join(','), ...lerFiltrosBI(), ...config, rotulos: JSON.stringify(Object.fromEntries(usados.map((c) => [c, ROTULO_BI[c] || c]))) });
+  return { params, campos, agrupado: !!config.agrupar };
 }
 
 // ---------- Modelos salvos do BI ----------
@@ -6589,8 +6676,10 @@ document.getElementById('biModelo').addEventListener('change', () => {
   if (!m) return;
   const campos = new Set(m.campos);
   document.querySelectorAll('.campo-bi-checkbox').forEach((c) => { c.checked = campos.has(c.value); });
+  ordemBI = [...m.campos];
   aplicarFiltrosBI(m.filtros || {});
   contarCamposBI();
+  aplicarConfigBI(m.filtros || {});
   document.getElementById('btnBiGerarPrevia').click();
 });
 async function gravarModeloBI(metodo, url, corpo) {
@@ -6618,7 +6707,7 @@ document.getElementById('btnBiSalvarModelo').addEventListener('click', async () 
   const salvar = async () => {
     const erroEl = fundo.querySelector('#biModeloErro'); erroEl.classList.remove('visivel');
     try {
-      const m = await gravarModeloBI('POST', '/api/fretes/bi/modelos', { nome: nomeEl.value, campos, filtros: lerFiltrosBI(), compartilhado: fundo.querySelector('#biModeloComp').checked });
+      const m = await gravarModeloBI('POST', '/api/fretes/bi/modelos', { nome: nomeEl.value, campos: ordemBI, filtros: { ...lerFiltrosBI(), ...lerConfigBI() }, compartilhado: fundo.querySelector('#biModeloComp').checked });
       fechar();
       await carregarModelosBI(m.id);
       mostrarAlerta(`Modelo "${m.nome}" salvo. Escolha-o em "Modelo salvo" para abrir com um clique.`, { tipo: 'sucesso' });
@@ -6629,9 +6718,9 @@ document.getElementById('btnBiSalvarModelo').addEventListener('click', async () 
 });
 document.getElementById('btnBiAtualizarModelo').addEventListener('click', async () => {
   const m = modeloBiAtual(); if (!m) return;
-  const campos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.value);
+  sincronizarOrdemBI();
   try {
-    await gravarModeloBI('PUT', `/api/fretes/bi/modelos/${m.id}`, { nome: m.nome, campos, filtros: lerFiltrosBI(), compartilhado: m.compartilhado });
+    await gravarModeloBI('PUT', `/api/fretes/bi/modelos/${m.id}`, { nome: m.nome, campos: ordemBI, filtros: { ...lerFiltrosBI(), ...lerConfigBI() }, compartilhado: m.compartilhado });
     await carregarModelosBI(m.id);
     mostrarAlerta(`Modelo "${m.nome}" atualizado com os campos e filtros de agora.`, { tipo: 'sucesso' });
   } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
@@ -6648,8 +6737,8 @@ document.getElementById('btnBiExcluirModelo').addEventListener('click', async ()
 if (document.getElementById('biModelo')) carregarModelosBI().catch(() => {});
 
 async function buscarDadosBI() {
-  const { params, campos } = montarQueryStringBI();
-  if (campos.length === 0) {
+  const { params, campos, agrupado } = montarQueryStringBI();
+  if (campos.length === 0 && !agrupado) {
     mostrarAlerta('Escolha pelo menos um campo primeiro.');
     return null;
   }
@@ -6665,31 +6754,33 @@ document.getElementById('btnBiGerarPrevia').addEventListener('click', async () =
   const dados = await buscarDadosBI();
   if (!dados) { infoEl.textContent = 'Escolha os campos e clique em "Ver prévia".'; return; }
 
-  const rotulos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.dataset.rotulo);
-  document.getElementById('cabecalhoTabelaBI').innerHTML = rotulos.map((r) => `<th>${r}</th>`).join('');
-
-  const corpo = document.querySelector('#tabelaBI tbody');
-  const primeiras200 = dados.linhas.slice(0, 200);
-  const formatarCelula = (campo, valor) => {
+  const cols = dados.colunas;
+  const alinhar = (c) => (c.tipo === 'numero' || c.tipo === 'inteiro' ? ' style="text-align:right;"' : '');
+  document.getElementById('cabecalhoTabelaBI').innerHTML = cols.map((c) => `<th${alinhar(c)}>${escBI(c.rotulo)}</th>`).join('');
+  const formatarCelula = (c, valor) => {
     if (valor == null || valor === '') return '—';
-    if (dados.tipos?.[campo] === 'numero') { const n = Number(valor); return n.toLocaleString('pt-BR', Number.isInteger(n) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
-    return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (c.tipo === 'numero') return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    if (c.tipo === 'inteiro') return Number(valor).toLocaleString('pt-BR');
+    return escBI(valor);
   };
-  corpo.innerHTML = primeiras200.map((linha) => `
-    <tr>${dados.campos.map((c) => `<td>${formatarCelula(c, linha[c])}</td>`).join('')}</tr>
-  `).join('') || `<tr><td colspan="${dados.campos.length}" style="color:var(--texto-fraco);">Nenhum registro encontrado com esses filtros.</td></tr>`;
-
-  infoEl.textContent = `${dados.linhas.length} registro(s) encontrado(s)${dados.linhas.length > 200 ? ' — mostrando os primeiros 200 na prévia (a exportação leva todos)' : ''}.`;
+  const corpo = document.querySelector('#tabelaBI tbody');
+  const primeiras = dados.linhas.slice(0, dados.agrupado ? 1000 : 200);
+  corpo.innerHTML = primeiras.map((linha) => `<tr>${cols.map((c) => `<td${alinhar(c)}>${formatarCelula(c, linha[c.id])}</td>`).join('')}</tr>`).join('')
+    || `<tr><td colspan="${cols.length}" style="color:var(--texto-fraco);">Nenhum registro encontrado com esses filtros.</td></tr>`;
+  document.getElementById('rodapeTabelaBI').innerHTML = dados.agrupado && dados.total
+    ? `<tr style="font-weight:700; border-top:2px solid var(--borda);">${cols.map((c, i) => `<td${alinhar(c)}>${i === 0 ? 'TOTAL GERAL' : c.papel === 'grupo' ? '' : formatarCelula(c, dados.total[c.id])}</td>`).join('')}</tr>` : '';
+  infoEl.textContent = dados.agrupado
+    ? `${dados.linhas.length} grupo(s), ${Number(dados.total?.qtd || 0).toLocaleString('pt-BR')} registro(s)${dados.linhas.length > primeiras.length ? ` — mostrando os primeiros ${primeiras.length} grupos (a exportação leva todos)` : ''}.`
+    : `${dados.linhas.length} registro(s) encontrado(s)${dados.linhas.length > 200 ? ' — mostrando os primeiros 200 na prévia (a exportação leva todos)' : ''}.`;
 });
 
 document.getElementById('btnBiExportarExcel').addEventListener('click', async () => {
   const infoEl = document.getElementById('biResultadoInfo');
-  const { params, campos } = montarQueryStringBI();
-  if (!campos.length) { mostrarAlerta('Escolha pelo menos um campo primeiro.'); return; }
+  const { params, campos, agrupado } = montarQueryStringBI();
+  if (!campos.length && !agrupado) { mostrarAlerta('Escolha pelo menos um campo primeiro.'); return; }
   infoEl.textContent = 'Gerando a planilha...';
-  const rotulos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.dataset.rotulo);
   const nome = `${(modeloBiAtual()?.nome || 'relatorio-personalizado')}-${new Date().toISOString().slice(0, 10)}`;
-  params.set('formato', 'xlsx'); params.set('rotulos', JSON.stringify(rotulos)); params.set('nome', nome);
+  params.set('formato', 'xlsx'); params.set('nome', nome);
   try {
     const r = await apiFetch(`/api/fretes/bi?${params.toString()}`);
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.erro || 'Erro ao gerar a planilha.'); }
@@ -6699,7 +6790,7 @@ document.getElementById('btnBiExportarExcel').addEventListener('click', async ()
     a.href = URL.createObjectURL(await r.blob()); a.download = arquivo;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    infoEl.textContent = `${total ?? ''} registro(s) exportado(s) para o Excel.`;
+    infoEl.textContent = `${total ?? ''} ${agrupado ? 'grupo(s)' : 'registro(s)'} exportado(s) para o Excel.`;
   } catch (err) { infoEl.textContent = ''; mostrarAlerta(err.message, { tipo: 'erro' }); }
 });
 

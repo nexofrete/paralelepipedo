@@ -202,6 +202,7 @@ app.use('/api', (req, res, next) => {
 });
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/fretes/bi', require('./src/routes/relatorioBi'));   // antes das rotas de fretes (que têm /:id)
 app.use('/api/fretes', recordsRoutes);
 app.use('/api/fretes', canhotoRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
@@ -380,6 +381,7 @@ async function iniciar() {
     require('./src/integracao/nfstock').agendar();
     require('./src/ediConexoes').agendar();
     require('./src/reajusteTabelas').agendar();
+    require('./src/relatorioBi').agendar();
     require('./src/acessoTelas').migrar(require('./src/db')).catch((e) => console.error('[acesso] migração:', e.message));
     require('./src/avisosSeguranca').iniciar();
     require('./src/fusoBanco').verificarAoLigar();

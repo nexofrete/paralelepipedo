@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "Relatórios",
+          "texto": "Montar relatório (BI): outras fontes além dos fretes contratados — CT-e emitidos, faturas a receber, faturas das transportadoras, contas a pagar e acertos de viagem (cada uma para quem pode ver a tela de origem, respeitando as filiais); envio automático do modelo por e-mail (todo dia, semana ou mês, com período que anda sozinho, planilha anexa e prévia no corpo) e aviso quando o relatório passa do limite de 50.000 linhas."
+        },
+        {
+          "area": "Relatórios",
           "texto": "Montar relatório (BI): agrupar por um ou dois campos (transportadora, cliente, UF, mês, dia ou ano de uma data...) com a quantidade e o total dos valores (soma, média, mínimo ou máximo; % pela média) e o total geral; ordem das colunas arrastando; ordenar por qualquer coluna, crescente ou decrescente. Tudo vai para o Excel e fica no modelo salvo."
         },
         {

@@ -842,7 +842,23 @@ def parte_uso(g):
         'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro.',
     ])
     s += h2('Montar Relatório (BI)')
-    s.append(P('Escolha os filtros e os campos, veja a prévia e exporte para Excel. Filtros (todos opcionais): transportadora '
+    s.append(P('Primeiro escolha a <b>Fonte dos dados</b>. Aparecem só as que o seu usuário pode ver:'))
+    s += tabela(['Fonte', 'O que tem', 'Quem vê'], [
+        ['Fretes contratados', 'Notas e CT-e recebidos das transportadoras (o relatório de sempre, com mais de 120 campos)', 'Quem tem Relatórios'],
+        ['CT-e emitidos', 'Os CT-e da própria transportadora: número, chave, situação, tomador, destino, valor, previsão e entrega, '
+         'averbação, fatura, filial e vendedor', 'Quem emite CT-e ou vê o financeiro'],
+        ['Faturas a receber', 'Faturas aos clientes: valores, recebido, saldo, vencida e dias de atraso, quantidade de CT-e, boleto', 'Quem vê o financeiro'],
+        ['Faturas das transportadoras', 'Faturas recebidas: valor x soma dos CT-e x tabela, glosas, conferência, aprovação e pagamento',
+         'Quem confere faturas, aprova pagamento, vê o financeiro ou a auditoria'],
+        ['Contas a pagar', 'Descrição, categoria, fornecedor, vencimento, competência, valor, pago, saldo, centro de custo, departamento e filial', 'Quem vê o financeiro'],
+        ['Acertos de viagem', 'Motorista, contratado, placa, frete, adiantamento, retenções, vale-pedágio, saldo e o piso da ANTT (e se ficou abaixo)',
+         'Quem vê o financeiro ou emite CT-e'],
+    ], [0.22, 0.53, 0.25])
+    s.append(P('Também valem a grade de telas do usuário (Cadastros &gt; Usuários) e as filiais dele: quem só enxerga uma filial vê só '
+               'os CT-e e as contas dela. Nas outras fontes, os filtros são: <b>período</b> (escolha por qual data: emissão, vencimento, '
+               'pagamento...), <b>situação</b> e <b>procurar</b> (nome, número, CNPJ). Agrupar, totalizar, ordenar, Excel e modelos '
+               'funcionam igual em todas as fontes.'))
+    s.append(P('Nos fretes contratados, escolha os filtros e os campos, veja a prévia e exporte para Excel. Filtros (todos opcionais): transportadora '
                '(da NF ou do CT-e), cliente (nome ou CNPJ, inclusive só a raiz para pegar todas as filiais), UF de destino, status, '
                'aprovação do pagamento, períodos de emissão da NF, de emissão do CT-e e da entrega, <b>só com diferença CT-e x '
                'tabela</b> e <b>só com glosa</b>. <b>Limpar filtros</b> apaga todos.'))
@@ -895,7 +911,26 @@ def parte_uso(g):
         'trocar o período, se quiser, e exportar.',
         '<b>Salvar alterações</b> grava no modelo os campos e filtros de agora; <b>Excluir modelo</b> apaga. Só quem criou (ou o '
         'administrador) altera ou exclui; os outros podem salvar uma cópia com outro nome.',
+        'O modelo guarda a fonte: ao escolher um modelo de contas a pagar, a tela muda sozinha para essa fonte.',
     ])
+    s += h3('Envio automático por e-mail')
+    s.append(P('Com um modelo seu escolhido, clique em <b>Envio por e-mail</b>. O sistema monta o relatório sozinho e manda por e-mail, '
+               'com a <b>planilha anexa</b> e as primeiras 30 linhas (e o total geral) no corpo da mensagem.'))
+    s += lista([
+        '<b>Para</b>: um ou mais e-mails, separados por vírgula (até 20).',
+        '<b>Frequência</b>: todo dia (pode ser só em dias úteis), toda semana (escolha o dia) ou todo mês (dia 1 a 28), na <b>hora</b> escolhida.',
+        '<b>Período em cada envio</b>: o período salvo no modelo, ou um período que anda sozinho: ontem, últimos 7 dias, semana '
+        'anterior (segunda a domingo), últimos 30 dias, mês atual ou mês anterior. Nos fretes vale pela emissão da NF; nas outras '
+        'fontes, pela data escolhida no filtro de período do modelo.',
+        '<b>Enviar agora (teste)</b> manda na hora, sem mudar o próximo envio. Embaixo do modelo aparecem o próximo envio e o '
+        'resultado do último (enviado ou o erro, ex.: e-mail não configurado).',
+        'Usa o e-mail configurado em Configurações &gt; E-mail. O relatório é montado com o acesso de quem criou o modelo: se essa '
+        'pessoa for desativada ou perder o acesso a Relatórios, o envio para e o motivo aparece no último envio.',
+    ])
+    s += h3('Limite de linhas')
+    s.append(P('Cada relatório traz até 50.000 linhas (ou 5.000 grupos, agrupado). Quando há mais, a prévia avisa em laranja, a '
+               'planilha ganha uma linha de aviso no fim e o e-mail também avisa. Use um filtro (ex.: um período menor) ou agrupe para '
+               'ver tudo.'))
     s += h2('Comparar Cotações e simulador')
     s.append(P('<b>Comparar</b>: informe cidade, volumes, peso, cubagem e valor da nota; o sistema calcula o frete em '
                '<b>todas</b> as transportadoras com tabela para essa cidade, do mais barato ao mais caro. <b>Simulador '

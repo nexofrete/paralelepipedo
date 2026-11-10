@@ -2718,19 +2718,32 @@
         <div id="subabaBI" class="oculto">
           <div class="painel" style="margin-bottom:18px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
             <div class="campo" style="margin-bottom:0; flex:1; min-width:240px;">
+              <label for="biFonte">🗂 Fonte dos dados</label>
+              <select id="biFonte"><option value="fretes">Fretes contratados (notas e CT-e recebidos)</option></select>
+            </div>
+            <div class="campo" style="margin-bottom:0; flex:1; min-width:240px;">
               <label for="biModelo">📁 Modelo salvo</label>
               <select id="biModelo"><option value="">— novo relatório —</option></select>
             </div>
             <button class="btn btn-secundario" id="btnBiSalvarModelo" style="width:auto;" title="Guardar os campos e os filtros marcados com um nome">💾 Salvar como modelo</button>
             <button class="btn btn-secundario oculto" id="btnBiAtualizarModelo" style="width:auto;" title="Gravar no modelo escolhido os campos e filtros marcados agora">Salvar alterações</button>
+            <button class="btn btn-secundario oculto" id="btnBiEnvio" style="width:auto;" title="Mandar este relatório por e-mail sozinho, todo dia, semana ou mês">✉ Envio por e-mail</button>
             <button class="btn btn-secundario oculto" id="btnBiExcluirModelo" style="width:auto; color:var(--vermelho);">Excluir modelo</button>
+            <div id="biEnvioInfo" class="oculto" style="flex-basis:100%; font-size:12.5px; color:var(--texto-fraco);"></div>
           </div>
           <div class="painel" style="margin-bottom:18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <h3 style="margin:0; font-size:14px;">Filtros (opcional)</h3>
               <button class="btn btn-secundario" id="btnBiLimparFiltros" style="width:auto; padding:6px 12px; font-size:12px;">Limpar filtros</button>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
+            <div id="biFiltrosOutros" class="oculto" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
+              <div class="campo" style="margin-bottom:0;"><label for="biFiltroPeriodoCampo">Período pela data de</label><select id="biFiltroPeriodoCampo"></select></div>
+              <div class="campo" style="margin-bottom:0;"><label for="biFiltroDe">De</label><input type="date" id="biFiltroDe" /></div>
+              <div class="campo" style="margin-bottom:0;"><label for="biFiltroAte">Até</label><input type="date" id="biFiltroAte" /></div>
+              <div class="campo" style="margin-bottom:0;" id="biFiltroSituacaoCampo"><label for="biFiltroSituacao">Situação</label><select id="biFiltroSituacao"><option value="">Todas</option></select></div>
+              <div class="campo" style="margin-bottom:0;" id="biFiltroBuscaCampo"><label for="biFiltroBusca">Procurar (nome, número, CNPJ...)</label><input type="text" id="biFiltroBusca" placeholder="Deixe vazio pra todos" /></div>
+            </div>
+            <div id="biFiltrosFretes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
               <div class="campo" style="margin-bottom:0;">
                 <label>Transportadora</label>
                 <input type="text" id="biFiltroTransportadora" placeholder="Deixe vazio pra todas" />
@@ -4035,6 +4048,7 @@
   <script src="js/lgpd.js"></script>
   <script src="js/cadastrosBasicos.js"></script>
   <script src="js/reajusteTabelas.js"></script>
+  <script src="js/relatorioBi.js"></script>
   <script src="js/zerarBanco.js"></script>
   <script src="js/familias.js"></script>
   <script src="js/menuTransporte.js"></script>

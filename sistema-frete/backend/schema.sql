@@ -3493,3 +3493,9 @@ CREATE TABLE IF NOT EXISTS bi_modelos (
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_bi_modelos_usuario ON bi_modelos (usuario_id);
+-- BI: fonte do relatório e envio automático por e-mail (src/relatorioBi.js).
+ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS fonte VARCHAR(30) NOT NULL DEFAULT 'fretes';
+ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS envio JSONB;
+ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS proximo_envio TIMESTAMPTZ;
+ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS ultimo_envio TIMESTAMPTZ;
+ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS ultimo_envio_status VARCHAR(300);

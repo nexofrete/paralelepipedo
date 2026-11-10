@@ -6483,9 +6483,9 @@ const CAMPOS_BI = [
 ];
 
 document.getElementById('listaCamposBI').innerHTML = CAMPOS_BI.map((g) => `
-  <div style="grid-column: 1 / -1; font-size:10.5px; color:var(--texto-fraco); text-transform:uppercase; margin-top:8px;">${g.grupo}</div>
+  <div class="bi-grupo" data-grupo="${g.grupo}" style="grid-column: 1 / -1; font-size:10.5px; color:var(--texto-fraco); text-transform:uppercase; margin-top:8px;">${g.grupo}</div>
   ${g.campos.map(([id, rotulo]) => `
-    <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer;">
+    <label class="bi-campo" data-grupo="${g.grupo}" data-busca="${`${rotulo} ${g.grupo}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}" style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer;">
       <input type="checkbox" class="campo-bi-checkbox" value="${id}" data-rotulo="${rotulo}" />
       ${rotulo}
     </label>
@@ -6520,26 +6520,132 @@ document.querySelectorAll('.botao-subaba').forEach((botao) => {
   botao.addEventListener('click', () => mostrarSubabaRelatorio(botao.dataset.subaba));
 });
 
-document.getElementById('btnBiMarcarTodos').addEventListener('click', () => {
-  document.querySelectorAll('.campo-bi-checkbox').forEach((c) => { c.checked = true; });
+// "Marcar todos" com busca ativa marca só os campos que aparecem.
+const camposBiVisiveis = () => Array.from(document.querySelectorAll('.bi-campo')).filter((l) => l.style.display !== 'none').map((l) => l.querySelector('.campo-bi-checkbox'));
+const contarCamposBI = () => { const n = document.querySelectorAll('.campo-bi-checkbox:checked').length; document.getElementById('biContagemCampos').textContent = n ? `(${n} marcado${n > 1 ? 's' : ''})` : ''; };
+document.getElementById('btnBiMarcarTodos').addEventListener('click', () => { camposBiVisiveis().forEach((c) => { c.checked = true; }); contarCamposBI(); });
+document.getElementById('btnBiDesmarcarTodos').addEventListener('click', () => { camposBiVisiveis().forEach((c) => { c.checked = false; }); contarCamposBI(); });
+document.getElementById('listaCamposBI').addEventListener('change', contarCamposBI);
+// Procurar campo: filtra a lista pelo nome (sem acento); grupo sem campo visível some.
+document.getElementById('biBuscaCampo').addEventListener('input', (e) => {
+  const termos = e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
+  const visiveis = new Set();
+  document.querySelectorAll('.bi-campo').forEach((l) => {
+    const ok = termos.every((t) => l.dataset.busca.includes(t));
+    l.style.display = ok ? '' : 'none';
+    if (ok) visiveis.add(l.dataset.grupo);
+  });
+  document.querySelectorAll('.bi-grupo').forEach((g) => { g.style.display = visiveis.has(g.dataset.grupo) ? '' : 'none'; });
 });
-document.getElementById('btnBiDesmarcarTodos').addEventListener('click', () => {
-  document.querySelectorAll('.campo-bi-checkbox').forEach((c) => { c.checked = false; });
-});
+
+// Filtros do BI: id do campo na tela → nome no servidor.
+const FILTROS_BI_TELA = { transportadora: 'biFiltroTransportadora', cliente: 'biFiltroCliente', uf: 'biFiltroUf', status: 'biFiltroStatus', aprovacao: 'biFiltroAprovacao',
+  data_de: 'biFiltroDataDe', data_ate: 'biFiltroDataAte', cte_de: 'biFiltroCteDe', cte_ate: 'biFiltroCteAte', entrega_de: 'biFiltroEntregaDe', entrega_ate: 'biFiltroEntregaAte',
+  divergencia: 'biFiltroDivergencia', glosa: 'biFiltroGlosa' };
+function lerFiltrosBI() {
+  const f = {};
+  Object.entries(FILTROS_BI_TELA).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    const v = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value.trim();
+    if (v) f[k] = v;
+  });
+  return f;
+}
+function aplicarFiltrosBI(f = {}) {
+  Object.entries(FILTROS_BI_TELA).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    if (el.type === 'checkbox') el.checked = f[k] === '1'; else el.value = f[k] || '';
+  });
+}
+document.getElementById('btnBiLimparFiltros').addEventListener('click', () => aplicarFiltrosBI({}));
 
 function montarQueryStringBI() {
   const campos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.value);
-  const params = new URLSearchParams({ campos: campos.join(',') });
-  const transportadora = document.getElementById('biFiltroTransportadora').value.trim();
-  const status = document.getElementById('biFiltroStatus').value;
-  const dataDe = document.getElementById('biFiltroDataDe').value;
-  const dataAte = document.getElementById('biFiltroDataAte').value;
-  if (transportadora) params.set('transportadora', transportadora);
-  if (status) params.set('status', status);
-  if (dataDe) params.set('data_de', dataDe);
-  if (dataAte) params.set('data_ate', dataAte);
+  const params = new URLSearchParams({ campos: campos.join(','), ...lerFiltrosBI() });
   return { params, campos };
 }
+
+// ---------- Modelos salvos do BI ----------
+let modelosBI = [];
+const modeloBiAtual = () => modelosBI.find((m) => String(m.id) === document.getElementById('biModelo').value);
+function ajustarBotoesModeloBI() {
+  const m = modeloBiAtual();
+  const pode = !!m && (m.meu || usuario?.perfil === 'admin');
+  document.getElementById('btnBiAtualizarModelo').classList.toggle('oculto', !pode);
+  document.getElementById('btnBiExcluirModelo').classList.toggle('oculto', !pode);
+}
+async function carregarModelosBI(selecionar) {
+  const r = await apiFetch('/api/fretes/bi/modelos');
+  modelosBI = r.ok ? await r.json() : [];
+  const meus = modelosBI.filter((m) => m.meu); const outros = modelosBI.filter((m) => !m.meu);
+  const opt = (m) => `<option value="${m.id}">${escaparHtmlTabelaCliente(m.nome)}${m.compartilhado ? ' 👥' : ''}${m.meu ? '' : ` — de ${escaparHtmlTabelaCliente(m.usuario_nome || '')}`}</option>`;
+  document.getElementById('biModelo').innerHTML = `<option value="">— novo relatório —</option>${meus.length ? `<optgroup label="Meus modelos">${meus.map(opt).join('')}</optgroup>` : ''}${outros.length ? `<optgroup label="Compartilhados">${outros.map(opt).join('')}</optgroup>` : ''}`;
+  if (selecionar) document.getElementById('biModelo').value = String(selecionar);
+  ajustarBotoesModeloBI();
+}
+document.getElementById('biModelo').addEventListener('change', () => {
+  const m = modeloBiAtual();
+  ajustarBotoesModeloBI();
+  if (!m) return;
+  const campos = new Set(m.campos);
+  document.querySelectorAll('.campo-bi-checkbox').forEach((c) => { c.checked = campos.has(c.value); });
+  aplicarFiltrosBI(m.filtros || {});
+  contarCamposBI();
+  document.getElementById('btnBiGerarPrevia').click();
+});
+async function gravarModeloBI(metodo, url, corpo) {
+  const r = await apiFetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'Erro ao salvar o modelo.');
+  return j;
+}
+document.getElementById('btnBiSalvarModelo').addEventListener('click', async () => {
+  const campos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.value);
+  if (!campos.length) { mostrarAlerta('Marque os campos do relatório antes de salvar o modelo.'); return; }
+  const fundo = document.createElement('div');
+  fundo.className = 'modal-overlay';
+  fundo.innerHTML = `<div class="painel modal-card" style="max-width:460px; width:100%; padding:22px 24px;">
+    <h3 style="margin-top:0;">💾 Salvar como modelo</h3>
+    <div class="campo"><label for="biModeloNome">Nome do modelo</label><input id="biModeloNome" maxlength="100" placeholder="Ex.: Fretes do mês por transportadora" /></div>
+    <label style="display:flex; gap:8px; align-items:center; font-size:13px; margin:4px 0 6px;"><input type="checkbox" id="biModeloComp" style="width:auto;" /> Compartilhar com os outros usuários (eles usam, só você altera)</label>
+    <p style="font-size:12px; color:var(--texto-fraco);">Guarda os ${campos.length} campo(s) marcados e os filtros preenchidos.</p>
+    <div id="biModeloErro" class="mensagem-erro"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-bi-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="biModeloOk" style="width:auto;">Salvar</button></div></div>`;
+  document.body.appendChild(fundo);
+  const fechar = () => fundo.remove();
+  fundo.addEventListener('click', (e) => { if (e.target === fundo || e.target.closest('[data-bi-fechar]')) fechar(); });
+  const nomeEl = fundo.querySelector('#biModeloNome'); nomeEl.focus();
+  const salvar = async () => {
+    const erroEl = fundo.querySelector('#biModeloErro'); erroEl.classList.remove('visivel');
+    try {
+      const m = await gravarModeloBI('POST', '/api/fretes/bi/modelos', { nome: nomeEl.value, campos, filtros: lerFiltrosBI(), compartilhado: fundo.querySelector('#biModeloComp').checked });
+      fechar();
+      await carregarModelosBI(m.id);
+      mostrarAlerta(`Modelo "${m.nome}" salvo. Escolha-o em "Modelo salvo" para abrir com um clique.`, { tipo: 'sucesso' });
+    } catch (err) { erroEl.textContent = err.message; erroEl.classList.add('visivel'); }
+  };
+  fundo.querySelector('#biModeloOk').addEventListener('click', salvar);
+  nomeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') salvar(); });
+});
+document.getElementById('btnBiAtualizarModelo').addEventListener('click', async () => {
+  const m = modeloBiAtual(); if (!m) return;
+  const campos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.value);
+  try {
+    await gravarModeloBI('PUT', `/api/fretes/bi/modelos/${m.id}`, { nome: m.nome, campos, filtros: lerFiltrosBI(), compartilhado: m.compartilhado });
+    await carregarModelosBI(m.id);
+    mostrarAlerta(`Modelo "${m.nome}" atualizado com os campos e filtros de agora.`, { tipo: 'sucesso' });
+  } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+});
+document.getElementById('btnBiExcluirModelo').addEventListener('click', async () => {
+  const m = modeloBiAtual(); if (!m) return;
+  if (!await confirmarExclusao(`Excluir o modelo "${m.nome}"?${m.compartilhado ? ' Ele some também para quem usa o compartilhado.' : ''}`)) return;
+  const r = await apiFetch(`/api/fretes/bi/modelos/${m.id}`, { method: 'DELETE' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { mostrarAlerta(j.erro || 'Erro ao excluir.', { tipo: 'erro' }); return; }
+  await carregarModelosBI();
+  mostrarAlerta('Modelo excluído.', { tipo: 'sucesso' });
+});
+if (document.getElementById('biModelo')) carregarModelosBI().catch(() => {});
 
 async function buscarDadosBI() {
   const { params, campos } = montarQueryStringBI();
@@ -6578,27 +6684,23 @@ document.getElementById('btnBiGerarPrevia').addEventListener('click', async () =
 
 document.getElementById('btnBiExportarExcel').addEventListener('click', async () => {
   const infoEl = document.getElementById('biResultadoInfo');
-  infoEl.textContent = 'Gerando arquivo...';
-  const dados = await buscarDadosBI();
-  if (!dados) { infoEl.textContent = 'Escolha os campos e clique em "Ver prévia".'; return; }
-
+  const { params, campos } = montarQueryStringBI();
+  if (!campos.length) { mostrarAlerta('Escolha pelo menos um campo primeiro.'); return; }
+  infoEl.textContent = 'Gerando a planilha...';
   const rotulos = Array.from(document.querySelectorAll('.campo-bi-checkbox:checked')).map((c) => c.dataset.rotulo);
-  const linhasCsv = [rotulos, ...dados.linhas.map((linha) => dados.campos.map((c) => {
-    const v = linha[c];
-    if (v == null || v === '') return '';
-    return dados.tipos?.[c] === 'numero' ? String(v).replace('.', ',') : v;
-  }))];
-  const csv = linhasCsv.map((linha) => linha.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
-
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `relatorio-personalizado-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-
-  infoEl.textContent = `${dados.linhas.length} registro(s) exportado(s).`;
+  const nome = `${(modeloBiAtual()?.nome || 'relatorio-personalizado')}-${new Date().toISOString().slice(0, 10)}`;
+  params.set('formato', 'xlsx'); params.set('rotulos', JSON.stringify(rotulos)); params.set('nome', nome);
+  try {
+    const r = await apiFetch(`/api/fretes/bi?${params.toString()}`);
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.erro || 'Erro ao gerar a planilha.'); }
+    const total = r.headers.get('X-Total-Linhas');
+    const arquivo = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'relatorio.xlsx';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(await r.blob()); a.download = arquivo;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    infoEl.textContent = `${total ?? ''} registro(s) exportado(s) para o Excel.`;
+  } catch (err) { infoEl.textContent = ''; mostrarAlerta(err.message, { tipo: 'erro' }); }
 });
 
 // ---------- Histórico de versões da Tabela de Preço ----------

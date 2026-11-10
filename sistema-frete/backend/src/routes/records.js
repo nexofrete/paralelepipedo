@@ -1835,13 +1835,13 @@ const CAMPOS_BI = {
   tomador_cte_papel: {}, tomador_cte_nome: {}, tomador_cte_cnpj: {}, cte_cidade_inicio: {}, uf_inicio_cte: {}, cte_cidade_fim: {}, uf_fim_cte: {},
   // Transportadora
   transportadora: {}, transportadora_nfe: {}, transportadora_cte: {}, transportadora_cnpj_cte: {}, transportadora_definida_por: {},
-  tabela_frete: {}, interior_capital: {}, prazo_dias_tabela: { tipo: 'numero' },
+  tabela_frete: {}, interior_capital: {}, prazo_dias_tabela: { tipo: 'inteiro' },
   tipo_cte: { sql: "CASE tipo_cte WHEN 0 THEN 'Normal' WHEN 1 THEN 'Complemento' WHEN 2 THEN 'Anulação' WHEN 3 THEN 'Substituto' END" },
   tp_serv_cte: { sql: "CASE tp_serv_cte WHEN 0 THEN 'Normal' WHEN 1 THEN 'Subcontratação' WHEN 2 THEN 'Redespacho' WHEN 3 THEN 'Redespacho intermediário' WHEN 4 THEN 'Serviço vinculado a multimodal' END" },
   cte_modal: { sql: "CASE cte_modal WHEN '01' THEN 'Rodoviário' WHEN '02' THEN 'Aéreo' WHEN '03' THEN 'Aquaviário' WHEN '04' THEN 'Ferroviário' WHEN '05' THEN 'Dutoviário' WHEN '06' THEN 'Multimodal' ELSE cte_modal END" },
   // Carga
-  tipo_carga: {}, frete_cif_fob: {}, qtd_volumes: { tipo: 'numero' }, peso_kg: { tipo: 'numero' }, peso_bruto: { tipo: 'numero' },
-  peso_liquido: { tipo: 'numero' }, cubagem_m3: { tipo: 'numero' }, itens_sem_medida: { tipo: 'numero' }, mapa_descricao: {}, mapa_ajudante: {},
+  tipo_carga: {}, frete_cif_fob: {}, qtd_volumes: { tipo: 'inteiro' }, peso_kg: { tipo: 'numero' }, peso_bruto: { tipo: 'numero' },
+  peso_liquido: { tipo: 'numero' }, cubagem_m3: { tipo: 'numero' }, itens_sem_medida: { tipo: 'inteiro' }, mapa_descricao: {}, mapa_ajudante: {},
   // Valores
   valor_produtos: { tipo: 'numero' }, valor_faturado: { tipo: 'numero' }, valor_frete_tabelado: { tipo: 'numero' }, valor_total_calculado: { tipo: 'numero' },
   valor_frete_negociado: { tipo: 'numero' }, valor_total_cte: { tipo: 'numero' }, valor_total_frete: { tipo: 'numero' }, frete_rateado: { tipo: 'numero' },
@@ -1864,53 +1864,147 @@ const CAMPOS_BI = {
   alerta_cobranca_dupla: { tipo: 'simnao' }, alerta_transportadora_diferente: { tipo: 'simnao' },
 };
 const CAMPOS_BI_PERMITIDOS = Object.keys(CAMPOS_BI);
-function expressaoBi(c) {
+// Para a tela: datas já em dd/mm/aaaa. Para o Excel (iso = true): aaaa-mm-dd, que vira data de verdade na planilha.
+function expressaoBi(c, iso = false) {
   const d = CAMPOS_BI[c];
   if (d.sql) return d.sql;
-  if (d.tipo === 'data') return `to_char("${c}", 'DD/MM/YYYY')`;
-  if (d.tipo === 'datahora') return `to_char("${c}", 'DD/MM/YYYY HH24:MI')`;
+  if (d.tipo === 'data') return `to_char("${c}", '${iso ? 'YYYY-MM-DD' : 'DD/MM/YYYY'}')`;
+  if (d.tipo === 'datahora') return `to_char("${c}", '${iso ? 'YYYY-MM-DD HH24:MI' : 'DD/MM/YYYY HH24:MI'}')`;
   if (d.tipo === 'simnao') return SIMNAO(`"${c}"`);
   return `"${c}"`;
 }
 
-// GET /api/fretes/bi?campos=a,b,c&transportadora=...&status=...&data_de=...&data_ate=...
+// Filtros do BI (todos opcionais). Devolve as condições do WHERE e os valores.
+function filtrosBi(q = {}) {
+  const condicoes = []; const valores = [];
+  const add = (sql, v) => { valores.push(v); condicoes.push(sql.replace(/\$\?/g, `$${valores.length}`)); };
+  const data = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
+  if (q.transportadora) add('(transportadora_cte ILIKE $? OR transportadora ILIKE $?)', `%${String(q.transportadora).trim()}%`);
+  if (q.cliente) {
+    const doc = String(q.cliente).replace(/\D/g, '');
+    if (doc.length >= 8 && /^[\d./\s-]+$/.test(String(q.cliente).trim())) add("REGEXP_REPLACE(COALESCE(cliente_documento, ''), '[^0-9]', '', 'g') LIKE $?", `${doc}%`);
+    else add('cliente ILIKE $?', `%${String(q.cliente).trim()}%`);
+  }
+  if (/^[A-Za-z]{2}$/.test(String(q.uf || '').trim())) add('uf = $?', String(q.uf).trim().toUpperCase());
+  if (q.status) add('status = $?', q.status);
+  if (['Aprovado', 'Pendente', 'Rejeitado'].includes(q.aprovacao)) add('status_aprovacao = $?', q.aprovacao);
+  [['data_de', 'data_emissao_nf', '>='], ['data_ate', 'data_emissao_nf', '<='], ['cte_de', 'data_emissao_cte', '>='], ['cte_ate', 'data_emissao_cte', '<='],
+    ['entrega_de', 'data_entrega', '>='], ['entrega_ate', 'data_entrega', '<=']].forEach(([k, col, op]) => { if (data(q[k])) add(`${col} ${op} $?`, data(q[k])); });
+  if (q.divergencia === '1') condicoes.push('(valor_frete_negociado IS NOT NULL AND ABS(COALESCE(dif_negociado_tabela, 0)) >= 0.01)');
+  if (q.glosa === '1') condicoes.push('COALESCE(glosa_valor, 0) > 0');
+  return { condicoes, valores };
+}
+
+// Planilha .xlsx do BI: números como número, datas como data (dá para somar e filtrar no Excel).
+function planilhaBi(campos, rotulos, linhas) {
+  const XLSX = require('xlsx');
+  const serial = (t) => { const m = String(t).match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/); return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) / 86400000 + 25569 : null; };
+  const folha = XLSX.utils.aoa_to_sheet([campos.map((c, i) => rotulos[i] || c)]);
+  linhas.forEach((l, r) => campos.forEach((c, i) => {
+    const v = l[c];
+    if (v == null || v === '') return;
+    const tipo = CAMPOS_BI[c].tipo;
+    const ref = XLSX.utils.encode_cell({ r: r + 1, c: i });
+    if (tipo === 'numero' || tipo === 'inteiro') folha[ref] = { t: 'n', v: Number(v), z: tipo === 'inteiro' ? '0' : '#,##0.00' };
+    else if ((tipo === 'data' || tipo === 'datahora') && serial(v) != null) folha[ref] = { t: 'n', v: serial(v), z: tipo === 'data' ? 'dd/mm/yyyy' : 'dd/mm/yyyy hh:mm' };
+    else folha[ref] = { t: 's', v: String(v) };
+  }));
+  folha['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: linhas.length, c: campos.length - 1 } });
+  folha['!cols'] = campos.map((c, i) => ({ wch: Math.min(50, Math.max(10, String(rotulos[i] || c).length + 2, ...linhas.slice(0, 200).map((l) => String(l[c] ?? '').length + 2))) }));
+  folha['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: campos.length - 1 } }) };
+  const livro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(livro, folha, 'Relatório');
+  return XLSX.write(livro, { type: 'buffer', bookType: 'xlsx' });
+}
+
+// GET /api/fretes/bi?campos=a,b,c&<filtros>[&formato=xlsx&rotulos=...]
 // Monta uma consulta só com os campos escolhidos pela pessoa — usado tanto
-// pra pré-visualizar quanto pra exportar pro Excel.
+// pra pré-visualizar quanto pra exportar pro Excel (.xlsx).
 router.get('/bi', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
   try {
     const camposPedidos = (req.query.campos || '').split(',').map((c) => c.trim()).filter(Boolean);
     const campos = camposPedidos.filter((c) => CAMPOS_BI_PERMITIDOS.includes(c));
     if (campos.length === 0) return res.status(400).json({ erro: 'Selecione pelo menos um campo.' });
-
-    const condicoes = [];
-    const valores = [];
-    if (req.query.transportadora) {
-      valores.push(`%${req.query.transportadora}%`);
-      condicoes.push(`transportadora_cte ILIKE $${valores.length}`);
-    }
-    if (req.query.status) {
-      valores.push(req.query.status);
-      condicoes.push(`status = $${valores.length}`);
-    }
-    if (req.query.data_de) {
-      valores.push(req.query.data_de);
-      condicoes.push(`data_emissao_nf >= $${valores.length}`);
-    }
-    if (req.query.data_ate) {
-      valores.push(req.query.data_ate);
-      condicoes.push(`data_emissao_nf <= $${valores.length}`);
-    }
+    const xlsx = req.query.formato === 'xlsx';
+    const { condicoes, valores } = filtrosBi(req.query);
     const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
 
-    const { rows } = await consultaCliente(req, 
-      `SELECT ${campos.map((c) => `${expressaoBi(c)} AS "${c}"`).join(', ')} FROM fretes ${where} ORDER BY id DESC LIMIT 50000`,
+    const { rows } = await consultaCliente(req,
+      `SELECT ${campos.map((c) => `${expressaoBi(c, xlsx)} AS "${c}"`).join(', ')} FROM fretes ${where} ORDER BY id DESC LIMIT 50000`,
       valores
     );
+    if (xlsx) {
+      let rotulos = [];
+      try { rotulos = JSON.parse(req.query.rotulos || '[]'); } catch { rotulos = []; }
+      const nome = `${String(req.query.nome || 'relatorio-personalizado').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').slice(0, 60) || 'relatorio'}.xlsx`;
+      res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.set('Content-Disposition', `attachment; filename="${nome}"`);
+      res.set('X-Total-Linhas', String(rows.length));
+      return res.send(planilhaBi(campos, campos.map((c) => String(rotulos[camposPedidos.indexOf(c)] ?? c).slice(0, 80)), rows));
+    }
     res.json({ campos, tipos: Object.fromEntries(campos.map((c) => [c, CAMPOS_BI[c].tipo || 'texto'])), linhas: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao gerar o relatório personalizado.' });
   }
+});
+
+// ---------- Modelos salvos do BI (campos + filtros com um nome) ----------
+// Cada usuário vê os seus e os compartilhados; só o dono (ou o administrador) altera ou apaga.
+const FILTROS_BI = ['transportadora', 'cliente', 'uf', 'status', 'aprovacao', 'data_de', 'data_ate', 'cte_de', 'cte_ate', 'entrega_de', 'entrega_ate', 'divergencia', 'glosa'];
+function lerModeloBi(b = {}) {
+  const nome = String(b.nome || '').trim().slice(0, 100);
+  if (!nome) return { erro: 'Dê um nome ao modelo.' };
+  const campos = (Array.isArray(b.campos) ? b.campos : []).filter((c) => CAMPOS_BI_PERMITIDOS.includes(c));
+  if (!campos.length) return { erro: 'Escolha pelo menos um campo antes de salvar.' };
+  const filtros = {};
+  FILTROS_BI.forEach((k) => { const v = String(b.filtros?.[k] ?? '').trim().slice(0, 100); if (v) filtros[k] = v; });
+  return { nome, campos: [...new Set(campos)], filtros, compartilhado: b.compartilhado === true };
+}
+router.get('/bi/modelos', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, nome, campos, filtros, compartilhado, usuario_id, usuario_nome, atualizado_em, (usuario_id = $1) AS meu
+         FROM bi_modelos WHERE usuario_id = $1 OR compartilhado ORDER BY (usuario_id = $1) DESC, LOWER(nome)`, [req.usuario.id]);
+    res.json(rows);
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao ler os modelos.' }); }
+});
+router.post('/bi/modelos', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
+  try {
+    const m = lerModeloBi(req.body);
+    if (m.erro) return res.status(400).json(m);
+    const { rows: ja } = await pool.query('SELECT id FROM bi_modelos WHERE usuario_id = $1 AND LOWER(nome) = LOWER($2)', [req.usuario.id, m.nome]);
+    if (ja[0]) return res.status(409).json({ erro: `Você já tem um modelo "${m.nome}". Escolha-o e use "Salvar alterações", ou dê outro nome.`, id: ja[0].id });
+    const { rows } = await pool.query(
+      'INSERT INTO bi_modelos (nome, campos, filtros, compartilhado, usuario_id, usuario_nome) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [m.nome, m.campos, m.filtros, m.compartilhado, req.usuario.id, req.usuario.nome]);
+    res.status(201).json(rows[0]);
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao salvar o modelo.' }); }
+});
+const donoDoModelo = async (req, id) => {
+  const { rows } = await pool.query('SELECT * FROM bi_modelos WHERE id = $1', [id]);
+  if (!rows[0]) return { status: 404, erro: 'Modelo não encontrado.' };
+  if (rows[0].usuario_id !== req.usuario.id && req.usuario.perfil !== 'admin') return { status: 403, erro: `Este modelo é de ${rows[0].usuario_nome || 'outro usuário'}: salve uma cópia com outro nome.` };
+  return { modelo: rows[0] };
+};
+router.put('/bi/modelos/:id(\\d+)', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
+  try {
+    const d = await donoDoModelo(req, Number(req.params.id));
+    if (d.erro) return res.status(d.status).json({ erro: d.erro });
+    const m = lerModeloBi(req.body);
+    if (m.erro) return res.status(400).json(m);
+    const { rows } = await pool.query('UPDATE bi_modelos SET nome = $2, campos = $3, filtros = $4, compartilhado = $5, atualizado_em = NOW() WHERE id = $1 RETURNING *',
+      [d.modelo.id, m.nome, m.campos, m.filtros, m.compartilhado]);
+    res.json(rows[0]);
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao salvar o modelo.' }); }
+});
+router.delete('/bi/modelos/:id(\\d+)', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
+  try {
+    const d = await donoDoModelo(req, Number(req.params.id));
+    if (d.erro) return res.status(d.status).json({ erro: d.erro });
+    await pool.query('DELETE FROM bi_modelos WHERE id = $1', [d.modelo.id]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao apagar o modelo.' }); }
 });
 
 // GET /api/fretes/relatorios/sla

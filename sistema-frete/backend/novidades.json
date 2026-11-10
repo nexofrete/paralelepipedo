@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "Relatórios",
+          "texto": "Montar relatório (BI): modelos salvos (campos e filtros com um nome, só seus ou compartilhados, abrem com um clique), Excel de verdade (.xlsx, com números e datas prontos para somar e filtrar), busca de campo e filtros novos: cliente (nome ou CNPJ), UF, aprovação, períodos do CT-e e da entrega, só com diferença CT-e × tabela e só com glosa."
+        },
+        {
+          "area": "Relatórios",
           "texto": "Montar relatório (BI): de 50 para mais de 120 campos, com chaves e séries da NF e do CT-e, previsão de entrega, rastreio e canhoto, emitente, remetente, destinatário e tomador do CT-e, ICMS do CT-e, aprovação e glosa, situações da nota e do CT-e (Sim/Não) e o tipo do CT-e e do serviço por extenso. Datas em dd/mm/aaaa e valores com vírgula na prévia e no Excel."
         },
         {

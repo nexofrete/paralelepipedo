@@ -842,8 +842,12 @@ def parte_uso(g):
         'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro.',
     ])
     s += h2('Montar Relatório (BI)')
-    s.append(P('Escolha os filtros (transportadora, status, período da NF) e os campos, veja a prévia e exporte para Excel. '
-               'São mais de 120 campos do registro, em grupos:'))
+    s.append(P('Escolha os filtros e os campos, veja a prévia e exporte para Excel. Filtros (todos opcionais): transportadora '
+               '(da NF ou do CT-e), cliente (nome ou CNPJ, inclusive só a raiz para pegar todas as filiais), UF de destino, status, '
+               'aprovação do pagamento, períodos de emissão da NF, de emissão do CT-e e da entrega, <b>só com diferença CT-e x '
+               'tabela</b> e <b>só com glosa</b>. <b>Limpar filtros</b> apaga todos.'))
+    s.append(P('São mais de 120 campos, em grupos. Use <b>Procurar campo</b> para achar pelo nome (ex.: "icms", "chave", '
+               '"entrega"); com a busca ativa, <b>Marcar todos</b> marca só os campos que aparecem. Os grupos:'))
     s += lista([
         '<b>Identificação</b>: pedido, NF (número, série, chave), CT-e (número, série, chave, protocolo), fatura e mapa.',
         '<b>Datas</b>: pedido, emissão e saída da NF, emissão do CT-e, fatura, vencimento, coleta, entrega, previsão de entrega, '
@@ -858,7 +862,18 @@ def parte_uso(g):
         '<b>Status e glosa</b> e <b>Situações da nota e do CT-e</b>: aprovação (quem, quando, motivo), glosa, NF cancelada, '
         'denegada, devolvida, complementar, CT-e cancelado e alertas (Sim/Não).',
     ])
-    s.append(P('Datas saem como dd/mm/aaaa, valores com vírgula e as situações como Sim/Não, prontos para o Excel.'))
+    s.append(P('<b>Exportar p/ Excel</b> gera uma planilha .xlsx com filtro no cabeçalho: valores como número e datas como data '
+               '(dá para somar, filtrar e montar tabela dinâmica direto). Na prévia, datas em dd/mm/aaaa, valores com vírgula e as '
+               'situações como Sim/Não.'))
+    s += h3('Modelos salvos')
+    s += lista([
+        'Marque os campos e os filtros e clique em <b>Salvar como modelo</b>, com um nome (ex.: "Fretes do mês por transportadora"). '
+        'Marque <b>Compartilhar</b> para os outros usuários com acesso a Relatórios também usarem.',
+        'Em <b>Modelo salvo</b>, escolha o modelo: os campos e os filtros voltam marcados e a prévia aparece na hora. Depois é só '
+        'trocar o período, se quiser, e exportar.',
+        '<b>Salvar alterações</b> grava no modelo os campos e filtros de agora; <b>Excluir modelo</b> apaga. Só quem criou (ou o '
+        'administrador) altera ou exclui; os outros podem salvar uma cópia com outro nome.',
+    ])
     s += h2('Comparar Cotações e simulador')
     s.append(P('<b>Comparar</b>: informe cidade, volumes, peso, cubagem e valor da nota; o sistema calcula o frete em '
                '<b>todas</b> as transportadoras com tabela para essa cidade, do mais barato ao mais caro. <b>Simulador '

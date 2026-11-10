@@ -3479,3 +3479,17 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS acesso_telas JSONB;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS acesso_acoes TEXT[];
 ALTER TABLE perfis_acesso ADD COLUMN IF NOT EXISTS telas JSONB;
 ALTER TABLE perfis_acesso ADD COLUMN IF NOT EXISTS acoes TEXT[];
+
+-- Montar relatório (BI): modelos salvos (campos + filtros com um nome), do usuário ou compartilhados.
+CREATE TABLE IF NOT EXISTS bi_modelos (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  campos TEXT[] NOT NULL,
+  filtros JSONB NOT NULL DEFAULT '{}',
+  compartilhado BOOLEAN NOT NULL DEFAULT FALSE,
+  usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+  usuario_nome VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bi_modelos_usuario ON bi_modelos (usuario_id);

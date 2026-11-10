@@ -2716,12 +2716,32 @@
         </div>
 
         <div id="subabaBI" class="oculto">
+          <div class="painel" style="margin-bottom:18px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="campo" style="margin-bottom:0; flex:1; min-width:240px;">
+              <label for="biModelo">📁 Modelo salvo</label>
+              <select id="biModelo"><option value="">— novo relatório —</option></select>
+            </div>
+            <button class="btn btn-secundario" id="btnBiSalvarModelo" style="width:auto;" title="Guardar os campos e os filtros marcados com um nome">💾 Salvar como modelo</button>
+            <button class="btn btn-secundario oculto" id="btnBiAtualizarModelo" style="width:auto;" title="Gravar no modelo escolhido os campos e filtros marcados agora">Salvar alterações</button>
+            <button class="btn btn-secundario oculto" id="btnBiExcluirModelo" style="width:auto; color:var(--vermelho);">Excluir modelo</button>
+          </div>
           <div class="painel" style="margin-bottom:18px;">
-            <h3 style="margin-top:0; font-size:14px;">Filtros (opcional)</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <h3 style="margin:0; font-size:14px;">Filtros (opcional)</h3>
+              <button class="btn btn-secundario" id="btnBiLimparFiltros" style="width:auto; padding:6px 12px; font-size:12px;">Limpar filtros</button>
+            </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
               <div class="campo" style="margin-bottom:0;">
-                <label>Transportadora (Transporte Cte)</label>
+                <label>Transportadora</label>
                 <input type="text" id="biFiltroTransportadora" placeholder="Deixe vazio pra todas" />
+              </div>
+              <div class="campo" style="margin-bottom:0;">
+                <label>Cliente (nome ou CNPJ)</label>
+                <input type="text" id="biFiltroCliente" placeholder="Deixe vazio pra todos" />
+              </div>
+              <div class="campo" style="margin-bottom:0;">
+                <label>UF de destino</label>
+                <input type="text" id="biFiltroUf" maxlength="2" placeholder="Ex.: SP" style="text-transform:uppercase;" />
               </div>
               <div class="campo" style="margin-bottom:0;">
                 <label>Status</label>
@@ -2738,6 +2758,15 @@
                 </select>
               </div>
               <div class="campo" style="margin-bottom:0;">
+                <label>Aprovação do pagamento</label>
+                <select id="biFiltroAprovacao">
+                  <option value="">Todas</option>
+                  <option value="Aprovado">Aprovado</option>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Rejeitado">Rejeitado</option>
+                </select>
+              </div>
+              <div class="campo" style="margin-bottom:0;">
                 <label>Emissão NF — de</label>
                 <input type="date" id="biFiltroDataDe" />
               </div>
@@ -2745,13 +2774,34 @@
                 <label>Emissão NF — até</label>
                 <input type="date" id="biFiltroDataAte" />
               </div>
+              <div class="campo" style="margin-bottom:0;">
+                <label>Emissão CT-e — de</label>
+                <input type="date" id="biFiltroCteDe" />
+              </div>
+              <div class="campo" style="margin-bottom:0;">
+                <label>Emissão CT-e — até</label>
+                <input type="date" id="biFiltroCteAte" />
+              </div>
+              <div class="campo" style="margin-bottom:0;">
+                <label>Entrega — de</label>
+                <input type="date" id="biFiltroEntregaDe" />
+              </div>
+              <div class="campo" style="margin-bottom:0;">
+                <label>Entrega — até</label>
+                <input type="date" id="biFiltroEntregaAte" />
+              </div>
+              <div class="campo" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:flex-end; gap:6px;">
+                <label style="display:flex; gap:6px; align-items:center; cursor:pointer;"><input type="checkbox" id="biFiltroDivergencia" style="width:auto;" /> Só com diferença CT-e × tabela</label>
+                <label style="display:flex; gap:6px; align-items:center; cursor:pointer;"><input type="checkbox" id="biFiltroGlosa" style="width:auto;" /> Só com glosa</label>
+              </div>
             </div>
           </div>
 
           <div class="painel" style="margin-bottom:18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <h3 style="margin:0; font-size:14px;">Escolha os campos</h3>
-              <div style="display:flex; gap:8px;">
+              <h3 style="margin:0; font-size:14px;">Escolha os campos <small id="biContagemCampos" style="font-weight:400; color:var(--texto-fraco);"></small></h3>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="search" id="biBuscaCampo" placeholder="🔎 Procurar campo…" autocomplete="off" style="width:220px; padding:6px 10px; font-size:12.5px;" />
                 <button class="btn btn-secundario" id="btnBiMarcarTodos" style="width:auto; padding:6px 12px; font-size:12px;">Marcar todos</button>
                 <button class="btn btn-secundario" id="btnBiDesmarcarTodos" style="width:auto; padding:6px 12px; font-size:12px;">Desmarcar todos</button>
               </div>

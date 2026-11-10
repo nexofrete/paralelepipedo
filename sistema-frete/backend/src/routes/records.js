@@ -1816,17 +1816,62 @@ router.get('/relatorios/por-uf', autenticar, permitirAlguma('pode_ver_relatorios
 
 // Campos que o BI pode selecionar — lista fechada, evita qualquer risco de
 // injeção de SQL (nunca aceita nome de coluna vindo direto do usuário).
-const CAMPOS_BI_PERMITIDOS = [
-  'numero_pedido', 'pedido_mercus', 'data_pedido', 'data_emissao_nf', 'numero_nf',
-  'data_emissao_cte', 'numero_cte', 'data_fatura', 'numero_fatura', 'data_vencimento',
-  'cliente', 'cidade', 'bairro', 'uf', 'transportadora', 'transportadora_cte', 'tipo_carga', 'frete_cif_fob',
-  'redespacho', 'cidade_redespacho', 'valor_faturado', 'qtd_volumes', 'peso_kg', 'cubagem_m3',
-  'tabela_frete', 'interior_capital', 'valor_frete_tabelado', 'valor_total_calculado',
-  'valor_frete_negociado', 'valor_total_cte', 'tde', 'tda', 'gris', 'pedagio', 'trt', 'ad_valorem',
-  'reentrega', 'devolucao', 'outras_despesas', 'valor_total_frete', 'dif_negociado_tabela', 'percent_frete',
-  'numero_mapa', 'data_coleta', 'data_entrega', 'status', 'status_aprovacao', 'observacoes',
-  'glosa_valor', 'glosa_motivo',
-];
+// tipo: como o valor sai (data/datahora já em dd/mm/aaaa, simnao = Sim/Não,
+// numero = a tela formata com vírgula). sql: expressão no lugar da coluna.
+const SIMNAO = (c) => `CASE WHEN ${c} IS NULL THEN NULL WHEN ${c} THEN 'Sim' ELSE 'Não' END`;
+const CAMPOS_BI = {
+  // Identificação
+  numero_pedido: {}, pedido_mercus: {}, numero_nf: {}, nf_serie: {}, chave_nfe: {}, numero_cte: {}, cte_serie: {}, chave_cte: {},
+  cte_protocolo: {}, numero_fatura: {}, numero_mapa: {},
+  // Datas
+  data_pedido: { tipo: 'data' }, data_emissao_nf: { tipo: 'data' }, data_saida: { tipo: 'datahora' }, data_emissao_cte: { tipo: 'data' },
+  data_fatura: { tipo: 'data' }, data_vencimento: { tipo: 'data' }, data_coleta: { tipo: 'data' }, data_entrega: { tipo: 'data' },
+  data_entrega_prevista: { tipo: 'data' }, data_entrega_final: { tipo: 'data' }, rastreio_entrega_agendada: { tipo: 'data' },
+  mapa_data_referencia: { tipo: 'data' },
+  // Cliente e destino
+  cliente: {}, cliente_documento: {}, cidade: {}, bairro: {}, uf: {}, redespacho: {}, redespacho_cnpj: {}, cidade_redespacho: {},
+  // Emitente e partes do CT-e
+  emitente_nome: {}, emitente_cnpj: {}, cte_remetente_nome: {}, cte_remetente_doc: {}, cte_destinatario_nome: {}, cte_destinatario_doc: {},
+  tomador_cte_papel: {}, tomador_cte_nome: {}, tomador_cte_cnpj: {}, cte_cidade_inicio: {}, uf_inicio_cte: {}, cte_cidade_fim: {}, uf_fim_cte: {},
+  // Transportadora
+  transportadora: {}, transportadora_nfe: {}, transportadora_cte: {}, transportadora_cnpj_cte: {}, transportadora_definida_por: {},
+  tabela_frete: {}, interior_capital: {}, prazo_dias_tabela: { tipo: 'numero' },
+  tipo_cte: { sql: "CASE tipo_cte WHEN 0 THEN 'Normal' WHEN 1 THEN 'Complemento' WHEN 2 THEN 'Anulação' WHEN 3 THEN 'Substituto' END" },
+  tp_serv_cte: { sql: "CASE tp_serv_cte WHEN 0 THEN 'Normal' WHEN 1 THEN 'Subcontratação' WHEN 2 THEN 'Redespacho' WHEN 3 THEN 'Redespacho intermediário' WHEN 4 THEN 'Serviço vinculado a multimodal' END" },
+  cte_modal: { sql: "CASE cte_modal WHEN '01' THEN 'Rodoviário' WHEN '02' THEN 'Aéreo' WHEN '03' THEN 'Aquaviário' WHEN '04' THEN 'Ferroviário' WHEN '05' THEN 'Dutoviário' WHEN '06' THEN 'Multimodal' ELSE cte_modal END" },
+  // Carga
+  tipo_carga: {}, frete_cif_fob: {}, qtd_volumes: { tipo: 'numero' }, peso_kg: { tipo: 'numero' }, peso_bruto: { tipo: 'numero' },
+  peso_liquido: { tipo: 'numero' }, cubagem_m3: { tipo: 'numero' }, itens_sem_medida: { tipo: 'numero' }, mapa_descricao: {}, mapa_ajudante: {},
+  // Valores
+  valor_produtos: { tipo: 'numero' }, valor_faturado: { tipo: 'numero' }, valor_frete_tabelado: { tipo: 'numero' }, valor_total_calculado: { tipo: 'numero' },
+  valor_frete_negociado: { tipo: 'numero' }, valor_total_cte: { tipo: 'numero' }, valor_total_frete: { tipo: 'numero' }, frete_rateado: { tipo: 'numero' },
+  dif_negociado_tabela: { tipo: 'numero' }, percent_frete: { tipo: 'numero' },
+  // Taxas
+  tde: { tipo: 'numero' }, tda: { tipo: 'numero' }, gris: { tipo: 'numero' }, pedagio: { tipo: 'numero' }, trt: { tipo: 'numero' },
+  ad_valorem: { tipo: 'numero' }, reentrega: { tipo: 'numero' }, devolucao: { tipo: 'numero' }, outras_despesas: { tipo: 'numero' },
+  // Fiscal do CT-e
+  cte_cfop: {}, cte_icms_cst: {}, cte_icms_base: { tipo: 'numero' }, cte_icms_aliquota: { tipo: 'numero' }, cte_icms_valor: { tipo: 'numero' },
+  // Entrega e rastreio
+  sla_status: {}, data_entrega_origem: {}, rastreio_ultima_ocorrencia: {}, rastreio_ultima_em: { tipo: 'datahora' }, rastreio_problema: { tipo: 'simnao' },
+  canhoto_recebido_por: {}, canhoto_registrado_em: { tipo: 'datahora' }, canhoto: { sql: SIMNAO('(canhoto_foto_arquivo IS NOT NULL OR canhoto_assinatura IS NOT NULL)') },
+  // Status, aprovação e glosa
+  status: {}, status_aprovacao: {}, aprovado_por_nome: {}, aprovado_em: { tipo: 'datahora' }, motivo_rejeicao: {}, justificativa_aprovacao: {},
+  glosa_valor: { tipo: 'numero' }, glosa_motivo: {}, glosa_registrada_por: {}, motivo_conferencia: {}, observacoes: {},
+  // Situações da nota e do CT-e
+  nf_cancelada: { tipo: 'simnao' }, nf_denegada: { tipo: 'simnao' }, nf_devolvida: { tipo: 'simnao' }, nf_complementar: { tipo: 'simnao' },
+  nf_entrada: { tipo: 'simnao' }, nf_sem_circulacao: { tipo: 'simnao' }, frete_por_conta_cliente: { tipo: 'simnao' }, carga_direta: { tipo: 'simnao' },
+  cte_cancelado: { tipo: 'simnao' }, cte_cancelado_em: { tipo: 'data' }, cte_cancelado_motivo: {}, cte_nao_levou: { tipo: 'simnao' },
+  alerta_cobranca_dupla: { tipo: 'simnao' }, alerta_transportadora_diferente: { tipo: 'simnao' },
+};
+const CAMPOS_BI_PERMITIDOS = Object.keys(CAMPOS_BI);
+function expressaoBi(c) {
+  const d = CAMPOS_BI[c];
+  if (d.sql) return d.sql;
+  if (d.tipo === 'data') return `to_char("${c}", 'DD/MM/YYYY')`;
+  if (d.tipo === 'datahora') return `to_char("${c}", 'DD/MM/YYYY HH24:MI')`;
+  if (d.tipo === 'simnao') return SIMNAO(`"${c}"`);
+  return `"${c}"`;
+}
 
 // GET /api/fretes/bi?campos=a,b,c&transportadora=...&status=...&data_de=...&data_ate=...
 // Monta uma consulta só com os campos escolhidos pela pessoa — usado tanto
@@ -1858,10 +1903,10 @@ router.get('/bi', autenticar, permitirAlguma('pode_ver_relatorios'), async (req,
     const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
 
     const { rows } = await consultaCliente(req, 
-      `SELECT ${campos.map((c) => `"${c}"`).join(', ')} FROM fretes ${where} ORDER BY id DESC LIMIT 50000`,
+      `SELECT ${campos.map((c) => `${expressaoBi(c)} AS "${c}"`).join(', ')} FROM fretes ${where} ORDER BY id DESC LIMIT 50000`,
       valores
     );
-    res.json({ campos, linhas: rows });
+    res.json({ campos, tipos: Object.fromEntries(campos.map((c) => [c, CAMPOS_BI[c].tipo || 'texto'])), linhas: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao gerar o relatório personalizado.' });

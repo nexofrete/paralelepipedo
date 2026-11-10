@@ -6416,39 +6416,69 @@ function confirmarExclusao(mensagem) {
 const CAMPOS_BI = [
   { grupo: 'Identificação', campos: [
     ['numero_pedido', 'Número do Pedido'], ['pedido_mercus', 'Pedido Mercus'],
-    ['numero_nf', 'Número NF'], ['numero_cte', 'Número CT-e'], ['numero_fatura', 'Número da Fatura'],
-    ['numero_mapa', 'Número do Mapa'],
+    ['numero_nf', 'Número NF'], ['nf_serie', 'Série da NF'], ['chave_nfe', 'Chave da NF-e'],
+    ['numero_cte', 'Número CT-e'], ['cte_serie', 'Série do CT-e'], ['chave_cte', 'Chave do CT-e'], ['cte_protocolo', 'Protocolo do CT-e'],
+    ['numero_fatura', 'Número da Fatura'], ['numero_mapa', 'Número do Mapa'],
   ]},
   { grupo: 'Datas', campos: [
-    ['data_pedido', 'Data do Pedido'], ['data_emissao_nf', 'Data Emissão NF'],
+    ['data_pedido', 'Data do Pedido'], ['data_emissao_nf', 'Data Emissão NF'], ['data_saida', 'Data/hora de saída da NF'],
     ['data_emissao_cte', 'Data Emissão CT-e'], ['data_fatura', 'Data da Fatura'],
     ['data_vencimento', 'Data de Vencimento'], ['data_coleta', 'Data da Coleta'], ['data_entrega', 'Data da Entrega'],
+    ['data_entrega_prevista', 'Previsão de entrega'], ['data_entrega_final', 'Entrega final (redespacho)'],
+    ['rastreio_entrega_agendada', 'Entrega agendada (rastreio)'], ['mapa_data_referencia', 'Data do Mapa'],
   ]},
   { grupo: 'Cliente e Destino', campos: [
-    ['cliente', 'Cliente'], ['cidade', 'Cidade'], ['bairro', 'Bairro'], ['uf', 'UF'],
-    ['redespacho', 'Redespacho'], ['cidade_redespacho', 'Cidade do Redespacho'],
+    ['cliente', 'Cliente'], ['cliente_documento', 'CNPJ/CPF do Cliente'], ['cidade', 'Cidade'], ['bairro', 'Bairro'], ['uf', 'UF'],
+    ['redespacho', 'Redespacho'], ['redespacho_cnpj', 'CNPJ do Redespacho'], ['cidade_redespacho', 'Cidade do Redespacho'],
+  ]},
+  { grupo: 'Emitente e partes do CT-e', campos: [
+    ['emitente_nome', 'Emitente da NF'], ['emitente_cnpj', 'CNPJ do Emitente'],
+    ['cte_remetente_nome', 'Remetente (CT-e)'], ['cte_remetente_doc', 'CNPJ/CPF do Remetente'],
+    ['cte_destinatario_nome', 'Destinatário (CT-e)'], ['cte_destinatario_doc', 'CNPJ/CPF do Destinatário'],
+    ['tomador_cte_papel', 'Tomador (papel)'], ['tomador_cte_nome', 'Tomador'], ['tomador_cte_cnpj', 'CNPJ do Tomador'],
+    ['cte_cidade_inicio', 'Cidade de início (CT-e)'], ['uf_inicio_cte', 'UF de início (CT-e)'], ['cte_cidade_fim', 'Cidade de fim (CT-e)'], ['uf_fim_cte', 'UF de fim (CT-e)'],
   ]},
   { grupo: 'Transportadora', campos: [
-    ['transportadora', 'Transportadora'], ['transportadora_cte', 'Transporte Cte'],
-    ['tabela_frete', 'Tabela de Preço'], ['interior_capital', 'Interior ou Capital'],
+    ['transportadora', 'Transportadora'], ['transportadora_nfe', 'Transportadora da NF'], ['transportadora_cte', 'Transporte Cte'],
+    ['transportadora_cnpj_cte', 'CNPJ da Transportadora (CT-e)'], ['transportadora_definida_por', 'Transportadora definida por'],
+    ['tabela_frete', 'Tabela de Preço'], ['interior_capital', 'Interior ou Capital'], ['prazo_dias_tabela', 'Prazo da tabela (dias)'],
+    ['tipo_cte', 'Tipo do CT-e'], ['tp_serv_cte', 'Tipo de serviço (CT-e)'], ['cte_modal', 'Modal'],
   ]},
   { grupo: 'Carga', campos: [
     ['tipo_carga', 'Tipo de Carga'], ['frete_cif_fob', 'Frete CIF/FOB'],
-    ['qtd_volumes', 'Qtd. Volumes'], ['peso_kg', 'Peso (kg)'], ['cubagem_m3', 'Cubagem (m³)'],
+    ['qtd_volumes', 'Qtd. Volumes'], ['peso_kg', 'Peso (kg)'], ['peso_bruto', 'Peso bruto (kg)'], ['peso_liquido', 'Peso líquido (kg)'],
+    ['cubagem_m3', 'Cubagem (m³)'], ['itens_sem_medida', 'Itens sem medida'], ['mapa_descricao', 'Descrição do Mapa'], ['mapa_ajudante', 'Ajudante do Mapa'],
   ]},
   { grupo: 'Valores', campos: [
-    ['valor_faturado', 'Valor Faturado'], ['valor_frete_tabelado', 'Valor Frete Tabelado'],
+    ['valor_produtos', 'Valor dos Produtos'], ['valor_faturado', 'Valor Faturado'], ['valor_frete_tabelado', 'Valor Frete Tabelado'],
     ['valor_total_calculado', 'Valor Total Calculado'], ['valor_frete_negociado', 'Valor Frete Negociado'],
-    ['valor_total_cte', 'Vlr. CT-e'], ['valor_total_frete', 'Valor Total do Frete'],
+    ['valor_total_cte', 'Vlr. CT-e'], ['valor_total_frete', 'Valor Total do Frete'], ['frete_rateado', 'Frete rateado (CT-e de várias notas)'],
     ['dif_negociado_tabela', 'Dif. Negociado x Tabela'], ['percent_frete', '% Frete'],
   ]},
   { grupo: 'Taxas', campos: [
     ['tde', 'TDE'], ['tda', 'TDA'], ['gris', 'GRIS'], ['pedagio', 'Pedágio'], ['trt', 'TRT'],
     ['ad_valorem', 'Ad Valorem'], ['reentrega', 'Reentrega'], ['devolucao', 'Devolução'], ['outras_despesas', 'Outras Despesas'],
   ]},
+  { grupo: 'Fiscal do CT-e', campos: [
+    ['cte_cfop', 'CFOP do CT-e'], ['cte_icms_cst', 'CST do ICMS'], ['cte_icms_base', 'Base do ICMS'],
+    ['cte_icms_aliquota', 'Alíquota do ICMS (%)'], ['cte_icms_valor', 'Valor do ICMS'],
+  ]},
+  { grupo: 'Entrega e rastreio', campos: [
+    ['sla_status', 'Situação do prazo (SLA)'], ['data_entrega_origem', 'Origem da data de entrega'],
+    ['rastreio_ultima_ocorrencia', 'Última ocorrência (rastreio)'], ['rastreio_ultima_em', 'Data da última ocorrência'], ['rastreio_problema', 'Problema no rastreio'],
+    ['canhoto', 'Tem canhoto'], ['canhoto_recebido_por', 'Recebido por (canhoto)'], ['canhoto_registrado_em', 'Canhoto registrado em'],
+  ]},
   { grupo: 'Status e Glosa', campos: [
-    ['status', 'Status'], ['status_aprovacao', 'Aprovação'], ['glosa_valor', 'Valor da Glosa'],
-    ['glosa_motivo', 'Motivo da Glosa'], ['observacoes', 'Observações'],
+    ['status', 'Status'], ['status_aprovacao', 'Aprovação'], ['aprovado_por_nome', 'Aprovado por'], ['aprovado_em', 'Aprovado em'],
+    ['motivo_rejeicao', 'Motivo da rejeição'], ['justificativa_aprovacao', 'Justificativa da aprovação'],
+    ['glosa_valor', 'Valor da Glosa'], ['glosa_motivo', 'Motivo da Glosa'], ['glosa_registrada_por', 'Glosa registrada por'],
+    ['motivo_conferencia', 'Motivo da conferência'], ['observacoes', 'Observações'],
+  ]},
+  { grupo: 'Situações da nota e do CT-e', campos: [
+    ['nf_cancelada', 'NF cancelada'], ['nf_denegada', 'NF denegada'], ['nf_devolvida', 'NF devolvida'], ['nf_complementar', 'NF complementar'],
+    ['nf_entrada', 'NF de entrada'], ['nf_sem_circulacao', 'NF sem circulação'], ['frete_por_conta_cliente', 'Frete por conta do cliente'], ['carga_direta', 'Carga direta'],
+    ['cte_cancelado', 'CT-e cancelado'], ['cte_cancelado_em', 'CT-e cancelado em'], ['cte_cancelado_motivo', 'Motivo do cancelamento do CT-e'],
+    ['cte_nao_levou', 'CT-e não levou a nota'], ['alerta_cobranca_dupla', 'Alerta de cobrança dupla'], ['alerta_transportadora_diferente', 'Alerta de transportadora diferente'],
   ]},
 ];
 
@@ -6536,8 +6566,8 @@ document.getElementById('btnBiGerarPrevia').addEventListener('click', async () =
   const primeiras200 = dados.linhas.slice(0, 200);
   const formatarCelula = (campo, valor) => {
     if (valor == null || valor === '') return '—';
-    if (campo.startsWith('data_')) return formatoData(valor);
-    return valor;
+    if (dados.tipos?.[campo] === 'numero') { const n = Number(valor); return n.toLocaleString('pt-BR', Number.isInteger(n) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
+    return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   };
   corpo.innerHTML = primeiras200.map((linha) => `
     <tr>${dados.campos.map((c) => `<td>${formatarCelula(c, linha[c])}</td>`).join('')}</tr>
@@ -6556,7 +6586,7 @@ document.getElementById('btnBiExportarExcel').addEventListener('click', async ()
   const linhasCsv = [rotulos, ...dados.linhas.map((linha) => dados.campos.map((c) => {
     const v = linha[c];
     if (v == null || v === '') return '';
-    return c.startsWith('data_') ? formatoData(v) : v;
+    return dados.tipos?.[c] === 'numero' ? String(v).replace('.', ',') : v;
   }))];
   const csv = linhasCsv.map((linha) => linha.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
 

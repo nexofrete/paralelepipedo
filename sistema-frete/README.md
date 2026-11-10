@@ -925,6 +925,10 @@ Em **Auditoria de Frete → 🧾 Conferir Fatura** (código 330). Regras em `src
 - **Histórico:** `faturas_frete_historico` guarda cada passo (quem, quando, motivo/justificativa); botão 🕘 Histórico na fatura.
 - **Visão geral:** avisa faturas vencidas, vencendo, bloqueadas, aguardando aprovação/liberação e CT-e há mais de 30 dias sem fatura.
 
+## Montar relatório (BI)
+
+Relatórios » Montar relatório (316): `CAMPOS_BI` em `public/js/dashboard.js` (grupos e rótulos) e em `src/routes/records.js` (lista fechada de colunas de `fretes`, com o `tipo` de cada uma: `data`/`datahora` saem em dd/mm/aaaa pelo `to_char`, `simnao` vira Sim/Não, `numero` a tela formata com vírgula; `sql` para códigos por extenso, como tipo do CT-e, tipo de serviço e modal). `GET /api/fretes/bi` devolve `campos`, `tipos` e `linhas`. Campo novo em `fretes` que deva aparecer no BI: incluir nas duas listas.
+
 ## Indicadores (Relatórios)
 
 Em **Gestão e relatórios → 📊 Painel de indicadores → Fretes contratados (KPIs)** (código **309**), tudo numa tela, no período (emissão do CT-e) e, se quiser, de uma transportadora só:

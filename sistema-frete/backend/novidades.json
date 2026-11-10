@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Relatórios",
+          "texto": "Montar relatório (BI): de 50 para mais de 120 campos, com chaves e séries da NF e do CT-e, previsão de entrega, rastreio e canhoto, emitente, remetente, destinatário e tomador do CT-e, ICMS do CT-e, aprovação e glosa, situações da nota e do CT-e (Sim/Não) e o tipo do CT-e e do serviço por extenso. Datas em dd/mm/aaaa e valores com vírgula na prévia e no Excel."
+        },
+        {
           "area": "Acerto de viagem",
           "texto": "Piso mínimo de frete da ANTT: coeficientes (CCD e CC por tabela A a D, tipo de carga e eixos) cadastrados com a resolução e a vigência, por planilha modelo, colando do Excel ou na grade, com histórico; calculadora com retorno vazio e distância pela rota; no acerto com terceiro o frete é conferido com o piso (aviso em vermelho) e o CIOT não é declarado com frete abaixo dele."
         },

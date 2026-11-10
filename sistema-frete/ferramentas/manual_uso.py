@@ -842,7 +842,23 @@ def parte_uso(g):
         'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro.',
     ])
     s += h2('Montar Relatório (BI)')
-    s.append(P('Escolha os filtros (transportadora, status, período da NF) e os campos, veja a prévia e exporte para Excel.'))
+    s.append(P('Escolha os filtros (transportadora, status, período da NF) e os campos, veja a prévia e exporte para Excel. '
+               'São mais de 120 campos do registro, em grupos:'))
+    s += lista([
+        '<b>Identificação</b>: pedido, NF (número, série, chave), CT-e (número, série, chave, protocolo), fatura e mapa.',
+        '<b>Datas</b>: pedido, emissão e saída da NF, emissão do CT-e, fatura, vencimento, coleta, entrega, previsão de entrega, '
+        'entrega final do redespacho, entrega agendada e data do mapa.',
+        '<b>Cliente e destino</b> e <b>Emitente e partes do CT-e</b>: cliente e CNPJ, cidade, UF, redespacho, emitente da NF, '
+        'remetente, destinatário e tomador do CT-e, cidades e UF de início e fim.',
+        '<b>Transportadora</b>: da NF e do CT-e (com CNPJ), quem definiu, tabela, prazo da tabela, tipo do CT-e, tipo de serviço e modal.',
+        '<b>Carga</b>, <b>Valores</b> e <b>Taxas</b>: volumes, pesos, cubagem, valor dos produtos, frete tabelado, negociado, do '
+        'CT-e, rateado e as taxas.',
+        '<b>Fiscal do CT-e</b>: CFOP, CST, base, alíquota e valor do ICMS.',
+        '<b>Entrega e rastreio</b>: situação do prazo, origem da data de entrega, última ocorrência, canhoto e quem recebeu.',
+        '<b>Status e glosa</b> e <b>Situações da nota e do CT-e</b>: aprovação (quem, quando, motivo), glosa, NF cancelada, '
+        'denegada, devolvida, complementar, CT-e cancelado e alertas (Sim/Não).',
+    ])
+    s.append(P('Datas saem como dd/mm/aaaa, valores com vírgula e as situações como Sim/Não, prontos para o Excel.'))
     s += h2('Comparar Cotações e simulador')
     s.append(P('<b>Comparar</b>: informe cidade, volumes, peso, cubagem e valor da nota; o sistema calcula o frete em '
                '<b>todas</b> as transportadoras com tabela para essa cidade, do mais barato ao mais caro. <b>Simulador '

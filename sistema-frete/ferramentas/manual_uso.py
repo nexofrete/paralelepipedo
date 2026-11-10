@@ -431,8 +431,36 @@ def parte_uso(g):
         'A importação sempre cria uma tabela <b>nova</b> — nunca sobrescreve uma existente. Se já houver uma com o mesmo nome '
         'na transportadora, a nova ganha "(importada dd/mm/aaaa)" no nome.',
         'A transportadora é achada pelo CNPJ (ou pelo nome). Se não existir, é cadastrada automaticamente.',
-        'Dá para ajustar valores direto no Excel antes de importar (ex.: um reajuste). Só mantenha os nomes das abas e das colunas.',
+        'Dá para ajustar valores direto no Excel antes de importar. Só mantenha os nomes das abas e das colunas. '
+        'Para reajustar várias tabelas por um mesmo %, use o Reajuste em lote (abaixo).',
     ])
+    s += h2('Reajuste em lote')
+    s.append(P('Em <b>Cadastros » Tabelas de Preço</b>, o botão <b>Reajuste em lote</b> aplica um percentual (acréscimo ou '
+               'desconto) em várias tabelas de uma vez, por exemplo o reajuste anual do contrato pelo IPCA.'))
+    s += passos([
+        '<b>Escolha as tabelas</b>: transportadora (ou todas), só as gerais ou só as de clientes, um cliente e a UF de destino. '
+        'As inativas ficam de fora, a não ser que você marque "Incluir tabelas inativas".',
+        '<b>Informe o %</b> (ex.: 6,5 para aumentar, -3 para baixar, entre -50% e +100%), o índice ou motivo (opcional) e a data '
+        'em <b>Vale a partir de</b>.',
+        '<b>Marque o que reajustar</b>: frete peso (R$/kg dos trechos e excedente), fretes mínimos, taxas em R$ (pedágio, TDE, TDA, '
+        'TRT, despacho, GRIS mínimo, pallet, descarga) e, se quiser, ad valorem e GRIS em %. "Renovar a validade" faz a validade '
+        '(em meses) contar de novo a partir da data do reajuste.',
+        '<b>Ver prévia</b>: lista cada tabela com o valor de antes e o de depois (1º trecho, frete mínimo, pedágio, ad valorem). '
+        'Desmarque as tabelas que ficam de fora.',
+        '<b>Aplicar reajuste agora</b> (data de hoje) ou <b>Agendar</b> (data futura): até a data vale o preço atual; no dia, o '
+        'sistema aplica sozinho.',
+    ])
+    s += lista([
+        'Antes de mudar, cada tabela ganha uma cópia de como estava em "Ver Histórico" e uma linha nas Observações '
+        '(ex.: "Reajuste de 6,5% (IPCA 12 meses) em 01/01/2027").',
+        'Aba <b>Histórico</b> do reajuste: todos os reajustes em lote, com quem fez, a data e a situação (agendado, aplicado, '
+        'desfeito, cancelado). <b>Cancelar</b> desiste de um agendado; <b>Desfazer</b> volta as tabelas aos valores de antes.',
+        'O Desfazer não mexe numa tabela que foi editada depois do reajuste (ela aparece no aviso para conferir à mão). Se houver '
+        'um reajuste mais novo nas mesmas tabelas, desfaça primeiro o mais novo.',
+        'Os valores são arredondados: R$/kg com 4 casas, valores em R$ com 2 e percentuais com 3.',
+    ])
+    s += aviso('nota', 'O reajuste vale para os cálculos feitos daí em diante (cotação, CT-e, auditoria). Fretes já calculados só '
+                       'mudam se você usar "Recalcular todos agora" em Manutenção (seção 24).')
     s += h2('Histórico e impressão')
     s.append(P('"Ver Histórico" mostra as versões anteriores de uma tabela (o que mudou e quando). "Imprimir / PDF" gera a '
                'tabela para enviar ou arquivar.'))

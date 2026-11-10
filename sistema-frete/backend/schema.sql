@@ -208,6 +208,33 @@ CREATE TABLE IF NOT EXISTS tabelas_preco_versoes (
 );
 CREATE INDEX IF NOT EXISTS idx_tabelas_preco_versoes_tabela ON tabelas_preco_versoes (tabela_preco_id, criado_em DESC);
 
+-- Reajuste em lote (src/reajusteTabelas.js): um % aplicado em várias tabelas, agora ou numa data.
+-- versoes = { tabela_id: id da foto em tabelas_preco_versoes } para desfazer.
+-- vigencia_desde: a validade (validade_meses) passa a contar daqui quando o reajuste renova a tabela.
+ALTER TABLE tabelas_preco ADD COLUMN IF NOT EXISTS vigencia_desde DATE;
+CREATE TABLE IF NOT EXISTS reajustes_tabela (
+    id                SERIAL PRIMARY KEY,
+    criado_em         TIMESTAMP NOT NULL DEFAULT NOW(),
+    usuario_id        INTEGER,
+    usuario_nome      VARCHAR(150),
+    percentual        NUMERIC(8,3) NOT NULL,
+    campos            JSONB NOT NULL DEFAULT '{}',
+    filtros           JSONB NOT NULL DEFAULT '{}',
+    excluir           INTEGER[] NOT NULL DEFAULT '{}',
+    vigencia          DATE NOT NULL,
+    renovar_validade  BOOLEAN NOT NULL DEFAULT TRUE,
+    indice            VARCHAR(80),
+    observacao        VARCHAR(300),
+    previstas         INTEGER,
+    status            VARCHAR(12) NOT NULL DEFAULT 'agendado',
+    aplicado_em       TIMESTAMP,
+    tabelas           INTEGER[],
+    versoes           JSONB,
+    desfeito_em       TIMESTAMP,
+    desfeito_por      VARCHAR(150)
+);
+CREATE INDEX IF NOT EXISTS idx_reajustes_tabela_status ON reajustes_tabela (status, vigencia);
+
 -- Faixas de peso dentro de cada tabela de preço (ex: de 0 a 100kg = R$1,20/kg;
 -- de 100 a 500kg = R$0,95/kg, etc).
 CREATE TABLE IF NOT EXISTS tabela_preco_faixas (

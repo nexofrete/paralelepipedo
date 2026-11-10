@@ -238,6 +238,17 @@ Cada cliente pode ter a **tabela negociada dele**, como no SSW. Fica em **Cadast
   - a tabela de um cliente **nunca** é usada para outro.
 - Na lista de tabelas, as de cliente aparecem com ⭐ e o nome do cliente. O filtro "Só as de clientes ⭐" mostra todas.
 
+### Reajuste de tabelas em lote
+
+Botão **📈 Reajuste em lote** em Cadastros → Tabelas de Preço (`public/js/reajusteTabelas.js`; regras em `src/reajusteTabelas.js`):
+
+- **Filtro:** transportadora, gerais/de clientes, cliente (CNPJ exato ou tabela por raiz), UF de destino, inativas opcionais; tabelas desmarcadas na prévia vão em `excluir`.
+- **Grupos** (`GRUPOS`): `frete` (faixas `valor_por_kg`/`valor_kg_excedente` e `excedente_por_kg`), `minimos` (`frete_minimo` dos trechos e `valor_minimo`), `taxas` (pedágio, TDE, TDA, TRT, despacho, GRIS mínimo, pallet, descarga) e `percentuais` (ad valorem e GRIS, desligado por padrão). Arredonda com as casas da coluna.
+- **Aplicar:** guarda a foto de cada tabela em `tabelas_preco_versoes` ("antes do reajuste"), anota nas observações e, com "renovar a validade", grava `tabelas_preco.vigencia_desde` (a validade em meses passa a contar daí: lista e aviso de tabela vencendo).
+- **Agendar:** vigência futura fica `agendado` em `reajustes_tabela`; `agendar()` (na subida e de hora em hora) aplica os que chegaram na data, com o filtro de então.
+- **Desfazer:** volta os valores das fotos (`versoes`), pulando a tabela editada depois (`atualizado_em` > `aplicado_em`) e recusando se houver reajuste mais novo nas mesmas tabelas. Cancelar só no agendado.
+- **Rotas:** `POST /api/tabelas-preco/reajustes/previa`, `GET|POST /api/tabelas-preco/reajustes`, `POST /api/tabelas-preco/reajustes/:id/desfazer`, `DELETE /api/tabelas-preco/reajustes/:id` (todas com "Gerenciar tabelas de preço").
+
 ## Menu por área e tela "Hoje"
 
 - **Menu único, por área** (`public/dashboard.html`, `js/menuTransporte.js`): Hoje, Fretes contratados (visão geral), 🚚 Operação, 🤝 Transportadoras e parceiros, 📄 Documentos, ⚖️ Auditoria de fretes, 💰 Financeiro, 🔧 Frota, 📊 Gestão e relatórios, 🌐 Clientes, Mensagens, Agenda e ⚙️ Configuração. As telas da transportadora (TMS) e do embarcador ficam no mesmo menu, cada uma no grupo do assunto (a antiga chave TMS | Embarcador saiu). Subitens `.nav-tsub`: `data-ir` (+ `data-aba`) abre uma página, `data-subaba` uma tela de Relatórios e `data-familia` um grupo de telas parecidas. Os itens escondidos `.nav-no-grupo` guardam a permissão de cada página.

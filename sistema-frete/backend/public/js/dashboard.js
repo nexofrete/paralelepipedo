@@ -2788,7 +2788,7 @@ async function carregarTabelasPreco() {
 // contada a partir de quando foi criada).
 function selarVigenciaTabela(t) {
   if (!t.validade_meses || !t.criado_em) return '';
-  const vencimento = new Date(t.criado_em);
+  const vencimento = t.vigencia_desde ? new Date(`${String(t.vigencia_desde).slice(0, 10)}T12:00:00`) : new Date(t.criado_em);
   vencimento.setMonth(vencimento.getMonth() + Number(t.validade_meses));
   const diasRestantes = Math.ceil((vencimento - new Date()) / (1000 * 60 * 60 * 24));
   if (diasRestantes < 0) return `<span class="badge badge-cancelado">⏰ Vencida há ${Math.abs(diasRestantes)}d</span>`;

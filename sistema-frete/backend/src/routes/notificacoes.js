@@ -104,11 +104,11 @@ router.get('/', autenticar, async (req, res) => {
     if (verTabelas) try {
       const { rows: tabelasVencendo } = await pool.query(
         `SELECT tp.nome, t.razao_social,
-                (tp.criado_em + (tp.validade_meses || ' months')::INTERVAL)::date AS data_vencimento
+                (COALESCE(tp.vigencia_desde::timestamp, tp.criado_em) + (tp.validade_meses || ' months')::INTERVAL)::date AS data_vencimento
          FROM tabelas_preco tp
          JOIN transportadoras t ON t.id = tp.transportadora_id
          WHERE tp.ativa = TRUE AND tp.validade_meses IS NOT NULL
-           AND (tp.criado_em + (tp.validade_meses || ' months')::INTERVAL) <= NOW() + INTERVAL '30 days'`
+           AND (COALESCE(tp.vigencia_desde::timestamp, tp.criado_em) + (tp.validade_meses || ' months')::INTERVAL) <= NOW() + INTERVAL '30 days'`
       );
       const vencidas = tabelasVencendo.filter((t) => new Date(t.data_vencimento) < new Date());
       const vencendoEmBreve = tabelasVencendo.filter((t) => new Date(t.data_vencimento) >= new Date());

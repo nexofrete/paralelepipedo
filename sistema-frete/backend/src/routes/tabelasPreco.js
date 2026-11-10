@@ -92,6 +92,28 @@ router.get('/', autenticar, permitir('pode_gerenciar_tabelas_preco'), async (req
   }
 });
 
+// ---------- Reajuste em lote (src/reajusteTabelas.js) ----------
+const reajuste = require('../reajusteTabelas');
+const rotaReajuste = (fn) => async (req, res) => {
+  try {
+    const r = await fn(req);
+    if (r?.erro) return res.status(400).json(r);
+    return res.json(r);
+  } catch (err) {
+    console.error('[reajuste]', err);
+    return res.status(500).json({ erro: 'Erro no reajuste das tabelas.' });
+  }
+};
+// POST /api/tabelas-preco/reajustes/previa  { percentual, campos, filtros, excluir, vigencia }
+router.post('/reajustes/previa', autenticar, permitir('pode_gerenciar_tabelas_preco'), rotaReajuste((req) => reajuste.previa(req.body)));
+// GET /api/tabelas-preco/reajustes — histórico (agendados, aplicados, desfeitos, cancelados)
+router.get('/reajustes', autenticar, permitir('pode_gerenciar_tabelas_preco'), rotaReajuste(() => reajuste.listar()));
+// POST /api/tabelas-preco/reajustes — aplica agora (vigência hoje) ou agenda
+router.post('/reajustes', autenticar, permitir('pode_gerenciar_tabelas_preco'), rotaReajuste((req) => reajuste.criar(req.body, req.usuario)));
+router.post('/reajustes/:id(\\d+)/desfazer', autenticar, permitir('pode_gerenciar_tabelas_preco'), rotaReajuste((req) => reajuste.desfazer(Number(req.params.id), req.usuario)));
+router.delete('/reajustes/:id(\\d+)', autenticar, permitir('pode_gerenciar_tabelas_preco'), rotaReajuste(async (req) => (
+  (await reajuste.cancelar(Number(req.params.id), req.usuario)) ? { ok: true } : { erro: 'Só dá para cancelar um reajuste agendado.' })));
+
 // POST /api/tabelas-preco/calcular-completo
 // Calcula o Frete Base + Ad Valorem + GRIS + Pedágio + Taxas pra um trecho
 // específico, já escolhido — usado pelo botão "Calcular e preencher".

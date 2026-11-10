@@ -378,6 +378,7 @@ async function iniciar() {
     require('./src/sefazServicos').agendar();
     require('./src/integracao/nfstock').agendar();
     require('./src/ediConexoes').agendar();
+    require('./src/reajusteTabelas').agendar();
     require('./src/acessoTelas').migrar(require('./src/db')).catch((e) => console.error('[acesso] migração:', e.message));
     require('./src/avisosSeguranca').iniciar();
     require('./src/fusoBanco').verificarAoLigar();

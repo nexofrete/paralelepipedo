@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Tabelas de preço",
+          "texto": "Reajuste em lote: aplica um % (acréscimo ou desconto) em várias tabelas de uma vez, por transportadora, gerais ou de clientes, cliente e UF. Escolha o que reajustar (frete peso, mínimos, taxas em R$, ad valorem/GRIS), veja a prévia antes e depois, aplique agora ou agende para a data de vigência (aplica sozinho no dia). Renova a validade, guarda a versão anterior de cada tabela e dá para desfazer ou cancelar no histórico."
+        },
+        {
           "area": "Cadastros",
           "texto": "Usuários: o campo Função agora sugere mais de cem funções comuns (direção, operação, comercial e atendimento, financeiro, frota, logística do embarcador, tecnologia), os modelos prontos de acesso e as funções já usadas; continua aceitando qualquer texto."
         },

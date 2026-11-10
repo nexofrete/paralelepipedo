@@ -11,6 +11,7 @@
 const pool = require('./db');
 const Doc = require('./utils/documento');
 const contas = require('./contasPagar');
+const piso = require('./pisoAntt');
 
 const { centavos, valor } = contas;
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -44,6 +45,12 @@ function lerAcerto(b = {}) {
     inss: valor(b.inss) || 0, sest_senat: valor(b.sest_senat) || 0, irrf: valor(b.irrf) || 0,
     ciot: digitos(b.ciot, 12), vale_pedagio_valor: valor(b.vale_pedagio_valor) || 0, vale_pedagio_cnpj: Doc.limpar(b.vale_pedagio_cnpj), vale_pedagio_compra: texto(b.vale_pedagio_compra, 30),
     prazo_saldo_dias: Math.min(Math.max(parseInt(b.prazo_saldo_dias, 10) || 0, 0), 120), observacao: texto(b.observacao, 2000),
+    // Piso mínimo da ANTT (só terceiro): o valor e os coeficientes usados são preenchidos em criar/alterar.
+    piso_tabela: piso.lerTabela(b.piso_tabela), piso_tipo_carga: piso.lerTipo(b.piso_tipo_carga),
+    piso_eixos: piso.EIXOS.includes(parseInt(b.piso_eixos, 10)) ? parseInt(b.piso_eixos, 10) : null,
+    piso_km: valor(b.piso_km) || null, piso_retorno_vazio: b.piso_retorno_vazio === true || b.piso_retorno_vazio === 'true',
+    piso_km_retorno: valor(b.piso_km_retorno) || null, piso_origem: texto(b.piso_origem, 80), piso_destino: texto(b.piso_destino, 80),
+    piso_valor: null, piso_ccd: null, piso_cc: null, piso_resolucao: null,
   };
   if (!a.motorista_nome) throw falha('Informe o motorista.');
   if (a.motorista_cpf && a.motorista_cpf.length !== 11) throw falha('CPF do motorista inválido.');
@@ -60,6 +67,7 @@ function lerAcerto(b = {}) {
     } else { a.inss = 0; a.sest_senat = 0; a.irrf = 0; }
   } else {
     a.valor_frete = 0; a.reter_impostos = false; a.inss = 0; a.sest_senat = 0; a.irrf = 0;
+    Object.keys(a).filter((k) => k.startsWith('piso_')).forEach((k) => { a[k] = k === 'piso_retorno_vazio' ? false : null; });
   }
   if (a.vale_pedagio_valor > 0 && a.vale_pedagio_cnpj && a.vale_pedagio_cnpj.length !== 14) throw falha('CNPJ da fornecedora do vale-pedágio inválido.');
   return a;
@@ -135,27 +143,36 @@ async function sincronizarAdiantamento(cliente, id, a, usuarioNome) {
   }
 }
 
+// Calcula o piso da ANTT com os coeficientes de hoje e devolve a conferência para a tela.
+async function aplicarPiso(a) {
+  const r = await piso.doAcerto(a);
+  Object.assign(a, { piso_valor: r.piso_valor, piso_ccd: r.piso_ccd, piso_cc: r.piso_cc, piso_resolucao: r.piso_resolucao });
+  return r.piso?.erro ? { situacao: 'sem_calculo', erro: r.piso.erro } : piso.conferirFrete(a);
+}
+
 async function criar(b, usuarioNome) {
   const a = lerAcerto(b);
+  const conferencia = await aplicarPiso(a);
   return comTransacao(async (cliente) => {
     const { rows } = await cliente.query(
       `INSERT INTO acertos (${CAMPOS.join(', ')}, criado_por_nome) VALUES (${CAMPOS.map((_, i) => `$${i + 1}`).join(', ')}, $${CAMPOS.length + 1}) RETURNING *`,
       [...CAMPOS.map((k) => a[k]), usuarioNome]);
     await sincronizarAdiantamento(cliente, rows[0].id, a, usuarioNome);
     const mdfe = await levarAoMdfe(cliente, a);
-    return { ...rows[0], ciot_no_mdfe: mdfe };
+    return { ...rows[0], ciot_no_mdfe: mdfe, piso_conferencia: conferencia };
   });
 }
 
 async function alterar(id, b, usuarioNome) {
   const a = lerAcerto(b);
+  const conferencia = await aplicarPiso(a);
   return comTransacao(async (cliente) => {
     const { rows } = await cliente.query(
       `UPDATE acertos SET ${CAMPOS.map((k, i) => `${k} = $${i + 2}`).join(', ')} WHERE id = $1 AND status = 'aberto' RETURNING *`, [id, ...CAMPOS.map((k) => a[k])]);
     if (!rows[0]) throw falha('Só dá para alterar acerto em aberto (reabra o acerto antes).', 409);
     await sincronizarAdiantamento(cliente, id, a, usuarioNome);
     const mdfe = await levarAoMdfe(cliente, a);
-    return { ...rows[0], ciot_no_mdfe: mdfe };
+    return { ...rows[0], ciot_no_mdfe: mdfe, piso_conferencia: conferencia };
   });
 }
 
@@ -165,7 +182,7 @@ async function detalhe(id) {
   if (!rows[0]) throw falha('Acerto não encontrado.', 404);
   const { rows: lanc } = await pool.query('SELECT * FROM acerto_lancamentos WHERE acerto_id = $1 ORDER BY data NULLS LAST, id', [id]);
   const { rows: cps } = await pool.query('SELECT id, descricao, categoria, vencimento, valor, valor_pago, status FROM contas_pagar WHERE acerto_id = $1 ORDER BY id', [id]);
-  return { ...rows[0], lancamentos: lanc, contas: cps, totais: calcular(rows[0], lanc) };
+  return { ...rows[0], lancamentos: lanc, contas: cps, totais: calcular(rows[0], lanc), piso_conferencia: piso.conferirFrete(rows[0]) };
 }
 
 async function lancar(id, b) {

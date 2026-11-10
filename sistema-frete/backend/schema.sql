@@ -2445,6 +2445,39 @@ CREATE INDEX IF NOT EXISTS idx_pef_operacoes_acerto ON pef_operacoes (acerto_id)
 -- Conta a pagar do vale-pedágio comprado pelo provedor (cancelada junto com o CIOT, se ainda não foi paga).
 ALTER TABLE pef_operacoes ADD COLUMN IF NOT EXISTS vp_conta_id INTEGER REFERENCES contas_pagar(id);
 
+-- Piso mínimo de frete da ANTT (src/pisoAntt.js): coeficientes cadastrados da resolução em vigor
+-- (piso = km × CCD + CC), histórico de cada gravação e o piso conferido no acerto com terceiro.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS antt_piso_config JSONB;
+CREATE TABLE IF NOT EXISTS antt_piso_coeficientes (
+  tabela CHAR(1) NOT NULL,                     -- A lotação, B só o veículo, C e D alto desempenho
+  tipo_carga VARCHAR(30) NOT NULL,
+  eixos SMALLINT NOT NULL,
+  ccd NUMERIC(10,4) NOT NULL,                  -- R$/km
+  cc NUMERIC(12,2) NOT NULL,                   -- R$ por viagem (carga e descarga)
+  PRIMARY KEY (tabela, tipo_carga, eixos)
+);
+CREATE TABLE IF NOT EXISTS antt_piso_historico (
+  id SERIAL PRIMARY KEY,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  usuario_nome VARCHAR(150),
+  resolucao VARCHAR(80),
+  vigencia DATE,
+  fator_retorno NUMERIC(6,3),
+  coeficientes JSONB NOT NULL
+);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_tabela CHAR(1);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_tipo_carga VARCHAR(30);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_eixos SMALLINT;
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_km NUMERIC(9,1);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_retorno_vazio BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_km_retorno NUMERIC(9,1);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_origem VARCHAR(80);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_destino VARCHAR(80);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_valor NUMERIC(14,2);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_ccd NUMERIC(10,4);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_cc NUMERIC(12,2);
+ALTER TABLE acertos ADD COLUMN IF NOT EXISTS piso_resolucao VARCHAR(80);
+
 -- Gerenciamento de risco (GR): consulta e liberação de motorista e veículo, regras da apólice e
 -- solicitação de monitoramento (SM) da viagem, pela gerenciadora (Buonny, Telerisco, Opentech, Tecnorisk ou simulador).
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS gr_config JSONB;

@@ -257,6 +257,7 @@ app.use('/api/transferencias', unidadesRoutes.transferencias);
 app.use('/api/contas-pagar', contasPagarRoutes.contasPagar);
 app.use('/api/acertos', contasPagarRoutes.acertos);
 app.use('/api/pef', require('./src/routes/pef'));
+app.use('/api/piso-antt', require('./src/routes/pisoAntt'));
 app.use('/api/gr', require('./src/routes/gr'));
 // Aviso de PIX recebido do banco (webhook da API Pix). Não precisa de login: o aviso só dispara a
 // conferência na API do banco, que é o que vale para dar baixa.

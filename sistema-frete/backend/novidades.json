@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Acerto de viagem",
+          "texto": "Piso mínimo de frete da ANTT: coeficientes (CCD e CC por tabela A a D, tipo de carga e eixos) cadastrados com a resolução e a vigência, por planilha modelo, colando do Excel ou na grade, com histórico; calculadora com retorno vazio e distância pela rota; no acerto com terceiro o frete é conferido com o piso (aviso em vermelho) e o CIOT não é declarado com frete abaixo dele."
+        },
+        {
           "area": "Tabelas de preço",
           "texto": "Reajuste em lote: aplica um % (acréscimo ou desconto) em várias tabelas de uma vez, por transportadora, gerais ou de clientes, cliente e UF. Escolha o que reajustar (frete peso, mínimos, taxas em R$, ad valorem/GRIS), veja a prévia antes e depois, aplique agora ou agende para a data de vigência (aplica sozinho no dia). Renova a validade, guarda a versão anterior de cada tabela e dá para desfazer ou cancelar no histórico."
         },

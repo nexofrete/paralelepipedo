@@ -204,7 +204,8 @@
     $('cpAbaAcertos').innerHTML = `<div class="painel oc-painel">
       <div class="oc-barra"><div class="oc-filtros">${[['abertos', 'Em aberto'], ['acertados', 'Acertados'], ['todos', 'Todos']].map(([id, n]) => `<button class="oc-filtro ${filtroAc === id ? 'ativo' : ''}" data-ax-filtro="${id}">${n}</button>`).join('')}</div>
         ${filtroAc === 'abertos' && abertos.length ? `<span style="font-size:13px; color:var(--texto-fraco);">${abertos.length} viagem(ns) aguardando acerto · adiantado ${brl(abertos.reduce((s, a) => s + Number(a.adiantamento), 0))}</span>` : ''}
-        ${admin ? '<button class="btn btn-secundario" id="axCfgCiot" style="width:auto; margin-left:auto;">⚙ CIOT e vale-pedágio</button>' : ''}</div>
+        <span style="margin-left:auto; display:flex; gap:6px;"><button class="btn btn-secundario" id="axPisoAntt" style="width:auto;" title="Coeficientes e calculadora do piso mínimo de frete da ANTT">⚖ Piso ANTT</button>
+        ${admin ? '<button class="btn btn-secundario" id="axCfgCiot" style="width:auto;">⚙ CIOT e vale-pedágio</button>' : ''}</span></div>
       ${lista.length ? `<table class="edi-tabela"><thead><tr><th>Nº</th><th>Saída</th><th>Motorista</th><th>Tipo</th><th>Viagem</th><th class="n">Frete / despesas</th><th class="n">Adiantamento</th><th class="n">Saldo</th><th>Situação</th><th></th></tr></thead><tbody>
         ${lista.map((a) => `<tr><td><b>${a.id}</b></td><td>${dia(a.data_saida)}</td><td>${esc(a.motorista_nome)}${a.placa ? `<br><small>${esc(a.placa)}</small>` : ''}</td>
           <td>${a.tipo === 'terceiro' ? 'Terceiro' : 'Próprio'}</td><td><small>${esc(a.descricao || '')}${a.mdfe_numero ? ` · MDF-e ${esc(a.mdfe_numero)}` : ''}</small></td>
@@ -216,6 +217,7 @@
     $('cpAbaAcertos').querySelectorAll('[data-ax-filtro]').forEach((b) => b.addEventListener('click', () => { filtroAc = b.dataset.axFiltro; telaAcertos().catch(erro); }));
     $('cpAbaAcertos').querySelectorAll('[data-ax-abrir]').forEach((b) => b.addEventListener('click', () => abrirAcerto(Number(b.dataset.axAbrir)).catch(erro)));
     $('axCfgCiot')?.addEventListener('click', () => configCiot().catch(erro));
+    $('axPisoAntt')?.addEventListener('click', () => window.PisoAntt?.abrir().catch(erro));
   }
 
   // ---------- CIOT e vale-pedágio (pagamento eletrônico de frete) ----------
@@ -324,6 +326,7 @@
     const [mdfes, motoristas] = await Promise.all([json('/api/acertos/mdfes').catch(() => []), json('/api/mdfe/motoristas').catch(() => [])]);
     const v = (k) => esc(a?.[k] ?? '');
     const terceiro = a?.tipo === 'terceiro';
+    const blocoPiso = window.PisoAntt ? await window.PisoAntt.blocoAcerto(a) : '';
     $('cpModalConteudo').innerHTML = `${titulo(a ? `🧾 Acerto ${a.id}` : '🧾 Novo acerto de viagem')}
       <div style="display:flex; gap:16px; margin:12px 0;"><label class="ag-check"><input type="radio" name="axTipo" value="proprio" ${terceiro ? '' : 'checked'} /> Motorista próprio</label>
         <label class="ag-check"><input type="radio" name="axTipo" value="terceiro" ${terceiro ? 'checked' : ''} /> Terceiro / agregado</label></div>
@@ -348,6 +351,7 @@
         <div class="campo"><label for="axIrrf">IRRF retido (tabela do mês)</label><input id="axIrrf" inputmode="decimal" value="${a ? esc(num2(a.irrf)) : ''}" /></div>
         <div class="campo"><label for="axCiot">CIOT</label><input id="axCiot" maxlength="12" value="${v('ciot')}" /></div>
       </div></div>
+      ${blocoPiso}
       <div class="cte-secao"><h4>Vale-pedágio (pago pelo contratante)</h4><div class="cte-grade">
         <div class="campo"><label for="axVpValor">Valor</label><input id="axVpValor" inputmode="decimal" value="${a && Number(a.vale_pedagio_valor) ? esc(num2(a.vale_pedagio_valor)) : ''}" /></div>
         <div class="campo"><label for="axVpCnpj">CNPJ da fornecedora</label><input id="axVpCnpj" maxlength="18" value="${esc(Doc.formatar(a?.vale_pedagio_cnpj ?? ''))}" /></div>
@@ -357,8 +361,9 @@
       <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-secundario" data-cp-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="axSalvar" style="width:auto;">Salvar</button></div>`;
     modal.classList.remove('oculto');
     const tipo = () => document.querySelector('[name=axTipo]:checked').value;
-    const ajustar = () => { $('axTerceiro').classList.toggle('oculto', tipo() !== 'terceiro'); };
+    const ajustar = () => { $('axTerceiro').classList.toggle('oculto', tipo() !== 'terceiro'); $('axPiso')?.classList.toggle('oculto', tipo() !== 'terceiro'); };
     document.querySelectorAll('[name=axTipo]').forEach((r) => r.addEventListener('change', ajustar)); ajustar();
+    const lerPiso = window.PisoAntt ? window.PisoAntt.ligarBloco(() => $('axFrete').value) : () => ({});
     // MDF-e escolhido: traz placa e motorista.
     $('axMdfe').addEventListener('change', () => {
       const m = mdfes.find((x) => x.id === Number($('axMdfe').value)); if (!m) return;
@@ -381,9 +386,10 @@
         const corpo = { tipo: tipo(), mdfe_id: $('axMdfe').value, data_saida: $('axData').value, descricao: $('axDesc').value, motorista_nome: $('axMot').value, motorista_cpf: $('axCpf').value,
           placa: $('axPlaca').value, adiantamento: $('axAdiant').value, proprietario_nome: $('axProp').value, proprietario_doc: $('axPropDoc').value, rntrc: $('axRntrc').value,
           valor_frete: $('axFrete').value, prazo_saldo_dias: $('axPrazo').value, reter_impostos: $('axReter').checked, inss: $('axInss').value, sest_senat: $('axSest').value, irrf: $('axIrrf').value,
-          ciot: $('axCiot').value, vale_pedagio_valor: $('axVpValor').value, vale_pedagio_cnpj: $('axVpCnpj').value, vale_pedagio_compra: $('axVpCompra').value, observacao: $('axObs').value };
+          ciot: $('axCiot').value, vale_pedagio_valor: $('axVpValor').value, vale_pedagio_cnpj: $('axVpCnpj').value, vale_pedagio_compra: $('axVpCompra').value, observacao: $('axObs').value, ...lerPiso() };
         const r = a ? await json(`/api/acertos/${a.id}`, { method: 'PUT', body: JSON.stringify(corpo) }) : await json('/api/acertos', { method: 'POST', body: JSON.stringify(corpo) });
         if (r.ciot_no_mdfe) mostrarAlerta('CIOT e vale-pedágio colocados no MDF-e.', { tipo: 'sucesso' });
+        if (r.piso_conferencia?.situacao === 'abaixo') mostrarAlerta(`Acerto salvo, mas o frete contratado está ${brl(-r.piso_conferencia.diferenca)} abaixo do piso mínimo da ANTT (${brl(r.piso_conferencia.piso)}). Ajuste o frete antes de declarar o CIOT.`, { tipo: 'aviso', titulo: 'Frete abaixo do piso da ANTT' });
         await abrirAcerto(r.id); telaAcertos().catch(() => {});
       } catch (err) { erro(err); b.disabled = false; }
     });
@@ -391,6 +397,7 @@
 
   async function abrirAcerto(id) {
     const a = await json(`/api/acertos/${id}`);
+    if (a.tipo === 'terceiro') await window.PisoAntt?.situacao().catch(() => null);
     const t = a.totais; const aberto = a.status === 'aberto';
     const linha = (rot, v, cls = '') => `<tr class="${cls}"><td>${rot}</td><td class="n">${brl(v)}</td></tr>`;
     $('cpModalConteudo').innerHTML = `${titulo(`🧾 Acerto ${a.id} · ${esc(a.motorista_nome)} <span class="oc-sit ${a.status === 'acertado' ? 'entregue' : a.status === 'cancelado' ? 'cancelado' : 'pendente'}" style="vertical-align:middle;">${{ aberto: 'Em aberto', acertado: 'Acertado', cancelado: 'Cancelado' }[a.status]}</span>`)}
@@ -412,6 +419,7 @@
             : `${linha('Despesas comprovadas', t.despesas)}${t.acrescimos ? linha('(+) Acréscimos', t.acrescimos) : ''}${t.descontos ? linha('(−) Descontos', t.descontos) : ''}${linha('(−) Adiantamento', t.adiantamento)}`}
           <tr><th>${t.saldo > 0 ? `A pagar ao ${a.tipo === 'terceiro' ? 'contratado' : 'motorista'}` : t.saldo < 0 ? 'O motorista devolve' : 'Saldo'}</th><th class="n" style="font-size:17px; color:${t.saldo < 0 ? '#d97706' : 'inherit'};">${brl(Math.abs(t.saldo))}</th></tr></tbody></table>
           ${Number(a.vale_pedagio_valor) ? `<p style="font-size:12.5px;">Vale-pedágio: ${brl(a.vale_pedagio_valor)} (pago pela empresa à fornecedora; não entra no frete).</p>` : ''}
+          ${window.PisoAntt ? window.PisoAntt.resumoAcerto(a) : ''}
           ${a.contas.length ? `<h4 style="margin:12px 0 6px;">Em contas a pagar</h4>${a.contas.map((c) => `<div style="font-size:12.5px;">• ${esc(c.descricao.split(' — ')[0])}: ${brl(c.valor)} · venc. ${dia(c.vencimento)} · <b>${{ aberta: Number(c.valor_pago) ? 'parcial' : 'em aberto', paga: 'paga', cancelada: 'cancelada' }[c.status]}</b></div>`).join('')}` : ''}
         </div></div>
       ${a.tipo === 'terceiro' && a.status !== 'cancelado' ? '<div id="axCiotPainel" class="painel" style="padding:12px 14px; margin-top:14px;"><small>Carregando o CIOT…</small></div>' : ''}

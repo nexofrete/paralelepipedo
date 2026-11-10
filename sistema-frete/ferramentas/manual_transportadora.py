@@ -813,6 +813,35 @@ def parte_financeiro(g):
     s += aviso('importante', 'Pamcard, Repom, e-Frete e Target só liberam a API (manual, endereço e credenciais de homologação) '
                              'com o contrato. Até lá o provedor escolhido avisa que a integração aguarda o contrato e nada é '
                              'enviado. O <b>Simulador</b> faz o fluxo inteiro sem valor legal, para treinar a equipe.')
+    s += h2('Piso mínimo de frete da ANTT')
+    s.append(P('A Lei 13.703/2018 proíbe contratar o frete abaixo do piso mínimo da ANTT, e a multa é de quem contrata. O piso '
+               'de uma viagem é <b>distância (km) x CCD + CC</b>: CCD é o custo de deslocamento (R$ por km) e CC o custo de carga e '
+               'descarga (R$ por viagem). Os dois dependem da tabela (A lotação; B só o veículo automotor; C e D as mesmas de alto '
+               'desempenho), do tipo de carga (12 tipos, de granel sólido a carga perigosa) e do número de eixos (2 a 9). No retorno '
+               'vazio, soma-se fator x km da volta x CCD (fator 0,92, ajustável).'))
+    s.append(P('A ANTT muda os coeficientes por resolução (todo ano e quando o diesel varia além do gatilho). Por isso o sistema '
+               '<b>não traz os números prontos</b>: eles são cadastrados com a resolução e a vigência.'))
+    s += passos([
+        'Em <b>Acerto de viagem</b> (ou em Cadastros &gt; Tabelas de Preço), clique em <b>Piso ANTT</b> e abra <b>Coeficientes</b>.',
+        'Baixe a <b>Planilha modelo</b> (todas as combinações de tabela, tipo de carga e eixos), preencha o CCD e o CC com os '
+        'valores da resolução em vigor (ou da calculadora oficial da ANTT) e use <b>Importar planilha</b>. Também dá para '
+        '<b>Colar do Excel</b> (colunas Tabela, Tipo de carga, Eixos, CCD, CC) ou digitar direto na grade.',
+        'Confira a grade, informe a <b>resolução</b> e a <b>vigência</b> e clique em <b>Gravar coeficientes</b>. Cada gravação '
+        'fica no <b>Histórico</b> (quem, quando, resolução e quantos coeficientes).',
+    ])
+    s += lista([
+        '<b>Calculadora</b>: tabela, tipo de carga, eixos e distância dão o piso na hora, com a conta explicada. O botão da régua '
+        'calcula a distância pela rota entre a origem e o destino (Cidade/UF), pelo serviço de mapas da roteirização; sem '
+        'internet, é uma estimativa. Confira com a rota real.',
+        'No <b>acerto com terceiro</b>, o quadro <b>Piso mínimo da ANTT</b> mostra o piso e avisa em vermelho se o frete '
+        'contratado está abaixo. Ao salvar, o piso e os coeficientes do dia ficam gravados no acerto (mudar os coeficientes '
+        'depois não altera acertos antigos). O detalhe do acerto mostra o piso e a situação.',
+        'Com "Não declarar CIOT com frete abaixo do piso" marcado (padrão), o <b>Declarar CIOT</b> recusa o acerto abaixo do '
+        'piso até o frete ser ajustado. A origem e o destino do piso também preenchem a rota do CIOT quando não há MDF-e.',
+        'O vale-pedágio é pago à parte e não entra no piso. Sem coeficiente cadastrado para a combinação, o piso não é conferido.',
+    ])
+    s += aviso('importante', 'Mantenha os coeficientes em dia: quando a ANTT publicar uma resolução nova, grave os valores novos '
+                             'com a resolução e a vigência. Gravar os coeficientes exige "Gerenciar tabelas de preço".')
 
     # 46
     s += h1('46. Comissão de vendedores')

@@ -69,15 +69,17 @@ async function montarOperacao(acertoId, e = {}, cfg) {
   const { rows: lanc } = await pool.query('SELECT * FROM acerto_lancamentos WHERE acerto_id = $1', [acertoId]);
   const t = ac.calcular(a, lanc);
   const mun = (ibge, cidade, uf) => municipio({ ibge, cidade, uf });
-  const origem = mun(e.origem_ibge, e.origem_cidade, e.origem_uf) || mun(d.carregamento?.[0]?.cMun);
+  // "Cidade/UF" do quadro do piso da ANTT no acerto.
+  const doPiso = (t) => { const [c, u] = String(t || '').split('/').map((x) => x.trim()); return c && u ? mun(null, c, u.toUpperCase()) : null; };
+  const origem = mun(e.origem_ibge, e.origem_cidade, e.origem_uf) || mun(d.carregamento?.[0]?.cMun) || doPiso(a.piso_origem);
   const ultima = (d.descargas || []).slice(-1)[0];
-  const destino = mun(e.destino_ibge, e.destino_cidade, e.destino_uf) || mun(ultima?.cMun);
+  const destino = mun(e.destino_ibge, e.destino_cidade, e.destino_uf) || mun(ultima?.cMun) || doPiso(a.piso_destino);
   const op = {
     acerto_id: a.id,
     contratante: { cnpj: Doc.limpar(emp?.cnpj), nome: emp?.razao_social || null, rntrc: emp?.rntrc || null },
     contratado: { doc: a.proprietario_doc, nome: a.proprietario_nome, rntrc: a.rntrc, tipo: String(a.proprietario_doc || '').length === 11 ? 'TAC' : 'ETC' },
     motorista: { cpf: a.motorista_cpf, nome: a.motorista_nome },
-    veiculos: [{ placa: a.placa || d.veiculo?.placa || null, eixos: Math.min(Math.max(parseInt(e.eixos, 10) || cfg.eixos_padrao || 5, 2), 9) }],
+    veiculos: [{ placa: a.placa || d.veiculo?.placa || null, eixos: Math.min(Math.max(parseInt(e.eixos, 10) || a.piso_eixos || cfg.eixos_padrao || 5, 2), 9) }],
     origem: origem ? { ibge: origem.ibge, cidade: origem.nome, uf: origem.uf } : null,
     destino: destino ? { ibge: destino.ibge, cidade: destino.nome, uf: destino.uf } : null,
     carga: { natureza: texto(e.natureza, 120) || d.prodPred?.xProd || 'Carga geral', ncm: String(e.ncm || d.prodPred?.NCM || '').replace(/\D/g, '').slice(0, 8) || null,
@@ -131,6 +133,13 @@ async function declarar(acertoId, extra, usuarioNome) {
   const { op, a } = await montarOperacao(acertoId, extra, cfg);
   if (a.status !== 'aberto') throw falha('O acerto já foi fechado: reabra para declarar o CIOT.', 409);
   conferir(op);
+  // Piso mínimo da ANTT: frete abaixo do piso não vai para o CIOT (a multa é de quem contrata).
+  const pisoAntt = require('../pisoAntt');
+  const pc = pisoAntt.conferirFrete(a);
+  if (pc?.situacao === 'abaixo' && (await pisoAntt.config()).bloquear_ciot) {
+    const brl = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    throw falha(`O frete contratado (${brl(pc.frete)}) está abaixo do piso mínimo da ANTT para esta viagem (${brl(pc.piso)}). Ajuste o frete no acerto antes de declarar o CIOT.`, 409);
+  }
   const p = provedorDe(cfg.provedor);
   const r = await p.declarar(op, cfg);
   const { rows } = await pool.query(

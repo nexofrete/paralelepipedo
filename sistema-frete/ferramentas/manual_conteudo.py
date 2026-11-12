@@ -106,6 +106,11 @@ def parte_instalacao(g):
         'servidor</b> para todo mundo.',
         'Quando aparecer "Servidor rodando!", abra o navegador nesse mesmo computador em <b>http://localhost:3333</b>.',
     ])
+    s += h2('Ativação')
+    s.append(P('Na primeira vez, a tela <b>Ativação do sistema</b> mostra o <b>código deste computador</b>. Envie o código para '
+               'quem forneceu o sistema, cole a <b>chave de ativação</b> recebida (começa com NXF1.) e clique em <b>Ativar</b>. A chave '
+               'vale para este computador e para o CNPJ da empresa. A opção "Sou o dono do sistema", no fim da tela, é só para o '
+               'fornecedor: ela mostra onde o servidor procura a chave do licenciador e aparece apenas no próprio computador do servidor.'))
     s += h2('Primeiro login')
     s.append(P('Na primeira vez que o sistema é ligado, um administrador é criado automaticamente:'))
     s += tabela(['Campo', 'Valor'], [['Email', 'admin@empresa.com'], ['Senha', 'admin123']], [0.3, 0.7])

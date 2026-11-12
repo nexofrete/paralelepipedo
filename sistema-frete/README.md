@@ -98,6 +98,8 @@ Cada instalação só funciona **ativada com uma chave emitida por você**.
 
 **No seu próprio computador** você não precisa de chave de ativação. Crie a pasta `backend\dados\licenciador` e coloque nela o arquivo `chave-privada.pem`. Confira se o nome não ficou `chave-privada.pem.txt`: no Explorador, ative **Exibir → Extensões de nomes de arquivos**. Em até 5 segundos a tela de ativação libera o sistema; é só recarregar a página. Em **Manutenção → Licença** aparece "Computador do licenciador" e o emissor de chaves.
 
+Se a tela continuar pedindo ativação, abra-a **no próprio computador do servidor** e clique em **Sou o dono do sistema**: aparece a pasta exata que o servidor está usando (se for outra cópia do sistema, a chave está na pasta errada), os arquivos que ele achou nela e por que cada um não valeu (sem chave dentro, outro formato ou chave que não é o par deste sistema). O sistema aceita a chave com qualquer nome dentro da pasta `licenciador` (ex.: `chave-privada.txt`) e a pasta com L maiúsculo. Esse diagnóstico não aparece para quem acessa pela rede ou pelo túnel (`diagnosticoLicenciador` em `src/licenca.js`, só para pedido local em `/api/licenca/estado`).
+
 **Validade:**
 - 15 dias antes de vencer, aparece um aviso.
 - Depois de vencida, há 7 dias de tolerância. Em seguida o sistema fica **só para consulta**: o cliente continua vendo os seus documentos fiscais, mas não emite nem altera nada até receber a chave nova.

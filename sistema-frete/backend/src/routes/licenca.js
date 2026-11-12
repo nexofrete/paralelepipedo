@@ -13,7 +13,15 @@ const publico = (e) => ({
   online: e.online || null,
 });
 
-router.get('/estado', (req, res) => res.json(publico(licenca.estado())));
+// Pedido feito no próprio computador do servidor (não pela rede nem pelo túnel, que chega com X-Forwarded-For / CF-Connecting-IP).
+const doProprioComputador = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress)
+  && !req.headers['x-forwarded-for'] && !req.headers['cf-connecting-ip'] && !req.headers['x-real-ip'];
+router.get('/estado', (req, res) => {
+  const e = publico(licenca.estado());
+  // Diagnóstico do licenciador (pasta e arquivos): só para quem está no computador do servidor.
+  if (!e.licenciador && doProprioComputador(req)) e.diagnostico_licenciador = licenca.diagnosticoLicenciador();
+  res.json(e);
+});
 
 router.post('/ativar', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { erro: 'Tentativas demais. Espere alguns minutos.' } }), (req, res) => {
   try {

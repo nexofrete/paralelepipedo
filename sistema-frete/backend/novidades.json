@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Licença",
+          "texto": "Computador do licenciador: a chave é aceita com qualquer nome dentro da pasta \"licenciador\" (ex.: chave-privada.txt) e, na tela de ativação aberta no próprio servidor, \"Sou o dono do sistema\" mostra a pasta que o servidor está usando, os arquivos achados e por que não valeram."
+        },
+        {
           "area": "Tabelas de preço",
           "texto": "Na lista de tabelas de preço, a coluna Rastreamento mostra como cada transportadora é acompanhada: SSW, Portal ATA (Lonngren), Central de Canhotos (LD Rio), EDI (com aviso se o último arquivo é antigo), só link, ou manual."
         },

@@ -236,19 +236,51 @@ function lerPem(texto) {
   const miolo = m[1].replace(/[^A-Za-z0-9+/=]/g, '');
   return `-----BEGIN PRIVATE KEY-----\n${miolo.match(/.{1,64}/g)?.join('\n') || ''}\n-----END PRIVATE KEY-----\n`;
 }
-function chavePrivada() {
-  const arquivo = [CHAVE_PRIVADA, `${CHAVE_PRIVADA}.txt`].find((a) => fs.existsSync(a));
-  if (!arquivo) return null;
+// A pasta do licenciador (dados/licenciador; aceita "Licenciador" também em sistemas que diferenciam maiúsculas).
+function pastaLicenciador() {
+  if (fs.existsSync(PASTA_LICENCIADOR)) return PASTA_LICENCIADOR;
   try {
-    const pem = lerPem(fs.readFileSync(arquivo, 'utf8'));
-    if (!pem) return null;
+    const nome = fs.readdirSync(PASTA_DADOS).find((n) => n.toLowerCase() === 'licenciador' && fs.statSync(path.join(PASTA_DADOS, n)).isDirectory());
+    return nome ? path.join(PASTA_DADOS, nome) : null;
+  } catch { return null; }
+}
+// Arquivos que podem ter a chave: chave-privada.pem primeiro e depois qualquer arquivo pequeno da pasta
+// (o Windows esconde a extensão: "chave-privada.pem.txt", "chave-privada.txt", "chave (1).pem"...).
+function arquivosDaChave(pasta) {
+  if (!pasta) return [];
+  let nomes = [];
+  try { nomes = fs.readdirSync(pasta).filter((n) => !['emitidas.json', 'config.json'].includes(n.toLowerCase())); } catch { return []; }
+  nomes.sort((a, b) => (b.toLowerCase().startsWith('chave-privada.pem') ? 1 : 0) - (a.toLowerCase().startsWith('chave-privada.pem') ? 1 : 0));
+  return nomes.map((n) => path.join(pasta, n)).filter((a) => { try { const st = fs.statSync(a); return st.isFile() && st.size < 20000; } catch { return false; } });
+}
+// Confere um arquivo: { ok, k } ou { motivo }.
+function conferirArquivoChave(arquivo) {
+  let texto;
+  try { texto = fs.readFileSync(arquivo, 'utf8'); } catch (e) { return { motivo: `não consegui ler (${e.code || e.message})` }; }
+  if (/BEGIN (ENCRYPTED|OPENSSH|RSA|EC) PRIVATE KEY/.test(texto)) return { motivo: 'é uma chave privada de outro formato (precisa ser a do Nexofrete, "BEGIN PRIVATE KEY")' };
+  const pem = lerPem(texto);
+  if (!pem) return { motivo: 'não tem uma chave privada dentro' };
+  try {
     const k = crypto.createPrivateKey(pem);
     // Só vale se for o par da chave pública do sistema.
     const teste = Buffer.from('nexofrete');
-    return crypto.verify(null, teste, crypto.createPublicKey(CHAVE_PUBLICA), crypto.sign(null, teste, k)) ? k : null;
-  } catch { return null; }
+    return crypto.verify(null, teste, crypto.createPublicKey(CHAVE_PUBLICA), crypto.sign(null, teste, k)) ? { ok: true, k } : { motivo: 'é uma chave privada, mas não é o par da chave deste sistema' };
+  } catch { return { motivo: 'a chave está incompleta ou foi alterada' }; }
+}
+function chavePrivada() {
+  for (const a of arquivosDaChave(pastaLicenciador())) { const r = conferirArquivoChave(a); if (r.ok) return r.k; }
+  return null;
 }
 function temLicenciador() { return !!chavePrivada(); }
+// Por que este computador não é o do licenciador (para a tela de ativação, só no próprio servidor).
+function diagnosticoLicenciador() {
+  const pasta = pastaLicenciador();
+  if (!pasta) return { pasta: PASTA_LICENCIADOR, situacao: 'sem_pasta', texto: `O servidor não achou a pasta ${PASTA_LICENCIADOR}. Se ela está em outra cópia do sistema, este servidor está rodando de outra pasta: copie a pasta "licenciador" para dentro da pasta "dados" mostrada aqui.` };
+  const arquivos = arquivosDaChave(pasta).map((a) => ({ nome: path.basename(a), ...conferirArquivoChave(a) })).map(({ nome, ok, motivo }) => ({ nome, ok: !!ok, motivo: motivo || null }));
+  if (arquivos.some((a) => a.ok)) return { pasta, situacao: 'ok', arquivos, texto: 'Chave do licenciador encontrada: este computador libera o sistema sem ativação.' };
+  if (!arquivos.length) return { pasta, situacao: 'vazia', arquivos, texto: `A pasta ${pasta} existe, mas está vazia. Coloque nela o arquivo chave-privada.pem.` };
+  return { pasta, situacao: 'invalida', arquivos, texto: `Nenhum arquivo da pasta ${pasta} tem a chave do licenciador deste sistema.` };
+}
 
 function configLicenciador() { try { return JSON.parse(fs.readFileSync(CONFIG_LICENCIADOR, 'utf8')); } catch { return {}; } }
 function salvarConfigLicenciador(c) { fs.mkdirSync(PASTA_LICENCIADOR, { recursive: true }); fs.writeFileSync(CONFIG_LICENCIADOR, JSON.stringify({ ...configLicenciador(), ...c }, null, 2)); }
@@ -289,4 +321,4 @@ function contato() {
   try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'licenca-contato.json'), 'utf8')); } catch { return {}; }
 }
 
-module.exports = { conferirOnline, agendarConferencia, lerResposta, configLicenciador, montarChave, codigoDaMaquina, estado, ativar, avaliar, conferirEmpresa, emitir, listarEmitidas, temLicenciador, contato, lerChave, normalizarCodigo, CHAVE_PRIVADA };
+module.exports = { diagnosticoLicenciador, conferirOnline, agendarConferencia, lerResposta, configLicenciador, montarChave, codigoDaMaquina, estado, ativar, avaliar, conferirEmpresa, emitir, listarEmitidas, temLicenciador, contato, lerChave, normalizarCodigo, CHAVE_PRIVADA };

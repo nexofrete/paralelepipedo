@@ -2773,15 +2773,32 @@ async function carregarTabelasPreco() {
           <a class="link-registro" title="Exportar a tabela completa (dados + trechos) em Excel, para usar em outra empresa" style="margin-left:6px; text-decoration:none;" onclick="exportarTabelaCompleta(${t.id})">⬇</a>
           ${t.cliente_doc ? `<br><span class="badge badge-pendente" title="Vale só quando este cliente paga o frete">⭐ ${escaparHtmlTabelaCliente(t.cliente_nome || Doc.formatar(t.cliente_doc))}${t.cliente_por_raiz ? ' (todas as filiais)' : ''}</span>` : ''}</td>
         <td>${t.transportadora_nome}</td>
+        <td>${seloIntegracaoTransportadora(t)}</td>
         <td>${t.cidade_destino ? `${t.cidade_destino}/${t.uf_destino || ''}` : (t.uf_destino || 'Todos')}</td>
         <td>${formatoMoeda(t.valor_minimo)}</td>
         <td>${t.total_faixas ?? '—'}</td>
         <td>${t.ativa ? '<span class="badge badge-faturado">Ativa</span>' : '<span class="badge badge-cancelado">Inativa</span>'} ${selarVigenciaTabela(t)}</td>
       </tr>
-    `).join('') || `<tr><td colspan="6" style="color:var(--texto-fraco);">Nenhuma tabela de preço cadastrada ainda.</td></tr>`;
+    `).join('') || `<tr><td colspan="7" style="color:var(--texto-fraco);">Nenhuma tabela de preço cadastrada ainda.</td></tr>`;
   } catch (err) {
     console.error(err);
   }
+}
+
+// Rastreamento da transportadora (na lista de tabelas): SSW, portal próprio (ATA/Lonngren, Central de
+// Canhotos da LD Rio), EDI OCOREN recebido e link de rastreamento. Vem do cadastro da transportadora.
+function seloIntegracaoTransportadora(t) {
+  const selo = (texto, titulo, cor) => `<span class="badge" title="${escaparHtmlTabelaCliente(titulo)}" style="margin:1px 3px 1px 0; background:${cor}22; color:${cor}; border:1px solid ${cor}66; white-space:nowrap;">${texto}</span>`;
+  const selos = [];
+  if (t.integ_ssw) selos.push(selo('SSW', `Entregas lidas do SSW (busca das 6h30 e botão Buscar entregas)${t.integ_ssw_dominio ? ` — domínio ${t.integ_ssw_dominio}` : ''}`, '#16a34a'));
+  if (t.integ_portal === 'lonngren') selos.push(selo('Portal ATA', 'Portal próprio da transportadora (Lonngren): entregas lidas com o login cadastrado', '#2563eb'));
+  if (t.integ_portal === 'ldrio') selos.push(selo('Central de Canhotos', 'Central de Canhotos da LD Rio: entregas lidas com o login cadastrado', '#2563eb'));
+  if (t.integ_edi_em) {
+    const dias = Math.floor((Date.now() - new Date(t.integ_edi_em)) / 86400000);
+    selos.push(selo('EDI', `Recebe ocorrências por EDI (OCOREN). Último arquivo há ${dias} dia(s)${dias > 30 ? ' — confira se parou de chegar' : ''}`, dias > 30 ? '#d97706' : '#7c3aed'));
+  }
+  if (t.integ_link) selos.push(selo('Link', 'Só o link de rastreamento (abre o site da transportadora; não traz a entrega sozinho)', '#64748b'));
+  return selos.join('') || '<span title="Sem rastreamento automático: as entregas entram à mão, pelo canhoto ou pelo XML. Configure em Cadastros » Transportadoras." style="color:var(--texto-fraco); font-size:12px;">— manual</span>';
 }
 
 // Mostra se a tabela está perto de vencer ou já vencida (Validade em meses,

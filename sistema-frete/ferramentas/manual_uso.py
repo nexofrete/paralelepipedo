@@ -377,6 +377,17 @@ def parte_uso(g):
     s += h1('15. Tabelas de preço e o cálculo do frete')
     s.append(P('A tabela de preço é o que a transportadora negociou. É com ela que o sistema calcula quanto cada frete '
                'deveria custar. Fica em <b>Cadastros » Tabelas de Preço</b>.'))
+    s.append(P('Na lista de tabelas, a coluna <b>Rastreamento</b> mostra como o sistema acompanha as entregas de cada '
+               'transportadora (passe o mouse no selo para ver o detalhe):'))
+    s += tabela(['Selo', 'O que quer dizer'], [
+        ['SSW', 'As entregas são lidas do SSW sozinhas (busca das 6h30 e botão Buscar entregas). O sistema marca isso quando acha a transportadora no SSW.'],
+        ['Portal ATA', 'Portal próprio da Andrade e Abreu (Lonngren), lido com o login cadastrado na transportadora.'],
+        ['Central de Canhotos', 'Site da LD Rio Pizzo, lido com o e-mail e a senha cadastrados na transportadora.'],
+        ['EDI', 'A transportadora manda arquivos de ocorrência (OCOREN). Fica laranja se o último arquivo tem mais de 30 dias.'],
+        ['Link', 'Só o link de rastreamento: abre o site da transportadora, mas não traz a entrega sozinho.'],
+        ['manual', 'Sem rastreamento automático: as entregas entram à mão, pelo canhoto ou pelo XML.'],
+    ], [0.22, 0.78])
+    s.append(P('Para mudar, use o cadastro da transportadora (Cadastros » Transportadoras » Portal de rastreamento e link).'))
     s += h2('Dados gerais da tabela')
     s += tabela(['Campo', 'Uso'], [
         ['Transportadora, UF, nome', 'Identificação. A busca aceita nome ou CNPJ.'],

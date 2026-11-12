@@ -78,7 +78,15 @@ router.get('/', autenticar, permitir('pode_gerenciar_tabelas_preco'), async (req
 
     const { rows } = await pool.query(
       `SELECT tp.*, t.razao_social AS transportadora_nome,
-              (SELECT COUNT(*) FROM tabela_preco_faixas f WHERE f.tabela_preco_id = tp.id)::int AS total_faixas
+              (SELECT COUNT(*) FROM tabela_preco_faixas f WHERE f.tabela_preco_id = tp.id)::int AS total_faixas,
+              -- Como o Nexofrete acompanha as entregas dessa transportadora (aparece na lista de tabelas).
+              COALESCE(t.rastreamento_ssw, FALSE) AS integ_ssw, t.ssw_dominio AS integ_ssw_dominio,
+              CASE WHEN t.portal_tipo = 'lonngren' AND t.portal_chave IS NOT NULL THEN 'lonngren'
+                   WHEN t.portal_tipo = 'ldrio' AND t.portal_usuario IS NOT NULL AND t.portal_senha IS NOT NULL THEN 'ldrio' END AS integ_portal,
+              (NULLIF(TRIM(COALESCE(t.url_rastreamento, '')), '') IS NOT NULL) AS integ_link,
+              (SELECT MAX(e.criado_em) FROM edi_recebidos e
+                WHERE e.tipo = 'OCOREN' AND LENGTH(REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g')) >= 8
+                  AND LEFT(e.cnpj_emissor, 8) = LEFT(REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g'), 8)) AS integ_edi_em
        FROM tabelas_preco tp
        JOIN transportadoras t ON t.id = tp.transportadora_id
        ${where}

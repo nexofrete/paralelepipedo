@@ -219,6 +219,8 @@ Juros ao mês, multa, protesto e baixa automática são configurados uma vez e v
 
 ## Tabela de frete por cliente
 
+Lista de tabelas (Cadastros → Tabelas de Preço): coluna **Rastreamento** (`seloIntegracaoTransportadora` em `public/js/dashboard.js`), com os campos `integ_ssw`/`integ_ssw_dominio` (`transportadoras.rastreamento_ssw`), `integ_portal` (`lonngren` com `portal_chave`; `ldrio` com usuário e senha), `integ_link` (`url_rastreamento`) e `integ_edi_em` (último OCOREN em `edi_recebidos` com a mesma raiz de CNPJ) vindos de `GET /api/tabelas-preco`.
+
 Cadastro de clientes (Cadastros » Clientes, `abrirCliente` em `public/js/dashboard.js`): dois cliques na linha abrem o `#painelFormCliente` numa janela (`clJanela`, `#modalCliente`), fechando com Esc, ✕ ou Fechar; estilo dos campos em `public/css/style.css`.
 
 Trechos da tabela (`linhaFaixa` em `public/js/dashboard.js`): "Cidades dessa praça" é um `textarea` que cresce com o texto (`ajustarAlturaCidades`; quebras de linha viram vírgula em `lerFaixasDoFormulario`), com larguras mínimas nas colunas Origem, Destino, Região, Tipo de carga e Cidades.

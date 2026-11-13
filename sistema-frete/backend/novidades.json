@@ -7,6 +7,10 @@
       "itens": [
         {
           "area": "Auditoria de frete",
+          "texto": "Conferir em sequência: no Detalhe, a fila dos fretes divergentes ainda sem decisão (quem mais cobrou a mais primeiro), com ◀ ▶, \"Aprovar e próximo\" e atalhos do teclado (← → A G Esc). Tolerância por transportadora e por taxa (frete peso, pedágio, TDE, GRIS...), valendo também para a liberação automática; ao salvar, os fretes não decididos são conferidos de novo."
+        },
+        {
+          "area": "Auditoria de frete",
           "texto": "Diferença do frete mais clara: no Detalhe, um quadro no alto diz em uma frase quanto a transportadora cobrou a mais ou a menos que a tabela (R$ e %), com barras, e lista onde está a diferença (componente por componente, taxa não prevista, peso, volumes, ICMS e o restante), com aviso de trecho/tabela errada e o botão Glosar a diferença já preenchido. No cartão, a diferença em % e \"Na tolerância\" quando é pequena."
         },
         {

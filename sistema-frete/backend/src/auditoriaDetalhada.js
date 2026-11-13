@@ -31,14 +31,16 @@ function classificar(nome) {
   return r ? r[0] : 'outros';
 }
 
-let cacheCfg = { em: 0, v: null };
-async function tolerancia() {
-  if (Date.now() - cacheCfg.em < 60000 && cacheCfg.v) return cacheCfg.v;
-  const { rows: [c] } = await pool.query('SELECT tolerancia_valor, tolerancia_percentual FROM configuracao_auditoria WHERE id = 1');
-  cacheCfg = { em: Date.now(), v: { valor: Math.max(Number(c?.tolerancia_valor) || 0, 0.5), pct: Number(c?.tolerancia_percentual) || 0 } };
-  return cacheCfg.v;
-}
-const foraTol = (dif, base, t) => Math.abs(dif) > Math.max(t.valor, (Math.abs(base) * t.pct) / 100);
+// Tolerância: geral, por transportadora e por componente (src/toleranciaAuditoria.js). Nos componentes,
+// nunca menos de R$ 0,50 (arredondamento das parcelas do CT-e).
+async function tolerancia() { return require('./toleranciaAuditoria').carregar(); }
+const foraTol = (dif, base, t, transportadoraId = null, componente = 'total') => {
+  if (t && t.regras) {
+    const g = require('./toleranciaAuditoria').regra(t, transportadoraId, componente);
+    return Math.abs(dif) > Math.max(g.valor, 0.5, (Math.abs(base) * g.pct) / 100);
+  }
+  return Math.abs(dif) > Math.max(t.valor, (Math.abs(base) * t.pct) / 100);
+};
 
 // Confere um frete. r: linha de fretes com xml_cte_original, auditoria_calculo, peso_kg, qtd_volumes e os campos de icmsCte.camposSql;
 // soma: { peso, volumes } das notas cobertas pelo mesmo CT-e (opcional).
@@ -70,8 +72,8 @@ function conferirFrete(r, t, soma = {}) {
     const dif = tb == null ? null : r2(cob - tb);
     let situacao = 'ok';
     if (tb == null) situacao = 'sem_tabela';
-    else if (cob > 0 && tb === 0 && foraTol(cob, 0, t)) situacao = 'nao_autorizada';
-    else if (dif != null && foraTol(dif, tb, t)) situacao = dif > 0 ? 'a_mais' : 'a_menos';
+    else if (cob > 0 && tb === 0 && foraTol(cob, 0, t, r.transportadora_id_tol, k)) situacao = 'nao_autorizada';
+    else if (dif != null && foraTol(dif, tb, t, r.transportadora_id_tol, k)) situacao = dif > 0 ? 'a_mais' : 'a_menos';
     return { chave: k, nome: COMPONENTES[k], cobrado: cob, tabela: tb, diferenca: dif, situacao, nomes_cte: nomesCte[k] || [] };
   });
   // Componente "a mais" que só existe porque a transportadora juntou duas parcelas num nome só
@@ -85,7 +87,7 @@ function conferirFrete(r, t, soma = {}) {
   const aMaisParcelas = r2(componentes.filter((x) => ['a_mais', 'nao_autorizada'].includes(x.situacao)).reduce((s, x) => s + (x.tabela == null ? 0 : x.diferenca), 0));
   const totalTabela = calc?.valor_total_calculado != null ? Number(calc.valor_total_calculado) : null;
   const excessoTotal = totalTabela != null && c.vTPrest != null ? r2(c.vTPrest - totalTabela) : null;
-  const totalConfere = excessoTotal != null && !foraTol(excessoTotal, totalTabela, t);
+  const totalConfere = excessoTotal != null && !foraTol(excessoTotal, totalTabela, t, r.transportadora_id_tol, 'total');
   const aMais = excessoTotal == null ? aMaisParcelas : totalConfere ? 0 : r2(Math.max(0, Math.min(aMaisParcelas, excessoTotal)));
   if (aMaisParcelas > 0 && totalConfere) {
     apontamentos.forEach((p) => { if (['COMPONENTE_A_MAIS', 'TAXA_NAO_PREVISTA'].includes(p.codigo)) p.texto += ' — o total do CT-e confere com a tabela (parcelas trocadas)'; });
@@ -146,7 +148,9 @@ function conferirFrete(r, t, soma = {}) {
 }
 
 const CAMPOS = `f.id, f.numero_cte, f.numero_nf, f.cliente, f.data_emissao_cte, f.transportadora_cte, f.xml_cte_original, f.auditoria_calculo, f.peso_kg, f.qtd_volumes,
-  f.valor_total_cte, f.valor_total_frete, f.status, f.frete_principal_id, f.vinculo_cte, f.tipo_cte, ${icmsCte.camposSql('f')}`;
+  f.valor_total_cte, f.valor_total_frete, f.status, f.frete_principal_id, f.vinculo_cte, f.tipo_cte, ${icmsCte.camposSql('f')},
+  COALESCE((SELECT tp.transportadora_id FROM tabelas_preco tp WHERE tp.id = f.tabela_preco_id_usada),
+           (SELECT tr.id FROM transportadoras tr WHERE UPPER(TRIM(tr.razao_social)) = UPPER(TRIM(COALESCE(f.transportadora_cte, f.transportadora))) LIMIT 1)) AS transportadora_id_tol`;
 async function somasCobertas(ids) {
   if (!ids.length) return new Map();
   const { rows } = await pool.query('SELECT cte_coberto_por AS id, SUM(peso_kg)::float AS peso, SUM(qtd_volumes)::int AS volumes FROM fretes WHERE cte_coberto_por = ANY($1::int[]) GROUP BY 1', [ids]);

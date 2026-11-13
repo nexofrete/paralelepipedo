@@ -482,13 +482,8 @@ BEGIN
        AND NULLIF(NEW.motivo_conferencia, '') IS NULL
        AND NEW.carga_direta IS NOT TRUE
        AND NEW.status_aprovacao IS DISTINCT FROM 'Rejeitado'
-       AND ABS(NEW.valor_total_frete - NEW.valor_total_cte) <= COALESCE((
-          SELECT GREATEST(
-                   COALESCE(tolerancia_valor, 0),
-                   COALESCE(tolerancia_percentual, 0) / 100 * NEW.valor_total_cte
-                 )
-          FROM configuracao_auditoria WHERE id = 1
-        ), 0) THEN
+       AND ABS(NEW.valor_total_frete - NEW.valor_total_cte) <= COALESCE(
+          tolerancia_auditoria(NEW.tabela_preco_id_usada, COALESCE(NEW.transportadora_cte, NEW.transportadora), NEW.valor_total_cte), 0) THEN
       -- Não mexe em frete cancelado/faturado, nem sobrescreve aprovação manual.
       IF COALESCE(NEW.status, 'Pendente') NOT IN ('Cancelado', 'Faturado') THEN
         NEW.status := 'Liberado p/ Pagamento';
@@ -644,6 +639,29 @@ CREATE TABLE IF NOT EXISTS configuracao_auditoria (
 );
 INSERT INTO configuracao_auditoria (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 ALTER TABLE configuracao_auditoria ADD COLUMN IF NOT EXISTS limite_alcada_aprovacao NUMERIC(14,2);
+
+-- Tolerância por transportadora e por componente (src/toleranciaAuditoria.js). transportadora_id NULL = todas;
+-- componente 'total' = o frete inteiro. Sem regra, vale a tolerância geral acima.
+CREATE TABLE IF NOT EXISTS auditoria_tolerancias (
+    id                SERIAL PRIMARY KEY,
+    transportadora_id INTEGER REFERENCES transportadoras(id) ON DELETE CASCADE,
+    componente        VARCHAR(20) NOT NULL DEFAULT 'total',
+    valor             NUMERIC(14,2) NOT NULL DEFAULT 0,
+    percentual        NUMERIC(6,3) NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_auditoria_tolerancias_unica ON auditoria_tolerancias (COALESCE(transportadora_id, 0), componente);
+-- Tolerância (R$) do TOTAL do frete para a conferência automática: a da transportadora (pela tabela usada
+-- no cálculo ou pelo nome) ou a geral. Vale o maior entre o valor fixo e o % da base.
+CREATE OR REPLACE FUNCTION tolerancia_auditoria(p_tabela INTEGER, p_nome TEXT, p_base NUMERIC) RETURNS NUMERIC AS $$
+  SELECT COALESCE(
+    (SELECT GREATEST(a.valor, a.percentual / 100 * COALESCE(p_base, 0)) FROM auditoria_tolerancias a
+      WHERE a.componente = 'total' AND a.transportadora_id = COALESCE(
+        (SELECT tp.transportadora_id FROM tabelas_preco tp WHERE tp.id = p_tabela),
+        (SELECT tr.id FROM transportadoras tr WHERE UPPER(TRIM(tr.razao_social)) = UPPER(TRIM(p_nome)) LIMIT 1))
+      LIMIT 1),
+    (SELECT GREATEST(COALESCE(c.tolerancia_valor, 0), COALESCE(c.tolerancia_percentual, 0) / 100 * COALESCE(p_base, 0)) FROM configuracao_auditoria c WHERE c.id = 1),
+    0)
+$$ LANGUAGE sql STABLE;
 
 -- Conferência de Fatura (v1.66.0): cada fatura da transportadora conferida
 -- no sistema, com a "foto" dos CT-e no momento da conferência (itens).

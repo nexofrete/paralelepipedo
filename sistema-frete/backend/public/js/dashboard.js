@@ -719,6 +719,18 @@ function celulaTransportadoraComConfronto(r) {
 // Calculado (Base + Ad Valorem + GRIS + Pedágio + Taxas) quando disponível;
 // cai pro Valor Frete Tabelado (só a base) em registros calculados antes
 // dessa mudança, até serem recalculados.
+// Tolerância (R$) de um frete para um componente ('total', 'pedagio', 'tde'...): a regra mais específica
+// (transportadora + componente), a geral do componente, o total da transportadora ou a geral.
+// Igual ao servidor (src/toleranciaAuditoria.js).
+function tolAud(l, componente = 'total', base = 0) {
+  const lista = toleranciaAuditoria.tolerancias || [];
+  const tid = Number(l?.transportadora_id_tol) || 0;
+  const achar = (t, c) => lista.find((r) => (Number(r.transportadora_id) || 0) === t && r.componente === c);
+  const g = (componente !== 'total' && tid && achar(tid, componente)) || (componente !== 'total' && achar(0, componente)) || (tid && achar(tid, 'total'))
+    || { valor: toleranciaAuditoria.tolerancia_valor, percentual: toleranciaAuditoria.tolerancia_percentual };
+  return Math.max(Number(g.valor) || 0, ((Number(g.percentual) || 0) / 100) * Math.abs(Number(base) || 0));
+}
+
 function valorCalculadoPrincipal(l) {
   return l.valor_total_calculado ?? l.valor_frete_tabelado;
 }
@@ -726,15 +738,13 @@ function valorCalculadoPrincipal(l) {
 function conferirTaxas(l) {
   const taxas = [];
 
+  const COMP = { GRIS: 'gris', 'Ad Valorem': 'ad_valorem', TDE: 'tde', TDA: 'tda', TRT: 'trt', 'Pedágio': 'pedagio' };
   const adicionar = (nome, cobrado, esperado) => {
     if (cobrado == null || esperado == null) return;
     cobrado = Number(cobrado);
     esperado = Number(esperado);
     const diferenca = cobrado - esperado;
-    const tolerancia = Math.max(
-      Number(toleranciaAuditoria.tolerancia_valor) || 0,
-      (Number(toleranciaAuditoria.tolerancia_percentual) || 0) / 100 * esperado
-    );
+    const tolerancia = tolAud(l, COMP[nome] || 'outros', esperado);
     taxas.push({ nome, cobrado, esperado, diferenca, divergente: Math.abs(diferenca) > tolerancia });
   };
 
@@ -3669,12 +3679,11 @@ async function carregarAuditoriaFrete() {
   }
 }
 
-function renderizarAuditoriaFrete() {
+function linhasFiltradasAuditoria() {
   const filtroTransp = document.getElementById('afFiltroTransportadora').value;
   const filtroStatus = document.getElementById('afFiltroStatus').value;
   const filtroBusca = document.getElementById('afFiltroBusca').value.trim().toLowerCase();
-
-  const linhas = ultimasLinhasAuditoria.filter((l) => {
+  return ultimasLinhasAuditoria.filter((l) => {
     if (filtroTransp && l.transportadora !== filtroTransp) return false;
     const divergente = Number(l.dif_negociado_tabela) !== 0;
     if (filtroStatus === 'ok' && (l.carga_direta || divergente)) return false;
@@ -3686,6 +3695,49 @@ function renderizarAuditoriaFrete() {
     }
     return true;
   });
+}
+// Fila de trabalho do Detalhe: os divergentes ainda sem decisão (filtros da tela), quem mais cobrou a mais primeiro.
+function filaAuditoria() {
+  return linhasFiltradasAuditoria().filter((l) => !l.carga_direta && l.dif_negociado_tabela != null && l.status_aprovacao !== 'Aprovado'
+    && !['Faturado', 'Cancelado'].includes(l.status) && !l.cte_nao_levou && Math.abs(cobradoAMais(l) || 0) > toleranciaDoFrete(l) + 0.004)
+    .sort((a, b) => (cobradoAMais(b) || 0) - (cobradoAMais(a) || 0));
+}
+let detalheAuditoriaAtual = null;
+function irNaFilaAuditoria(passo) {
+  const fila = filaAuditoria();
+  if (!fila.length) { document.getElementById('painelDetalheAuditoria').classList.add('oculto'); mostrarAlerta('Não há mais fretes divergentes esperando decisão nestes filtros. 🎉', { tipo: 'sucesso' }); return; }
+  const i = fila.findIndex((l) => l.id === detalheAuditoriaAtual);
+  const alvo = i < 0 ? fila[passo < 0 ? fila.length - 1 : 0] : fila[i + passo];
+  if (!alvo) { mostrarAlerta(passo > 0 ? 'Este é o último frete da fila.' : 'Este é o primeiro frete da fila.', { tipo: 'info' }); return; }
+  abrirDetalheAuditoria(alvo.id);
+}
+async function aprovarEProximoAuditoria() {
+  const id = detalheAuditoriaAtual;
+  const fila = filaAuditoria();
+  const i = fila.findIndex((l) => l.id === id);
+  if (!(await aprovarComJustificativaAuditoria(id))) return;
+  const nova = filaAuditoria();
+  const proximo = nova[Math.max(0, Math.min(i < 0 ? 0 : i, nova.length - 1))];
+  if (proximo) abrirDetalheAuditoria(proximo.id);
+  else { document.getElementById('painelDetalheAuditoria').classList.add('oculto'); mostrarAlerta('Aprovado. Não há mais fretes divergentes na fila. 🎉', { tipo: 'sucesso' }); }
+}
+// Atalhos do Detalhe: ← → (anterior/próximo da fila), A (aprovar), G (glosar), Esc (fechar).
+document.addEventListener('keydown', (e) => {
+  const painel = document.getElementById('painelDetalheAuditoria');
+  if (!painel || painel.classList.contains('oculto') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector('.dlg-fundo, .modal-overlay:not(.oculto):not(#painelDetalheAuditoria)')) return;   // outra janela por cima
+  // Digitando num campo do próprio Detalhe: a tecla é do campo. (Campo da tela de trás não recebe digitação com a janela aberta.)
+  if (e.target.closest('input, textarea, select, [contenteditable="true"]') && painel.contains(e.target)) return;
+  const linha = ultimasLinhasAuditoria.find((l) => l.id === detalheAuditoriaAtual);
+  if (e.key === 'ArrowRight') { e.preventDefault(); irNaFilaAuditoria(1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); irNaFilaAuditoria(-1); }
+  else if (e.key === 'Escape') painel.classList.add('oculto');
+  else if ((e.key === 'a' || e.key === 'A') && linha && podeAprovarPagamento && linha.status_aprovacao !== 'Aprovado' && !linha.cte_nao_levou) { e.preventDefault(); aprovarEProximoAuditoria(); }
+  else if ((e.key === 'g' || e.key === 'G') && linha && podeAprovarPagamento && linha.status_aprovacao !== 'Aprovado' && (cobradoAMais(linha) || 0) > 0) { e.preventDefault(); registrarGlosaAuditoria(linha.id); }
+});
+
+function renderizarAuditoriaFrete() {
+  const linhas = linhasFiltradasAuditoria();
 
   const total = linhas.length;
   // Carga Direta é negociação avulsa (caminhão dedicado) — não faz sentido comparar
@@ -3706,10 +3758,7 @@ function renderizarAuditoriaFrete() {
   const montarCartao = (l) => {
     const semDif = l.dif_negociado_tabela == null; // ainda não conferido
     const dif = semDif ? 0 : cobradoAMais(l);   // positivo = cobrou a mais que a tabela
-    const toleranciaFrete = Math.max(
-      Number(toleranciaAuditoria.tolerancia_valor) || 0,
-      (Number(toleranciaAuditoria.tolerancia_percentual) || 0) / 100 * (Number(valorCalculadoPrincipal(l)) || 0)
-    );
+    const toleranciaFrete = tolAud(l, 'total', valorCalculadoPrincipal(l));
     const divergente = Math.abs(dif) > toleranciaFrete;
     // CT-e a mais da nota (reentrega, devolução, complementar...): o esperado vem do
     // CT-e principal, não da tabela — o redespacho é um frete inteiro e confere pela tabela.
@@ -3845,7 +3894,7 @@ async function aprovarComJustificativaAuditoria(id) {
   const linha = ultimasLinhasAuditoria.find((l) => l.id === id);
   const sugestao = linha ? gerarResumoDivergencias(linha) : '';
   const justificativa = await pedirTexto('Justificativa para aprovar este frete (edite se quiser).', { titulo: 'Aprovar o frete?', valor: sugestao, textoOk: 'Aprovar', multilinha: true });
-  if (justificativa === null) return;
+  if (justificativa === null) return false;
   try {
     const resposta = await apiFetch(`/api/fretes/${id}/aprovar`, {
       method: 'PUT',
@@ -3853,13 +3902,15 @@ async function aprovarComJustificativaAuditoria(id) {
       body: JSON.stringify({ justificativa }),
     });
     const dados = await resposta.json();
-    if (!resposta.ok) { mostrarAlerta(dados.erro || 'Erro ao aprovar.'); return; }
+    if (!resposta.ok) { mostrarAlerta(dados.erro || 'Erro ao aprovar.'); return false; }
 
     const indice = ultimasLinhasAuditoria.findIndex((l) => l.id === id);
     if (indice >= 0) ultimasLinhasAuditoria[indice] = { ...ultimasLinhasAuditoria[indice], ...dados };
     renderizarAuditoriaFrete();
+    return true;
   } catch (err) {
     mostrarAlerta('Falha de conexão com o servidor.');
+    return false;
   }
 }
 
@@ -4006,9 +4057,7 @@ const formatoPercentualCte = (v) =>
 // Em uma frase: quanto a transportadora cobrou a mais ou a menos que a tabela, em R$ e %, se está dentro
 // da tolerância, e ONDE está a diferença (componente por componente, peso, volumes, ICMS), em linguagem simples.
 // "a" = /auditoria-detalhada (chega depois); sem ele, o quadro mostra só o total e as taxas da linha.
-function toleranciaDoFrete(l) {
-  return Math.max(Number(toleranciaAuditoria.tolerancia_valor) || 0, (Number(toleranciaAuditoria.tolerancia_percentual) || 0) / 100 * (Number(valorCalculadoPrincipal(l)) || 0));
-}
+function toleranciaDoFrete(l) { return tolAud(l, 'total', valorCalculadoPrincipal(l)); }
 function resumoDiferencaHtml(l, a = null) {
   const m = (v) => formatoMoeda(v);
   const pct = (v) => (Math.abs(v) < 0.1 ? 'menos de 0,1%' : `${v > 0 ? '+' : ''}${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
@@ -4397,6 +4446,20 @@ function abrirDetalheAuditoria(id) {
 
   document.getElementById('detalheAuditoriaTitulo').textContent =
     `Detalhe do Frete — Pedido ${linha.numero_pedido || '—'} · NF ${linha.numero_nf || '—'} · CT-e ${linha.numero_cte || '—'}`;
+  detalheAuditoriaAtual = id;
+  if (document.activeElement && !document.getElementById('painelDetalheAuditoria').contains(document.activeElement)) document.activeElement.blur?.();
+  // Navegação pela fila de divergentes (com teclado: ← → A G Esc).
+  const fila = filaAuditoria();
+  const pos = fila.findIndex((l) => l.id === id);
+  const podeDecidir = podeAprovarPagamento && linha.status_aprovacao !== 'Aprovado' && !linha.cte_nao_levou;
+  const nav = document.getElementById('detalheAuditoriaNav');
+  if (nav) {
+    nav.innerHTML = fila.length ? `<button type="button" class="dif-nav-btn" data-aud-ir="-1" title="Anterior da fila (←)">◀</button>
+      <span title="Fretes divergentes esperando decisão (com os filtros da tela), quem mais cobrou a mais primeiro">${pos >= 0 ? `${pos + 1} de ${fila.length}` : `${fila.length} na fila`}</span>
+      <button type="button" class="dif-nav-btn" data-aud-ir="1" title="Próximo da fila (→)">▶</button>
+      ${podeDecidir ? '<button type="button" class="dif-nav-btn dif-nav-aprovar" data-aud-aprovar title="Aprovar este frete e abrir o próximo da fila (A)">✓ Aprovar e próximo</button>' : ''}
+      <span class="dif-nav-teclas" title="Atalhos do teclado">← → · A aprova · G glosa · Esc fecha</span>` : '<span class="dif-nav-teclas">Nenhum frete divergente esperando decisão · Esc fecha</span>';
+  }
 
   // ---- Faixa de resumo (cliente, transportadora, rota, status) ----
   const semCalculo = linha.dif_negociado_tabela == null;
@@ -4570,6 +4633,11 @@ function abrirDetalheAuditoria(id) {
   document.getElementById('painelDetalheAuditoria').classList.remove('oculto');
 }
 
+document.getElementById('detalheAuditoriaNav')?.addEventListener('click', (e) => {
+  const ir = e.target.closest('[data-aud-ir]');
+  if (ir) irNaFilaAuditoria(Number(ir.dataset.audIr));
+  else if (e.target.closest('[data-aud-aprovar]')) aprovarEProximoAuditoria();
+});
 document.getElementById('btnFecharDetalheAuditoria').addEventListener('click', () => {
   document.getElementById('painelDetalheAuditoria').classList.add('oculto');
 });
@@ -4943,9 +5011,50 @@ async function carregarConfigAuditoria() {
     document.getElementById('audLimiteAlcada').value = c.limite_alcada_aprovacao ? formatarMoedaExibicao(c.limite_alcada_aprovacao) : '';
     document.getElementById('audLimiteFatura').value = c.limite_alcada_fatura ? formatarMoedaExibicao(c.limite_alcada_fatura) : '';
     document.getElementById('audPctReentrega').value = c.percentual_reentrega ?? 50;
+    desenharRegrasTolerancia(c.tolerancias || [], c.componentes || {});
   } catch (err) {
     console.error(err);
   }
+}
+
+// Regras de tolerância por transportadora e por componente.
+let transportadorasTolerancia = null;
+async function desenharRegrasTolerancia(regras, componentes) {
+  const alvo = document.getElementById('audRegrasTolerancia');
+  if (!alvo) return;
+  if (!transportadorasTolerancia) {
+    transportadorasTolerancia = await apiFetch('/api/transportadoras').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    if (!Array.isArray(transportadorasTolerancia)) transportadorasTolerancia = transportadorasTolerancia.transportadoras || [];
+  }
+  const opT = (sel) => `<option value="">Todas as transportadoras</option>${transportadorasTolerancia.map((t) => `<option value="${t.id}" ${Number(sel) === t.id ? 'selected' : ''}>${cfEsc(t.razao_social)}</option>`).join('')}`;
+  const opC = (sel) => Object.entries(componentes).map(([k, n]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${cfEsc(n)}</option>`).join('');
+  const linha = (r = {}) => `<tr><td><select class="tolT">${opT(r.transportadora_id)}</select></td><td><select class="tolC">${opC(r.componente || 'total')}</select></td>
+    <td><input class="tolV" type="number" step="0.01" min="0" value="${r.valor ?? ''}" placeholder="R$" style="width:90px;" /></td>
+    <td><input class="tolP" type="number" step="0.01" min="0" max="100" value="${r.percentual ?? ''}" placeholder="%" style="width:80px;" /></td>
+    <td><button type="button" class="btn btn-secundario tolX" style="width:auto; padding:3px 9px;">✕</button></td></tr>`;
+  alvo.innerHTML = `<table style="width:100%; font-size:12.5px;"><thead><tr><th style="text-align:left;">Transportadora</th><th style="text-align:left;">Vale para</th><th style="text-align:left;">R$</th><th style="text-align:left;">%</th><th></th></tr></thead>
+    <tbody>${regras.map(linha).join('')}</tbody></table>
+    ${regras.length ? '' : '<p style="font-size:12.5px; color:var(--texto-fraco); margin:6px 0;">Nenhuma regra: vale a tolerância geral para tudo.</p>'}
+    <div style="display:flex; gap:8px; margin-top:8px;"><button type="button" class="btn btn-secundario" id="audTolAdd" style="width:auto;">＋ Regra</button>
+      <button type="button" class="btn btn-primario" id="audTolSalvar" style="width:auto;">Salvar regras</button></div>
+    <div id="audTolErro" class="mensagem-erro" style="margin-top:8px;"></div>`;
+  const corpo = alvo.querySelector('tbody');
+  alvo.querySelector('#audTolAdd').addEventListener('click', () => { corpo.insertAdjacentHTML('beforeend', linha()); alvo.querySelector('p')?.remove(); });
+  corpo.addEventListener('click', (e) => { if (e.target.closest('.tolX')) e.target.closest('tr').remove(); });
+  alvo.querySelector('#audTolSalvar').addEventListener('click', async (ev) => {
+    const erroEl = alvo.querySelector('#audTolErro'); erroEl.classList.remove('visivel');
+    const lista = [...corpo.querySelectorAll('tr')].map((tr) => ({ transportadora_id: tr.querySelector('.tolT').value || null, componente: tr.querySelector('.tolC').value,
+      valor: tr.querySelector('.tolV').value, percentual: tr.querySelector('.tolP').value }));
+    ev.currentTarget.disabled = true;
+    try {
+      const r = await apiFetch('/api/auditoria-config/tolerancias', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tolerancias: lista }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Erro ao salvar.');
+      toleranciaAuditoria = { ...toleranciaAuditoria, tolerancias: j.tolerancias };
+      mostrarAlerta(`${j.regras} regra(s) gravada(s). ${j.reconferidos} frete(s) ainda não decididos foram conferidos de novo com as regras novas.`, { tipo: 'sucesso' });
+      desenharRegrasTolerancia(j.tolerancias, componentes);
+    } catch (err) { erroEl.textContent = err.message; erroEl.classList.add('visivel'); ev.currentTarget.disabled = false; }
+  });
 }
 
 document.getElementById('btnSalvarAuditoriaConfig').addEventListener('click', async () => {
@@ -4972,7 +5081,7 @@ document.getElementById('btnSalvarAuditoriaConfig').addEventListener('click', as
       erroEl.classList.add('visivel');
       return;
     }
-    toleranciaAuditoria = dados; // já aplica nessa sessão também
+    toleranciaAuditoria = { ...toleranciaAuditoria, ...dados }; // já aplica nessa sessão também (mantém as regras por transportadora)
     mostrarSucessoTemporario(erroEl);
   } catch (err) {
     erroEl.textContent = 'Falha de conexão com o servidor.';

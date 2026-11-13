@@ -3218,7 +3218,8 @@
         <div class="painel modal-card modal-tela-cheia" style="padding:0; display:flex; flex-direction:column;">
           <div style="background:#1F4E78; color:#fff; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
             <strong id="detalheAuditoriaTitulo" style="font-size:14.5px;">Detalhe do Frete</strong>
-            <span style="cursor:pointer; font-size:18px;" id="btnFecharDetalheAuditoria">✕</span>
+            <span style="display:flex; align-items:center; gap:10px;"><span id="detalheAuditoriaNav" class="dif-nav"></span>
+            <span style="cursor:pointer; font-size:18px;" id="btnFecharDetalheAuditoria" title="Fechar (Esc)">✕</span></span>
           </div>
 
           <div style="padding:18px 20px; flex-shrink:0; border-bottom:1px solid var(--borda);">
@@ -3561,6 +3562,10 @@
           </div>
           <button class="btn btn-primario" id="btnSalvarAuditoriaConfig" style="width:auto; padding:10px 20px;">Salvar</button>
           <div id="erroAuditoriaConfig" class="mensagem-erro" style="margin-top:14px;"></div>
+          <h4 style="margin:20px 0 4px; font-size:14px;">Tolerância por transportadora e por taxa</h4>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 8px;">Regras que valem no lugar da tolerância geral. Ex.: pedágio até R$ 5,00 para todas; "Total do frete" até 2% só para uma transportadora.
+            Vale a regra mais específica: transportadora + item, depois o item para todas, depois o total da transportadora, depois a geral. Ao salvar, os fretes ainda não decididos são conferidos de novo.</p>
+          <div id="audRegrasTolerancia"></div>
         </div>
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🧹 Limpeza: notas "Aguardando CT-e"</h3>

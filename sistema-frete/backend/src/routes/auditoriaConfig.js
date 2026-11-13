@@ -9,10 +9,12 @@ const router = express.Router();
 // de todo mundo precisa saber a tolerância pra conferir as taxas igual ao servidor)
 router.get('/', autenticar, async (req, res) => {
   try {
+    const tol = require('../toleranciaAuditoria');
+    const extra = async () => ({ tolerancias: (await tol.carregar()).lista, componentes: tol.COMPONENTES });
     const { rows } = await pool.query('SELECT * FROM configuracao_auditoria WHERE id = 1');
-    if (rows[0]) return res.json(rows[0]);
+    if (rows[0]) return res.json({ ...rows[0], ...(await extra()) });
     const inserido = await pool.query('INSERT INTO configuracao_auditoria (id) VALUES (1) RETURNING *');
-    res.json(inserido.rows[0]);
+    res.json({ ...inserido.rows[0], ...(await extra()) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao buscar configuração de auditoria.' });
@@ -45,14 +47,34 @@ router.put('/', autenticar, apenasAdmin, async (req, res) => {
       [pctReentrega]
     );
 
+    // A tolerância geral mudou: refaz a conferência automática dos fretes ainda não decididos.
+    const tol = require('../toleranciaAuditoria');
+    tol.limpar();
+    const reconferidos = await tol.reconferir().catch((e) => { console.error('[auditoria] reconferir:', e.message); return 0; });
     registrar({
       usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_auditoria_config',
-      detalhes: `Definiu a margem de tolerância da auditoria: R$ ${valor.toFixed(2)} ou ${percentual}%, limite de alçada: ${limiteAlcada != null ? `R$ ${limiteAlcada.toFixed(2)}` : 'sem limite'}, reentrega/devolução: ${pctReentrega}% do CT-e original`,
+      detalhes: `Definiu a margem de tolerância da auditoria (${reconferidos} frete(s) reconferidos): R$ ${valor.toFixed(2)} ou ${percentual}%, limite de alçada: ${limiteAlcada != null ? `R$ ${limiteAlcada.toFixed(2)}` : 'sem limite'}, reentrega/devolução: ${pctReentrega}% do CT-e original`,
     });
     res.json(rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao salvar configuração de auditoria.' });
+  }
+});
+
+// PUT /api/auditoria-config/tolerancias  (só admin) — a lista inteira de regras por transportadora/componente.
+router.put('/tolerancias', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const tol = require('../toleranciaAuditoria');
+    const n = await tol.salvar(req.body?.tolerancias);
+    const reconferidos = await tol.reconferir();
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_auditoria_config',
+      detalhes: `Gravou ${n} regra(s) de tolerância por transportadora/componente (${reconferidos} frete(s) reconferidos)` });
+    res.json({ regras: n, reconferidos, tolerancias: (await tol.carregar(true)).lista });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ erro: err.message });
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao salvar as tolerâncias.' });
   }
 });
 

@@ -520,6 +520,18 @@ def parte_uso(g):
         'a tabela errada, e não cobrança indevida. Confira em "Como o sistema calculou" antes de cobrar a transportadora.',
         '<b>Glosar a diferença</b>: no quadro, já com o valor cobrado a mais preenchido (dá para mudar antes de confirmar).',
     ])
+    s += h2('Conferir em sequência (fila e teclado)')
+    s.append(P('No alto do Detalhe aparece a <b>fila</b>: os fretes divergentes que ainda esperam decisão, com os filtros da tela, do que '
+               'mais cobrou a mais para o que menos cobrou (ex.: "2 de 14"). Assim dá para conferir um atrás do outro sem fechar a janela.'))
+    s += tabela(['Tecla / botão', 'O que faz'], [
+        ['→ ou ▶', 'Próximo frete da fila.'],
+        ['← ou ◀', 'Frete anterior da fila.'],
+        ['A ou "Aprovar e próximo"', 'Abre a justificativa (já sugerida), aprova e abre o próximo da fila.'],
+        ['G', 'Registra a glosa, já com a diferença preenchida.'],
+        ['Esc', 'Fecha o Detalhe.'],
+    ], [0.3, 0.7])
+    s.append(P('Os atalhos só valem com o Detalhe aberto e sem outra janela por cima (ex.: a da justificativa). Quando a fila acaba, '
+               'o sistema avisa e fecha o Detalhe.'))
     s += h2('Conferência em detalhe (no detalhe do frete)')
     s.append(P('Abaixo do cálculo, o detalhe do frete mostra a <b>conferência em detalhe</b>: cada componente lado a lado, '
                '<b>tabela × CT-e</b>, com a diferença e a situação (confere, cobrado a mais, cobrado a menos, não prevista na '

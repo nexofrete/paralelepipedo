@@ -303,7 +303,11 @@ def parte_admin(g):
         ['Segurança', 'Tempo de inatividade até o logout automático (em branco = desligado), regras de senha, bloqueio por '
          'senhas erradas, troca periódica e verificação em duas etapas obrigatória (capítulo 22).'],
         ['Margem de tolerância da auditoria', 'Diferença aceitável para liberar sozinho: usa o que for <b>maior</b> entre '
-         'o valor fixo (R$) e o percentual. Também: limite de alçada e o % da reentrega/devolução (padrão 50%).'],
+         'o valor fixo (R$) e o percentual. Também: limite de alçada e o % da reentrega/devolução (padrão 50%). Em <b>Tolerância por '
+         'transportadora e por taxa</b>, regras que valem no lugar da geral: por transportadora (total do frete) e por item (frete '
+         'peso, pedágio, TDE, TDA, TRT, GRIS, ad valorem, despacho, descarga, outras), para uma ou para todas as transportadoras. '
+         'Vale a mais específica (transportadora + item, item para todas, total da transportadora, geral). Ao salvar, os fretes ainda '
+         'não decididos por uma pessoa são conferidos de novo: liberam os que passaram a caber e voltam a reter os que deixaram de caber.'],
         ['Leitura automática de e-mail', 'Finalidades: devoluções/trocas e XML (embarcador), NF-e que viram CT-e, SAC e '
          '<b>EDI das transportadoras</b> (OCOREN, CONEMB, DOCCOB e NOTFIS anexados; capítulo 38). Aceita várias caixas (uma para cada pessoa que envia devoluções). Lê uma pasta de cada caixa (IMAP; no webmail da hospedagem: servidor '
          'mail.dominio, porta 993, o mesmo usuário e senha do webmail). Registra sozinho as devoluções/trocas de nota escritas no '

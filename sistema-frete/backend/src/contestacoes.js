@@ -145,9 +145,9 @@ async function listar(q = {}) {
   if (q.status && SITUACOES[q.status]) { params.push(q.status); cond.push(`c.status = $${params.length}`); }
   if (q.abertas === '1') cond.push("c.status IN ('rascunho', 'enviada')");
   if (String(q.transportadora || '').trim()) { params.push(`%${String(q.transportadora).trim()}%`); cond.push(`c.transportadora ILIKE $${params.length}`); }
-  if (q.vencidas === '1') cond.push("c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE");
+  if (q.vencidas === '1') cond.push("c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE AND c.portal_respondida_em IS NULL");
   const { rows } = await pool.query(`SELECT c.*, (SELECT COUNT(*)::int FROM contestacao_itens i WHERE i.contestacao_id = c.id) AS qtd,
-      CASE WHEN c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE THEN (CURRENT_DATE - c.prazo_resposta)::int END AS dias_vencida,
+      CASE WHEN c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE AND c.portal_respondida_em IS NULL THEN (CURRENT_DATE - c.prazo_resposta)::int END AS dias_vencida,
       (SELECT COALESCE(SUM(i.valor_aceito), 0) FROM contestacao_itens i WHERE i.contestacao_id = c.id AND i.credito AND i.abatido_fatura_id IS NULL AND i.situacao = 'aceito')::float AS credito_pendente
     FROM contestacoes c ${cond.length ? `WHERE ${cond.join(' AND ')}` : ''} ORDER BY c.id DESC LIMIT 300`, params);
   return rows;
@@ -176,7 +176,7 @@ function planilha(c) {
 }
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-async function htmlEmail(c, lembrete = false) {
+async function htmlEmail(c, lembrete = false, link = null) {
   const { rows: [emp] } = await pool.query('SELECT razao_social, cnpj, telefone, email FROM empresa WHERE id = 1').catch(() => ({ rows: [{}] }));
   const periodo = c.de || c.ate ? ` (CT-e de ${c.de ? new Date(c.de).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '…'} a ${c.ate ? new Date(c.ate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '…'})` : '';
   return `<div style="font-family:Arial,sans-serif; font-size:14px; color:#1f2937;">
@@ -190,17 +190,28 @@ async function htmlEmail(c, lembrete = false) {
       <td style="padding:4px 8px; border-bottom:1px solid #e5e7eb; text-align:right;"><b>${brl(i.valor_contestado)}</b></td><td style="padding:4px 8px; border-bottom:1px solid #e5e7eb;">${esc(i.motivo_texto || MOTIVOS[i.motivo_codigo])}</td></tr>`).join('')}
     <tr><td colspan="4" style="padding:6px 8px; text-align:right;"><b>Total</b></td><td style="padding:6px 8px; text-align:right;"><b>${brl(c.valor_contestado)}</b></td><td></td></tr></tbody></table>
     ${c.observacao ? `<p>${esc(c.observacao)}</p>` : ''}
+    ${link ? `<p style="margin:18px 0;"><a href="${esc(link)}" style="background:#2563eb; color:#fff; padding:11px 20px; border-radius:8px; text-decoration:none; font-weight:bold;">Responder a contestação</a></p>
+    <p style="font-size:12px; color:#6b7280;">Pelo botão acima vocês marcam cada CT-e como aceito ou recusado, sem precisar responder este e-mail. Se o botão não abrir, copie o endereço: ${esc(link)}</p>` : ''}
     <p>A planilha com todos os itens vai anexa. Contestação nº ${c.id}.</p>
     <p>Atenciosamente,<br>${esc(emp?.razao_social || '')}${emp?.telefone ? `<br>${esc(emp.telefone)}` : ''}${emp?.email ? `<br>${esc(emp.email)}` : ''}</p></div>`;
 }
-async function enviar(id, usuarioNome, para) {
+// Código secreto do link de resposta da transportadora (gera na primeira vez).
+async function token(id) {
+  const novo = require('crypto').randomBytes(24).toString('hex');
+  const { rows: [r] } = await pool.query('UPDATE contestacoes SET token_resposta = COALESCE(token_resposta, $2) WHERE id = $1 RETURNING token_resposta', [id, novo]);
+  if (!r) throw falha('Contestação não encontrada.', 404);
+  return r.token_resposta;
+}
+const linkResposta = async (id, base) => (base ? `${String(base).replace(/\/+$/, '')}/contestacao.html?c=${await token(id)}` : null);
+
+async function enviar(id, usuarioNome, para, base = null) {
   const c = await detalhe(id);
   if (!['rascunho', 'enviada'].includes(c.status)) throw falha('Esta contestação já foi respondida ou cancelada.', 409);
   const email = String(para || c.email_para || '').trim();
   const lista = email.split(/[;,\s]+/).filter(Boolean);
   if (!lista.length || lista.some((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) throw falha('Informe o e-mail da transportadora (no cadastro dela ou aqui).');
   const lembrete = c.status === 'enviada';
-  await require('./email').enviarRelatorio({ para: lista.join(', '), assunto: `${lembrete ? 'Lembrete: ' : ''}Contestação de frete nº ${c.id} — ${c.transportadora} — ${brl(c.valor_contestado)}`, html: await htmlEmail(c, lembrete),
+  await require('./email').enviarRelatorio({ para: lista.join(', '), assunto: `${lembrete ? 'Lembrete: ' : ''}Contestação de frete nº ${c.id} — ${c.transportadora} — ${brl(c.valor_contestado)}`, html: await htmlEmail(c, lembrete, await linkResposta(id, base)),
     anexos: [{ filename: `contestacao-${c.id}.xlsx`, content: planilha(c) }] });
   // 1º envio: guarda a data e o prazo; reenvio é lembrete: renova o prazo e conta.
   await pool.query(`UPDATE contestacoes SET status = 'enviada', email_para = $2, enviada_em = COALESCE(enviada_em, NOW()), enviada_por = COALESCE(enviada_por, $3),
@@ -302,10 +313,62 @@ async function situacao(transportadora) {
                  WHERE c.transportadora = $1 AND i.situacao = 'aceito' AND i.credito AND i.abatido_fatura_id IS NULL), 0)::float AS credito,
       COUNT(*) FILTER (WHERE c.status = 'enviada')::int AS abertas,
       COALESCE(SUM(c.valor_contestado) FILTER (WHERE c.status = 'enviada'), 0)::float AS valor_aberto,
-      COUNT(*) FILTER (WHERE c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE)::int AS vencidas,
+      COUNT(*) FILTER (WHERE c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE AND c.portal_respondida_em IS NULL)::int AS vencidas,
       ARRAY_REMOVE(ARRAY_AGG(c.id ORDER BY c.id) FILTER (WHERE c.status = 'enviada'), NULL) AS ids
     FROM contestacoes c WHERE c.transportadora = $1`, [transportadora]);
   return r;
 }
 
-module.exports = { situacao, MOTIVOS, SITUACOES, sugerirMotivo, valorContestado, candidatos, criar, listar, detalhe, planilha, enviar, marcarEnviada, responder, cancelar, creditosPendentes, abaterCreditos, resumoMotivos };
+// ---------- Página pública da transportadora (sem login; só com o código do link) ----------
+async function porToken(tk) {
+  if (!/^[a-f0-9]{48}$/.test(String(tk || ''))) throw falha('Link inválido.', 404);
+  const { rows: [c] } = await pool.query('SELECT * FROM contestacoes WHERE token_resposta = $1', [tk]);
+  if (!c) throw falha('Link inválido ou contestação cancelada.', 404);
+  return c;
+}
+async function publico(tk) {
+  const c = await porToken(tk);
+  if (!c.portal_aberta_em) await pool.query('UPDATE contestacoes SET portal_aberta_em = NOW() WHERE id = $1', [c.id]);
+  const { rows: itens } = await pool.query(`SELECT i.id, i.numero_cte, i.numero_nf, f.data_emissao_cte, i.valor_cte::float, i.valor_tabela::float, i.valor_contestado::float,
+      i.motivo_codigo, i.motivo_texto, i.situacao, i.valor_aceito::float, i.portal_situacao, i.portal_valor::float, i.portal_comentario
+    FROM contestacao_itens i JOIN fretes f ON f.id = i.frete_id WHERE i.contestacao_id = $1 ORDER BY i.id`, [c.id]);
+  const { rows: [emp] } = await pool.query('SELECT razao_social, nome_fantasia, telefone, email FROM empresa WHERE id = 1').catch(() => ({ rows: [{}] }));
+  return {
+    numero: c.id, transportadora: c.transportadora, empresa: emp?.nome_fantasia || emp?.razao_social || '', contato: [emp?.telefone, emp?.email].filter(Boolean).join(' · '),
+    status: c.status, situacao: SITUACOES[c.status], aberta: c.status === 'enviada', prazo_resposta: c.prazo_resposta, valor_contestado: Number(c.valor_contestado),
+    valor_aceito: c.valor_aceito != null ? Number(c.valor_aceito) : null, observacao: c.observacao, respondida_em: c.portal_respondida_em, nome: c.portal_nome, comentario: c.portal_comentario,
+    itens: itens.map((i) => ({ ...i, motivo: MOTIVOS[i.motivo_codigo] || '' })),
+  };
+}
+// A transportadora responde: fica guardado e preenche a resposta para o usuário conferir e confirmar (pode mudar até lá).
+async function responderPortal(tk, b) {
+  const c = await porToken(tk);
+  if (c.status !== 'enviada') throw falha(c.status === 'rascunho' ? 'Esta contestação ainda não foi enviada.' : 'Esta contestação já foi encerrada; a resposta não pode mais ser mudada.', 409);
+  const nome = String(b.nome || '').trim().slice(0, 150);
+  if (nome.length < 3) throw falha('Informe o seu nome.');
+  const { rows: itens } = await pool.query('SELECT id, numero_cte, valor_contestado FROM contestacao_itens WHERE contestacao_id = $1', [c.id]);
+  const resp = new Map((Array.isArray(b.itens) ? b.itens : []).map((x) => [Number(x.id), x]));
+  const linhas = itens.map((i) => {
+    const x = resp.get(i.id);
+    if (!x || !['aceito', 'recusado'].includes(x.situacao)) throw falha(`Responda o CT-e ${i.numero_cte}: aceito ou recusado.`);
+    const comentario = String(x.comentario || '').trim().slice(0, 500) || null;
+    if (x.situacao === 'recusado') {
+      if (!comentario) throw falha(`CT-e ${i.numero_cte}: diga por que recusou.`);
+      return [i.id, 'recusado', 0, comentario];
+    }
+    const v = r2(String(x.valor ?? i.valor_contestado).replace(',', '.'));
+    if (!(v > 0) || v > Number(i.valor_contestado) + 0.004) throw falha(`CT-e ${i.numero_cte}: o valor aceito vai de R$ 0,01 até o contestado.`);
+    return [i.id, 'aceito', v, comentario];
+  });
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    for (const [id, sit, v, com] of linhas) await db.query('UPDATE contestacao_itens SET portal_situacao = $2, portal_valor = $3, portal_comentario = $4 WHERE id = $1', [id, sit, v, com]);
+    await db.query('UPDATE contestacoes SET portal_respondida_em = NOW(), portal_nome = $2, portal_comentario = $3, atualizado_em = NOW() WHERE id = $1',
+      [c.id, nome, String(b.comentario || '').trim().slice(0, 2000) || null]);
+    await db.query('COMMIT');
+  } catch (e) { await db.query('ROLLBACK').catch(() => {}); throw e; } finally { db.release(); }
+  return publico(tk);
+}
+
+module.exports = { token, linkResposta, publico, responderPortal, situacao, MOTIVOS, SITUACOES, sugerirMotivo, valorContestado, candidatos, criar, listar, detalhe, planilha, enviar, marcarEnviada, responder, cancelar, creditosPendentes, abaterCreditos, resumoMotivos };

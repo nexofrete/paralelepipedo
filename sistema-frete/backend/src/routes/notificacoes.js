@@ -32,11 +32,17 @@ router.get('/', autenticar, async (req, res) => {
 
     // Contestação enviada à transportadora e sem resposta depois do prazo.
     if (verAuditoria && (ehAdmin(req) || vePotudo(req))) {
-      const { rows: [ct] } = await pool.query("SELECT COUNT(*)::int AS qtd, COALESCE(SUM(valor_contestado), 0)::float AS valor FROM contestacoes WHERE status = 'enviada' AND prazo_resposta < CURRENT_DATE")
+      const { rows: [ct] } = await pool.query("SELECT COUNT(*)::int AS qtd, COALESCE(SUM(valor_contestado), 0)::float AS valor FROM contestacoes WHERE status = 'enviada' AND prazo_resposta < CURRENT_DATE AND portal_respondida_em IS NULL")
         .catch(() => ({ rows: [{ qtd: 0 }] }));
       if (ct.qtd > 0) {
         notificacoes.push({ tipo: 'aviso', icone: '📨', pagina: 'auditoria-frete', alvo: 'contestacoes',
           texto: `${ct.qtd} contestação(ões) de frete sem resposta depois do prazo (R$ ${ct.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) — reenvie a cobrança` });
+      }
+      const { rows: [rp] } = await pool.query("SELECT COUNT(*)::int AS qtd FROM contestacoes WHERE status = 'enviada' AND portal_respondida_em IS NOT NULL")
+        .catch(() => ({ rows: [{ qtd: 0 }] }));
+      if (rp.qtd > 0) {
+        notificacoes.push({ tipo: 'alerta', icone: '📨', pagina: 'auditoria-frete', alvo: 'contestacoes',
+          texto: `${rp.qtd} transportadora(s) responderam a contestação pelo link — confira e confirme a resposta` });
       }
     }
 

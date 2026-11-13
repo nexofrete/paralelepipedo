@@ -169,6 +169,9 @@ const limitadorCodigos = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standard
 // App do motorista (entra com o código do romaneio): 120 pedidos por minuto por celular.
 app.use('/api/motorista', rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false,
   message: { erro: 'Muitos pedidos seguidos. Aguarde um minuto.' } }));
+// Resposta da transportadora à contestação (sem login): 30 pedidos por minuto.
+app.use('/api/contestacao-publica', rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
+  message: { erro: 'Muitos pedidos seguidos. Aguarde um minuto.' } }));
 app.use('/api/rastreio', rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
   message: { erro: 'Muitas consultas seguidas. Aguarde um minuto e tente de novo.' } }));
 
@@ -227,6 +230,7 @@ app.use('/api/metas-frete', metasFreteRoutes);
 app.use('/api/sinistros', sinistrosRoutes);
 app.use('/api/faturas', faturasRoutes);
 app.use('/api/contestacoes', require('./src/routes/contestacoes'));
+app.use('/api/contestacao-publica', require('./src/routes/contestacaoPublica'));
 app.use('/api/indicadores', require('./src/routes/indicadores'));
 app.use('/api/nfe-cte', require('./src/routes/nfeCte'));
 app.use('/api/notas', require('./src/routes/notas'));

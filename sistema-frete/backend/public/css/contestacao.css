@@ -1,0 +1,21 @@
+/* Página pública da contestação (public/contestacao.html), sobre o rastreio.css */
+.ct-item { border-top: 1px solid var(--borda); padding: 14px 0; }
+.ct-item:first-of-type { border-top: 0; padding-top: 4px; }
+.ct-item h3 { margin: 0 0 4px; font-size: 15.5px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ct-num { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12.5px; color: var(--fraco); margin: 8px 0; }
+.ct-num b { display: block; color: var(--texto); font-size: 15px; }
+.ct-motivo { font-size: 13.5px; color: var(--fraco); }
+.ct-escolha { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.ct-escolha label { flex: 1; min-width: 130px; border: 1px solid var(--borda); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.ct-escolha label.sel-aceito { border-color: var(--verde); background: rgba(22,163,74,.08); }
+.ct-escolha label.sel-recusado { border-color: var(--vermelho); background: rgba(220,38,38,.07); }
+.ct-extra { display: grid; grid-template-columns: 160px 1fr; gap: 8px; margin-top: 8px; }
+.ct-extra label { font-size: 12.5px; color: var(--fraco); display: grid; gap: 4px; }
+textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 8px; background: var(--fundo); color: var(--texto); font: inherit; }
+.ct-total { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 15px; margin: 6px 0 14px; }
+.ct-ok { border-left: 4px solid var(--verde); }
+.ct-aviso { border-left: 4px solid var(--laranja); }
+.ct-res { font-weight: 600; }
+.ct-res.aceito { color: var(--verde); }
+.ct-res.recusado { color: var(--vermelho); }
+@media (max-width: 560px) { .ct-num { grid-template-columns: 1fr 1fr; } .ct-extra { grid-template-columns: 1fr; } }

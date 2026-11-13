@@ -1804,3 +1804,12 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .cp-cartao { border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--bg-card); }
 .cp-cab { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; font-size: 13px; margin-bottom: 4px; }
 .cp-cab .ct-selo { flex-shrink: 0; }
+
+/* Aviso "Desfazer" depois de aprovar / reprovar / glosar (avisoDesfazer em dashboard.js) */
+.aviso-desfazer { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 4000; display: flex; gap: 12px; align-items: center;
+  background: #1f2937; color: #fff; padding: 10px 12px 10px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 13.5px; max-width: calc(100vw - 32px);
+  animation: avisoDesfazerEntra .18s ease-out; }
+.aviso-desfazer button { background: transparent; border: 1px solid rgba(255,255,255,.35); color: #93c5fd; border-radius: 7px; padding: 5px 10px; font-weight: 700; cursor: pointer; width: auto; }
+.aviso-desfazer .aviso-desfazer-x { border: 0; color: #9ca3af; padding: 5px 6px; }
+.aviso-desfazer.saindo { opacity: 0; transition: opacity .2s; }
+@keyframes avisoDesfazerEntra { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }

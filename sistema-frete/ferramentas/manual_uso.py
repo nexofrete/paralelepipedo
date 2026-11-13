@@ -582,6 +582,10 @@ def parte_uso(g):
     ])
     s += aviso('nota', '<b>Limite de alçada</b>: se configurado, fretes acima desse valor só podem ser aprovados por quem '
                        'tem a permissão "Aprovar valores altos".')
+    s += aviso('dica', '<b>Desfazer</b>: logo depois de aprovar, reprovar ou glosar (no cartão, no Detalhe, em lote ou na tela do '
+                       'registro), aparece no rodapé um aviso com o botão <b>Desfazer</b> por 10 segundos. Ele devolve o frete para a '
+                       'conferência, sem decisão (a glosa feita junto também sai). Só vale para a decisão da própria pessoa, dos últimos 10 '
+                       'minutos, em frete ainda não faturado.')
     s += h3('Motivos de glosa padronizados')
     s.append(P('Toda glosa tem um motivo da lista: frete acima da tabela, taxa acima da tabela, taxa não prevista na tabela, '
                'peso ou volumes diferentes da nota, trecho / cidade errada, ICMS errado, cobrança em dobro, transportadora '
@@ -616,6 +620,21 @@ def parte_uso(g):
         ['Abatida na fatura', 'Os créditos (CT-e já faturados) foram descontados na fatura seguinte.'],
         ['Cancelada', 'Cancelada antes da resposta; os CT-e voltam a poder ser contestados.'],
     ], [0.3, 0.7])
+    s += h3('Resposta da transportadora pelo link')
+    s.append(P('O e-mail da contestação leva o botão <b>Responder a contestação</b>. Ele abre uma página, sem login, em que a '
+               'transportadora vê os CT-e contestados (CT-e, NF, valor do CT-e, valor pela tabela, contestado e motivo) e marca cada um '
+               'como <b>aceito</b> (pode aceitar um valor menor) ou <b>recusado</b> (com o motivo, obrigatório), informa o nome e envia. '
+               'Ela pode mudar e enviar de novo até a empresa confirmar. A página não mostra nome de cliente nem outros dados internos.'))
+    s += lista([
+        'A resposta <b>não é aplicada sozinha</b>: o sino avisa "transportadora respondeu pelo link", a lista mostra o selo '
+        '"Respondida pelo link — confirmar" e, no detalhe, a resposta dela já vem preenchida (aceito/recusado, valor e o '
+        'comentário de cada CT-e). Confira e clique em <b>Registrar resposta</b>.',
+        'No detalhe também aparece quando a transportadora abriu o link, mesmo sem responder.',
+        '<b>Link de resposta</b> (no detalhe) mostra o link para copiar e mandar por WhatsApp. O link usa o <b>endereço público</b> '
+        'do sistema (o mesmo do link de rastreio). Se o sistema estiver sendo acessado por um endereço da rede interna '
+        '(ex.: localhost ou 192.168...), o link só abre dentro da empresa: o administrador informa ali o endereço público.',
+        'Depois que a contestação é encerrada, a página mostra só o resultado.',
+    ])
     s += h3('Prazo de resposta e lembrete')
     s.append(P('Ao enviar (ou marcar como enviada), a contestação ganha a data limite para a resposta (hoje + o prazo). A lista '
                'mostra "responder até" e, depois do prazo, <b>"sem resposta, prazo vencido há N dias"</b> em vermelho; o sino de '

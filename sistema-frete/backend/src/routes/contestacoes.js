@@ -43,8 +43,29 @@ router.post('/', autenticar, podeMexer, rota(async (req, res) => {
   log(req, 'criar_contestacao', `Contestação nº ${c.id} — ${c.transportadora}: ${c.itens.length} CT-e, R$ ${Number(c.valor_contestado).toFixed(2)}`);
   res.status(201).json(c);
 }));
+// Endereço que vai no link da transportadora: o público da empresa, ou o deste acesso.
+async function baseLink(req) {
+  const { rows } = await require('../db').query('SELECT endereco_publico FROM empresa WHERE id = 1');
+  return String(rows[0]?.endereco_publico || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+}
+const ehLocal = (u) => /\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(u);
+router.get('/:id(\\d+)/link', autenticar, podeVer, rota(async (req, res) => {
+  const base = await baseLink(req);
+  res.json({ link: await ct.linkResposta(Number(req.params.id), base), local: ehLocal(base), base });
+}));
+// Endereço público do sistema (o mesmo do link de rastreio): só o administrador.
+router.put('/endereco-publico', autenticar, rota(async (req, res) => {
+  if (!ehAdmin(req)) return res.status(403).json({ erro: 'Só o administrador muda o endereço público.' });
+  const v = String(req.body?.endereco || '').trim().replace(/\/+$/, '');
+  if (v && !/^https?:\/\/[^\s/]+/i.test(v)) return res.status(400).json({ erro: 'Informe o endereço começando com https://' });
+  const pool = require('../db');
+  await pool.query('INSERT INTO empresa (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+  await pool.query('UPDATE empresa SET endereco_publico = $1 WHERE id = 1', [v || null]);
+  log(req, 'editar_empresa', `Endereço público do sistema: ${v || '(vazio)'}`);
+  res.json({ endereco: v || null });
+}));
 router.post('/:id(\\d+)/enviar', autenticar, podeMexer, rota(async (req, res) => {
-  const c = await ct.enviar(Number(req.params.id), req.usuario.nome, req.body?.email);
+  const c = await ct.enviar(Number(req.params.id), req.usuario.nome, req.body?.email, await baseLink(req));
   log(req, 'enviar_contestacao', `Enviou a contestação nº ${c.id} para ${c.email_para}`);
   res.json(c);
 }));

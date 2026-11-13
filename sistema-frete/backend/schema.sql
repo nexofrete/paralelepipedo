@@ -3597,3 +3597,15 @@ CREATE INDEX IF NOT EXISTS idx_fretes_regra_auditoria ON fretes (regra_auditoria
 ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS prazo_dias INTEGER NOT NULL DEFAULT 10;
 ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS prazo_resposta DATE;
 ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS lembretes INTEGER NOT NULL DEFAULT 0;
+
+-- Resposta da transportadora pelo link (public/contestacao.html): código secreto do link e a resposta dela,
+-- que preenche a resposta para o usuário conferir e confirmar.
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS token_resposta VARCHAR(64);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contestacoes_token ON contestacoes (token_resposta) WHERE token_resposta IS NOT NULL;
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS portal_respondida_em TIMESTAMPTZ;
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS portal_nome VARCHAR(150);
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS portal_comentario TEXT;
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS portal_aberta_em TIMESTAMPTZ;
+ALTER TABLE contestacao_itens ADD COLUMN IF NOT EXISTS portal_situacao VARCHAR(12);
+ALTER TABLE contestacao_itens ADD COLUMN IF NOT EXISTS portal_valor NUMERIC(14,2);
+ALTER TABLE contestacao_itens ADD COLUMN IF NOT EXISTS portal_comentario VARCHAR(500);

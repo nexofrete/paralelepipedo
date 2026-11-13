@@ -50,7 +50,7 @@
     el.innerHTML = `<table class="ct-tabela"><thead><tr><th>Nº</th><th>Transportadora</th><th>Período</th><th class="n">CT-e</th><th class="n">Contestado</th><th class="n">Aceito</th><th>Situação</th><th>Enviada</th></tr></thead><tbody>
       ${itens.map((c) => `<tr data-ct-abrir="${c.id}" class="ct-linha"><td>${c.id}</td><td>${esc(c.transportadora)}</td><td>${c.de || c.ate ? `${dia(c.de)} a ${dia(c.ate)}` : '—'}</td><td class="n">${c.qtd}</td>
         <td class="n">${moeda(c.valor_contestado)}</td><td class="n">${c.valor_aceito != null ? moeda(c.valor_aceito) : '—'}</td>
-        <td>${selo(c.status)}${c.credito_pendente > 0 ? ` <span class="ct-dica" title="Aceito depois de faturado: abate na próxima fatura conferida">crédito ${moeda(c.credito_pendente)} a abater</span>` : ''}</td><td>${dia(c.enviada_em)}${c.dias_vencida != null ? `<br><span style="color:var(--vermelho); font-size:11.5px; font-weight:600;">sem resposta, prazo vencido há ${c.dias_vencida} dia(s)</span>` : c.status === 'enviada' && c.prazo_resposta ? `<br><span class="ct-dica">responder até ${dia(c.prazo_resposta)}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
+        <td>${selo(c.status)}${c.status === 'enviada' && c.portal_respondida_em ? ' <span class="ct-selo" style="--c:#7c3aed">Respondida pelo link — confirmar</span>' : ''}${c.credito_pendente > 0 ? ` <span class="ct-dica" title="Aceito depois de faturado: abate na próxima fatura conferida">crédito ${moeda(c.credito_pendente)} a abater</span>` : ''}</td><td>${dia(c.enviada_em)}${c.dias_vencida != null ? `<br><span style="color:var(--vermelho); font-size:11.5px; font-weight:600;">sem resposta, prazo vencido há ${c.dias_vencida} dia(s)</span>` : c.status === 'enviada' && c.prazo_resposta ? `<br><span class="ct-dica">responder até ${dia(c.prazo_resposta)}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
     el.querySelectorAll('[data-ct-abrir]').forEach((tr) => tr.addEventListener('click', () => detalhe(Number(tr.dataset.ctAbrir)).catch(erro)));
   }
 
@@ -124,14 +124,16 @@
     caixa.innerHTML = `${topo(`📨 Contestação nº ${c.id} — ${esc(c.transportadora)}`, '<button class="btn btn-secundario" data-ct="voltar" style="width:auto;">← Lista</button>')}
       <div class="ct-resumo"><div>${selo(c.status)}</div><div>Contestado <b>${moeda(c.valor_contestado)}</b></div><div>Aceito <b>${c.valor_aceito != null ? moeda(c.valor_aceito) : '—'}</b></div>
         <div>Período ${c.de || c.ate ? `${dia(c.de)} a ${dia(c.ate)}` : '—'}</div><div>Para ${esc(c.email_para || '—')}</div><div>Criada por ${esc(c.criado_por || '—')} em ${dia(c.criado_em)}</div>${c.enviada_em ? `<div>Enviada em ${dia(c.enviada_em)}</div>` : ''}${c.status === 'enviada' && c.prazo_resposta ? `<div style="${c.prazo_resposta.slice(0, 10) < new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10) ? 'color:var(--vermelho); font-weight:600;' : ''}">Responder até ${dia(c.prazo_resposta)}${c.lembretes ? ` · ${c.lembretes} lembrete(s)` : ''}</div>` : ''}</div>
+      ${aberta && c.portal_respondida_em ? `<div class="ct-resumo" style="border-color:#7c3aed; display:block;">📨 <b>A transportadora respondeu pelo link</b> (${esc(c.portal_nome || '')}, ${new Date(c.portal_respondida_em).toLocaleString('pt-BR')}). A resposta dela já está preenchida abaixo: confira e clique em <b>Registrar resposta</b>.${c.portal_comentario ? `<br>Comentário: ${esc(c.portal_comentario)}` : ''}</div>` : aberta && c.status === 'enviada' && c.portal_aberta_em ? `<div class="ct-dica" style="margin-bottom:8px;">A transportadora abriu o link em ${new Date(c.portal_aberta_em).toLocaleString('pt-BR')}, mas ainda não respondeu.</div>` : ''}
       <div class="ct-rolagem"><table class="ct-tabela"><thead><tr><th>CT-e</th><th>NF</th><th>Cliente</th><th class="n">Valor CT-e</th><th class="n">Tabela</th><th class="n">Contestado</th><th>Motivo</th><th>Situação</th>${aberta && pode ? '<th>Resposta</th>' : ''}</tr></thead><tbody>
       ${c.itens.map((i) => `<tr data-item="${i.id}"><td>${esc(i.numero_cte)}</td><td>${esc(i.numero_nf || '')}</td><td>${esc(i.cliente || '')}</td><td class="n">${moeda(i.valor_cte)}</td><td class="n">${moeda(i.valor_tabela)}</td>
         <td class="n"><b>${moeda(i.valor_contestado)}</b></td><td title="${esc(i.motivo_texto || '')}">${esc(MOTIVOS[i.motivo_codigo] || i.motivo_codigo)}</td><td>${sitItem(i)}</td>
-        ${aberta && pode ? `<td style="white-space:nowrap;"><select class="ctResp"><option value="aceito">Aceito</option><option value="recusado">Recusado</option></select> <input class="ctAceito" value="${Number(i.valor_contestado).toFixed(2).replace('.', ',')}" style="width:80px; text-align:right;"></td>` : ''}</tr>`).join('')}</tbody></table></div>
+        ${aberta && pode ? `<td style="white-space:nowrap;"><select class="ctResp"><option value="aceito">Aceito</option><option value="recusado" ${i.portal_situacao === 'recusado' ? 'selected' : ''}>Recusado</option></select> <input class="ctAceito" value="${Number(i.portal_situacao === 'aceito' && i.portal_valor != null ? i.portal_valor : i.valor_contestado).toFixed(2).replace('.', ',')}" ${i.portal_situacao === 'recusado' ? 'disabled' : ''} style="width:80px; text-align:right;">${i.portal_comentario ? `<div class="ct-dica" style="white-space:normal; max-width:260px;">“${esc(i.portal_comentario)}”</div>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>
       ${c.observacao ? `<p class="ct-dica">Observação: ${esc(c.observacao)}</p>` : ''}${c.resposta ? `<p class="ct-dica" style="white-space:pre-line;">Resposta: ${esc(c.resposta)}</p>` : ''}
       ${aberta && pode ? '<label class="ct-filtros" style="display:block; margin-top:10px;">Resposta da transportadora (opcional)<input id="ctRespTexto" style="width:100%;" placeholder="Ex.: aceitou por e-mail em 12/11, recusou o CT-e 123 porque..."></label>' : ''}
       <div class="ct-acoes">
         <button class="btn btn-secundario" data-ct="planilha" style="width:auto;">⬇ Planilha</button>
+        ${aberta && pode ? '<button class="btn btn-secundario" data-ct="link" style="width:auto;" title="Link para a transportadora responder sem login (vai também no e-mail)">🔗 Link de resposta</button>' : ''}
         ${aberta && pode ? `<button class="btn btn-secundario" data-ct="enviar" style="width:auto;">✉️ ${c.status === 'enviada' ? 'Reenviar como lembrete' : 'Enviar'} por e-mail</button>` : ''}
         ${c.status === 'rascunho' && pode ? '<button class="btn btn-secundario" data-ct="marcar" style="width:auto;">Marcar como enviada</button>' : ''}
         ${aberta && pode ? '<button class="btn btn-secundario" data-ct="cancelar" style="width:auto;">Cancelar contestação</button><button class="btn btn-primario" data-ct="responder" style="width:auto;">✔ Registrar resposta</button>' : ''}
@@ -139,6 +141,25 @@
     ligarComuns();
     const acao = (k, fn) => caixa.querySelector(`[data-ct="${k}"]`)?.addEventListener('click', () => fn().catch(erro));
     acao('voltar', lista);
+    // Resposta pelo link: já preenche o texto da resposta.
+    if (aberta && c.portal_respondida_em && document.getElementById('ctRespTexto')) {
+      document.getElementById('ctRespTexto').value = `Respondida pelo link por ${c.portal_nome || 'transportadora'} em ${new Date(c.portal_respondida_em).toLocaleString('pt-BR')}${c.portal_comentario ? `: ${c.portal_comentario}` : ''}`.slice(0, 2000);
+    }
+    acao('link', async () => {
+      const j = await json(`/api/contestacoes/${c.id}/link`);
+      const admin = typeof usuario !== 'undefined' && usuario?.perfil === 'admin';
+      const r = await abrirDialogo({ tipo: 'info', titulo: 'Link para a transportadora responder',
+        mensagem: 'Quem tiver o link vê esta contestação e responde CT-e por CT-e, sem login. Ele já vai no e-mail; dá para mandar também por WhatsApp.',
+        corpoHtml: `<div class="glosa-form"><label>Link<input class="dlg-campo-livre" readonly value="${esc(j.link)}"></label>
+          ${j.local ? `<div class="dlg-erro" style="display:block;">Este endereço (${esc(j.base)}) só abre dentro da rede da empresa. ${admin ? 'Informe abaixo o endereço público do sistema (o mesmo do link de rastreio).' : 'Peça ao administrador para informar o endereço público do sistema.'}</div>` : ''}
+          ${admin ? `<label>Endereço público do sistema<input name="endereco" class="dlg-campo-livre" placeholder="https://nexofrete.suaempresa.com.br" value="${j.local ? '' : esc(j.base)}"></label>` : ''}</div>`,
+        botoes: [{ texto: 'Fechar', valor: null, estilo: 'secundario' }, ...(admin ? [{ texto: 'Salvar endereço', valor: true, estilo: 'secundario' }] : []), { texto: '📋 Copiar link', valor: 'copiar', estilo: 'primario' }] });
+      if (r === 'copiar') { try { await navigator.clipboard.writeText(j.link); mostrarAlerta('Link copiado.', { tipo: 'sucesso' }); } catch { mostrarAlerta(j.link); } }
+      else if (r && typeof r === 'object') {
+        await json('/api/contestacoes/endereco-publico', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endereco: r.endereco }) });
+        caixa.querySelector('[data-ct="link"]').click();
+      }
+    });
     acao('planilha', async () => {
       const r = await apiFetch(`/api/contestacoes/${c.id}/planilha`);
       if (!r.ok) throw new Error('Não foi possível gerar a planilha.');

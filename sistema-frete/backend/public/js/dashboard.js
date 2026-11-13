@@ -1829,6 +1829,9 @@ function renderizarPainelAprovacao(registro) {
       renderizarPainelAprovacao(dados);
       atualizarRegistroNaListaLocal(dados);
       carregarRegistros();
+      const idDec = editandoRegistroId;
+      const voltar = async () => { carregarRegistros(); if (editandoRegistroId === idDec) { const r = await apiFetch(`/api/fretes/${idDec}`); if (r.ok) { const f = await r.json(); renderizarPainelAprovacao(f); atualizarRegistroNaListaLocal(f); } } };
+      avisoDesfazer('Frete aprovado.', [idDec], voltar);
     } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
   });
 
@@ -1846,6 +1849,9 @@ function renderizarPainelAprovacao(registro) {
       renderizarPainelAprovacao(dados);
       atualizarRegistroNaListaLocal(dados);
       carregarRegistros();
+      const idDec = editandoRegistroId;
+      const voltar = async () => { carregarRegistros(); if (editandoRegistroId === idDec) { const r = await apiFetch(`/api/fretes/${idDec}`); if (r.ok) { const f = await r.json(); renderizarPainelAprovacao(f); atualizarRegistroNaListaLocal(f); } } };
+      avisoDesfazer('Frete rejeitado.', [idDec], voltar);
     } catch (err) { mostrarAlerta('Falha de conexão com o servidor.'); }
   });
 }
@@ -3897,6 +3903,37 @@ function renderizarAuditoriaFrete() {
   }).join('');
 }
 
+// "Desfazer" logo depois de aprovar, reprovar ou glosar: um aviso no rodapé por 10 segundos.
+// O servidor só desfaz a decisão da própria pessoa, dos últimos 10 minutos, em frete não faturado.
+function avisoDesfazer(texto, ids, aoDesfazer) {
+  document.querySelector('.aviso-desfazer')?.remove();
+  const el = document.createElement('div');
+  el.className = 'aviso-desfazer'; el.setAttribute('role', 'status');
+  el.innerHTML = `<span></span><button type="button">↶ Desfazer</button><button type="button" class="aviso-desfazer-x" aria-label="Fechar">✕</button>`;
+  el.querySelector('span').textContent = texto;
+  document.body.appendChild(el);
+  const fechar = () => { clearTimeout(t); el.classList.add('saindo'); setTimeout(() => el.remove(), 200); };
+  const t = setTimeout(fechar, 10000);
+  el.querySelector('.aviso-desfazer-x').addEventListener('click', fechar);
+  el.querySelector('button').addEventListener('click', async () => {
+    fechar();
+    try {
+      const r = await apiFetch('/api/fretes/desfazer-decisao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Não foi possível desfazer.');
+      if (!j.desfeitos) { mostrarAlerta('Não deu para desfazer: a decisão já não pode ser mudada (faturada, de outra pessoa ou de mais de 10 minutos).'); return; }
+      if (aoDesfazer) aoDesfazer(j); else if (typeof carregarAuditoriaFrete === 'function') carregarAuditoriaFrete();
+      avisoSimples(`Desfeito: ${j.desfeitos} frete(s) voltaram para a conferência.`);
+    } catch (e) { mostrarAlerta(e.message, { tipo: 'erro' }); }
+  });
+}
+function avisoSimples(texto) {
+  const el = document.createElement('div');
+  el.className = 'aviso-desfazer'; el.setAttribute('role', 'status'); el.textContent = texto;
+  document.body.appendChild(el);
+  setTimeout(() => { el.classList.add('saindo'); setTimeout(() => el.remove(), 200); }, 3500);
+}
+
 // Aprovação direta pelo cartão de auditoria, com justificativa opcional.
 async function aprovarComJustificativaAuditoria(id) {
   const linha = ultimasLinhasAuditoria.find((l) => l.id === id);
@@ -3915,6 +3952,7 @@ async function aprovarComJustificativaAuditoria(id) {
     const indice = ultimasLinhasAuditoria.findIndex((l) => l.id === id);
     if (indice >= 0) ultimasLinhasAuditoria[indice] = { ...ultimasLinhasAuditoria[indice], ...dados };
     renderizarAuditoriaFrete();
+    avisoDesfazer(`Frete${dados.numero_cte ? ` do CT-e ${dados.numero_cte}` : ''} aprovado.`, [id]);
     return true;
   } catch (err) {
     mostrarAlerta('Falha de conexão com o servidor.');
@@ -3975,6 +4013,7 @@ async function registrarGlosaAuditoria(id, sugerido = null) {
     const indice = ultimasLinhasAuditoria.findIndex((l) => l.id === id);
     if (indice >= 0) ultimasLinhasAuditoria[indice] = { ...ultimasLinhasAuditoria[indice], ...dados };
     renderizarAuditoriaFrete();
+    avisoDesfazer(`Glosa de ${formatoMoeda(valor)} registrada${dados.numero_cte ? ` no CT-e ${dados.numero_cte}` : ''}.`, [id]);
   } catch (err) {
     mostrarAlerta('Falha de conexão com o servidor.');
   }
@@ -7366,10 +7405,11 @@ document.getElementById('btnAprovarLoteAuditoria').addEventListener('click', asy
     let mensagem = `✓ ${dados.aprovados} de ${dados.total} frete(s) aprovado(s).`;
     if (dados.bloqueadosPorAlcada?.length) {
       mensagem += `\n\n${dados.bloqueadosPorAlcada.length} frete(s) NÃO aprovado(s) por passarem do limite de alçada (precisam de um gerente): ${dados.bloqueadosPorAlcada.join(', ')}`;
+      mostrarAlerta(mensagem);
     }
-    mostrarAlerta(mensagem);
     fretesSelecionadosLote.clear();
     carregarAuditoriaFrete();
+    if (dados.aprovados) avisoDesfazer(`${dados.aprovados} frete(s) aprovado(s).`, ids);
   } catch (err) {
     mostrarAlerta('Falha de conexão com o servidor.');
   }

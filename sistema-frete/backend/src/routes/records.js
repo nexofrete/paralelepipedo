@@ -240,6 +240,35 @@ router.put('/:id/aprovar', autenticar, permitir('pode_aprovar_pagamento'), frete
   }
 });
 
+// PUT /api/fretes/desfazer-decisao — o "Desfazer" que aparece logo depois de aprovar, reprovar ou glosar.
+// Só a decisão da própria pessoa, dos últimos 10 minutos, em frete ainda não faturado: volta a "sem decisão"
+// (a glosa feita junto também sai) e o frete passa de novo pela conferência automática.
+router.put('/desfazer-decisao', autenticar, permitir('pode_aprovar_pagamento'), async (req, res) => {
+  try {
+    const ids = [...new Set((Array.isArray(req.body?.ids) ? req.body.ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 1000);
+    if (!ids.length) return res.status(400).json({ erro: 'Nenhum frete para desfazer.' });
+    const { rows } = await pool.query(
+      `UPDATE fretes SET status_aprovacao = 'Pendente', aprovado_por_nome = NULL, aprovado_em = NULL, justificativa_aprovacao = NULL, motivo_rejeicao = NULL,
+         glosa_valor = CASE WHEN glosa_registrada_por = $2 AND glosa_registrada_em > NOW() - INTERVAL '10 minutes' THEN NULL ELSE glosa_valor END,
+         glosa_motivo = CASE WHEN glosa_registrada_por = $2 AND glosa_registrada_em > NOW() - INTERVAL '10 minutes' THEN NULL ELSE glosa_motivo END,
+         glosa_motivo_codigo = CASE WHEN glosa_registrada_por = $2 AND glosa_registrada_em > NOW() - INTERVAL '10 minutes' THEN NULL ELSE glosa_motivo_codigo END,
+         glosa_registrada_em = CASE WHEN glosa_registrada_por = $2 AND glosa_registrada_em > NOW() - INTERVAL '10 minutes' THEN NULL ELSE glosa_registrada_em END,
+         glosa_registrada_por = CASE WHEN glosa_registrada_por = $2 AND glosa_registrada_em > NOW() - INTERVAL '10 minutes' THEN NULL ELSE glosa_registrada_por END,
+         status = CASE WHEN status = 'Liberado p/ Pagamento' THEN 'Frete Retido' ELSE status END, atualizado_em = NOW()
+       WHERE id = ANY($1::int[]) AND aprovado_por_nome = $2 AND aprovado_em > NOW() - INTERVAL '10 minutes'
+         AND status_aprovacao IN ('Aprovado', 'Rejeitado') AND fatura_id IS NULL AND COALESCE(status, '') NOT IN ('Faturado', 'Cancelado')
+       RETURNING id, numero_pedido`, [ids, req.usuario.nome]);
+    if (rows.length) {
+      registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'desfazer_decisao_frete',
+        detalhes: `Desfez a própria decisão (aprovação/reprovação/glosa) de ${rows.length} frete(s): ${rows.map((r) => `#${r.id}`).join(', ')}` });
+    }
+    res.json({ desfeitos: rows.length, ids: rows.map((r) => r.id), naoDesfeitos: ids.length - rows.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao desfazer.' });
+  }
+});
+
 // PUT /api/fretes/aprovar-lote — aprova vários fretes de uma vez, respeitando
 // a mesma verificação de alçada de cada um individualmente.
 router.put('/aprovar-lote', autenticar, permitir('pode_aprovar_pagamento'), async (req, res) => {

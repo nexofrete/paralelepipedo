@@ -601,7 +601,8 @@ def parte_uso(g):
         'cobrança em dobro, não levou ou nota cancelada entram com o valor inteiro do CT-e).',
         'Confira cada linha: desmarque o que não quer contestar, ajuste o valor, o motivo e o detalhe (o sistema já '
         'escreve as taxas a mais que achou no XML). CT-e já faturado aparece com o selo "faturado".',
-        'Confira o e-mail (vem do cadastro da transportadora) e clique em <b>Criar contestação</b>.',
+        'Confira o e-mail (vem do cadastro da transportadora) e o <b>prazo para responder</b> (padrão: 10 dias) e clique em '
+        '<b>Criar contestação</b>.',
         'No detalhe, clique em <b>Enviar por e-mail</b> (precisa do envio de e-mail configurado) ou, se mandou por outro '
         'meio, em <b>Marcar como enviada</b>. <b>Planilha</b> baixa o mesmo arquivo que vai anexo.',
         'Quando a transportadora responder, marque cada CT-e como <b>Aceito</b> (com o valor aceito, que pode ser menor que '
@@ -615,6 +616,13 @@ def parte_uso(g):
         ['Abatida na fatura', 'Os créditos (CT-e já faturados) foram descontados na fatura seguinte.'],
         ['Cancelada', 'Cancelada antes da resposta; os CT-e voltam a poder ser contestados.'],
     ], [0.3, 0.7])
+    s += h3('Prazo de resposta e lembrete')
+    s.append(P('Ao enviar (ou marcar como enviada), a contestação ganha a data limite para a resposta (hoje + o prazo). A lista '
+               'mostra "responder até" e, depois do prazo, <b>"sem resposta, prazo vencido há N dias"</b> em vermelho; o sino de '
+               'avisos também mostra as vencidas e leva direto à lista. No detalhe, <b>Reenviar como lembrete</b> manda o e-mail de novo, '
+               'com o assunto "Lembrete:" e o pedido de retorno, renova o prazo e conta quantos lembretes foram enviados. Na '
+               '<b>conferência da fatura</b> (capítulo 17), ao escolher a transportadora aparece o valor contestado ainda sem resposta '
+               '(e quantas contestações estão vencidas), para cobrar a resposta antes de aprovar a fatura.'))
     s += lista([
         '<b>CT-e aceito ainda não faturado</b>: vira <b>glosa</b> no frete, com o motivo da contestação, e o frete é liberado. '
         'A fatura deve vir com o desconto.',
@@ -622,6 +630,23 @@ def parte_uso(g):
         'é descontado sozinho do valor que a fatura deveria vir (capítulo 17).',
         '<b>CT-e recusado</b>: nada muda no frete; ele volta à lista de CT-e que podem ser contestados.',
     ])
+    s += h3('Diferenças que se repetem')
+    s.append(P('A aba <b>Diferenças que se repetem</b> da janela de contestações analisa os CT-e do período (padrão: últimos 90 dias; '
+               'dá para filtrar a transportadora) e mostra o padrão por trás das divergências, em vez de CT-e por CT-e:'))
+    s += lista([
+        '<b>Taxa repetida</b>: um componente cobrado a mais ou sem estar na tabela em boa parte dos CT-e da transportadora '
+        '(30% ou mais) ou de um cliente (metade ou mais). Ex.: "TDE cobrado sem estar na tabela em 4 de 4 CT-e do cliente X '
+        '(quase sempre R$ 30,00)".',
+        '<b>Trecho</b>: um destino em que a transportadora cobra acima da tabela na maioria dos CT-e, com pelo menos 2% a mais. '
+        'Ex.: "Para CAMPINAS/SP, 4 de 4 CT-e acima da tabela, quase sempre +8%".',
+        'Precisa de pelo menos 3 CT-e. Quando os mesmos CT-e aparecem em dois padrões, fica só o mais específico (o do cliente, o '
+        'do trecho).',
+    ])
+    s.append(P('Cada padrão traz uma sugestão: quando a diferença é <b>sempre a mesma</b> (o mesmo valor ou o mesmo %), o mais '
+               'provável é a <b>tabela estar desatualizada</b> (selo "Corrigir a tabela?" e o botão <b>Abrir a tabela de preço</b> já '
+               'abre a tabela usada nesses CT-e; para vários trechos de uma vez use o Reajuste em lote, capítulo 15). Quando a '
+               'diferença <b>varia</b>, parece erro de cobrança (selo "Contestar"): <b>Contestar N CT-e</b> abre a nova contestação '
+               'só com os CT-e daquele padrão que ainda não têm glosa nem contestação.'))
     s += h3('Glosas por motivo')
     s.append(P('A aba <b>Glosas por motivo</b> da janela de contestações mostra, no período, quanto foi glosado em cada motivo '
                '(com barras) e uma tabela por transportadora com o valor de cada motivo, além dos créditos de contestação '
@@ -702,6 +727,8 @@ def parte_uso(g):
         'o crédito entra sozinho como desconto na conferência da próxima fatura dela: o documento mostra a linha "Créditos de '
         'contestação" com os CT-e, e a fatura deveria vir com esse desconto. Desfazer a conferência devolve o crédito '
         'para a fatura seguinte.',
+        '<b>Contestações sem resposta</b>: ao escolher a transportadora, um aviso mostra o valor contestado com ela que ainda não '
+        'teve resposta (e se o prazo venceu), com o link para as contestações.',
         'A aba "Faturas conferidas" lista o histórico. Só o administrador pode desfazer uma conferência.',
     ])
     s += h2('Importar a fatura em planilha')

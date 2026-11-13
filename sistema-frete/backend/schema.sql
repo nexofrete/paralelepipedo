@@ -3592,3 +3592,8 @@ CREATE TABLE IF NOT EXISTS auditoria_regras (
 );
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS regra_auditoria_id INTEGER REFERENCES auditoria_regras(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_fretes_regra_auditoria ON fretes (regra_auditoria_id) WHERE regra_auditoria_id IS NOT NULL;
+
+-- Prazo de resposta da contestação: dias combinados e a data limite (enviada + dias; o lembrete renova).
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS prazo_dias INTEGER NOT NULL DEFAULT 10;
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS prazo_resposta DATE;
+ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS lembretes INTEGER NOT NULL DEFAULT 0;

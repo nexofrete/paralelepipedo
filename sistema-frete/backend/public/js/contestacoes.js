@@ -32,10 +32,10 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('oculto') && !document.querySelector('.dlg-fundo')) fechar(); });
 
   const topo = (titulo, extra = '') => `<div class="ct-topo"><h3>${titulo}</h3><div style="display:flex; gap:8px; align-items:center;">${extra}<button class="btn btn-secundario" data-ct="fechar" style="width:auto;">✕</button></div></div>`;
-  const abas = () => `<div class="cte-abas" style="margin-bottom:12px;"><div class="cte-aba ${aba === 'lista' ? 'ativo' : ''}" data-ct-aba="lista">📨 Contestações</div><div class="cte-aba ${aba === 'motivos' ? 'ativo' : ''}" data-ct-aba="motivos">📊 Glosas por motivo</div></div>`;
+  const abas = () => `<div class="cte-abas" style="margin-bottom:12px;"><div class="cte-aba ${aba === 'lista' ? 'ativo' : ''}" data-ct-aba="lista">📨 Contestações</div><div class="cte-aba ${aba === 'motivos' ? 'ativo' : ''}" data-ct-aba="motivos">📊 Glosas por motivo</div><div class="cte-aba ${aba === 'padroes' ? 'ativo' : ''}" data-ct-aba="padroes">🔁 Diferenças que se repetem</div></div>`;
   function ligarComuns() {
     caixa.querySelector('[data-ct="fechar"]')?.addEventListener('click', fechar);
-    caixa.querySelectorAll('[data-ct-aba]').forEach((el) => el.addEventListener('click', () => { aba = el.dataset.ctAba; (aba === 'lista' ? lista : motivos)(); }));
+    caixa.querySelectorAll('[data-ct-aba]').forEach((el) => el.addEventListener('click', () => { aba = el.dataset.ctAba; ({ lista, motivos, padroes }[aba])().catch(erro); }));
   }
   const erro = (e) => mostrarAlerta(e.message || String(e), { tipo: 'erro' });
 
@@ -50,7 +50,7 @@
     el.innerHTML = `<table class="ct-tabela"><thead><tr><th>Nº</th><th>Transportadora</th><th>Período</th><th class="n">CT-e</th><th class="n">Contestado</th><th class="n">Aceito</th><th>Situação</th><th>Enviada</th></tr></thead><tbody>
       ${itens.map((c) => `<tr data-ct-abrir="${c.id}" class="ct-linha"><td>${c.id}</td><td>${esc(c.transportadora)}</td><td>${c.de || c.ate ? `${dia(c.de)} a ${dia(c.ate)}` : '—'}</td><td class="n">${c.qtd}</td>
         <td class="n">${moeda(c.valor_contestado)}</td><td class="n">${c.valor_aceito != null ? moeda(c.valor_aceito) : '—'}</td>
-        <td>${selo(c.status)}${c.credito_pendente > 0 ? ` <span class="ct-dica" title="Aceito depois de faturado: abate na próxima fatura conferida">crédito ${moeda(c.credito_pendente)} a abater</span>` : ''}</td><td>${dia(c.enviada_em)}</td></tr>`).join('')}</tbody></table>`;
+        <td>${selo(c.status)}${c.credito_pendente > 0 ? ` <span class="ct-dica" title="Aceito depois de faturado: abate na próxima fatura conferida">crédito ${moeda(c.credito_pendente)} a abater</span>` : ''}</td><td>${dia(c.enviada_em)}${c.dias_vencida != null ? `<br><span style="color:var(--vermelho); font-size:11.5px; font-weight:600;">sem resposta, prazo vencido há ${c.dias_vencida} dia(s)</span>` : c.status === 'enviada' && c.prazo_resposta ? `<br><span class="ct-dica">responder até ${dia(c.prazo_resposta)}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
     el.querySelectorAll('[data-ct-abrir]').forEach((tr) => tr.addEventListener('click', () => detalhe(Number(tr.dataset.ctAbrir)).catch(erro)));
   }
 
@@ -59,17 +59,21 @@
     const sel = document.getElementById('afFiltroTransportadora');
     return sel ? [...sel.options].map((o) => o.value).filter(Boolean) : [];
   }
-  async function nova() {
+  // pre: { transportadora, ids, de, ate, titulo } — vindo de um padrão de "Diferenças que se repetem".
+  let soIds = null;
+  async function nova(pre = null) {
     const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
-    const ini = `${hoje.slice(0, 7)}-01`;
-    const atual = document.getElementById('afFiltroTransportadora')?.value || '';
-    caixa.innerHTML = `${topo('＋ Nova contestação')}
+    const ini = pre?.de || `${hoje.slice(0, 7)}-01`;
+    const atual = pre?.transportadora || document.getElementById('afFiltroTransportadora')?.value || '';
+    soIds = pre?.ids?.length ? pre.ids : null;
+    caixa.innerHTML = `${topo('＋ Nova contestação')}${pre?.titulo ? `<div class="ct-resumo">🔁 ${esc(pre.titulo)} <a href="#" id="ctTodosCte" style="font-size:12px;">ver todos os CT-e do período</a></div>` : ''}
       <div class="ct-filtros"><label>Transportadora<input id="ctTransp" list="ctTranspLista" value="${esc(atual)}" placeholder="Nome da transportadora"><datalist id="ctTranspLista">${transportadoras().map((t) => `<option value="${esc(t)}">`).join('')}</datalist></label>
-        <label>CT-e emitidos de<input type="date" id="ctDe" value="${ini}"></label><label>até<input type="date" id="ctAte" value="${hoje}"></label>
+        <label>CT-e emitidos de<input type="date" id="ctDe" value="${ini}"></label><label>até<input type="date" id="ctAte" value="${pre?.ate || hoje}"></label>
         <button class="btn btn-secundario" id="ctBuscar" style="width:auto; align-self:end;">🔎 Buscar CT-e</button></div>
       <div id="ctCand" style="margin-top:12px; color:var(--texto-fraco);">Escolha a transportadora e o período e clique em "Buscar CT-e".</div>`;
     ligarComuns();
     document.getElementById('ctBuscar').addEventListener('click', () => buscar().catch(erro));
+    document.getElementById('ctTodosCte')?.addEventListener('click', (e) => { e.preventDefault(); soIds = null; e.target.closest('.ct-resumo').remove(); buscar().catch(erro); });
     if (atual) buscar().catch(erro);
   }
   async function buscar() {
@@ -78,7 +82,7 @@
     const de = document.getElementById('ctDe').value; const ate = document.getElementById('ctAte').value;
     const el = document.getElementById('ctCand');
     el.textContent = 'Buscando…';
-    const j = await json(`/api/contestacoes/candidatos?${new URLSearchParams({ transportadora, de, ate })}`);
+    const j = await json(`/api/contestacoes/candidatos?${new URLSearchParams({ transportadora, de, ate, ...(soIds ? { ids: soIds.join(',') } : {}) })}`);
     if (!j.itens.length) { el.innerHTML = '<p>Nenhum CT-e dessa transportadora cobrado acima da tabela (fora da tolerância) no período, sem glosa e fora de outra contestação.</p>'; return; }
     const opc = (sel) => Object.entries(MOTIVOS).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${esc(v)}</option>`).join('');
     el.innerHTML = `<div class="ct-dica" style="margin-bottom:8px;">Marque os CT-e, ajuste o valor e o motivo se quiser. CT-e já faturado: se aceito, vira crédito na próxima fatura.</div>
@@ -87,6 +91,7 @@
         <td class="n">${moeda(i.valor_cte)}</td><td class="n">${moeda(i.valor_tabela)}</td><td class="n"><input class="ctValor" value="${Number(i.valor_contestado).toFixed(2).replace('.', ',')}" style="width:86px; text-align:right;"></td>
         <td><select class="ctMotivo">${opc(i.motivo_codigo)}</select></td><td><input class="ctTexto" value="${esc(i.motivo_texto)}" style="width:240px;"></td></tr>`).join('')}</tbody></table></div>
       <div class="ct-filtros" style="margin-top:12px;"><label>Enviar para (e-mail)<input id="ctEmail" value="${esc(j.email || '')}" placeholder="e-mail da transportadora"></label>
+        <label style="flex:0 0 150px; min-width:130px;">Prazo para responder (dias)<input id="ctPrazo" type="number" min="1" max="90" value="10"></label>
         <label style="flex:2;">Observação no e-mail<input id="ctObs" placeholder="Opcional"></label></div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap;"><b id="ctTotal"></b>
         <button class="btn btn-primario" id="ctCriar" style="width:auto;">Criar contestação</button></div>`;
@@ -104,7 +109,7 @@
         motivo_codigo: tr.querySelector('.ctMotivo').value, motivo_texto: tr.querySelector('.ctTexto').value,
       }));
       try {
-        const c = await post('/api/contestacoes', { transportadora: j.transportadora, de, ate, email_para: document.getElementById('ctEmail').value, observacao: document.getElementById('ctObs').value, itens });
+        const c = await post('/api/contestacoes', { transportadora: j.transportadora, de, ate, email_para: document.getElementById('ctEmail').value, observacao: document.getElementById('ctObs').value, prazo_dias: document.getElementById('ctPrazo').value, itens });
         detalhe(c.id, c);
       } catch (e) { erro(e); }
     });
@@ -118,7 +123,7 @@
       : i.situacao === 'recusado' ? '<span style="color:var(--vermelho);">Recusado</span>' : 'Pendente');
     caixa.innerHTML = `${topo(`📨 Contestação nº ${c.id} — ${esc(c.transportadora)}`, '<button class="btn btn-secundario" data-ct="voltar" style="width:auto;">← Lista</button>')}
       <div class="ct-resumo"><div>${selo(c.status)}</div><div>Contestado <b>${moeda(c.valor_contestado)}</b></div><div>Aceito <b>${c.valor_aceito != null ? moeda(c.valor_aceito) : '—'}</b></div>
-        <div>Período ${c.de || c.ate ? `${dia(c.de)} a ${dia(c.ate)}` : '—'}</div><div>Para ${esc(c.email_para || '—')}</div><div>Criada por ${esc(c.criado_por || '—')} em ${dia(c.criado_em)}</div>${c.enviada_em ? `<div>Enviada em ${dia(c.enviada_em)}</div>` : ''}</div>
+        <div>Período ${c.de || c.ate ? `${dia(c.de)} a ${dia(c.ate)}` : '—'}</div><div>Para ${esc(c.email_para || '—')}</div><div>Criada por ${esc(c.criado_por || '—')} em ${dia(c.criado_em)}</div>${c.enviada_em ? `<div>Enviada em ${dia(c.enviada_em)}</div>` : ''}${c.status === 'enviada' && c.prazo_resposta ? `<div style="${c.prazo_resposta.slice(0, 10) < new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10) ? 'color:var(--vermelho); font-weight:600;' : ''}">Responder até ${dia(c.prazo_resposta)}${c.lembretes ? ` · ${c.lembretes} lembrete(s)` : ''}</div>` : ''}</div>
       <div class="ct-rolagem"><table class="ct-tabela"><thead><tr><th>CT-e</th><th>NF</th><th>Cliente</th><th class="n">Valor CT-e</th><th class="n">Tabela</th><th class="n">Contestado</th><th>Motivo</th><th>Situação</th>${aberta && pode ? '<th>Resposta</th>' : ''}</tr></thead><tbody>
       ${c.itens.map((i) => `<tr data-item="${i.id}"><td>${esc(i.numero_cte)}</td><td>${esc(i.numero_nf || '')}</td><td>${esc(i.cliente || '')}</td><td class="n">${moeda(i.valor_cte)}</td><td class="n">${moeda(i.valor_tabela)}</td>
         <td class="n"><b>${moeda(i.valor_contestado)}</b></td><td title="${esc(i.motivo_texto || '')}">${esc(MOTIVOS[i.motivo_codigo] || i.motivo_codigo)}</td><td>${sitItem(i)}</td>
@@ -127,7 +132,7 @@
       ${aberta && pode ? '<label class="ct-filtros" style="display:block; margin-top:10px;">Resposta da transportadora (opcional)<input id="ctRespTexto" style="width:100%;" placeholder="Ex.: aceitou por e-mail em 12/11, recusou o CT-e 123 porque..."></label>' : ''}
       <div class="ct-acoes">
         <button class="btn btn-secundario" data-ct="planilha" style="width:auto;">⬇ Planilha</button>
-        ${aberta && pode ? `<button class="btn btn-secundario" data-ct="enviar" style="width:auto;">✉️ ${c.status === 'enviada' ? 'Reenviar' : 'Enviar'} por e-mail</button>` : ''}
+        ${aberta && pode ? `<button class="btn btn-secundario" data-ct="enviar" style="width:auto;">✉️ ${c.status === 'enviada' ? 'Reenviar como lembrete' : 'Enviar'} por e-mail</button>` : ''}
         ${c.status === 'rascunho' && pode ? '<button class="btn btn-secundario" data-ct="marcar" style="width:auto;">Marcar como enviada</button>' : ''}
         ${aberta && pode ? '<button class="btn btn-secundario" data-ct="cancelar" style="width:auto;">Cancelar contestação</button><button class="btn btn-primario" data-ct="responder" style="width:auto;">✔ Registrar resposta</button>' : ''}
       </div>`;
@@ -187,6 +192,42 @@
     await carregar();
   }
 
+  // ---------- Diferenças que se repetem ----------
+  async function padroes() {
+    const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    const ini = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+    caixa.innerHTML = `${topo('🔁 Diferenças que se repetem')}${abas()}
+      <div class="ct-filtros"><label>CT-e emitidos de<input type="date" id="cpDe" value="${ini}"></label><label>até<input type="date" id="cpAte" value="${hoje}"></label>
+        <label>Transportadora<input id="cpTransp" placeholder="Todas"></label><button class="btn btn-secundario" id="cpBuscar" style="width:auto; align-self:end;">🔎 Analisar</button></div>
+      <div id="cpCorpo" style="margin-top:12px;">Analisando…</div>`;
+    ligarComuns();
+    const carregar = async () => {
+      const el = document.getElementById('cpCorpo'); el.textContent = 'Analisando…';
+      const q = { de: document.getElementById('cpDe').value, ate: document.getElementById('cpAte').value, transportadora: document.getElementById('cpTransp').value.trim() };
+      const j = await json(`/api/contestacoes/padroes?${new URLSearchParams(q)}`);
+      if (!j.padroes.length) { el.innerHTML = `<p style="color:var(--texto-fraco);">Nenhuma diferença que se repete em ${j.analisados} CT-e do período. Um padrão precisa de pelo menos 3 CT-e e de aparecer na maioria dos CT-e daquela transportadora (ou cliente, ou trecho).</p>`; return; }
+      el.innerHTML = `<p class="ct-dica" style="margin:0 0 10px;">${j.analisados} CT-e analisados. Quando a diferença é sempre a mesma, o mais provável é a <b>tabela estar desatualizada</b>; quando varia, é <b>erro de cobrança</b>.</p>
+        ${j.padroes.map((p, n) => `<div class="cp-cartao">
+          <div class="cp-cab"><b>${esc(p.texto)}</b><span class="ct-selo" style="--c:${p.sugestao === 'tabela' ? '#ca8a04' : '#dc2626'}">${p.sugestao === 'tabela' ? 'Corrigir a tabela?' : 'Contestar'}</span></div>
+          <div class="ct-dica">${esc(p.transportadora)} · ${p.ctes} de ${p.total_ctes} CT-e (${p.frequencia}%) · ${moeda(p.valor)} a mais no período${p.contestaveis < p.ctes ? ` · ${p.contestaveis} ainda sem glosa nem contestação` : ''}</div>
+          <div class="ct-dica" style="margin-top:2px;">${esc(p.motivo_sugestao)}</div>
+          <div class="ct-acoes" style="justify-content:flex-start; margin-top:8px;">
+            ${pode && p.contestaveis ? `<button class="btn ${p.sugestao === 'contestar' ? 'btn-primario' : 'btn-secundario'}" data-cp-contestar="${n}" style="width:auto;">📨 Contestar ${p.contestaveis} CT-e</button>` : ''}
+            ${p.tabela_preco_id ? `<button class="btn ${p.sugestao === 'tabela' ? 'btn-primario' : 'btn-secundario'}" data-cp-tabela="${p.tabela_preco_id}" style="width:auto;">📋 Abrir a tabela de preço</button>` : ''}
+          </div></div>`).join('')}`;
+      el.querySelectorAll('[data-cp-contestar]').forEach((b) => b.addEventListener('click', () => {
+        const p = j.padroes[Number(b.dataset.cpContestar)];
+        nova({ transportadora: p.transportadora, ids: p.ids, de: j.de, ate: j.ate, titulo: p.texto }).catch(erro);
+      }));
+      el.querySelectorAll('[data-cp-tabela]').forEach((b) => b.addEventListener('click', () => {
+        fechar();
+        if (typeof abrirTabelaPrecoParaEdicao === 'function') abrirTabelaPrecoParaEdicao(Number(b.dataset.cpTabela));
+      }));
+    };
+    document.getElementById('cpBuscar').addEventListener('click', () => carregar().catch(erro));
+    await carregar();
+  }
+
   botao.addEventListener('click', async () => {
     modal.classList.remove('oculto');
     try {
@@ -195,4 +236,22 @@
     } catch (e) { erro(e); }
   });
   window.abrirContestacoes = () => botao.click();
+
+  // Conferência de fatura: avisa o crédito que vai ser abatido e o que está contestado sem resposta.
+  window.avisoContestacoesFatura = async (transportadora) => {
+    const el = document.getElementById('cfAvisoContestacoes');
+    if (!el) return;
+    el.classList.add('oculto');
+    if (!transportadora) return;
+    try {
+      const s = await json(`/api/contestacoes/situacao?${new URLSearchParams({ transportadora })}`);
+      const partes = [];
+      if (s.credito > 0) partes.push(`💰 <b>${moeda(s.credito)}</b> de crédito de contestação aceita vai ser descontado nesta fatura (ela deveria vir com esse desconto).`);
+      if (s.abertas > 0) partes.push(`📨 <b>${moeda(s.valor_aberto)}</b> contestados com esta transportadora ainda sem resposta (contestação nº ${s.ids.join(', ')})${s.vencidas ? `, <b style="color:var(--vermelho);">${s.vencidas} com o prazo vencido</b>` : ''}. Cobre a resposta antes de aprovar a fatura.`);
+      if (!partes.length) return;
+      el.innerHTML = `${partes.join('<br>')} <a href="#" id="cfVerContestacoes">ver contestações</a>`;
+      el.classList.remove('oculto');
+      el.querySelector('#cfVerContestacoes').addEventListener('click', (e) => { e.preventDefault(); botao.click(); });
+    } catch { /* sem permissão para ver contestações: sem aviso */ }
+  };
 })();

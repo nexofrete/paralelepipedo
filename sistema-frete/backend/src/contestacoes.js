@@ -54,7 +54,7 @@ function textoMotivo(f, conf, motivo) {
 }
 
 // CT-e da transportadora que podem ser contestados no período.
-async function candidatos({ transportadora, de, ate }) {
+async function candidatos({ transportadora, de, ate, ids }) {
   if (!String(transportadora || '').trim()) throw falha('Escolha a transportadora.');
   const ad = require('./auditoriaDetalhada');
   const tol = await require('./toleranciaAuditoria').carregar();
@@ -62,6 +62,9 @@ async function candidatos({ transportadora, de, ate }) {
   let periodo = '';
   if (dataOk(de)) { params.push(de); periodo += ` AND f.data_emissao_cte >= $${params.length}`; }
   if (dataOk(ate)) { params.push(ate); periodo += ` AND f.data_emissao_cte <= $${params.length}`; }
+  // Só estes fretes (ex.: os de um padrão de "Diferenças que se repetem").
+  const soIds = String(ids || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  if (soIds.length) { params.push(soIds); periodo += ` AND f.id = ANY($${params.length}::int[])`; }
   const { rows } = await pool.query(
     `SELECT ${ad.CAMPOS}, f.numero_pedido, f.dif_negociado_tabela, f.transportadora, f.cte_nao_levou, f.nf_cancelada, f.alerta_cobranca_dupla,
             f.status_aprovacao, f.fatura_id, f.numero_fatura, f.tabela_preco_id_usada
@@ -123,9 +126,10 @@ async function criar(b, usuarioNome) {
       if (i.valor > Number(f.valor_cte) + 0.004) throw falha(`O valor contestado do CT-e ${f.numero_cte} é maior que o próprio CT-e.`);
     }
     const total = r2(itens.reduce((s, i) => s + i.valor, 0));
-    const { rows: [c] } = await db.query(`INSERT INTO contestacoes (transportadora, email_para, de, ate, valor_contestado, observacao, criado_por)
-      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [transportadora, String(b.email_para || '').trim().slice(0, 300) || await emailDa(transportadora), dataOk(b.de), dataOk(b.ate), total,
-      String(b.observacao || '').trim().slice(0, 2000) || null, usuarioNome]);
+    const prazoDias = Math.min(90, Math.max(1, Math.round(Number(b.prazo_dias) || 10)));
+    const { rows: [c] } = await db.query(`INSERT INTO contestacoes (transportadora, email_para, de, ate, valor_contestado, observacao, criado_por, prazo_dias)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [transportadora, String(b.email_para || '').trim().slice(0, 300) || await emailDa(transportadora), dataOk(b.de), dataOk(b.ate), total,
+      String(b.observacao || '').trim().slice(0, 2000) || null, usuarioNome, prazoDias]);
     for (const i of itens) {
       const f = porId.get(i.frete_id);
       await db.query(`INSERT INTO contestacao_itens (contestacao_id, frete_id, numero_cte, numero_nf, valor_cte, valor_tabela, valor_contestado, motivo_codigo, motivo_texto)
@@ -141,7 +145,9 @@ async function listar(q = {}) {
   if (q.status && SITUACOES[q.status]) { params.push(q.status); cond.push(`c.status = $${params.length}`); }
   if (q.abertas === '1') cond.push("c.status IN ('rascunho', 'enviada')");
   if (String(q.transportadora || '').trim()) { params.push(`%${String(q.transportadora).trim()}%`); cond.push(`c.transportadora ILIKE $${params.length}`); }
+  if (q.vencidas === '1') cond.push("c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE");
   const { rows } = await pool.query(`SELECT c.*, (SELECT COUNT(*)::int FROM contestacao_itens i WHERE i.contestacao_id = c.id) AS qtd,
+      CASE WHEN c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE THEN (CURRENT_DATE - c.prazo_resposta)::int END AS dias_vencida,
       (SELECT COALESCE(SUM(i.valor_aceito), 0) FROM contestacao_itens i WHERE i.contestacao_id = c.id AND i.credito AND i.abatido_fatura_id IS NULL AND i.situacao = 'aceito')::float AS credito_pendente
     FROM contestacoes c ${cond.length ? `WHERE ${cond.join(' AND ')}` : ''} ORDER BY c.id DESC LIMIT 300`, params);
   return rows;
@@ -170,11 +176,12 @@ function planilha(c) {
 }
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-async function htmlEmail(c) {
+async function htmlEmail(c, lembrete = false) {
   const { rows: [emp] } = await pool.query('SELECT razao_social, cnpj, telefone, email FROM empresa WHERE id = 1').catch(() => ({ rows: [{}] }));
   const periodo = c.de || c.ate ? ` (CT-e de ${c.de ? new Date(c.de).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '…'} a ${c.ate ? new Date(c.ate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '…'})` : '';
   return `<div style="font-family:Arial,sans-serif; font-size:14px; color:#1f2937;">
     <p>Prezados, ${esc(c.transportadora)},</p>
+    ${lembrete ? `<p><b>Lembrete:</b> enviamos esta contestação em ${new Date(c.enviada_em).toLocaleDateString('pt-BR')} e ainda não recebemos a resposta. Pedimos retorno até ${new Date(Date.now() + c.prazo_dias * 86400000).toLocaleDateString('pt-BR')}.</p>` : `<p>Pedimos a resposta em até ${c.prazo_dias} dias.</p>`}
     <p>Na conferência dos CT-e com a tabela de frete negociada${periodo}, encontramos as cobranças abaixo, que somam <b>${brl(c.valor_contestado)}</b>.
       Pedimos que confiram e respondam, item a item, se aceitam o desconto. O valor aceito deve vir abatido na próxima fatura.</p>
     <table style="border-collapse:collapse; font-size:12.5px;"><thead><tr>${['CT-e', 'NF', 'Valor do CT-e', 'Pela tabela', 'Contestado', 'Motivo'].map((h) => `<th style="text-align:left; border-bottom:2px solid #d1d5db; padding:5px 8px;">${h}</th>`).join('')}</tr></thead>
@@ -192,14 +199,17 @@ async function enviar(id, usuarioNome, para) {
   const email = String(para || c.email_para || '').trim();
   const lista = email.split(/[;,\s]+/).filter(Boolean);
   if (!lista.length || lista.some((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) throw falha('Informe o e-mail da transportadora (no cadastro dela ou aqui).');
-  await require('./email').enviarRelatorio({ para: lista.join(', '), assunto: `Contestação de frete nº ${c.id} — ${c.transportadora} — ${brl(c.valor_contestado)}`, html: await htmlEmail(c),
+  const lembrete = c.status === 'enviada';
+  await require('./email').enviarRelatorio({ para: lista.join(', '), assunto: `${lembrete ? 'Lembrete: ' : ''}Contestação de frete nº ${c.id} — ${c.transportadora} — ${brl(c.valor_contestado)}`, html: await htmlEmail(c, lembrete),
     anexos: [{ filename: `contestacao-${c.id}.xlsx`, content: planilha(c) }] });
-  await pool.query("UPDATE contestacoes SET status = 'enviada', email_para = $2, enviada_em = NOW(), enviada_por = $3, atualizado_em = NOW() WHERE id = $1", [id, lista.join(', '), usuarioNome]);
+  // 1º envio: guarda a data e o prazo; reenvio é lembrete: renova o prazo e conta.
+  await pool.query(`UPDATE contestacoes SET status = 'enviada', email_para = $2, enviada_em = COALESCE(enviada_em, NOW()), enviada_por = COALESCE(enviada_por, $3),
+      prazo_resposta = CURRENT_DATE + prazo_dias, lembretes = lembretes + $4::int, atualizado_em = NOW() WHERE id = $1`, [id, lista.join(', '), usuarioNome, lembrete ? 1 : 0]);
   return detalhe(id);
 }
 // Sem e-mail: marcar como enviada por outro meio (WhatsApp, portal da transportadora...).
 async function marcarEnviada(id, usuarioNome) {
-  const { rowCount } = await pool.query("UPDATE contestacoes SET status = 'enviada', enviada_em = NOW(), enviada_por = $2, atualizado_em = NOW() WHERE id = $1 AND status = 'rascunho'", [id, usuarioNome]);
+  const { rowCount } = await pool.query("UPDATE contestacoes SET status = 'enviada', enviada_em = NOW(), enviada_por = $2, prazo_resposta = CURRENT_DATE + prazo_dias, atualizado_em = NOW() WHERE id = $1 AND status = 'rascunho'", [id, usuarioNome]);
   if (!rowCount) throw falha('Só a contestação em rascunho pode ser marcada como enviada.', 409);
   return detalhe(id);
 }
@@ -285,4 +295,17 @@ async function resumoMotivos({ de, ate } = {}) {
   return { por_motivo: Object.values(porMotivo).sort((a, b) => b.valor - a.valor), por_transportadora: Object.values(porTransp).sort((a, b) => b.valor - a.valor), ...cr };
 }
 
-module.exports = { MOTIVOS, SITUACOES, sugerirMotivo, valorContestado, candidatos, criar, listar, detalhe, planilha, enviar, marcarEnviada, responder, cancelar, creditosPendentes, abaterCreditos, resumoMotivos };
+// Para a conferência da fatura: o que essa transportadora tem de crédito a abater e de contestação sem resposta.
+async function situacao(transportadora) {
+  const { rows: [r] } = await pool.query(`SELECT
+      COALESCE((SELECT SUM(i.valor_aceito) FROM contestacao_itens i JOIN contestacoes c ON c.id = i.contestacao_id
+                 WHERE c.transportadora = $1 AND i.situacao = 'aceito' AND i.credito AND i.abatido_fatura_id IS NULL), 0)::float AS credito,
+      COUNT(*) FILTER (WHERE c.status = 'enviada')::int AS abertas,
+      COALESCE(SUM(c.valor_contestado) FILTER (WHERE c.status = 'enviada'), 0)::float AS valor_aberto,
+      COUNT(*) FILTER (WHERE c.status = 'enviada' AND c.prazo_resposta < CURRENT_DATE)::int AS vencidas,
+      ARRAY_REMOVE(ARRAY_AGG(c.id ORDER BY c.id) FILTER (WHERE c.status = 'enviada'), NULL) AS ids
+    FROM contestacoes c WHERE c.transportadora = $1`, [transportadora]);
+  return r;
+}
+
+module.exports = { situacao, MOTIVOS, SITUACOES, sugerirMotivo, valorContestado, candidatos, criar, listar, detalhe, planilha, enviar, marcarEnviada, responder, cancelar, creditosPendentes, abaterCreditos, resumoMotivos };

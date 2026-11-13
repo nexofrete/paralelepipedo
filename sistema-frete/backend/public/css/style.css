@@ -1799,3 +1799,8 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 #audRegrasAuto .ct-tabela select { max-width: 170px; }
 #audRegrasAuto .ct-tabela td, #audRegrasAuto .ct-tabela th { padding: 5px 5px; }
 #audRegrasAuto .ra-uso { font-size: 11.5px; color: var(--texto-fraco); white-space: nowrap; }
+
+/* Diferenças que se repetem (aba da janela de contestações) */
+.cp-cartao { border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--bg-card); }
+.cp-cab { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; font-size: 13px; margin-bottom: 4px; }
+.cp-cab .ct-selo { flex-shrink: 0; }

@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../db');
 const { autenticar } = require('../middlewareAuth');
-const { temAlguma, ehAdmin, consultaCliente } = require('../permissoes');
+const { temAlguma, ehAdmin, vePotudo, consultaCliente } = require('../permissoes');
 const backup = require('../backup');
 
 const router = express.Router();
@@ -27,6 +27,16 @@ router.get('/', autenticar, async (req, res) => {
       if (outra[0].qtd > 0) {
         notificacoes.push({ tipo: 'urgente', icone: '⚠️', pagina: 'auditoria-frete', alvo: 'retidos',
           texto: `${outra[0].qtd} nota(s) com CT-e de transportadoras DIFERENTES — confira antes de pagar` });
+      }
+    }
+
+    // Contestação enviada à transportadora e sem resposta depois do prazo.
+    if (verAuditoria && (ehAdmin(req) || vePotudo(req))) {
+      const { rows: [ct] } = await pool.query("SELECT COUNT(*)::int AS qtd, COALESCE(SUM(valor_contestado), 0)::float AS valor FROM contestacoes WHERE status = 'enviada' AND prazo_resposta < CURRENT_DATE")
+        .catch(() => ({ rows: [{ qtd: 0 }] }));
+      if (ct.qtd > 0) {
+        notificacoes.push({ tipo: 'aviso', icone: '📨', pagina: 'auditoria-frete', alvo: 'contestacoes',
+          texto: `${ct.qtd} contestação(ões) de frete sem resposta depois do prazo (R$ ${ct.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) — reenvie a cobrança` });
       }
     }
 

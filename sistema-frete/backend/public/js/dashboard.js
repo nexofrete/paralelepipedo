@@ -6994,6 +6994,7 @@ function irParaAlvoNotificacao(alvo) {
     el.classList.add('destaque-notificacao');
   };
   switch (alvo) {
+    case 'contestacoes': if (window.abrirContestacoes) window.abrirContestacoes({ vencidas: true }); break;
     case 'backup': destacar(document.getElementById('btnBackupAgora')?.closest('.painel')); break;
     case 'tabelas-preco': document.querySelector('.sub-tab[data-subpagina="tabelas-preco"]')?.click(); break;
     case 'anomalias': {
@@ -7988,6 +7989,7 @@ async function cfAbrir() {
 
 async function cfCarregarCtes() {
   const transp = document.getElementById('cfTransportadora').value;
+  if (window.avisoContestacoesFatura) window.avisoContestacoesFatura(transp);
   cfEstado.ctes = [];
   cfEstado.marcados.clear();
   const corpo = document.getElementById('cfCorpo');

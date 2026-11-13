@@ -86,12 +86,23 @@ async function processarDoc(d, ctx) {
       await registrarDoc(d, { chave, ...emitente, resultado: 'proprio', mensagem: 'CT-e emitido pela própria empresa (já está em CT-e emitidos).' });
       return 'proprio';
     }
+    // "Importar só os emitidos desde": CT-e mais antigo que a data é pulado (não entra no sistema).
+    const emissao = String(t('dhEmi') || '').slice(0, 10);
+    if (ctx.config?.importar_desde && emissao && emissao < ctx.config.importar_desde) {
+      await registrarDoc(d, { chave, ...emitente, resultado: 'antigo', mensagem: `Emitido em ${emissao.split('-').reverse().join('/')}, antes de ${ctx.config.importar_desde.split('-').reverse().join('/')}: não importado.` });
+      return 'antigo';
+    }
     const r = await importarXmlInterno(Buffer.from(d.xml, 'utf8'), `SEFAZ NSU ${d.nsu}.xml`, USUARIO_SEFAZ);
     const resultado = r.ok ? 'importado' : r.status === 409 ? 'ja_existia' : 'erro';
     await registrarDoc(d, { chave, ...emitente, resultado, mensagem: r.mensagem });
     return resultado;
   }
   if (/^procEvento/i.test(d.schema)) {
+    // Evento de um CT-e que não está no sistema (pulado por ser antigo): só fica registrado.
+    if (ctx.config?.importar_desde && chave) {
+      const { rows: [tem] } = await pool.query('SELECT 1 FROM fretes WHERE chave_cte = $1 LIMIT 1', [chave]);
+      if (!tem) { await registrarDoc(d, { chave, resultado: 'antigo', mensagem: `${t('descEvento') || 'Evento'} de um CT-e que não está no sistema: não aplicado.` }); return 'antigo'; }
+    }
     const r = await importarXmlInterno(Buffer.from(d.xml, 'utf8'), `SEFAZ NSU ${d.nsu} evento.xml`, USUARIO_SEFAZ);
     const resultado = r.ok ? 'evento' : r.status === 409 ? 'ja_existia' : 'erro';
     await registrarDoc(d, { chave, resultado, mensagem: `${t('descEvento') || 'Evento'}: ${r.mensagem}` });
@@ -104,8 +115,50 @@ async function processarDoc(d, ctx) {
 async function salvarEstado(m) {
   await pool.query(`UPDATE empresa SET cte_dist_estado = COALESCE(cte_dist_estado, '{}'::jsonb) || $1::jsonb WHERE id = 1`, [JSON.stringify(m)]);
 }
+// "Começar a partir do NSU": a próxima consulta traz o que vem DEPOIS deste número (0 = tudo o que a SEFAZ ainda
+// guarda, uns 3 meses). Os documentos que já estão no sistema não duplicam. Se houver o que buscar (NSU menor que o
+// último que a SEFAZ informou), libera a consulta na hora; senão mantém a espera de 1 hora da SEFAZ (evita o bloqueio 656).
+async function definirNsuCtes(valor) {
+  const t = String(valor ?? '').trim();
+  if (!/^\d{1,15}$/.test(t)) throw Object.assign(new Error('Informe o NSU só com números (0 = tudo o que a SEFAZ ainda guarda).'), { status: 400 });
+  const nsu = Number(t);
+  const { rows: [e] } = await pool.query('SELECT cte_dist_estado AS estado FROM empresa WHERE id = 1');
+  const est = e?.estado || {};
+  const anterior = Number(est.ult_nsu) || 0; const max = Number(est.max_nsu) || 0;
+  if (max && nsu > max) throw Object.assign(new Error(`A SEFAZ informou que o maior NSU disponível é ${max}. Use um número até ${max}.`), { status: 400 });
+  const libera = !max || nsu < max;
+  await salvarEstado({ ult_nsu: nsu, ...(libera ? { proxima_consulta: null } : {}), nsu_definido_em: new Date().toISOString(), nsu_anterior: anterior });
+  return { ult_nsu: nsu, anterior, max_nsu: max || null, liberada: libera };
+}
+
+// "Só os novos daqui pra frente": pula tudo o que a SEFAZ já tem para a empresa. Uma consulta só para saber o maior
+// NSU (os documentos dela são descartados) e a busca passa a começar dele; a próxima consulta segue a espera de 1 hora.
+async function pularParaNovosCtes() {
+  const ctx = await contexto();
+  const proxima = ctx.estado.proxima_consulta ? Date.parse(ctx.estado.proxima_consulta) : 0;
+  const anterior = Number(ctx.estado.ult_nsu) || 0;
+  let max = Number(ctx.estado.max_nsu) || 0;
+  if (!ctx.demo && proxima > Date.now() && max) {
+    // Já sabemos o maior NSU: não precisa consultar.
+    await salvarEstado({ ult_nsu: max, nsu_definido_em: new Date().toISOString(), nsu_anterior: anterior });
+    return { ult_nsu: max, anterior, pulados: Math.max(0, max - anterior), consultou: false };
+  }
+  const r = await distribuicao(ctx, anterior);
+  if (r.cStat === '656') {
+    await salvarEstado({ proxima_consulta: new Date(Date.now() + UMA_HORA).toISOString(), ultimo_cstat: r.cStat, ultimo_motivo: r.xMotivo });
+    throw falha(`A SEFAZ bloqueou por consumo indevido (656): ${r.xMotivo}. Tente de novo em 1 hora.`, 429);
+  }
+  if (!['137', '138'].includes(r.cStat)) throw falha(`A SEFAZ recusou a consulta: ${r.cStat} — ${r.xMotivo}`);
+  max = Math.max(Number(r.maxNSU) || 0, Number(r.ultNSU) || 0, anterior);
+  await salvarEstado({ ult_nsu: max, max_nsu: max, ultima_consulta: new Date().toISOString(), ultimo_cstat: r.cStat, ultimo_motivo: r.xMotivo,
+    proxima_consulta: new Date(Date.now() + UMA_HORA).toISOString(), nsu_definido_em: new Date().toISOString(), nsu_anterior: anterior });
+  return { ult_nsu: max, anterior, pulados: Math.max(0, max - anterior), consultou: true };
+}
+
 async function salvarConfigCtes(b = {}) {
-  const c = { ativo: !!b.ativo };
+  const atual = (await empresa()).cte_dist_config || {};
+  const desde = b.importar_desde === undefined ? (atual.importar_desde || null) : (/^\d{4}-\d{2}-\d{2}$/.test(String(b.importar_desde || '')) ? b.importar_desde : null);
+  const c = { ativo: b.ativo === undefined ? !!atual.ativo : !!b.ativo, importar_desde: desde };
   await pool.query('UPDATE empresa SET cte_dist_config = $1 WHERE id = 1', [JSON.stringify(c)]);
   return c;
 }
@@ -119,7 +172,7 @@ async function consultarCtes({ automatico = false } = {}) {
     throw falha(`A SEFAZ só aceita uma nova consulta depois de 1 hora quando não há documentos novos. Próxima consulta liberada às ${quando}.`, 429);
   }
   let ult = Number(ctx.estado.ult_nsu) || 0; let max = Number(ctx.estado.max_nsu) || 0;
-  const cont = { documentos: 0, importados: 0, ja_existiam: 0, proprios: 0, eventos: 0, erros: 0 };
+  const cont = { documentos: 0, importados: 0, ja_existiam: 0, proprios: 0, eventos: 0, erros: 0, antigos: 0 };
   let r = null;
   for (let i = 0; i < 20; i += 1) {
     r = await distribuicao(ctx, ult);
@@ -140,7 +193,7 @@ async function consultarCtes({ automatico = false } = {}) {
         await registrarDoc(d, { resultado: 'erro', mensagem: e.message }).catch(() => {});
         return 'erro';
       });
-      const k = { importado: 'importados', ja_existia: 'ja_existiam', proprio: 'proprios', evento: 'eventos', erro: 'erros' }[x];
+      const k = { importado: 'importados', ja_existia: 'ja_existiam', proprio: 'proprios', evento: 'eventos', erro: 'erros', antigo: 'antigos' }[x];
       if (k) cont[k] += 1;
     }
     if (r.ultNSU) ult = r.ultNSU;
@@ -406,7 +459,7 @@ const simulador = (() => {
 
 module.exports = {
   // CT-e na SEFAZ
-  consultarCtes, estadoCtes, salvarConfigCtes, lerRetornoDist, corpoDist, processarDoc, URL_DIST,
+  consultarCtes, estadoCtes, salvarConfigCtes, definirNsuCtes, pularParaNovosCtes, lerRetornoDist, corpoDist, processarDoc, URL_DIST,
   // Cadastro de contribuinte
   consultarCadastro, lerRetornoCad, corpoCad, avisoDoCadastro, urlCadastro, SITUACOES_IE,
   // Situação

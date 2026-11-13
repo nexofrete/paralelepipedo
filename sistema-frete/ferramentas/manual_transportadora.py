@@ -921,7 +921,8 @@ def parte_financeiro(g):
     s.append(P('<b>NF-e contra o CNPJ</b> (143): o sistema busca na SEFAZ (Ambiente Nacional), com o mesmo certificado do '
                'CT-e, todas as NF-e emitidas para a sua empresa, sem pedir o XML ao fornecedor.'))
     s += passos([
-        'Clique em <b>Buscar na SEFAZ agora</b> (ou marque <b>Buscar sozinho</b>, a cada hora). Primeiro chega o '
+        'Clique em <b>Buscar na SEFAZ agora</b> (ou marque <b>Buscar sozinho</b>, a cada hora). O administrador pode escolher '
+        '<b>Começar a partir do NSU</b> (a próxima busca traz o que vem depois desse número; 0 = tudo o que a SEFAZ ainda guarda). Primeiro chega o '
         '<b>resumo</b> de cada nota: fornecedor, valor e situação.',
         'Dê <b>Ciência</b> na nota (ou marque <b>Dar ciência automaticamente</b>): com a ciência, a SEFAZ libera o XML '
         'completo. Se ele não vier na hora, use <b>Baixar XML</b> mais tarde.',

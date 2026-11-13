@@ -295,6 +295,10 @@
           <label class="ag-check"><input type="checkbox" id="dfeCiencia" ${d.config.ciencia_automatica ? 'checked' : ''} /> Dar ciência automaticamente às notas novas (para o XML chegar)</label>
           <label class="ag-check"><input type="checkbox" id="dfeCte" ${d.config.cte_automatico ? 'checked' : ''} /> NF-e em que somos a transportadora vira rascunho de CT-e sozinha</label>
         </div>
+        ${usuario?.perfil === 'admin' ? `<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; font-size:13px;">
+          <label style="display:flex; gap:6px; align-items:center;" title="A próxima busca traz os documentos que vêm DEPOIS deste número (0 = tudo o que a SEFAZ ainda guarda, uns 3 meses). As NF-e que já estão no sistema não duplicam.">Começar a partir do NSU
+            <input id="dfeNsu" inputmode="numeric" class="cte-entrada" style="width:150px; padding:5px 8px;" placeholder="atual: ${esc(e.ult_nsu ?? 0)}" /></label>
+          <button class="btn btn-secundario" id="dfeNsuUsar" style="width:auto;">Usar este NSU</button></div>` : ''}
       </div>
       <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
         <div class="oc-filtros">${FILT.map(([k, t]) => `<button class="oc-filtro ${dfe.filtro === k ? 'ativo' : ''}" data-dfe-filtro="${k}">${t}<span class="n">${c[k]}</span></button>`).join('')}</div>
@@ -324,6 +328,13 @@
     $('dfeBuscar').addEventListener('click', async (ev) => {
       const b = ev.currentTarget; b.disabled = true; b.textContent = 'Consultando…';
       try { const r = await api('/dfe/consultar', { method: 'POST' }); mostrarAlerta(r.novos || r.atualizados ? `${r.novos} NF-e nova(s) e ${r.atualizados} atualizada(s).${r.ciencias ? ` Ciência dada em ${r.ciencias}.` : ''}` : 'Nenhum documento novo na SEFAZ.', { tipo: 'sucesso' }); } catch (err) { erro(err); }
+      recarregar();
+    });
+    $('dfeNsuUsar')?.addEventListener('click', async () => {
+      const nsu = $('dfeNsu').value.trim();
+      if (!/^\d+$/.test(nsu)) { mostrarAlerta('Informe o NSU só com números (0 = tudo o que a SEFAZ ainda guarda).', { tipo: 'aviso' }); return; }
+      if (!await confirmar(`A próxima busca de NF-e vai trazer os documentos que vêm depois do NSU ${nsu}. Hoje a busca está no NSU ${e.ult_nsu ?? 0}. As NF-e que já estão no sistema não duplicam. Continuar?`, { titulo: 'Começar a partir do NSU', textoOk: 'Usar este NSU' })) return;
+      try { const r = await api('/dfe/nsu', { method: 'PUT', body: JSON.stringify({ nsu }) }); mostrarAlerta(`Pronto: a próxima busca começa depois do NSU ${r.ult_nsu}.${r.liberada ? '' : ' A SEFAZ só libera a próxima consulta no horário mostrado.'}`, { tipo: 'sucesso' }); } catch (err) { erro(err); }
       recarregar();
     });
     const salvarCfg = () => api('/dfe/config', { method: 'PUT', body: JSON.stringify({ ativo: $('dfeAuto').checked, ciencia_automatica: $('dfeCiencia').checked, cte_automatico: $('dfeCte').checked }) }).then(() => mostrarAlerta('Salvo.', { tipo: 'sucesso' })).catch(erro);

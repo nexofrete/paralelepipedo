@@ -97,6 +97,11 @@ router.put('/dfe/config', autenticar, apenasAdmin, rota(async (req, res) => {
   log(req, `Busca automática de NF-e na SEFAZ ${c.ativo ? 'ligada' : 'desligada'}${c.ciencia_automatica ? ', com ciência automática' : ''}`);
   res.json(c);
 }, 'Erro ao salvar.'));
+router.put('/dfe/nsu', autenticar, apenasAdmin, rota(async (req, res) => {
+  const r = await dfe.definirNsu(req.body?.nsu);
+  log(req, `Busca de NF-e na SEFAZ passa a começar depois do NSU ${r.ult_nsu} (estava em ${r.anterior})`);
+  res.json(r);
+}, 'Erro ao mudar o NSU.'));
 router.post('/dfe/consultar', autenticar, pode, rota(async (req, res) => {
   const r = await dfe.consultar();
   log(req, `Buscou NF-e na SEFAZ: ${r.novos} nova(s), ${r.atualizados} atualizada(s) (NSU ${r.ult_nsu}/${r.max_nsu})`);

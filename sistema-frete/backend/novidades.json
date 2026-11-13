@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "SEFAZ", "texto": "CT-e na SEFAZ: \"Começar a partir do NSU\", \"Só os novos daqui pra frente\" (pula os CT-e antigos que a SEFAZ já tem) e \"Importar só os emitidos desde\" uma data, para não trazer todos os CT-e. NF-e contra o CNPJ também ganhou \"Começar a partir do NSU\"."},
         {"area": "Entregas", "texto": "SSW com redespacho: a entrega da transportadora do CT-e no ponto de redespacho não se perde mais quando a SSW devolve só os eventos da outra transportadora (o sistema usa também o histórico já guardado da nota), e o \"ANEXADO COMPROVANTE DE ENTREGA\" com a data da entrega também conta. Rode \"Buscar entregas\" para baixar as notas que ficaram para trás."},
         {"area": "Entregas", "texto": "SSW: na nota sem redespacho, a \"MERCADORIA ENTREGUE\" na cidade do cliente lançada por um parceiro da transportadora (outro código na SSW) agora baixa a entrega. Antes ficava só como informação e a nota continuava atrasada."},
         {"area": "Entregas", "texto": "Cadastro da LD Rio salvo como portal \"Lonngren\" com o link do site da LD Rio passa sozinho para \"Central de Canhotos (LD Rio Pizzo)\", mantendo o e-mail e a senha, e as entregas voltam a ser baixadas. O botão \"Conferir no portal\" também aparece nas notas da LD Rio sem o portal configurado, para explicar o que falta."},

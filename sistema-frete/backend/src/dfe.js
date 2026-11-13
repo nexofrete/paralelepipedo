@@ -43,6 +43,22 @@ async function contexto({ semCertificado = false } = {}) {
 async function salvarEstado(mudancas) {
   await pool.query(`UPDATE empresa SET dfe_estado = COALESCE(dfe_estado, '{}'::jsonb) || $1::jsonb WHERE id = 1`, [JSON.stringify(mudancas)]);
 }
+// "Começar a partir do NSU": a próxima consulta traz o que vem DEPOIS deste número (0 = tudo o que a SEFAZ ainda
+// guarda, uns 3 meses). Os documentos que já estão no sistema não duplicam. Se houver o que buscar (NSU menor que o
+// último que a SEFAZ informou), libera a consulta na hora; senão mantém a espera de 1 hora da SEFAZ (evita o bloqueio 656).
+async function definirNsu(valor) {
+  const t = String(valor ?? '').trim();
+  if (!/^\d{1,15}$/.test(t)) throw Object.assign(new Error('Informe o NSU só com números (0 = tudo o que a SEFAZ ainda guarda).'), { status: 400 });
+  const nsu = Number(t);
+  const { rows: [e] } = await pool.query('SELECT dfe_estado AS estado FROM empresa WHERE id = 1');
+  const est = e?.estado || {};
+  const anterior = Number(est.ult_nsu) || 0; const max = Number(est.max_nsu) || 0;
+  if (max && nsu > max) throw Object.assign(new Error(`A SEFAZ informou que o maior NSU disponível é ${max}. Use um número até ${max}.`), { status: 400 });
+  const libera = !max || nsu < max;
+  await salvarEstado({ ult_nsu: nsu, ...(libera ? { proxima_consulta: null } : {}), nsu_definido_em: new Date().toISOString(), nsu_anterior: anterior });
+  return { ult_nsu: nsu, anterior, max_nsu: max || null, liberada: libera };
+}
+
 async function salvarConfig(b = {}) {
   const c = { ativo: !!b.ativo, ciencia_automatica: !!b.ciencia_automatica, cte_automatico: !!b.cte_automatico };
   await pool.query('UPDATE empresa SET dfe_config = $1 WHERE id = 1', [JSON.stringify(c)]);
@@ -390,4 +406,4 @@ const simulador = (() => {
   };
 })();
 
-module.exports = { MANIFESTACOES, SITUACOES_NFE, contexto, salvarConfig, consultar, baixarXml, manifestar, listar, estado, ignorar, xmlDa, pendencias, agendar, cargasSemCte, rascunhosCte, lerRetornoDist, processarDoc, montarEvento, corpoDist };
+module.exports = { MANIFESTACOES, SITUACOES_NFE, contexto, salvarConfig, definirNsu, consultar, baixarXml, manifestar, listar, estado, ignorar, xmlDa, pendencias, agendar, cargasSemCte, rascunhosCte, lerRetornoDist, processarDoc, montarEvento, corpoDist };

@@ -393,6 +393,14 @@ def parte_uso(g):
         'Regra da SEFAZ: quando ela responde "nenhum documento novo", a próxima consulta só é aceita 1 hora depois. O botão '
         'fica bloqueado até lá e mostra o horário liberado.',
         'No modo demonstração a SEFAZ é simulada: vêm dois CT-e de exemplo e um "emitido pela empresa".',
+        '<b>Para não trazer todos os CT-e antigos</b> (administrador): <b>Só os novos daqui pra frente</b> pula tudo o que a SEFAZ '
+        'já tem para a empresa (faz uma consulta só para saber até onde pular; os antigos não são importados) e a busca passa a '
+        'trazer só os CT-e emitidos dali em diante. <b>Importar só os emitidos desde</b> (uma data, com <b>Salvar data</b>): os CT-e '
+        'mais antigos que a data são pulados e aparecem como "Antigo (pulado)"; os eventos deles também não são aplicados. Vazio = '
+        'importa todos.',
+        '<b>Começar a partir do NSU</b> (administrador): o NSU é o número de ordem dos documentos na SEFAZ. A próxima busca traz o que '
+        'vem depois do número informado (0 = tudo o que a SEFAZ ainda guarda, uns 3 meses); os CT-e que já estão no sistema não '
+        'duplicam. O número não pode passar do maior NSU que a SEFAZ informou.',
     ])
 
     # 15

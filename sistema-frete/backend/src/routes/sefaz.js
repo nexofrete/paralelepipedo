@@ -22,9 +22,24 @@ router.post('/ctes/consultar', autenticar, permitir('pode_enviar_xml'), async (r
 router.put('/ctes/config', autenticar, apenasAdmin, async (req, res) => {
   try {
     const c = await s.salvarConfigCtes(req.body || {});
-    log(req, 'cte_sefaz', `${c.ativo ? 'Ligou' : 'Desligou'} a busca automática de CT-e na SEFAZ`);
+    log(req, 'cte_sefaz', `${c.ativo ? 'Ligou' : 'Desligou'} a busca automática de CT-e na SEFAZ${c.importar_desde ? `; importa só os emitidos desde ${c.importar_desde}` : ''}`);
     res.json(c);
   } catch (err) { erro(res, err, 'Erro ao salvar.'); }
+});
+
+router.post('/ctes/so-novos', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const r = await s.pularParaNovosCtes();
+    log(req, 'cte_sefaz', `Busca de CT-e na SEFAZ: pulou os antigos (NSU ${r.anterior} → ${r.ult_nsu}); daqui pra frente só os novos`);
+    res.json(r);
+  } catch (err) { erro(res, err, 'Erro ao pular os CT-e antigos.'); }
+});
+router.put('/ctes/nsu', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const r = await s.definirNsuCtes(req.body?.nsu);
+    log(req, 'cte_sefaz', `Busca de CT-e na SEFAZ passa a começar depois do NSU ${r.ult_nsu} (estava em ${r.anterior})`);
+    res.json(r);
+  } catch (err) { erro(res, err, 'Erro ao mudar o NSU.'); }
 });
 
 // Consulta de cadastro de contribuinte

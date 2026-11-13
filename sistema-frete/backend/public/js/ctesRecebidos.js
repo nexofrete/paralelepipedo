@@ -128,7 +128,7 @@
   });
   // CT-e na SEFAZ (distribuição DF-e): busca agora, busca automática e o que veio.
   const RESULTADOS = { importado: ['entregue', 'Importado'], ja_existia: ['em_transito', 'Já estava no sistema'], proprio: ['agendada', 'Emitido pela empresa'],
-    evento: ['entregue', 'Evento aplicado'], ignorado: ['em_transito', 'Só resumo'], erro: ['ocorrencia', 'Não importado'] };
+    evento: ['entregue', 'Evento aplicado'], ignorado: ['em_transito', 'Só resumo'], erro: ['ocorrencia', 'Não importado'], antigo: ['em_transito', 'Antigo (pulado)'] };
   async function abrirSefaz() {
     const fundo = document.createElement('div');
     fundo.className = 'modal-overlay';
@@ -157,6 +157,15 @@
           ${podeBuscar ? `<button class="btn btn-primario" id="ctrSefazBuscar" style="width:auto;" ${prox && !j.demo ? 'disabled' : ''}>🔄 Buscar agora</button>` : ''}
           <label style="display:flex; gap:6px; align-items:center; font-size:13px;"><input type="checkbox" id="ctrSefazAuto" ${j.config?.ativo ? 'checked' : ''} ${ehAdmin ? '' : 'disabled'} style="width:auto;" />
             Buscar sozinho (a cada hora)${ehAdmin ? '' : ' — só o administrador muda'}</label>
+          ${ehAdmin ? `<label style="display:flex; gap:6px; align-items:center; font-size:13px;" title="A próxima busca traz os documentos que vêm DEPOIS deste número (0 = tudo o que a SEFAZ ainda guarda, uns 3 meses). Os que já estão no sistema não duplicam.">Começar a partir do NSU
+            <input id="ctrSefazNsu" inputmode="numeric" class="cte-entrada" style="width:150px; padding:5px 8px;" placeholder="atual: ${esc(e.ult_nsu ?? 0)}" /></label>
+          <button class="btn btn-secundario" id="ctrSefazNsuUsar" style="width:auto;">Usar este NSU</button>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+          <button class="btn btn-secundario" id="ctrSefazSoNovos" style="width:auto;" title="Pula todos os CT-e que a SEFAZ já tem e passa a trazer só os emitidos daqui pra frente">⏭ Só os novos daqui pra frente</button>
+          <label style="display:flex; gap:6px; align-items:center; font-size:13px;" title="CT-e emitidos antes desta data são pulados (não entram no sistema). Vazio = importa todos.">Importar só os emitidos desde
+            <input type="date" id="ctrSefazDesde" class="cte-entrada" style="width:160px; padding:5px 8px;" value="${esc(j.config?.importar_desde || '')}" /></label>
+          <button class="btn btn-secundario" id="ctrSefazDesdeSalvar" style="width:auto;">Salvar data</button>` : ''}
         </div>
         <table class="edi-tabela"><thead><tr><th>NSU</th><th>Quando</th><th>CT-e / emitente</th><th>Resultado</th></tr></thead><tbody>
         ${(j.docs || []).map((d) => `<tr><td>${esc(d.nsu)}</td><td>${dataHora(d.criado_em)}</td>
@@ -164,13 +173,44 @@
           <td><span class="oc-sit ${(RESULTADOS[d.resultado] || RESULTADOS.erro)[0]}">${(RESULTADOS[d.resultado] || [0, d.resultado])[1]}</span>${pequeno(esc(d.mensagem || ''))}
             ${d.frete_id && d.chave ? `<br><a href="#" data-ctr-chave="${esc(d.chave)}">ver o CT-e</a>` : ''}</td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--texto-fraco);">Nenhum documento buscado ainda.</td></tr>'}
         </tbody></table></div>`;
+      fundo.querySelector('#ctrSefazSoNovos')?.addEventListener('click', async () => {
+        if (!await confirmar('Pular todos os CT-e que a SEFAZ já tem para a empresa? Eles NÃO serão importados; a busca passa a trazer só os emitidos daqui pra frente. (Faz uma consulta à SEFAZ só para saber até onde pular; a próxima busca segue a espera de 1 hora da SEFAZ.)', { titulo: 'Só os novos daqui pra frente', textoOk: 'Pular os antigos' })) return;
+        try {
+          const rr = await apiFetch('/api/sefaz/ctes/so-novos', { method: 'POST' });
+          const jj = await rr.json().catch(() => ({}));
+          if (!rr.ok) throw new Error(jj.erro || 'Erro ao pular os antigos.');
+          mostrarAlerta(`Pronto: ${jj.pulados} documento(s) antigo(s) pulado(s). A busca agora começa no NSU ${jj.ult_nsu} e traz só os CT-e novos.`, { tipo: 'sucesso' });
+          desenhar().catch((err) => mostrarAlerta(err.message, { tipo: 'erro' }));
+        } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+      });
+      fundo.querySelector('#ctrSefazDesdeSalvar')?.addEventListener('click', async () => {
+        const desde = fundo.querySelector('#ctrSefazDesde').value || null;
+        try {
+          const rr = await apiFetch('/api/sefaz/ctes/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ importar_desde: desde }) });
+          const jj = await rr.json().catch(() => ({}));
+          if (!rr.ok) throw new Error(jj.erro || 'Erro ao salvar.');
+          mostrarAlerta(desde ? `Pronto: CT-e emitidos antes de ${desde.split('-').reverse().join('/')} serão pulados.` : 'Pronto: todos os CT-e serão importados.', { tipo: 'sucesso' });
+        } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+      });
+      fundo.querySelector('#ctrSefazNsuUsar')?.addEventListener('click', async () => {
+        const nsu = fundo.querySelector('#ctrSefazNsu').value.trim();
+        if (!/^\d+$/.test(nsu)) { mostrarAlerta('Informe o NSU só com números (0 = tudo o que a SEFAZ ainda guarda).', { tipo: 'aviso' }); return; }
+        if (!await confirmar(`A próxima busca de CT-e vai trazer os documentos que vêm depois do NSU ${nsu}${Number(nsu) === 0 ? ' (tudo o que a SEFAZ ainda guarda, uns 3 meses)' : ''}. Hoje a busca está no NSU ${e.ult_nsu ?? 0}. Os CT-e que já estão no sistema não duplicam. Continuar?`, { titulo: 'Começar a partir do NSU', textoOk: 'Usar este NSU' })) return;
+        try {
+          const rr = await apiFetch('/api/sefaz/ctes/nsu', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nsu }) });
+          const jj = await rr.json().catch(() => ({}));
+          if (!rr.ok) throw new Error(jj.erro || 'Erro ao mudar o NSU.');
+          mostrarAlerta(`Pronto: a próxima busca começa depois do NSU ${jj.ult_nsu}.${jj.liberada ? ' Já pode clicar em "Buscar agora".' : ' A SEFAZ só libera a próxima consulta no horário mostrado.'}`, { tipo: 'sucesso' });
+          desenhar().catch((err) => mostrarAlerta(err.message, { tipo: 'erro' }));
+        } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
+      });
       fundo.querySelector('#ctrSefazBuscar')?.addEventListener('click', async (ev) => {
         const b = ev.currentTarget; b.disabled = true; b.textContent = 'Buscando…';
         try {
           const rr = await apiFetch('/api/sefaz/ctes/consultar', { method: 'POST' });
           const jj = await rr.json().catch(() => ({}));
           if (!rr.ok) throw new Error(jj.erro || 'Erro ao buscar.');
-          mostrarAlerta(`SEFAZ: ${jj.importados} CT-e novo(s), ${jj.ja_existiam} já existia(m), ${jj.eventos} evento(s)${jj.erros ? `, ${jj.erros} com erro` : ''}.`, { tipo: jj.erros ? 'aviso' : 'sucesso' });
+          mostrarAlerta(`SEFAZ: ${jj.importados} CT-e novo(s), ${jj.ja_existiam} já existia(m), ${jj.eventos} evento(s)${jj.antigos ? `, ${jj.antigos} antigo(s) pulado(s)` : ''}${jj.erros ? `, ${jj.erros} com erro` : ''}.`, { tipo: jj.erros ? 'aviso' : 'sucesso' });
           if (montado) carregar();
         } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); }
         await desenhar().catch(() => {});

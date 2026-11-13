@@ -506,6 +506,20 @@ def parte_uso(g):
                'custar. No topo ficam os totais: registros comparados, pago a mais que a tabela, pago a menos e a '
                'diferença líquida. Dá para filtrar por transportadora, status (OK, divergente, carga direta) e buscar '
                'por CT-e, pedido ou cliente.'))
+    s += h2('Entendendo a diferença do frete')
+    s += lista([
+        '<b>No cartão</b>: Cobrado, Tabela e a diferença em R$ e em %. "A mais" (vermelho) = a transportadora cobrou mais que a '
+        'tabela; "A menos" (verde) = cobrou menos; "Na tolerância" (cinza) = diferença pequena, dentro da tolerância configurada, '
+        'que conta como confere. Quando há taxa divergente, a linha <b>Onde</b> mostra as que mais pesam (ex.: TDE +R$ 45,00).',
+        '<b>No Detalhe</b>, o quadro do alto resume tudo numa frase: "A transportadora cobrou R$ X a mais que a tabela (+Y%)", '
+        'com o valor pela tabela, o cobrado no CT-e, a diferença e duas barras para comparar o tamanho.',
+        '<b>Onde está a diferença</b>: cada componente que não bate (frete peso, taxas, ad valorem, GRIS...), com o cobrado, o da '
+        'tabela e quanto a mais ou a menos; taxa que a tabela não prevê; peso ou volumes do CT-e diferentes da nota; ICMS. O que '
+        'os itens não explicam aparece como <b>Restante</b> (normalmente o frete base ou o frete mínimo).',
+        'Diferença muito grande (CT-e com mais que o dobro ou menos da metade da tabela) ganha um aviso: quase sempre é o trecho ou '
+        'a tabela errada, e não cobrança indevida. Confira em "Como o sistema calculou" antes de cobrar a transportadora.',
+        '<b>Glosar a diferença</b>: no quadro, já com o valor cobrado a mais preenchido (dá para mudar antes de confirmar).',
+    ])
     s += h2('Conferência em detalhe (no detalhe do frete)')
     s.append(P('Abaixo do cálculo, o detalhe do frete mostra a <b>conferência em detalhe</b>: cada componente lado a lado, '
                '<b>tabela × CT-e</b>, com a diferença e a situação (confere, cobrado a mais, cobrado a menos, não prevista na '

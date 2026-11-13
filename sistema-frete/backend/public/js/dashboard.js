@@ -3733,8 +3733,9 @@ function renderizarAuditoriaFrete() {
       : '';
 
     // Só as taxas divergentes (o frete total já está nos valores acima).
-    const resumoDivergencia = (l.status === 'Frete Retido' && !jaAprovado && taxasDivergentes.length)
-      ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px; font-size:11.5px;">${taxasDivergentes.map((t) => `${cfEsc(t.nome)}: cobrado ${formatoMoeda(t.cobrado)} · tabela ${formatoMoeda(t.esperado)}`).join('<br>')}</div>`
+    const resumoDivergencia = (divergente && !jaAprovado && taxasDivergentes.length)
+      ? `<div class="cartao-auditoria-nota" style="margin-top:8px; padding:8px; font-size:11.5px;"><b>Onde:</b> ${[...taxasDivergentes].sort((x, y) => Math.abs(y.diferenca) - Math.abs(x.diferenca)).slice(0, 3)
+        .map((t) => `${cfEsc(t.nome)} ${t.diferenca > 0 ? '+' : ''}${formatoMoeda(t.diferenca)}`).join(' · ')}${taxasDivergentes.length > 3 ? ` · +${taxasDivergentes.length - 3}` : ''}</div>`
       : '';
     // Diferença enorme (mais que o dobro, ou menos da metade da tabela): quase sempre é
     // o trecho/tabela errado (ex.: lotação calculada como fracionado), não cobrança indevida.
@@ -3787,7 +3788,7 @@ function renderizarAuditoriaFrete() {
         <div class="kanban-cartao-valores">
           <div title="Valor cobrado no CT-e"><span>Cobrado</span><strong>${formatoMoeda(l.valor_frete_negociado)}</strong></div>
           <div title="${dicaEsperado}"><span>${rotuloEsperado}</span><strong>${esperado == null ? '—' : formatoMoeda(esperado)}</strong></div>
-          <div class="kanban-cartao-dif" title="Cobrado − ${rotuloEsperado.toLowerCase()}: positivo = a transportadora cobrou a mais"><span>${semDif ? 'Diferença' : dif > 0 ? 'A mais' : dif < 0 ? 'A menos' : 'Diferença'}</span><strong style="color:${dif > 0.009 ? 'var(--vermelho)' : (dif < -0.009 ? 'var(--verde)' : 'inherit')};">${semDif ? '—' : `${dif > 0 ? '+' : ''}${formatoMoeda(dif)}`}</strong></div>
+          <div class="kanban-cartao-dif" title="${semDif ? 'Ainda sem cálculo pela tabela' : !divergente && Math.abs(dif) >= 0.01 ? `Diferença dentro da tolerância (${formatoMoeda(toleranciaFrete)}): conta como confere` : dif > 0 ? 'A transportadora cobrou a mais que a tabela' : dif < 0 ? 'A transportadora cobrou a menos que a tabela' : 'Confere com a tabela'}"><span>${semDif ? 'Diferença' : Math.abs(dif) < 0.01 ? 'Confere' : !divergente ? 'Na tolerância' : dif > 0 ? 'A mais' : 'A menos'}</span><strong style="color:${!divergente ? 'var(--texto-fraco)' : dif > 0 ? 'var(--vermelho)' : 'var(--verde)'};">${semDif ? '—' : Math.abs(dif) < 0.01 ? '✓' : `${dif > 0 ? '+' : ''}${formatoMoeda(dif)}`}</strong>${!semDif && Math.abs(dif) >= 0.01 && Number(esperado) ? `<small style="display:block; font-size:10.5px; color:${!divergente ? 'var(--texto-fraco)' : dif > 0 ? 'var(--vermelho)' : 'var(--verde)'};">${Math.abs((dif / Number(esperado)) * 100) < 0.1 ? '&lt; 0,1%' : `${dif > 0 ? '+' : ''}${((dif / Number(esperado)) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}</small>` : ''}</div>
         </div>
         ${avisoSuspeita}${notaSemEsperado}${resumoDivergencia}${notaAprovacao}${notaGlosa}
         <div class="kanban-cartao-acoes">
@@ -3863,11 +3864,13 @@ async function aprovarComJustificativaAuditoria(id) {
 }
 
 // Acordo Comercial: a transportadora aceita descontar a diferença no boleto.
-async function registrarGlosaAuditoria(id) {
+async function registrarGlosaAuditoria(id, sugerido = null) {
   const linhaGlosa = ultimasLinhasAuditoria.find((l) => l.id === id);
-  const valorTexto = await pedirTexto('Valor da glosa combinada com a transportadora (R$).', { titulo: 'Registrar glosa', placeholder: 'Ex: 25,00' });
+  const dif = sugerido ?? (linhaGlosa && cobradoAMais(linhaGlosa) > 0 ? Math.round(cobradoAMais(linhaGlosa) * 100) / 100 : null);
+  const valorTexto = await pedirTexto(`Valor da glosa combinada com a transportadora (R$).${dif ? ` A diferença acima da tabela é ${formatoMoeda(dif)}.` : ''}`,
+    { titulo: 'Registrar glosa', placeholder: 'Ex: 25,00', valor: dif ? String(Number(dif).toFixed(2)).replace('.', ',') : '' });
   if (!valorTexto) return;
-  const valor = Number(valorTexto.replace(',', '.'));
+  const valor = Number(String(valorTexto).replace(/\./g, '').replace(',', '.'));
   if (!valor || valor <= 0) { mostrarAlerta('Digite um valor válido, maior que zero.'); return; }
   const sugestaoMotivo = linhaGlosa ? gerarResumoDivergencias(linhaGlosa) : '';
   const motivo = await pedirTexto('Motivo ou observação da glosa (edite se quiser).', { titulo: 'Motivo da glosa', valor: sugestaoMotivo, textoOk: 'Registrar glosa', multilinha: true });
@@ -3999,6 +4002,98 @@ const formatoPercentualCte = (v) =>
 
 // Busca no servidor a composição do CT-e (lida do XML) e preenche a coluna
 // da direita do Detalhe do Frete.
+// ---------- Resumo da diferença (topo do Detalhe da auditoria) ----------
+// Em uma frase: quanto a transportadora cobrou a mais ou a menos que a tabela, em R$ e %, se está dentro
+// da tolerância, e ONDE está a diferença (componente por componente, peso, volumes, ICMS), em linguagem simples.
+// "a" = /auditoria-detalhada (chega depois); sem ele, o quadro mostra só o total e as taxas da linha.
+function toleranciaDoFrete(l) {
+  return Math.max(Number(toleranciaAuditoria.tolerancia_valor) || 0, (Number(toleranciaAuditoria.tolerancia_percentual) || 0) / 100 * (Number(valorCalculadoPrincipal(l)) || 0));
+}
+function resumoDiferencaHtml(l, a = null) {
+  const m = (v) => formatoMoeda(v);
+  const pct = (v) => (Math.abs(v) < 0.1 ? 'menos de 0,1%' : `${v > 0 ? '+' : ''}${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
+  const esperado = Number(valorCalculadoPrincipal(l));
+  const cobrado = Number(l.valor_total_cte ?? l.valor_frete_negociado);
+  const vinculado = !!l.frete_principal_id && !['redespacho', 'redespacho_nota'].includes(l.vinculo_cte);
+  const rotuloEsperado = vinculado ? 'Esperado' : 'Pela tabela';
+  if (l.carga_direta) return '<div class="dif-resumo dif-neutro"><div class="dif-titulo">🚚 Carga direta: negociada à parte, sem comparação com a tabela.</div></div>';
+  if (l.dif_negociado_tabela == null || !Number.isFinite(esperado) || !esperado) {
+    return `<div class="dif-resumo dif-neutro"><div class="dif-titulo">Ainda sem valor ${vinculado ? 'esperado' : 'pela tabela'} para comparar</div>
+      <div class="dif-texto">${vinculado && l.vinculo_cte === 'complementar' ? 'CT-e complementar: confira o motivo no XML e aprove ou glose à mão.' : 'Use "🔄 Recalcular pela tabela" abaixo. Se não calcular, veja o motivo em "Como o sistema calculou" (tabela ou trecho faltando).'}</div></div>`;
+  }
+  const dif = cobradoAMais(l) || 0;                      // + = cobrou a mais
+  const p = esperado ? (dif / esperado) * 100 : 0;
+  const tol = toleranciaDoFrete(l);
+  const dentro = Math.abs(dif) <= tol + 0.004;
+  const tipo = Math.abs(dif) < 0.01 ? 'ok' : dentro ? 'tolerancia' : dif > 0 ? 'mais' : 'menos';
+  const titulo = {
+    ok: '✓ O CT-e confere com a tabela',
+    tolerancia: `≈ Diferença de ${m(Math.abs(dif))} (${pct(p)}), dentro da tolerância de ${m(tol)}`,
+    mais: `▲ A transportadora cobrou ${m(dif)} A MAIS que ${vinculado ? 'o esperado' : 'a tabela'} (${pct(p)})`,
+    menos: `▼ A transportadora cobrou ${m(-dif)} A MENOS que ${vinculado ? 'o esperado' : 'a tabela'} (${pct(p)})`,
+  }[tipo];
+  const subtitulo = {
+    ok: 'Nada a fazer: pode pagar.',
+    tolerancia: 'Diferença pequena (arredondamento, centavos de taxa): o sistema trata como confere.',
+    mais: 'Confira os motivos abaixo. Se a cobrança está errada, glose a diferença ou peça a correção do CT-e à transportadora.',
+    menos: 'A favor da empresa. Às vezes é sinal de tabela desatualizada ou de taxa que a transportadora esqueceu.',
+  }[tipo];
+  // Onde está a diferença.
+  const motivos = [];
+  if (a && !a.sem_xml && a.tem_tabela && !a.sem_detalhe) {
+    [...a.componentes].filter((c) => ['a_mais', 'a_menos', 'nao_autorizada'].includes(c.situacao) && Math.abs(Number(c.diferenca ?? c.cobrado) || 0) >= 0.01)
+      .sort((x, y) => Math.abs(Number(y.diferenca ?? y.cobrado) || 0) - Math.abs(Number(x.diferenca ?? x.cobrado) || 0))
+      .forEach((c) => {
+        const nome = `<b>${cfEsc(c.nome)}</b>${c.nomes_cte?.length ? ` <small>(no CT-e: ${cfEsc(c.nomes_cte.join(', '))})</small>` : ''}`;
+        if (c.situacao === 'nao_autorizada') motivos.push({ cor: 'var(--vermelho)', valor: Number(c.cobrado) || 0, texto: `${nome}: cobrou ${m(c.cobrado)}, mas <b>a tabela não prevê essa taxa</b>` });
+        else motivos.push({ cor: c.situacao === 'a_mais' ? 'var(--vermelho)' : '#d97706', valor: Number(c.diferenca) || 0,
+          texto: `${nome}: cobrou ${m(c.cobrado)}, a tabela dá ${m(c.tabela)} → <b>${c.diferenca > 0 ? `${m(c.diferenca)} a mais` : `${m(-c.diferenca)} a menos`}</b>` });
+      });
+  } else {
+    conferirTaxas(l).filter((t) => t.divergente).forEach((t) => motivos.push({ cor: t.diferenca > 0 ? 'var(--vermelho)' : '#d97706', valor: t.diferenca,
+      texto: `<b>${cfEsc(t.nome)}</b>: cobrou ${m(t.cobrado)}, a tabela dá ${m(t.esperado)} → <b>${t.diferenca > 0 ? `${m(t.diferenca)} a mais` : `${m(-t.diferenca)} a menos`}</b>` }));
+  }
+  if (a && !a.sem_xml) {
+    if (a.peso && a.peso.ok === false && a.peso.cte != null && a.peso.nota != null) motivos.push({ cor: '#d97706', texto: `<b>Peso</b>: o CT-e usou ${Number(a.peso.cte).toLocaleString('pt-BR')} kg e a(s) nota(s) somam ${Number(a.peso.nota).toLocaleString('pt-BR')} kg — o frete por peso muda junto` });
+    if (a.volumes && a.volumes.ok === false && a.volumes.cte != null && a.volumes.nota != null) motivos.push({ cor: '#d97706', texto: `<b>Volumes</b>: ${a.volumes.cte} no CT-e × ${a.volumes.nota} na(s) nota(s)` });
+    if (a.icms?.checagens?.length) motivos.push({ cor: 'var(--vermelho)', texto: `<b>ICMS</b>: ${cfEsc(a.icms.checagens.join(', '))}` });
+    (a.apontamentos || []).forEach((x) => motivos.push({ cor: 'var(--vermelho)', texto: cfEsc(x.texto) }));
+  }
+  // O que as taxas/componentes listados não explicam (normalmente o frete-peso ou o frete mínimo).
+  const explicado = motivos.reduce((soma, x) => soma + (Number(x.valor) || 0), 0);
+  const resto = Math.round((dif - explicado) * 100) / 100;
+  if ((tipo === 'mais' || tipo === 'menos') && explicado && Math.abs(resto) >= 0.01) {
+    motivos.push({ cor: resto > 0 ? 'var(--vermelho)' : '#d97706', valor: resto,
+      texto: `<b>Restante</b>: ${resto > 0 ? `${m(resto)} a mais` : `${m(-resto)} a menos`} no frete base (peso, volumes, frete mínimo) ou em arredondamento — compare "Como o sistema calculou" com o CT-e, abaixo` });
+  }
+  if (tipo === 'mais' || tipo === 'menos') {
+    if (esperado > 0 && cobrado > 0 && !vinculado && (cobrado / esperado > 2 || cobrado / esperado < 0.5)) {
+      motivos.unshift({ cor: '#e8890c', texto: `<b>Diferença muito grande</b> (o CT-e é ${Math.round((cobrado / esperado) * 100)}% da tabela): quase sempre é o <b>trecho ou a tabela errada</b> (ex.: lotação calculada como fracionado, cidade do redespacho). Confira em "Como o sistema calculou" antes de cobrar a transportadora.` });
+    }
+    if (!motivos.length) motivos.push({ cor: 'var(--texto-fraco)', texto: a?.sem_detalhe ? 'O CT-e não separa os componentes (só o total): compare o total com "Como o sistema calculou", abaixo.' : 'Os componentes conferem um a um: a diferença vem do total (arredondamento ou frete mínimo). Veja "Como o sistema calculou", abaixo.' });
+  }
+  const largura = Math.min(100, Math.max(4, (Math.min(cobrado, esperado) / Math.max(cobrado, esperado)) * 100));
+  const podeGlosar = tipo === 'mais' && typeof podeAprovarPagamento !== 'undefined' && podeAprovarPagamento && l.status_aprovacao !== 'Aprovado' && !l.cte_nao_levou && !l.glosa_valor;
+  return `<div class="dif-resumo dif-${tipo}">
+    <div class="dif-titulo">${titulo}</div>
+    <div class="dif-texto">${subtitulo}</div>
+    <div class="dif-numeros">
+      <div><span>${rotuloEsperado}</span><b>${m(esperado)}</b><small>o que deveria custar</small></div>
+      <div class="dif-seta">→</div>
+      <div><span>Cobrado no CT-e</span><b>${m(cobrado)}</b><small>o que a transportadora cobrou</small></div>
+      <div class="dif-seta">=</div>
+      <div><span>Diferença</span><b class="dif-valor">${dif > 0 ? '+' : ''}${m(dif)}</b><small>${pct(p)}${tol ? ` · tolerância ${m(tol)}` : ''}</small></div>
+    </div>
+    <div class="dif-barras" title="Barras do mesmo tamanho = confere">
+      <div><span>Tabela</span><i style="width:${esperado >= cobrado ? 100 : largura}%;"></i></div>
+      <div><span>CT-e</span><i class="dif-barra-cte" style="width:${cobrado >= esperado ? 100 : largura}%;"></i></div>
+    </div>
+    ${motivos.length ? `<div class="dif-motivos"><div class="dif-motivos-titulo">${tipo === 'ok' || tipo === 'tolerancia' ? 'Pontos para olhar' : 'Onde está a diferença'}</div><ul>${motivos.map((x) => `<li style="--cor:${x.cor};">${x.texto}</li>`).join('')}</ul></div>` : ''}
+    ${!a && l.valor_total_cte != null ? '<div class="dif-texto" style="margin-top:6px;">Lendo o XML do CT-e para separar a diferença por componente…</div>' : ''}
+    ${podeGlosar ? `<div style="margin-top:10px;"><button class="btn btn-secundario" style="width:auto; padding:6px 12px; font-size:12.5px;" onclick="registrarGlosaAuditoria(${l.id}, ${(Math.round(dif * 100) / 100).toFixed(2)})">💸 Glosar a diferença (${m(dif)})</button></div>` : ''}
+  </div>`;
+}
+
 // Conferência em detalhe: cada componente (tabela × CT-e), taxa não prevista, peso, volumes, ICMS completo e o histórico do frete.
 const SIT_COMP = { ok: ['✓', 'var(--verde)', 'confere'], a_mais: ['▲', 'var(--vermelho)', 'cobrado a mais'], a_menos: ['▼', '#d97706', 'cobrado a menos'], nao_autorizada: ['⛔', 'var(--vermelho)', 'não prevista na tabela'], sem_tabela: ['—', 'var(--texto-fraco)', 'sem tabela'] };
 async function carregarAuditoriaDetalhada(id) {
@@ -4010,6 +4105,8 @@ async function carregarAuditoriaDetalhada(id) {
     a = await ra.json(); h = await rh.json();
   } catch { return; }
   if (document.getElementById('detalheAuditoriaDetalhada') !== alvo) return;
+  const linhaResumo = (typeof ultimasLinhasAuditoria !== 'undefined' ? ultimasLinhasAuditoria : []).find((l) => l.id === id);
+  if (linhaResumo && document.getElementById('detalheResumoDiferenca')) document.getElementById('detalheResumoDiferenca').innerHTML = resumoDiferencaHtml(linhaResumo, a && !a.erro ? a : {});
   const m = (v) => (v == null ? '—' : formatoMoeda(v));
   let html = '';
   if (a && !a.sem_xml) {
@@ -4391,6 +4488,7 @@ function abrirDetalheAuditoria(id) {
   // Duas colunas: à esquerda o cálculo do sistema, à direita o do CT-e
   // (carregado do XML logo abaixo, depois que o painel abre).
   detalheHtml = `
+    <div id="detalheResumoDiferenca" style="margin-bottom:16px;">${resumoDiferencaHtml(linha)}</div>
     <div id="detalheCtesDaNota" style="margin-bottom:16px;"></div>
     <div class="detalhe-calculo-colunas">
       <div class="detalhe-calculo-coluna">${detalheHtml}</div>

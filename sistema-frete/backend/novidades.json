@@ -6,6 +6,10 @@
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
         {
+          "area": "Auditoria de frete",
+          "texto": "Diferença do frete mais clara: no Detalhe, um quadro no alto diz em uma frase quanto a transportadora cobrou a mais ou a menos que a tabela (R$ e %), com barras, e lista onde está a diferença (componente por componente, taxa não prevista, peso, volumes, ICMS e o restante), com aviso de trecho/tabela errada e o botão Glosar a diferença já preenchido. No cartão, a diferença em % e \"Na tolerância\" quando é pequena."
+        },
+        {
           "area": "Notas fiscais",
           "texto": "Endereço de entrega lido da NF-e na ordem: redespacho dos dados adicionais (com rua, número, bairro, cidade, UF, CEP, CNPJ e IE), grupo <entrega> do XML, \"local de entrega/entregar em\" dos dados adicionais e destinatário. Cidade conferida no IBGE, nota marcada \"conferir\" quando a leitura não tem certeza, correção à mão, coluna Entrega com a origem, filtro e campos no BI."
         },

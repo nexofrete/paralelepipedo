@@ -898,6 +898,8 @@ Em **Documentos → 🚛 CT-e recebidos** (código **404**). Regras em `src/ctes
 
 ## Auditoria de frete em detalhe (embarcador)
 
+Regras em `src/auditoriaDetalhada.js`. **Resumo da diferença** no topo do Detalhe (`resumoDiferencaHtml` em `public/js/dashboard.js`): frase com a diferença em R$ e % (ok, na tolerância, a mais, a menos), tabela × cobrado com barras, "Onde está a diferença" (componentes de `/auditoria-detalhada`, ou as taxas da linha enquanto ela não chega, peso, volumes, ICMS, apontamentos e o "Restante" não explicado), aviso de trecho/tabela errada (>2× ou <½) e "Glosar a diferença" (`registrarGlosaAuditoria(id, sugerido)`). O cartão do kanban mostra a % e "Na tolerância".
+
 Regras em `src/auditoriaDetalhada.js`. Além do total do CT-e × tabela (conferência automática, `trg_calcular_dif_frete`):
 
 - **Componentes lado a lado** (`GET /api/fretes/:id/auditoria-detalhada`, no detalhe do frete): frete peso, ad valorem, GRIS, pedágio, TDE, TDA, TRT, despacho e descarga — o nome livre de cada componente do CT-e (`vPrest/Comp/xNome`) é classificado e comparado com a parcela gravada no cálculo (`auditoria_calculo.componentes`), com a tolerância da auditoria. **Taxa não prevista**: cobrada no CT-e e zero/ausente na tabela.

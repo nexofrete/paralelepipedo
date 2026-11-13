@@ -1016,8 +1016,15 @@ def parte_uso(g):
         '<b>Central de Canhotos da LD Rio Pizzo</b>: no cadastro da transportadora, em <b>Portal de rastreamento</b>, '
         'escolha "Central de Canhotos (LD Rio Pizzo)" e informe o mesmo e-mail e senha usados no site da LD Rio. Salve e '
         'clique em <b>Testar conexão</b>: aparece quantas notas vieram do portal. A busca das 6h30 e o botão de rastreamento '
-        'passam a preencher a Data da Entrega (origem "portal"), com quem recebeu e a situação da nota. Se o portal '
+        'passam a preencher a Data da Entrega (origem "portal"), com quem recebeu e a situação da nota. A nota do portal é '
+        'reconhecida pela chave da NF-e, pelo nº do CT-e ou pelo nº da NF (com a data perto da do CT-e, até 25 dias). Se o portal '
         'mudar o formato, o teste mostra as colunas que vieram, para o suporte ajustar.',
+        '<b>Conferir no portal</b>: na lista de entregas (atrasadas, hoje, próximos dias), as notas de transportadora com a '
+        'Central de Canhotos têm o botão <b>Conferir no portal</b>. Ele procura aquela nota no portal e mostra, passo a passo, '
+        'por que ela não baixou: a nota não entra na busca (nome ou CNPJ do cadastro diferente do CT-e, CT-e com mais de 120 '
+        'dias), o login não foi aceito, a nota não aparece para esse login, achou com data longe da do CT-e ou o portal não tem '
+        'a data da entrega. Se estiver entregue no portal, já dá a baixa. "O que o portal tem desta nota" mostra as colunas que '
+        'vieram, para conferir.',
         '<b>EDI (OCOREN)</b>: arquivo de ocorrências de entrega no padrão PROCEDA — veja o documento de solicitação de '
         'integração EDI para enviar à transportadora.',
         '<b>Link de rastreamento</b>: no cadastro da transportadora, o endereço com {NF}, {CTE} ou {CHAVE_NFE} coloca o botão '

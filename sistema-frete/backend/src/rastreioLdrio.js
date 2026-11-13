@@ -69,20 +69,31 @@ function horaDe(v) {
   return Number.isNaN(d.getTime()) ? '00:00' : new Date(d.getTime() - 3 * 3600000).toISOString().slice(11, 16);
 }
 
+// Coluna "parecida" quando o nome não está na lista: o 1º campo cujo nome casa com o padrão e cujo valor passa no teste.
+const parecida = (item, nome, teste, fora = null) => {
+  for (const [k, v] of Object.entries(item)) {
+    if (v == null || v === '' || typeof v === 'object') continue;
+    if (nome.test(k) && !(fora && fora.test(k)) && teste(v)) return v;
+  }
+  return null;
+};
+const ehNumeroDoc = (v) => /^\s*\d{1,9}\s*$/.test(String(v));
+
 // Uma linha da tabela → o que interessa. Chave da NF-e: a coluna com 44 dígitos.
 function lerItem(item) {
   let chave = String(primeiro(item, CAMPOS.chave) || '').replace(/\D/g, '');
   if (chave.length !== 44) chave = Object.values(item).map((v) => String(v ?? '').replace(/\D/g, '')).find((v) => v.length === 44 && /^\d{2}\d{4}\d{14}55/.test(v)) || '';
-  const nfBruta = primeiro(item, CAMPOS.nf);
+  const nfBruta = primeiro(item, CAMPOS.nf) ?? parecida(item, /(^|_)(nf|nfe|nota)(_|$)|nota_?fiscal/i, ehNumeroDoc, /chave|serie|valor|data|cte/i);
   const nf = semZeros(nfBruta) || (chave ? semZeros(chave.slice(25, 34)) : '');
   const situacao = String(primeiro(item, CAMPOS.situacao) || '').trim();
-  const brutaEntrega = primeiro(item, CAMPOS.entrega);
+  // Data da entrega: as colunas conhecidas; senão, qualquer coluna "entrega/baixa/finalizado" com data (fora previsão/prazo).
+  const brutaEntrega = primeiro(item, CAMPOS.entrega) ?? parecida(item, /entreg|baixa|finaliz|conclu/i, (v) => !!dataDe(v), /prev|prazo|agend|limite/i);
   // Só vale como entregue com data de entrega (a situação sozinha não diz o dia).
   const entrega = dataDe(brutaEntrega);
   return {
     nf, chave: chave || null, situacao, entrega, horaEntrega: horaDe(brutaEntrega),
     emissao: dataDe(primeiro(item, CAMPOS.emissao)), coleta: dataDe(primeiro(item, CAMPOS.coleta)), criado: dataDe(item.criado_em || item.created_at),
-    cte: primeiro(item, CAMPOS.cte), recebedor: primeiro(item, CAMPOS.recebedor), canhoto: !!primeiro(item, CAMPOS.canhoto), motorista: primeiro(item, CAMPOS.motorista),
+    cte: primeiro(item, CAMPOS.cte) ?? parecida(item, /cte|conhecimento/i, ehNumeroDoc, /chave|serie|valor|data|emiss/i), recebedor: primeiro(item, CAMPOS.recebedor), canhoto: !!(primeiro(item, CAMPOS.canhoto) ?? parecida(item, /canhoto|comprovante|foto/i, (v) => /^https?:\/\//i.test(String(v)))), motorista: primeiro(item, CAMPOS.motorista),
   };
 }
 
@@ -144,7 +155,7 @@ async function pagina(sessao, t, offset) {
 // Mesmas notas em aberto que o portal da Andrade e Abreu: as do CT-e desta transportadora.
 async function notasEmAberto(t) {
   const { rows } = await pool.query(
-    `SELECT f.id, f.numero_nf, f.chave_nfe, f.data_emissao_cte, f.data_coleta, COALESCE(f.data_emissao_cte, f.criado_em::date) AS referencia
+    `SELECT f.id, f.numero_nf, f.numero_cte, f.chave_nfe, f.data_emissao_cte, f.data_coleta, COALESCE(f.data_emissao_cte, f.criado_em::date) AS referencia
        FROM fretes f
       WHERE f.frete_principal_id IS NULL AND f.data_entrega IS NULL AND f.chave_cte IS NOT NULL AND (f.numero_nf IS NOT NULL OR f.chave_nfe IS NOT NULL)
         AND COALESCE(f.status, 'Pendente') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado') AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND f.nf_retornou IS NOT TRUE
@@ -160,12 +171,14 @@ async function sincronizar(t, estado) {
   const abertas = await notasEmAberto(t);
   if (!abertas.length) return { consultadas: 0, entregues: 0, naoAchadas: 0, naoAchadasNfs: [] };
   const porChave = new Map(abertas.filter((n) => String(n.chave_nfe || '').length === 44).map((n) => [n.chave_nfe, n]));
-  const porNf = new Map();
+  const porNf = new Map(); const porCte = new Map();
   for (const n of abertas) { const k = semZeros(n.numero_nf); if (!k) continue; if (!porNf.has(k)) porNf.set(k, []); porNf.get(k).push(n); }
+  for (const n of abertas) { const k = semZeros(n.numero_cte); if (!k) continue; if (!porCte.has(k)) porCte.set(k, []); porCte.get(k).push(n); }
   const maisAntiga = abertas.map((n) => iso(n.referencia)).filter(Boolean).sort()[0] || iso(new Date());
   const limite = new Date(Date.parse(`${maisAntiga}T12:00:00Z`) - 20 * 86400000).toISOString().slice(0, 10);
   const usadas = new Set();
-  const tirar = (n) => { usadas.add(n.id); porChave.delete(n.chave_nfe); const k = semZeros(n.numero_nf); const l = porNf.get(k); if (l) { l.splice(l.indexOf(n), 1); if (!l.length) porNf.delete(k); } };
+  const tirarDe = (mapa, k, n) => { const l = mapa.get(k); if (l && l.includes(n)) { l.splice(l.indexOf(n), 1); if (!l.length) mapa.delete(k); } };
+  const tirar = (n) => { usadas.add(n.id); porChave.delete(n.chave_nfe); tirarDe(porNf, semZeros(n.numero_nf), n); tirarDe(porCte, semZeros(n.numero_cte), n); };
 
   const sessao = await entrar(t);
   const achadas = [];
@@ -174,12 +187,7 @@ async function sincronizar(t, estado) {
     if (p === 0) conferirColunas(lista);
     for (const bruto of lista) {
       const item = lerItem(bruto || {});
-      let nota = item.chave ? porChave.get(item.chave) : null;
-      if (!nota && item.nf) {
-        // Mesma NF de outro remetente/época: a emissão tem que ser perto da do CT-e.
-        const ref = item.emissao || item.coleta || item.criado;
-        nota = (porNf.get(item.nf) || []).find((n) => !ref || !n.referencia || Math.abs(Date.parse(ref) - Date.parse(iso(n.referencia))) <= 25 * 86400000);
-      }
+      const nota = casar(item, porChave, porNf, porCte);
       if (!nota || usadas.has(nota.id)) continue;
       achadas.push({ nota, item });
       tirar(nota);
@@ -193,22 +201,7 @@ async function sincronizar(t, estado) {
   let entregues = 0; let falhas = 0; let ultimoErro = null;
   for (const { nota, item } of achadas) {
     try {
-      const texto = [item.situacao || (item.entrega ? 'Entregue' : 'Em andamento'), item.recebedor ? `recebido por ${item.recebedor}` : '', item.canhoto ? 'canhoto disponível no portal' : '']
-        .filter(Boolean).join(' · ');
-      if (item.entrega) {
-        await pool.query(
-          `INSERT INTO ocorrencias_rastreio (frete_id, data_hora, ocorrencia, descricao, tipo, codigo, dominio, recebedor, fonte)
-           VALUES ($1, $2::timestamp, $3, $4, 'Entrega', 'ENT', $5, $6, 'PORTAL')
-           ON CONFLICT (frete_id, data_hora, codigo, dominio) DO NOTHING`,
-          [nota.id, `${item.entrega}T${item.horaEntrega}:00`, 'ENTREGA REALIZADA', [item.cte ? `CT-e ${item.cte}` : '', item.motorista ? `motorista ${item.motorista}` : '', item.canhoto ? 'canhoto no portal' : ''].filter(Boolean).join(' · ') || null,
-            DOMINIO, item.recebedor ? String(item.recebedor).slice(0, 150) : null]);
-      }
-      await pool.query(
-        `UPDATE fretes SET data_entrega_origem = CASE WHEN data_entrega IS NULL AND $2::date IS NOT NULL THEN 'portal' ELSE data_entrega_origem END,
-                data_entrega = COALESCE(data_entrega, $2::date), data_coleta = COALESCE(data_coleta, $3::date),
-                rastreio_ultima_ocorrencia = $4, rastreio_ultima_em = $5::timestamp, rastreio_problema = FALSE, rastreio_consultado_em = NOW()
-          WHERE id = $1`,
-        [nota.id, item.entrega, item.coleta, String(texto).slice(0, 500), item.entrega ? `${item.entrega}T${item.horaEntrega}:00` : null]);
+      await aplicar(nota, item);
       if (item.entrega) entregues += 1;
     } catch (err) {
       falhas += 1; ultimoErro = `NF ${item.nf}: ${err.message}`;
@@ -217,6 +210,105 @@ async function sincronizar(t, estado) {
   }
   const naoAchadas = abertas.filter((n) => !usadas.has(n.id));
   return { consultadas: achadas.length, entregues, naoAchadas: naoAchadas.length, falhas, ultimoErro, naoAchadasNfs: naoAchadas.map((n) => semZeros(n.numero_nf)).filter(Boolean).slice(0, 30) };
+}
+
+// Acha a nota em aberto de uma linha do portal: pela chave da NF-e, pelo nº do CT-e ou pelo nº da NF.
+// CT-e e NF podem repetir (outro remetente, outra época): a data do portal tem que ser perto da do CT-e.
+function casar(item, porChave, porNf, porCte) {
+  if (item.chave && porChave.get(item.chave)) return porChave.get(item.chave);
+  const ref = item.emissao || item.coleta || item.criado;
+  const perto = (n) => !ref || !n.referencia || Math.abs(Date.parse(ref) - Date.parse(iso(n.referencia))) <= 25 * 86400000;
+  const pelaNf = item.nf ? (porNf.get(item.nf) || []).filter(perto) : [];
+  const peloCte = item.cte ? (porCte.get(semZeros(item.cte)) || []).filter(perto) : [];
+  // CT-e e NF batendo juntos é o mais seguro; depois só o CT-e; depois só a NF.
+  return pelaNf.find((n) => peloCte.includes(n)) || peloCte[0] || pelaNf[0] || null;
+}
+
+// Grava o que o portal diz da nota: a ocorrência de entrega e a Data da Entrega (só se ainda não tiver).
+async function aplicar(nota, item) {
+  const texto = [item.situacao || (item.entrega ? 'Entregue' : 'Em andamento'), item.recebedor ? `recebido por ${item.recebedor}` : '', item.canhoto ? 'canhoto disponível no portal' : '']
+    .filter(Boolean).join(' · ');
+  if (item.entrega) {
+    await pool.query(
+      `INSERT INTO ocorrencias_rastreio (frete_id, data_hora, ocorrencia, descricao, tipo, codigo, dominio, recebedor, fonte)
+       VALUES ($1, $2::timestamp, $3, $4, 'Entrega', 'ENT', $5, $6, 'PORTAL')
+       ON CONFLICT (frete_id, data_hora, codigo, dominio) DO NOTHING`,
+      [nota.id, `${item.entrega}T${item.horaEntrega}:00`, 'ENTREGA REALIZADA', [item.cte ? `CT-e ${item.cte}` : '', item.motorista ? `motorista ${item.motorista}` : '', item.canhoto ? 'canhoto no portal' : ''].filter(Boolean).join(' · ') || null,
+        DOMINIO, item.recebedor ? String(item.recebedor).slice(0, 150) : null]);
+  }
+  await pool.query(
+    `UPDATE fretes SET data_entrega_origem = CASE WHEN data_entrega IS NULL AND $2::date IS NOT NULL THEN 'portal' ELSE data_entrega_origem END,
+            data_entrega = COALESCE(data_entrega, $2::date), data_coleta = COALESCE(data_coleta, $3::date),
+            rastreio_ultima_ocorrencia = $4, rastreio_ultima_em = $5::timestamp, rastreio_problema = FALSE, rastreio_consultado_em = NOW()
+      WHERE id = $1`,
+    [nota.id, item.entrega, item.coleta, String(texto).slice(0, 500), item.entrega ? `${item.entrega}T${item.horaEntrega}:00` : null]);
+}
+
+// "Conferir no portal" de uma nota: procura a nota no portal, diz por que não baixou e, se estiver entregue lá, dá a baixa.
+async function conferirNota(freteId) {
+  const passos = [];
+  const ok = (texto) => passos.push({ ok: true, texto });
+  const nao = (texto) => passos.push({ ok: false, texto });
+  const { rows: [f] } = await pool.query(`SELECT id, numero_nf, numero_cte, chave_nfe, data_entrega, data_emissao_cte, criado_em, status, frete_principal_id, chave_cte,
+      nf_cancelada, nf_devolvida, nf_retornou, COALESCE(transportadora_cte, transportadora) AS transportadora, transportadora_cnpj_cte,
+      COALESCE(data_emissao_cte, criado_em::date) AS referencia FROM fretes WHERE id = $1`, [freteId]);
+  if (!f) throw Object.assign(new Error('Nota não encontrada.'), { status: 404 });
+  if (f.data_entrega) { ok(`A nota já tem Data da Entrega (${iso(f.data_entrega).split('-').reverse().join('/')}).`); return { passos, baixada: false }; }
+  const todas = await transportadorasComPortal();
+  if (!todas.length) { nao('Nenhuma transportadora tem a Central de Canhotos configurada (Cadastros » Transportadoras » Portal de rastreamento: LD Rio, com e-mail e senha).'); return { passos, baixada: false }; }
+  let t = null;
+  for (const x of todas) if ((await notasEmAberto(x)).some((n) => n.id === f.id)) { t = x; break; }
+  if (!t) {
+    const cnpjCte = String(f.transportadora_cnpj_cte || '').replace(/\D/g, '');
+    nao(`A nota não entra na busca de nenhuma transportadora com a Central de Canhotos. CT-e de "${f.transportadora || '?'}"${cnpjCte ? ` (CNPJ ${cnpjCte})` : ''}; `
+      + `cadastradas com o portal: ${todas.map((x) => `"${x.razao_social}"${x.cnpj ? ` (CNPJ ${String(x.cnpj).replace(/\D/g, '')})` : ''}`).join(', ')}. `
+      + 'O nome tem que ser igual ao do CT-e, ou o CNPJ do cadastro tem que ter a mesma raiz (8 primeiros números) do CNPJ do CT-e.');
+    const ref = iso(f.referencia);
+    if (ref && Date.parse(ref) < Date.now() - 120 * 86400000) nao('Além disso, o CT-e tem mais de 120 dias: a busca automática só olha os últimos 120 dias.');
+    if (!f.chave_cte) nao('A nota ainda não tem o CT-e importado.');
+    return { passos, baixada: false };
+  }
+  ok(`A nota entra na busca da transportadora "${t.razao_social}".`);
+  let sessao;
+  try { sessao = await entrar(t); } catch (e) { nao(`Não consegui entrar na Central de Canhotos: ${e.message}.`); return { passos, baixada: false }; }
+  ok('Entrei na Central de Canhotos com o login do cadastro.');
+  const nf = semZeros(f.numero_nf); const cte = semZeros(f.numero_cte);
+  const candidatos = []; let lidas = 0;
+  for (let p = 0; p < MAX_PAGINAS; p += 1) {
+    const lista = await pagina(sessao, t, p * POR_PAGINA);
+    lidas += lista.length;
+    for (const bruto of lista) {
+      const item = lerItem(bruto || {});
+      const porChave = f.chave_nfe && item.chave === f.chave_nfe;
+      if (porChave || (nf && item.nf === nf) || (cte && semZeros(item.cte) === cte)) candidatos.push({ item, bruto, porChave });
+    }
+    if (lista.length < POR_PAGINA || candidatos.some((c) => c.porChave)) break;
+    await esperar(INTERVALO_MS);
+  }
+  ok(`Li ${lidas} nota(s) do portal.`);
+  const resumo = (c) => ({ nf: c.item.nf, cte: c.item.cte, chave: c.item.chave, situacao: c.item.situacao, entrega: c.item.entrega, emissao: c.item.emissao, criado: c.item.criado,
+    colunas: Object.fromEntries(Object.entries(c.bruto).filter(([, v]) => v == null || typeof v !== 'object').slice(0, 40).map(([k, v]) => [k, v == null ? null : String(v).slice(0, 80)])) });
+  if (!candidatos.length) {
+    nao(`A NF ${nf || '?'}${cte ? ` / CT-e ${cte}` : ''} não está na lista que o portal devolve para este login. Confira se o login do cadastro é o mesmo que enxerga a nota no site.`);
+    return { passos, baixada: false };
+  }
+  const nota = { ...f };
+  const mapa = (k, v) => new Map(k ? [[k, [v]]] : []);
+  const escolhido = candidatos.find((c) => casar(c.item, new Map(f.chave_nfe ? [[f.chave_nfe, nota]] : []), mapa(nf, nota), mapa(cte, nota)) === nota);
+  if (!escolhido) {
+    const c = candidatos[0];
+    nao(`Achei a NF/CT-e no portal, mas com data longe da do CT-e (portal: ${c.item.emissao || c.item.criado || '?'}; CT-e: ${iso(f.referencia)}), então pode ser outra nota com o mesmo número. A busca automática só aceita até 25 dias de diferença.`);
+    return { passos, baixada: false, candidatos: candidatos.slice(0, 3).map(resumo) };
+  }
+  ok(`Achei a nota no portal (${escolhido.porChave ? 'pela chave da NF-e' : semZeros(escolhido.item.cte) === cte && cte ? 'pelo nº do CT-e' : 'pelo nº da NF'}), situação "${escolhido.item.situacao || '—'}".`);
+  if (!escolhido.item.entrega) {
+    nao(`O portal não traz a data da entrega desta nota${/entreg/i.test(escolhido.item.situacao) ? ' (a situação diz entregue, mas a data não veio em nenhuma coluna que eu reconheça; veja as colunas abaixo)' : ''}.`);
+    await aplicar(nota, escolhido.item);
+    return { passos, baixada: false, candidatos: [resumo(escolhido)] };
+  }
+  await aplicar(nota, escolhido.item);
+  ok(`Baixei a entrega: ${escolhido.item.entrega.split('-').reverse().join('/')}${escolhido.item.recebedor ? `, recebido por ${escolhido.item.recebedor}` : ''}.`);
+  return { passos, baixada: true, entrega: escolhido.item.entrega, candidatos: [resumo(escolhido)] };
 }
 
 // Teste do cadastro: entra, lê a 1ª página e confere se dá para achar a NF.
@@ -235,4 +327,4 @@ async function transportadorasComPortal(filtroNome) {
   return rows;
 }
 
-module.exports = { sincronizar, transportadorasComPortal, notasEmAberto, entrar, testar, lerItem, dataDe, SUPABASE_PADRAO };
+module.exports = { sincronizar, transportadorasComPortal, notasEmAberto, entrar, testar, lerItem, dataDe, casar, conferirNota, SUPABASE_PADRAO };

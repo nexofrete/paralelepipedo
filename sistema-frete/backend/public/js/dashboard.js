@@ -6132,11 +6132,29 @@ function epRenderizarLista() {
         ${sub(`${x.numero_pedido ? `ped. ${cfEsc(x.numero_pedido)}` : ''}${x.numero_pedido && x.numero_cte ? ' · ' : ''}${x.numero_cte ? `CT-e ${cfEsc(x.numero_cte)}` : ''}`)}</td>
       <td class="ep-cli" title="${cfEsc(x.cliente || '')}">${cfEsc(x.cliente || '—')}${sub(cfEsc([x.cidade, x.uf].filter(Boolean).join('/') || '—'))}</td>
       <td class="ep-transp" title="${cfEsc(x.transportadora || '')}">${cfEsc(x.transportadora || '—')}
-        ${x.url_rastreamento ? `<br><button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : ''}</td>
+        ${x.url_rastreamento ? `<br><button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : ''}
+        ${x.portal_canhotos ? `<br><button type="button" class="btn-rastrear-transp" style="margin-top:4px;" data-ep-portal="${x.id}" title="Procura esta nota na Central de Canhotos da transportadora, diz por que não baixou e, se estiver entregue lá, dá a baixa">📥 Conferir no portal</button>` : ''}</td>
       <td class="ep-ocorrencia">${epCelulaOcorrencia(x)}</td>
       <td>${podeEditar ? `<button class="btn btn-secundario" data-ep-entregue="${x.id}" style="width:auto; padding:4px 10px; font-size:11.5px;">✓ Entregue</button>` : ''}</td>
     </tr>`).join('')
     : `<tr><td colspan="6" style="color:var(--texto-fraco); padding:14px;">${termo ? 'Nenhuma nota em aberto com essa busca. (Notas já entregues não aparecem aqui — procure em Todos os registros.)' : epEstado.aba === 'atrasadas' ? (epEstado.faixa ? 'Nenhuma nota nessa faixa de atraso.' : 'Nenhuma entrega atrasada. ✓') : 'Nenhuma entrega prevista nesse período.'}</td></tr>`;
+}
+
+// "Conferir no portal": procura a nota na Central de Canhotos e mostra, passo a passo, por que não baixou.
+async function epConferirPortal(id, botao) {
+  const texto = botao.textContent; botao.disabled = true; botao.textContent = '⏳ Conferindo…';
+  try {
+    const r = await apiFetch(`/api/fretes/${id}/conferir-portal`, { method: 'POST' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || 'Não foi possível conferir.');
+    const passos = j.passos.map((p) => `<li style="color:${p.ok ? 'var(--verde)' : 'var(--vermelho)'};"><span style="color:var(--texto);">${p.ok ? '✓' : '✗'} ${cfEsc(p.texto)}</span></li>`).join('');
+    const cols = (j.candidatos || []).map((c, i) => `<details style="margin-top:6px;"><summary style="cursor:pointer;">O que o portal tem desta nota${j.candidatos.length > 1 ? ` (${i + 1})` : ''}</summary>
+      <table style="font-size:11.5px; margin-top:4px;">${Object.entries(c.colunas).map(([k, v]) => `<tr><td style="color:var(--texto-fraco); padding:1px 8px 1px 0;">${cfEsc(k)}</td><td>${cfEsc(v ?? '')}</td></tr>`).join('')}</table></details>`).join('');
+    await abrirDialogo({ tipo: j.baixada ? 'sucesso' : 'info', titulo: j.baixada ? 'Entrega baixada pelo portal' : 'Conferência no portal',
+      corpoHtml: `<ul style="list-style:none; padding:0; margin:0; display:grid; gap:6px; font-size:13px;">${passos}</ul>${cols}`,
+      botoes: [{ texto: 'Ok', valor: null, estilo: 'primario' }] });
+    if (j.baixada || (j.candidatos || []).length) carregarEntregasPrevistas();
+  } catch (err) { mostrarAlerta(err.message, { tipo: 'erro' }); } finally { botao.disabled = false; botao.textContent = texto; }
 }
 
 // Última ocorrência da SSW na lista (clicável: abre o histórico).
@@ -6314,6 +6332,8 @@ document.getElementById('btnEpExportar').addEventListener('click', epExportar);
 document.getElementById('epCorpo').addEventListener('click', async (e) => {
   const ocorrencias = e.target.closest('[data-ep-ocorrencias]');
   if (ocorrencias) { epVerOcorrencias(ocorrencias.dataset.epOcorrencias); return; }
+  const portal = e.target.closest('[data-ep-portal]');
+  if (portal) { epConferirPortal(Number(portal.dataset.epPortal), portal); return; }
   const rastrear = e.target.closest('[data-ep-rastrear]');
   if (rastrear) {
     const item = (epEstado.dados?.lista || []).find((x) => Number(x.id) === Number(rastrear.dataset.epRastrear));

@@ -548,6 +548,10 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
                 (SELECT t.url_rastreamento FROM transportadoras t
                    WHERE LOWER(TRIM(t.razao_social)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora)))
                    LIMIT 1) AS url_rastreamento,
+                EXISTS (SELECT 1 FROM transportadoras t WHERE t.portal_tipo = 'ldrio' AND t.portal_usuario IS NOT NULL AND t.portal_senha IS NOT NULL
+                  AND ((LENGTH(REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g')) = 14
+                        AND LEFT(REGEXP_REPLACE(t.cnpj, '[^0-9]', '', 'g'), 8) = LEFT(REGEXP_REPLACE(COALESCE(f.transportadora_cnpj_cte, ''), '[^0-9]', '', 'g'), 8))
+                    OR LOWER(TRIM(t.razao_social)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora))))) AS portal_canhotos,
                 f.data_coleta, f.data_emissao_cte, f.prazo_dias_tabela, f.data_entrega_prevista,
                 f.rastreio_ultima_ocorrencia, f.rastreio_ultima_em, f.rastreio_problema, f.rastreio_entrega_agendada,
                 f.rastreio_consultado_em,
@@ -2485,6 +2489,23 @@ router.delete('/:id/transportadora-que-levou', autenticar, permitir('pode_aprova
 
 // POST /api/fretes/:id/recalcular — recalcula UM frete pela tabela de preço
 // (o mesmo do "Recalcular tudo"), e guarda o detalhe do cálculo.
+// POST /api/fretes/:id/conferir-portal — procura a nota na Central de Canhotos da transportadora (LD Rio),
+// explica por que não baixou e, se estiver entregue lá, dá a baixa (src/rastreioLdrio.js conferirNota).
+router.post('/:id/conferir-portal', autenticar, freteDoCliente(), async (req, res) => {
+  try {
+    const r = await require('../rastreioLdrio').conferirNota(Number(req.params.id));
+    if (r.baixada) {
+      registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_frete', registroId: Number(req.params.id),
+        detalhes: `Conferiu a nota #${req.params.id} na Central de Canhotos: entrega ${r.entrega} baixada pelo portal` });
+    }
+    res.json(r);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ erro: err.message });
+    console.error('[conferir portal]', err);
+    res.status(502).json({ erro: `Não consegui consultar o portal: ${err.name === 'AbortError' ? 'o portal demorou demais' : err.message}` });
+  }
+});
+
 router.post('/:id/recalcular', autenticar, permitirAlguma('pode_editar_registros', 'pode_aprovar_pagamento'), freteDoCliente(), bloquearCteCancelado(), async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT id, frete_principal_id, vinculo_cte, carga_direta, numero_cte, status FROM fretes WHERE id = $1', [req.params.id]);

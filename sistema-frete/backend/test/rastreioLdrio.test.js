@@ -21,3 +21,22 @@ test('ldrio: lê NF, chave e entrega com nomes de coluna variados', () => {
   const c = lerItem({ documento: chave, dt_entrega: '16/10/2026' });
   assert.strictEqual(c.chave, chave); assert.strictEqual(c.nf, '193858'); assert.strictEqual(c.entrega, '2026-10-16');
 });
+
+test('ldrio: colunas com nomes fora da lista (entrega, NF e CT-e) também são lidas', () => {
+  const a = lerItem({ id: 7, nota_fiscal_numero: '193892', numero_do_cte: '4896', entrega_data: '2026-10-19T17:00:00+00:00', previsao_entrega: '2026-10-17', status: 'Entregue' });
+  assert.strictEqual(a.nf, '193892'); assert.strictEqual(a.cte, '4896'); assert.strictEqual(a.entrega, '2026-10-19');
+  // Previsão / prazo não contam como entrega.
+  assert.strictEqual(lerItem({ nf: '1', previsao_entrega: '2026-10-17', status: 'Em rota' }).entrega, null);
+});
+
+test('ldrio: casa pela chave, pelo CT-e e pela NF, perto da data do CT-e', () => {
+  const { casar } = require('../src/rastreioLdrio');
+  const n1 = { id: 1, numero_nf: '193892', numero_cte: '4896', chave_nfe: null, referencia: '2026-10-15' };
+  const n2 = { id: 2, numero_nf: '500', numero_cte: '4896', chave_nfe: null, referencia: '2025-01-10' };
+  const porChave = new Map(); const porNf = new Map([['193892', [n1]], ['500', [n2]]]); const porCte = new Map([['4896', [n1, n2]]]);
+  // A NF veio diferente no portal (ex.: com série), mas o CT-e e a data batem.
+  assert.strictEqual(casar({ nf: '999', cte: '4896', criado: '2026-10-19' }, porChave, porNf, porCte), n1);
+  // Mesmo CT-e de outra época: não casa.
+  assert.strictEqual(casar({ nf: '999', cte: '4896', criado: '2026-06-01' }, porChave, porNf, porCte), null);
+  assert.strictEqual(casar({ nf: '193892', criado: '2026-10-16' }, porChave, porNf, porCte), n1);
+});

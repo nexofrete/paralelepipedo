@@ -1029,7 +1029,10 @@ def parte_uso(g):
         'integração EDI para enviar à transportadora.',
         '<b>Link de rastreamento</b>: no cadastro da transportadora, o endereço com {NF}, {CTE} ou {CHAVE_NFE} coloca o botão '
         'Rastrear na lista.',
-        'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro.',
+        'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro. '
+        'Embaixo do botão <b>Entregue</b> há um campo de data: escolha o dia em que a entrega foi realizada e clique em Entregue, '
+        'que a entrega é registrada direto nessa data (sem o campo preenchido, o sistema pergunta a data). A data não pode ser '
+        'no futuro nem antes da emissão do CT-e.',
     ])
     s += h2('Montar Relatório (BI)')
     s.append(P('Primeiro escolha a <b>Fonte dos dados</b>. Aparecem só as que o seu usuário pode ver:'))

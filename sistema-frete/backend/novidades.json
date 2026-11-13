@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Entregas", "texto": "Na lista de entregas, embaixo do botão \"Entregue\" há um campo para escolher a data em que a entrega foi realizada: a entrega é registrada direto nessa data."},
         {"area": "Entregas", "texto": "Central de Canhotos (LD Rio): a nota agora também é achada pelo nº do CT-e e a data da entrega é lida mesmo com outros nomes de coluna. Botão \"Conferir no portal\" na lista de entregas: procura a nota no portal, explica por que não baixou e, se estiver entregue lá, dá a baixa."},
         {"area": "Auditoria de frete", "texto": "Fila por responsável: cada transportadora pode ter um analista (Manutenção do sistema). Na Auditoria, o filtro \"Responsável\" mostra só os meus, sem responsável ou de um analista; quem é responsável já abre em \"Só os meus\" e o sino avisa os retidos dele."},
         {"area": "Auditoria de frete", "texto": "Resumo diário por e-mail, logo cedo (de segunda a sábado, na hora escolhida): retidos e quanto somam a mais, os 5 que mais cobraram a mais, contestações vencidas e respondidas pelo link e faturas que vencem na semana. Com prévia e envio de teste."},

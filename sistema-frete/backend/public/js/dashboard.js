@@ -6135,7 +6135,8 @@ function epRenderizarLista() {
         ${x.url_rastreamento ? `<br><button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : ''}
         ${x.portal_canhotos ? `<br><button type="button" class="btn-rastrear-transp" style="margin-top:4px;" data-ep-portal="${x.id}" title="Procura esta nota na Central de Canhotos da transportadora, diz por que não baixou e, se estiver entregue lá, dá a baixa">📥 Conferir no portal</button>` : ''}</td>
       <td class="ep-ocorrencia">${epCelulaOcorrencia(x)}</td>
-      <td>${podeEditar ? `<button class="btn btn-secundario" data-ep-entregue="${x.id}" style="width:auto; padding:4px 10px; font-size:11.5px;">✓ Entregue</button>` : ''}</td>
+      <td>${podeEditar ? `<div class="ep-entrega-caixa"><button class="btn btn-secundario" data-ep-entregue="${x.id}" style="width:auto; padding:4px 10px; font-size:11.5px;" title="Registra a entrega na data escolhida abaixo">✓ Entregue</button>
+        <input type="date" class="ep-data-entrega" data-ep-data="${x.id}" max="${new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10)}" ${x.data_emissao_cte ? `min="${String(x.data_emissao_cte).slice(0, 10)}"` : ''} title="Data em que a entrega foi realizada" aria-label="Data em que a entrega foi realizada"></div>` : ''}</td>
     </tr>`).join('')
     : `<tr><td colspan="6" style="color:var(--texto-fraco); padding:14px;">${termo ? 'Nenhuma nota em aberto com essa busca. (Notas já entregues não aparecem aqui — procure em Todos os registros.)' : epEstado.aba === 'atrasadas' ? (epEstado.faixa ? 'Nenhuma nota nessa faixa de atraso.' : 'Nenhuma entrega atrasada. ✓') : 'Nenhuma entrega prevista nesse período.'}</td></tr>`;
 }
@@ -6266,14 +6267,19 @@ document.getElementById('btnEpRefazer')?.addEventListener('click', async () => {
   }
 });
 
-async function epRegistrarEntrega(id) {
-  const hoje = new Date();
-  const padrao = hoje.toLocaleDateString('pt-BR');
-  const texto = await pedirTexto('Data em que a carga foi entregue (dd/mm/aaaa).', { titulo: 'Registrar entrega', valor: padrao, textoOk: 'Registrar entrega' });
-  if (texto === null) return;
-  const m = texto.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) { mostrarAlerta('Informe a data no formato dd/mm/aaaa.', { tipo: 'aviso' }); return; }
-  const data = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+// dataEscolhida: a data do campo abaixo do botão (aaaa-mm-dd); sem ela, pergunta.
+async function epRegistrarEntrega(id, dataEscolhida = null) {
+  let data = dataEscolhida;
+  if (!data) {
+    const texto = await pedirTexto('Data em que a carga foi entregue (dd/mm/aaaa). Dica: dá para escolher a data no campo abaixo do botão "Entregue".', { titulo: 'Registrar entrega', valor: new Date().toLocaleDateString('pt-BR'), textoOk: 'Registrar entrega' });
+    if (texto === null) return;
+    const m = texto.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) { mostrarAlerta('Informe a data no formato dd/mm/aaaa.', { tipo: 'aviso' }); return; }
+    data = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  }
+  const item = (epEstado.dados?.lista || []).find((x) => Number(x.id) === Number(id));
+  if (data > new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10)) { mostrarAlerta('A data da entrega não pode ser no futuro.', { tipo: 'aviso' }); return; }
+  if (item?.data_emissao_cte && data < String(item.data_emissao_cte).slice(0, 10)) { mostrarAlerta(`A data da entrega não pode ser antes da emissão do CT-e (${formatoData(item.data_emissao_cte)}).`, { tipo: 'aviso' }); return; }
   try {
     const resposta = await apiFetch(`/api/fretes/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data_entrega: data }),
@@ -6281,6 +6287,7 @@ async function epRegistrarEntrega(id) {
     const d = await resposta.json();
     if (!resposta.ok) { mostrarAlerta(d.erro || 'Não foi possível registrar a entrega.'); return; }
     carregarEntregasPrevistas();
+    avisoSimples(`Entrega${item?.numero_nf ? ` da NF ${item.numero_nf}` : ''} registrada em ${data.split('-').reverse().join('/')}.`);
   } catch (err) {
     mostrarAlerta('Falha de conexão com o servidor.');
   }
@@ -6382,8 +6389,13 @@ document.getElementById('epCorpo').addEventListener('click', async (e) => {
     }
     return;
   }
+  if (e.target.closest('.ep-data-entrega')) return;   // o campo de data não abre o registro
   const entregue = e.target.closest('[data-ep-entregue]');
-  if (entregue) { epRegistrarEntrega(Number(entregue.dataset.epEntregue)); return; }
+  if (entregue) {
+    const campo = document.querySelector(`.ep-data-entrega[data-ep-data="${entregue.dataset.epEntregue}"]`);
+    epRegistrarEntrega(Number(entregue.dataset.epEntregue), campo?.value || null);
+    return;
+  }
   const linha = e.target.closest('[data-ep-id]');
   if (linha) epAbrirRegistro(Number(linha.dataset.epId));
 });

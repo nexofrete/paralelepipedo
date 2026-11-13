@@ -422,6 +422,13 @@ function abrirDialogo(opcoes) {
     };
     document.addEventListener('keydown', teclas, true);
     fundo.querySelectorAll('.dlg-btn').forEach((b) => b.addEventListener('click', () => fechar(Number(b.dataset.i))));
+    // Máscara de data (dd/mm/aaaa): digita só os números, as barras entram sozinhas; abre com tudo selecionado.
+    if (campo && opcoes.campo?.mascara === 'data') {
+      campo.setAttribute('inputmode', 'numeric'); campo.maxLength = 10; campo.placeholder = 'dd/mm/aaaa';
+      const formatar = (v) => { const d = String(v).replace(/\D/g, '').slice(0, 8); return [d.slice(0, 2), d.slice(2, 4), d.slice(4)].filter(Boolean).join('/'); };
+      campo.addEventListener('input', () => { campo.value = formatar(campo.value); });
+      campo.addEventListener('focus', () => setTimeout(() => campo.select(), 0));
+    }
     if (opcoes.aoAbrir) opcoes.aoAbrir(fundo);
     setTimeout(() => (campo || fundo.querySelector('.dlg-corpo [autofocus]') || fundo.querySelectorAll('.dlg-btn')[principal >= 0 ? principal : 0])?.focus(), 30);
   }));
@@ -451,7 +458,7 @@ async function confirmar(mensagem, opcoes = {}) {
 async function pedirTexto(mensagem, opcoes = {}) {
   const valor = await abrirDialogo({
     tipo: opcoes.tipo || 'pergunta', titulo: opcoes.titulo || 'Informe', mensagem,
-    campo: { valor: opcoes.valor || '', placeholder: opcoes.placeholder || '', multilinha: !!opcoes.multilinha, senha: !!opcoes.senha },
+    campo: { valor: opcoes.valor || '', placeholder: opcoes.placeholder || '', multilinha: !!opcoes.multilinha, senha: !!opcoes.senha, mascara: opcoes.mascara || null },
     botoes: [
       { texto: 'Cancelar', valor: null, estilo: 'secundario' },
       { texto: opcoes.textoOk || 'Continuar', valor: true, estilo: 'primario' },
@@ -6271,9 +6278,10 @@ document.getElementById('btnEpRefazer')?.addEventListener('click', async () => {
 async function epRegistrarEntrega(id, dataEscolhida = null) {
   let data = dataEscolhida;
   if (!data) {
-    const texto = await pedirTexto('Data em que a carga foi entregue (dd/mm/aaaa). Dica: dá para escolher a data no campo abaixo do botão "Entregue".', { titulo: 'Registrar entrega', valor: new Date().toLocaleDateString('pt-BR'), textoOk: 'Registrar entrega' });
+    const texto = await pedirTexto('Data em que a carga foi entregue: digite só os números (ex.: 19102026, ou 1910 para este ano). Dica: dá para escolher a data no campo abaixo do botão "Entregue".', { titulo: 'Registrar entrega', valor: new Date().toLocaleDateString('pt-BR'), textoOk: 'Registrar entrega', mascara: 'data' });
     if (texto === null) return;
-    const m = texto.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const anoAtual = new Date().getFullYear();
+    const m = (texto.trim().replace(/\/$/, '').match(/^(\d{1,2})\/(\d{1,2})$/) ? `${texto.trim().replace(/\/$/, '')}/${anoAtual}` : texto.trim()).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (!m) { mostrarAlerta('Informe a data no formato dd/mm/aaaa.', { tipo: 'aviso' }); return; }
     data = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
   }

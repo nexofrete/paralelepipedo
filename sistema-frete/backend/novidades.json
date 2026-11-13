@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Entregas", "texto": "Registrar entrega: a data já vem selecionada e as barras entram sozinhas; é só digitar os números (19102026, ou 1910 para o ano atual)."},
         {"area": "Entregas", "texto": "Na lista de entregas, embaixo do botão \"Entregue\" há um campo para escolher a data em que a entrega foi realizada: a entrega é registrada direto nessa data."},
         {"area": "Entregas", "texto": "Central de Canhotos (LD Rio): a nota agora também é achada pelo nº do CT-e e a data da entrega é lida mesmo com outros nomes de coluna. Botão \"Conferir no portal\" na lista de entregas: procura a nota no portal, explica por que não baixou e, se estiver entregue lá, dá a baixa."},
         {"area": "Auditoria de frete", "texto": "Fila por responsável: cada transportadora pode ter um analista (Manutenção do sistema). Na Auditoria, o filtro \"Responsável\" mostra só os meus, sem responsável ou de um analista; quem é responsável já abre em \"Só os meus\" e o sino avisa os retidos dele."},

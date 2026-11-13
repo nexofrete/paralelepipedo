@@ -1031,7 +1031,8 @@ def parte_uso(g):
         'Rastrear na lista.',
         'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro. '
         'Embaixo do botão <b>Entregue</b> há um campo de data: escolha o dia em que a entrega foi realizada e clique em Entregue, '
-        'que a entrega é registrada direto nessa data (sem o campo preenchido, o sistema pergunta a data). A data não pode ser '
+        'que a entrega é registrada direto nessa data (sem o campo preenchido, o sistema pergunta a data: ela já vem selecionada, '
+        'é só digitar os números por cima, que as barras entram sozinhas; ex.: 19102026, ou 1910 para o ano atual). A data não pode ser '
         'no futuro nem antes da emissão do CT-e.',
     ])
     s += h2('Montar Relatório (BI)')

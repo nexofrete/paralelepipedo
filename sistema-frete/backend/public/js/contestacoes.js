@@ -32,10 +32,10 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('oculto') && !document.querySelector('.dlg-fundo')) fechar(); });
 
   const topo = (titulo, extra = '') => `<div class="ct-topo"><h3>${titulo}</h3><div style="display:flex; gap:8px; align-items:center;">${extra}<button class="btn btn-secundario" data-ct="fechar" style="width:auto;">✕</button></div></div>`;
-  const abas = () => `<div class="cte-abas" style="margin-bottom:12px;"><div class="cte-aba ${aba === 'lista' ? 'ativo' : ''}" data-ct-aba="lista">📨 Contestações</div><div class="cte-aba ${aba === 'motivos' ? 'ativo' : ''}" data-ct-aba="motivos">📊 Glosas por motivo</div><div class="cte-aba ${aba === 'padroes' ? 'ativo' : ''}" data-ct-aba="padroes">🔁 Diferenças que se repetem</div></div>`;
+  const abas = () => `<div class="cte-abas" style="margin-bottom:12px;"><div class="cte-aba ${aba === 'lista' ? 'ativo' : ''}" data-ct-aba="lista">📨 Contestações</div><div class="cte-aba ${aba === 'motivos' ? 'ativo' : ''}" data-ct-aba="motivos">📊 Glosas por motivo</div><div class="cte-aba ${aba === 'padroes' ? 'ativo' : ''}" data-ct-aba="padroes">🔁 Diferenças que se repetem</div><div class="cte-aba ${aba === 'resultado' ? 'ativo' : ''}" data-ct-aba="resultado">📈 Resultado</div></div>`;
   function ligarComuns() {
     caixa.querySelector('[data-ct="fechar"]')?.addEventListener('click', fechar);
-    caixa.querySelectorAll('[data-ct-aba]').forEach((el) => el.addEventListener('click', () => { aba = el.dataset.ctAba; ({ lista, motivos, padroes }[aba])().catch(erro); }));
+    caixa.querySelectorAll('[data-ct-aba]').forEach((el) => el.addEventListener('click', () => { aba = el.dataset.ctAba; ({ lista, motivos, padroes, resultado }[aba])().catch(erro); }));
   }
   const erro = (e) => mostrarAlerta(e.message || String(e), { tipo: 'erro' });
 
@@ -210,6 +210,62 @@
         ${j.por_transportadora.map((t) => `<tr><td>${esc(t.transportadora || '—')}</td><td class="n">${t.qtd}</td><td class="n"><b>${moeda(t.valor)}</b></td>${usados.map((k) => `<td class="n">${t.motivos[k] ? moeda(t.motivos[k]) : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     };
     ['cmDe', 'cmAte'].forEach((id) => document.getElementById(id).addEventListener('change', () => carregar().catch(erro)));
+    await carregar();
+  }
+
+  // ---------- Resultado da auditoria ----------
+  async function resultado() {
+    const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    caixa.innerHTML = `${topo('📈 Resultado da auditoria')}${abas()}
+      <div class="ct-filtros"><label>CT-e emitidos de<input type="date" id="crDe"></label><label>até<input type="date" id="crAte" value="${hoje}"></label>
+        <label>Transportadora<input id="crTransp" placeholder="Todas"></label><button class="btn btn-secundario" id="crBuscar" style="width:auto; align-self:end;">Atualizar</button>
+        <button class="btn btn-secundario" id="crCsv" style="width:auto; align-self:end;">⬇ Planilha (CSV)</button></div>
+      <div id="crCorpo" style="margin-top:12px;">Carregando…</div>`;
+    ligarComuns();
+    let j = null;
+    const pct = (v) => (v == null ? '—' : `${String(v).replace('.', ',')}%`);
+    const carregar = async () => {
+      const el = document.getElementById('crCorpo'); el.textContent = 'Carregando…';
+      j = await json(`/api/contestacoes/resultado?${new URLSearchParams({ de: document.getElementById('crDe').value, ate: document.getElementById('crAte').value, transportadora: document.getElementById('crTransp').value.trim() })}`);
+      document.getElementById('crDe').value = j.de;
+      const t = j.total;
+      if (!t.ctes) { el.innerHTML = '<p style="color:var(--texto-fraco);">Nenhum CT-e no período.</p>'; return; }
+      const cartao = (rotulo, valor, sub, cor = '') => `<div class="cr-cartao"><div class="cr-rot">${rotulo}</div><div class="cr-val" style="${cor ? `color:${cor};` : ''}">${valor}</div><div class="ct-dica">${sub}</div></div>`;
+      const max = Math.max(...j.por_mes.map((m) => Math.max(m.cobrado_a_mais, m.recuperado)), 1);
+      el.innerHTML = `<div class="cr-cartoes">
+          ${cartao('Cobrado a mais', moeda(t.cobrado_a_mais), `${t.divergentes} de ${t.ctes} CT-e acima da tabela (fora da tolerância)`, 'var(--vermelho)')}
+          ${cartao('Recuperado', moeda(t.recuperado), `${pct(t.pct_recuperado)} do cobrado a mais em glosas e créditos, mais ${moeda(t.barrados)} de CT-e barrados`, 'var(--verde)')}
+          ${cartao('Aprovado mesmo divergente', moeda(t.aprovado_divergente), `${moeda(t.aprovado_divergente_pessoa)} por pessoas · ${moeda(t.aprovado_divergente_regra)} por regra automática`)}
+          ${cartao('Em apuração', moeda(t.em_apuracao), `${t.qtd_em_apuracao} CT-e ainda retido(s)`, '#ca8a04')}
+          ${cartao('Decididos por regra automática', String(t.decididos_regra), 'fretes aprovados ou glosados sem ninguém precisar abrir')}
+        </div>
+        <div class="cr-duas">
+          <div><h4>De onde veio o recuperado</h4>
+            ${[['Glosas feitas na auditoria', t.glosas_manual], ['Glosas por regra automática', t.glosas_regra], ['Glosas por contestação aceita', t.glosas_contestacao], ['Créditos de contestação abatidos em fatura', t.creditos], ['CT-e barrados (reprovados / não levou)', t.barrados]]
+              .map(([n, v]) => `<div class="ct-barra"><span>${n}</span><div><i style="width:${t.recuperado ? Math.max(1, (v / t.recuperado) * 100) : 0}%; background:var(--verde);"></i></div><b>${moeda(v)}</b><small></small></div>`).join('')}</div>
+          <div><h4>Principais causas (glosas por motivo)</h4>
+            ${t.motivos.length ? t.motivos.slice(0, 6).map((m) => `<div class="ct-barra"><span>${esc(m.nome)}</span><div><i style="width:${Math.max(1, (m.valor / t.motivos[0].valor) * 100)}%"></i></div><b>${moeda(m.valor)}</b><small></small></div>`).join('') : '<p class="ct-dica">Nenhuma glosa no período.</p>'}</div>
+        </div>
+        <h4 style="margin:16px 0 6px;">Por mês <span class="ct-dica">(<i class="cr-leg" style="background:var(--vermelho);"></i> cobrado a mais · <i class="cr-leg" style="background:var(--verde);"></i> recuperado)</span></h4>
+        <div class="cr-meses">${j.por_mes.map((m) => `<div class="cr-mes" title="${m.chave.slice(5)}/${m.chave.slice(0, 4)}: cobrado a mais ${moeda(m.cobrado_a_mais)}, recuperado ${moeda(m.recuperado)}">
+            <div class="cr-colunas"><i style="height:${(m.cobrado_a_mais / max) * 100}%; background:var(--vermelho);"></i><i style="height:${(m.recuperado / max) * 100}%; background:var(--verde);"></i></div>
+            <small>${m.chave.slice(5)}/${m.chave.slice(2, 4)}</small></div>`).join('')}</div>
+        <h4 style="margin:16px 0 6px;">Por transportadora</h4>
+        <div class="ct-rolagem"><table class="ct-tabela"><thead><tr><th>Transportadora</th><th class="n">CT-e</th><th class="n">Divergentes</th><th class="n">Cobrado a mais</th><th class="n">Recuperado</th><th class="n">% recuperado</th><th class="n">Aprovado divergente</th><th class="n">Em apuração</th><th>Principal causa</th></tr></thead><tbody>
+          ${j.por_transportadora.map((r) => `<tr><td>${esc(r.chave)}</td><td class="n">${r.ctes}</td><td class="n">${r.divergentes} (${r.ctes ? Math.round((r.divergentes / r.ctes) * 100) : 0}%)</td><td class="n">${moeda(r.cobrado_a_mais)}</td><td class="n"><b>${moeda(r.recuperado)}</b></td><td class="n">${pct(r.pct_recuperado)}</td><td class="n">${moeda(r.aprovado_divergente)}</td><td class="n">${moeda(r.em_apuracao)}</td><td>${esc(r.motivos[0]?.nome || '—')}</td></tr>`).join('')}</tbody></table></div>
+        <p class="ct-dica" style="margin-top:8px;">Pela emissão do CT-e. "% recuperado" = glosas e créditos ÷ cobrado a mais. Recuperado também soma os CT-e barrados (o mesmo critério da Economia da auditoria nos indicadores).</p>`;
+    };
+    document.getElementById('crBuscar').addEventListener('click', () => carregar().catch(erro));
+    document.getElementById('crCsv').addEventListener('click', () => {
+      if (!j) return;
+      const n = (v) => String(v ?? '').replace('.', ',');
+      const cab = ['Grupo', 'Chave', 'CT-e', 'Divergentes', 'Cobrado a mais', 'Glosas na auditoria', 'Glosas por regra', 'Glosas por contestação', 'Créditos abatidos', 'CT-e barrados', 'Recuperado', '% recuperado', 'Aprovado divergente (pessoas)', 'Aprovado divergente (regra)', 'Em apuração'];
+      const linha = (g, r) => [g, r.chave || 'Total', r.ctes, r.divergentes, n(r.cobrado_a_mais), n(r.glosas_manual), n(r.glosas_regra), n(r.glosas_contestacao), n(r.creditos), n(r.barrados), n(r.recuperado), n(r.pct_recuperado), n(r.aprovado_divergente_pessoa), n(r.aprovado_divergente_regra), n(r.em_apuracao)];
+      const linhas = [cab, linha('Total', j.total), ...j.por_mes.map((m) => linha('Mês', m)), ...j.por_transportadora.map((r) => linha('Transportadora', r))];
+      const csv = '\ufeff' + linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `resultado-auditoria-${j.de}-a-${j.ate}.csv`; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    });
     await carregar();
   }
 

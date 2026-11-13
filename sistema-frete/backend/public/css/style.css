@@ -1813,3 +1813,19 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .aviso-desfazer .aviso-desfazer-x { border: 0; color: #9ca3af; padding: 5px 6px; }
 .aviso-desfazer.saindo { opacity: 0; transition: opacity .2s; }
 @keyframes avisoDesfazerEntra { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Resultado da auditoria (aba da janela de contestações) */
+.cr-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.cr-cartao { border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; background: var(--bg-card); }
+.cr-rot { font-size: 12px; color: var(--texto-fraco); font-weight: 600; }
+.cr-val { font-size: 20px; font-weight: 700; margin: 2px 0; }
+.cr-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.cr-duas h4 { margin: 4px 0 6px; font-size: 13.5px; }
+.cr-duas .ct-barra { grid-template-columns: minmax(150px, 220px) 1fr 100px 0; }
+.cr-meses { display: flex; gap: 6px; align-items: flex-end; height: 150px; padding: 6px 0; border-bottom: 1px solid var(--borda); overflow-x: auto; }
+.cr-mes { flex: 1; min-width: 34px; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.cr-colunas { flex: 1; width: 100%; display: flex; gap: 2px; align-items: flex-end; justify-content: center; }
+.cr-colunas i { width: 40%; max-width: 16px; border-radius: 3px 3px 0 0; min-height: 1px; }
+.cr-mes small { font-size: 10.5px; color: var(--texto-fraco); margin-top: 3px; }
+.cr-leg { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; }
+@media (max-width: 760px) { .cr-duas { grid-template-columns: 1fr; } }

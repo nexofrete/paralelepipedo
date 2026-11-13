@@ -666,6 +666,21 @@ def parte_uso(g):
                'abre a tabela usada nesses CT-e; para vários trechos de uma vez use o Reajuste em lote, capítulo 15). Quando a '
                'diferença <b>varia</b>, parece erro de cobrança (selo "Contestar"): <b>Contestar N CT-e</b> abre a nova contestação '
                'só com os CT-e daquele padrão que ainda não têm glosa nem contestação.'))
+    s += h3('Resultado da auditoria')
+    s.append(P('A aba <b>Resultado</b> da janela de contestações mostra o retorno do trabalho da auditoria no período (padrão: os '
+               'últimos 12 meses, pela emissão do CT-e; dá para filtrar a transportadora):'))
+    s += tabela(['Número', 'O que é'], [
+        ['Cobrado a mais', 'O que os CT-e cobraram acima da tabela, fora da tolerância, e em quantos CT-e.'],
+        ['Recuperado', 'Glosas (feitas na auditoria, por regra automática ou por contestação aceita) + créditos de contestação '
+         'abatidos em fatura + CT-e barrados (reprovados ou da transportadora que não levou). "% recuperado" = glosas e créditos '
+         'divididos pelo cobrado a mais.'],
+        ['Aprovado mesmo divergente', 'Cobrou a mais e foi aprovado sem glosa, separado entre pessoas e regras automáticas.'],
+        ['Em apuração', 'O que os CT-e ainda retidos cobram a mais.'],
+        ['Decididos por regra automática', 'Fretes aprovados ou glosados pelas regras (capítulo 24), sem ninguém precisar abrir.'],
+    ], [0.3, 0.7])
+    s.append(P('Abaixo: de onde veio o recuperado, as principais causas (glosas por motivo), o gráfico por mês (cobrado a mais '
+               'e recuperado) e a tabela por transportadora, com a % de CT-e divergentes, o recuperado e a principal causa. '
+               '<b>Planilha (CSV)</b> baixa os números (total, por mês e por transportadora) para abrir no Excel.'))
     s += h3('Glosas por motivo')
     s.append(P('A aba <b>Glosas por motivo</b> da janela de contestações mostra, no período, quanto foi glosado em cada motivo '
                '(com barras) e uma tabela por transportadora com o valor de cada motivo, além dos créditos de contestação '

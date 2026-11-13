@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Auditoria de frete", "texto": "Resultado da auditoria (aba nova em Contestações): cobrado a mais, recuperado (glosas, créditos de contestação e CT-e barrados) e a % recuperada, aprovado mesmo divergente (pessoas e regras), em apuração e decididos por regra, com as principais causas, gráfico por mês, tabela por transportadora e planilha."},
         {"area": "Auditoria de frete", "texto": "A transportadora responde a contestação por um link, sem login: marca cada CT-e como aceito (com o valor) ou recusado (com o motivo). A resposta chega já preenchida para conferir e confirmar, e o sino avisa. Botão \"Link de resposta\" para copiar e mandar por WhatsApp."},
         {"area": "Auditoria de frete", "texto": "Desfazer: depois de aprovar, reprovar ou glosar aparece um aviso com \"Desfazer\" por 10 segundos, que devolve o frete para a conferência."},
         {"area": "Auditoria de frete", "texto": "Diferenças que se repetem (aba nova em Contestações): acha o padrão por trás das divergências, como \"TDE cobrada em todas as entregas do cliente X\" ou \"para CAMPINAS/SP sempre +8%\". Diferença sempre igual sugere corrigir a tabela (abre a tabela de preço); diferença que varia sugere contestar (abre a contestação só com aqueles CT-e)."},

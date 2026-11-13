@@ -995,7 +995,10 @@ def parte_uso(g):
         'transportadora do redespacho registra na SSW (entrega ao cliente, agendamento) aparece só como informação — '
         '"Redespacho (informativo)" na lista e em cinza no histórico — e não muda nenhuma data. Na nota <b>sem redespacho</b>, '
         'a entrega na cidade do cliente vale mesmo quando foi lançada na SSW por um parceiro da transportadora (ex.: a FAST-X '
-        'usa um agente para a entrega em Fortaleza): ela baixa a nota.',
+        'usa um agente para a entrega em Fortaleza): ela baixa a nota. Na nota com redespacho, a entrega da transportadora do CT-e '
+        'é a feita no ponto de redespacho (ex.: a Sete Lagoas entrega em Guarulhos para a SOT levar a Cuiabá). A consulta pela '
+        'chave da NF-e às vezes traz só os eventos da outra transportadora: o sistema decide olhando também o histórico já '
+        'guardado da nota, e o "ANEXADO COMPROVANTE DE ENTREGA" com "Entrega realizada em dd/mm/aa" também conta como entrega.',
         '<b>Refazer entregas automáticas</b> (botão em Entregas previstas): apaga só as datas de entrega que vieram da '
         'busca automática nos últimos 120 dias — mostrando antes quantas são — e busca de novo com as regras atuais. '
         'Datas lançadas à mão, pelo botão Entregue ou pelo comprovante de entrega, nunca são apagadas.',

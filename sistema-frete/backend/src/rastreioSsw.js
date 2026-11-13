@@ -52,8 +52,23 @@ async function consultarChave(chaveNfe) {
   }
 }
 
-const ehEntrega = (o) => String(o.tipo || '').toUpperCase() === 'ENTREGA' || String(o.codigo_ssw || '') === '01' || ENTREGA_RE.test(o.ocorrencia || '');
-const dataDe = (o) => String(o.data_hora_efetiva || o.data_hora || '').slice(0, 10) || null;
+// "ANEXADO COMPROVANTE DE ENTREGA (62)" com "Entrega realizada em 01/10/26 08:41h" na descrição também é a entrega
+// (a data é a da descrição). Às vezes é o único registro de entrega que a SSW devolve daquela transportadora.
+const COMPROVANTE_RE = /COMPROVANTE DE ENTREGA/i;
+const DATA_COMPROVANTE_RE = /ENTREGA REALIZADA EM\s+(\d{2})\/(\d{2})\/(\d{2,4})(?:\D+(\d{2}):(\d{2}))?/i;
+const entregaDoComprovante = (o) => {
+  if (!COMPROVANTE_RE.test(o.ocorrencia || '')) return null;
+  const m = String(o.descricao || '').match(DATA_COMPROVANTE_RE);
+  return m ? `${m[3].length === 2 ? `20${m[3]}` : m[3]}-${m[2]}-${m[1]}T${m[4] || '00'}:${m[5] || '00'}:00` : null;
+};
+const ehEntrega = (o) => String(o.tipo || '').toUpperCase() === 'ENTREGA' || String(o.codigo_ssw || '') === '01' || ENTREGA_RE.test(o.ocorrencia || '') || !!entregaDoComprovante(o);
+const dataDe = (o) => (entregaDoComprovante(o) || String(o.data_hora_efetiva || o.data_hora || '')).slice(0, 10) || null;
+// Data/hora do banco (timestamp sem fuso, lido como hora local) no formato da SSW: 2026-10-01T08:41:00.
+const textoDataHora = (d) => {
+  if (!(d instanceof Date)) return d ? String(d) : null;
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
 
 
 // ---------- Página "Rastreamento pelo remetente" (CNPJ + NF) ----------
@@ -126,7 +141,18 @@ async function aplicarNaNota(nota, tracking) {
       [nota.id, o.data_hora_efetiva || o.data_hora || null, o.cidade || null, o.ocorrencia || null, o.descricao || null,
        o.tipo || null, String(o.codigo_ssw || ''), o.dominio || '', o.nome_recebedor || null]);
   }
-  const ordenado = [...tracking].sort((a, b) => String(a.data_hora_efetiva || a.data_hora).localeCompare(String(b.data_hora_efetiva || b.data_hora)));
+  // A consulta pela chave pode trazer só o CT-e de UMA transportadora (no redespacho, às vezes só o da outra).
+  // A decisão usa também o que já está guardado no histórico da nota (de consultas anteriores).
+  const { rows: guardadas } = await pool.query(
+    `SELECT data_hora, cidade, ocorrencia, descricao, tipo, codigo, dominio, recebedor FROM ocorrencias_rastreio WHERE frete_id = $1 AND fonte = 'SSW'`, [nota.id]);
+  const chaveEv = (o) => `${String(o.data_hora_efetiva || o.data_hora || '').slice(0, 16)}|${o.codigo_ssw ?? ''}|${o.dominio || ''}`;
+  const todos = [...tracking];
+  const vistos = new Set(todos.map(chaveEv));
+  for (const g of guardadas) {
+    const o = { data_hora: textoDataHora(g.data_hora), cidade: g.cidade, ocorrencia: g.ocorrencia, descricao: g.descricao, tipo: g.tipo, codigo_ssw: g.codigo, dominio: g.dominio, nome_recebedor: g.recebedor };
+    if (!vistos.has(chaveEv(o))) { vistos.add(chaveEv(o)); todos.push(o); }
+  }
+  const ordenado = todos.sort((a, b) => String(a.data_hora_efetiva || a.data_hora).localeCompare(String(b.data_hora_efetiva || b.data_hora)));
   // A entrega que conta é a da transportadora do CT-e (a da tabela de preço).
   // Na SSW cada evento traz o "domínio" de quem o registrou; o da
   // transportadora do CT-e é o do primeiro evento (a emissão do documento).
@@ -136,7 +162,9 @@ async function aplicarNaNota(nota, tracking) {
   // os eventos são dela). Na nota com redespacho a SSW pode devolver só os
   // eventos da outra transportadora, então sem o código conhecido nada ali conta.
   const temRedespacho = !!(nota.redespacho || nota.cidade_redespacho);
-  let dominioDaTransportadora = nota.ssw_dominio || (nota.transportadora_id && dominiosAprendidos.get(nota.transportadora_id)) || '';
+  const { rows: [jaNaNota] } = await pool.query('SELECT rastreio_dominio FROM fretes WHERE id = $1', [nota.id]);
+  // Código SSW da transportadora do CT-e: o do cadastro, o aprendido, ou o já identificado nesta nota numa consulta anterior.
+  let dominioDaTransportadora = nota.ssw_dominio || (nota.transportadora_id && dominiosAprendidos.get(nota.transportadora_id)) || jaNaNota?.rastreio_dominio || '';
   const dominiosDaNota = [...new Set(ordenado.map((o) => o.dominio || '').filter(Boolean))];
   if (!dominioDaTransportadora && !temRedespacho && dominiosDaNota.length === 1) {
     dominioDaTransportadora = dominiosDaNota[0];

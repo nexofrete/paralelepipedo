@@ -255,7 +255,11 @@ async function conferirNota(freteId) {
   if (!f) throw Object.assign(new Error('Nota não encontrada.'), { status: 404 });
   if (f.data_entrega) { ok(`A nota já tem Data da Entrega (${iso(f.data_entrega).split('-').reverse().join('/')}).`); return { passos, baixada: false }; }
   const todas = await transportadorasComPortal();
-  if (!todas.length) { nao('Nenhuma transportadora tem a Central de Canhotos configurada (Cadastros » Transportadoras » Portal de rastreamento: LD Rio, com e-mail e senha).'); return { passos, baixada: false }; }
+  if (!todas.length) {
+    nao(`Nenhuma transportadora tem a Central de Canhotos configurada, então o "Buscar entregas" não lê o portal. Abra Cadastros » Transportadoras » "${f.transportadora || 'LD Rio'}", `
+      + 'em Portal de rastreamento escolha "Central de Canhotos (LD Rio Pizzo)", informe o e-mail e a senha usados no site, salve e clique em Testar conexão.');
+    return { passos, baixada: false };
+  }
   let t = null;
   for (const x of todas) if ((await notasEmAberto(x)).some((n) => n.id === f.id)) { t = x; break; }
   if (!t) {

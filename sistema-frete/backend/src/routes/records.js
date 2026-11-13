@@ -552,6 +552,8 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
                   AND ((LENGTH(REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g')) = 14
                         AND LEFT(REGEXP_REPLACE(t.cnpj, '[^0-9]', '', 'g'), 8) = LEFT(REGEXP_REPLACE(COALESCE(f.transportadora_cnpj_cte, ''), '[^0-9]', '', 'g'), 8))
                     OR LOWER(TRIM(t.razao_social)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora))))) AS portal_canhotos,
+                -- Transportadora com "LD RIO" no nome sem o portal no cadastro: o botão aparece para explicar o que falta.
+                (COALESCE(f.transportadora_cte, f.transportadora) ~* 'ld[[:space:]]*rio') AS parece_ldrio,
                 f.data_coleta, f.data_emissao_cte, f.prazo_dias_tabela, f.data_entrega_prevista,
                 f.rastreio_ultima_ocorrencia, f.rastreio_ultima_em, f.rastreio_problema, f.rastreio_entrega_agendada,
                 f.rastreio_consultado_em,

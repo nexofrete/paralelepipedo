@@ -2130,6 +2130,15 @@ function atualizarCamposPortal() {
   document.getElementById('tPortalAjudaLdrio')?.classList.toggle('oculto', tipo !== 'ldrio');
 }
 document.getElementById('tPortalTipo')?.addEventListener('change', atualizarCamposPortal);
+// Colou o link do site da LD Rio no portal "Lonngren": o certo é a Central de Canhotos (só e-mail e senha).
+document.getElementById('tPortalChave')?.addEventListener('input', (e) => {
+  if (document.getElementById('tPortalTipo').value === 'lonngren' && /(ldrio|netlify\.app)/i.test(e.target.value)) {
+    document.getElementById('tPortalTipo').value = 'ldrio';
+    e.target.value = ''; document.getElementById('tPortalEmpresa').value = '';
+    atualizarCamposPortal();
+    mostrarAlerta('Esse é o site da LD Rio: o tipo de portal certo é "Central de Canhotos (LD Rio Pizzo)", que só precisa do e-mail e da senha. Já troquei; salve e clique em Testar conexão.', { tipo: 'info' });
+  }
+});
 
 function abrirFormularioTransportadora(transportadora = null) {
   editandoTransportadoraId = transportadora ? transportadora.id : null;
@@ -6140,7 +6149,7 @@ function epRenderizarLista() {
       <td class="ep-cli" title="${cfEsc(x.cliente || '')}">${cfEsc(x.cliente || '—')}${sub(cfEsc([x.cidade, x.uf].filter(Boolean).join('/') || '—'))}</td>
       <td class="ep-transp" title="${cfEsc(x.transportadora || '')}">${cfEsc(x.transportadora || '—')}
         ${x.url_rastreamento ? `<br><button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : ''}
-        ${x.portal_canhotos ? `<br><button type="button" class="btn-rastrear-transp" style="margin-top:4px;" data-ep-portal="${x.id}" title="Procura esta nota na Central de Canhotos da transportadora, diz por que não baixou e, se estiver entregue lá, dá a baixa">📥 Conferir no portal</button>` : ''}</td>
+        ${x.portal_canhotos || x.parece_ldrio ? `<br><button type="button" class="btn-rastrear-transp" style="margin-top:4px;" data-ep-portal="${x.id}" title="Procura esta nota na Central de Canhotos da transportadora, diz por que não baixou e, se estiver entregue lá, dá a baixa">📥 Conferir no portal</button>` : ''}</td>
       <td class="ep-ocorrencia">${epCelulaOcorrencia(x)}</td>
       <td>${podeEditar ? `<div class="ep-entrega-caixa"><button class="btn btn-secundario" data-ep-entregue="${x.id}" style="width:auto; padding:4px 10px; font-size:11.5px;" title="Registra a entrega na data escolhida abaixo">✓ Entregue</button>
         <input type="date" class="ep-data-entrega" data-ep-data="${x.id}" max="${new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10)}" ${x.data_emissao_cte ? `min="${String(x.data_emissao_cte).slice(0, 10)}"` : ''} title="Data em que a entrega foi realizada" aria-label="Data em que a entrega foi realizada"></div>` : ''}</td>

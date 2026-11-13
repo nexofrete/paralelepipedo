@@ -3616,3 +3616,8 @@ ALTER TABLE transportadoras ADD COLUMN IF NOT EXISTS auditor_id INTEGER REFERENC
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS resumo_auditoria BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS resumo_auditoria_enviado DATE;
 ALTER TABLE configuracao_auditoria ADD COLUMN IF NOT EXISTS resumo_hora INTEGER NOT NULL DEFAULT 7;
+
+-- Correção: cadastro da LD Rio salvo como portal "Lonngren" com o link do site da LD Rio (Central de Canhotos).
+-- Passa para o tipo certo, mantendo o e-mail e a senha (o tipo LD Rio não usa link nem código de empresa).
+UPDATE transportadoras SET portal_tipo = 'ldrio', portal_chave = NULL, portal_empresa = NULL
+ WHERE portal_tipo = 'lonngren' AND COALESCE(portal_chave, '') ~* '(ldrio|netlify\.app)';

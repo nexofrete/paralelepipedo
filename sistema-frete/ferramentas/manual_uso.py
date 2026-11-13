@@ -1015,7 +1015,9 @@ def parte_uso(g):
         'fica criptografada no servidor e não aparece de novo na tela.',
         '<b>Central de Canhotos da LD Rio Pizzo</b>: no cadastro da transportadora, em <b>Portal de rastreamento</b>, '
         'escolha "Central de Canhotos (LD Rio Pizzo)" e informe o mesmo e-mail e senha usados no site da LD Rio. Salve e '
-        'clique em <b>Testar conexão</b>: aparece quantas notas vieram do portal. A busca das 6h30 e o botão de rastreamento '
+        'clique em <b>Testar conexão</b>: aparece quantas notas vieram do portal. Atenção: não use o tipo "Lonngren" com o link '
+        'do site da LD Rio (o sistema troca sozinho para "Central de Canhotos" se isso acontecer, mantendo o e-mail e a senha). '
+        'A busca das 6h30 e o botão de rastreamento '
         'passam a preencher a Data da Entrega (origem "portal"), com quem recebeu e a situação da nota. A nota do portal é '
         'reconhecida pela chave da NF-e, pelo nº do CT-e ou pelo nº da NF (com a data perto da do CT-e, até 25 dias). Se o portal '
         'mudar o formato, o teste mostra as colunas que vieram, para o suporte ajustar.',

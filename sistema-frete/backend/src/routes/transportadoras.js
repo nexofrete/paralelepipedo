@@ -102,6 +102,10 @@ function semSenha(t) {
   return { ...resto, portal_tem_senha: !!senha };
 }
 function prepararPortal(corpo) {
+  // Link do site da LD Rio (Central de Canhotos) salvo como Lonngren: é o tipo LD Rio (só e-mail e senha).
+  if (corpo.portal_tipo === 'lonngren' && /(ldrio|netlify\.app)/i.test(String(corpo.portal_chave || ''))) {
+    corpo.portal_tipo = 'ldrio'; corpo.portal_chave = null; corpo.portal_empresa = null;
+  }
   // Lonngren: a "chave" sai do link de login. LD Rio: endereço do Supabase (opcional; vazio = o padrão).
   if (corpo.portal_chave && corpo.portal_tipo !== 'ldrio') corpo.portal_chave = chaveDoLink(corpo.portal_chave);
   if (corpo.portal_tipo === 'ldrio' && corpo.portal_chave && !/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(corpo.portal_chave).trim())) corpo.portal_chave = null;

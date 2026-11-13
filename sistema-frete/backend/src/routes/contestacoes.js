@@ -23,6 +23,7 @@ const log = (req, acao, detalhes) => registrar({ usuarioId: req.usuario.id, usua
 
 router.get('/motivos', autenticar, (req, res) => res.json({ motivos: ct.MOTIVOS, situacoes: ct.SITUACOES }));
 router.get('/resumo-motivos', autenticar, podeVer, rota(async (req, res) => res.json(await ct.resumoMotivos(req.query))));
+router.get('/notas', autenticar, podeVer, rota(async (req, res) => res.json(await require('../notaTransportadora').gerar(req, req.query))));
 router.get('/resultado', autenticar, podeVer, rota(async (req, res) => res.json(await require('../resultadoAuditoria').gerar(req, req.query))));
 router.get('/padroes', autenticar, podeVer, rota(async (req, res) => res.json(await require('../padroesAuditoria').analisar(req.query))));
 router.get('/situacao', autenticar, podeVer, rota(async (req, res) => res.json(await ct.situacao(String(req.query.transportadora || '')))));

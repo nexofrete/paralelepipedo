@@ -320,6 +320,14 @@ def parte_admin(g):
          '(<b>Aplicar agora</b> força). A coluna Uso mostra quantos fretes a regra decidiu e quanto glosou; <b>Desfazer</b> '
          'devolve para a fila os fretes ainda não faturados que ela decidiu (apagando as glosas dela) e desliga a regra. Na '
          'auditoria, o frete aparece aprovado por "Regra automática: nome da regra". Só o administrador mexe nas regras.'],
+        ['Responsáveis e resumo diário (auditoria)', 'Em <b>Quem confere cada transportadora</b>, escolha o responsável de cada '
+         'uma (ou "Todos"). Na Auditoria, quem é responsável abre a tela já no filtro <b>Responsável: Só os meus</b> (a escolha '
+         'fica guardada no navegador) e o sino avisa "N fretes retidos das transportadoras sob sua responsabilidade". Em '
+         '<b>Resumo diário por e-mail</b>, marque quem recebe e a hora (horário de Brasília): de segunda a sábado chega um e-mail com '
+         'os fretes retidos e quanto somam a mais, os 5 que mais cobraram a mais, as contestações vencidas e as respondidas pelo '
+         'link e as faturas das transportadoras que vencem em 7 dias. Quem é responsável por transportadoras recebe só as dele. '
+         '<b>Ver o meu resumo de hoje</b> abre como ficaria; <b>Enviar o meu agora (teste)</b> manda para o próprio e-mail (precisa '
+         'do envio de e-mail configurado).'],
         ['Leitura automática de e-mail', 'Finalidades: devoluções/trocas e XML (embarcador), NF-e que viram CT-e, SAC e '
          '<b>EDI das transportadoras</b> (OCOREN, CONEMB, DOCCOB e NOTFIS anexados; capítulo 38). Aceita várias caixas (uma para cada pessoa que envia devoluções). Lê uma pasta de cada caixa (IMAP; no webmail da hospedagem: servidor '
          'mail.dominio, porta 993, o mesmo usuário e senha do webmail). Registra sozinho as devoluções/trocas de nota escritas no '

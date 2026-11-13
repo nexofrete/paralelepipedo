@@ -3609,3 +3609,10 @@ ALTER TABLE contestacoes ADD COLUMN IF NOT EXISTS portal_aberta_em TIMESTAMPTZ;
 ALTER TABLE contestacao_itens ADD COLUMN IF NOT EXISTS portal_situacao VARCHAR(12);
 ALTER TABLE contestacao_itens ADD COLUMN IF NOT EXISTS portal_valor NUMERIC(14,2);
 ALTER TABLE contestacao_itens ADD COLUMN IF NOT EXISTS portal_comentario VARCHAR(500);
+
+-- Fila por responsável: quem confere cada transportadora na auditoria (NULL = todos).
+ALTER TABLE transportadoras ADD COLUMN IF NOT EXISTS auditor_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL;
+-- Resumo diário da auditoria por e-mail (src/resumoAuditoria.js): quem recebe, a hora e o último envio.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS resumo_auditoria BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS resumo_auditoria_enviado DATE;
+ALTER TABLE configuracao_auditoria ADD COLUMN IF NOT EXISTS resumo_hora INTEGER NOT NULL DEFAULT 7;

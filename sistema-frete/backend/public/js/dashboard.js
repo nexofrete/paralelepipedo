@@ -3678,6 +3678,7 @@ async function carregarAuditoriaFrete() {
       return;
     }
     ultimasLinhasAuditoria = await resposta.json();
+    await prepararFiltroResponsavel();
 
     // Popula o filtro de transportadora com as que aparecem na auditoria.
     const transportadorasNaLista = [...new Set(ultimasLinhasAuditoria.map((l) => l.transportadora).filter(Boolean))].sort();
@@ -3697,8 +3698,12 @@ function linhasFiltradasAuditoria() {
   const filtroTransp = document.getElementById('afFiltroTransportadora').value;
   const filtroStatus = document.getElementById('afFiltroStatus').value;
   const filtroBusca = document.getElementById('afFiltroBusca').value.trim().toLowerCase();
+  const filtroResp = document.getElementById('afFiltroResponsavel')?.value || '';
   return ultimasLinhasAuditoria.filter((l) => {
     if (filtroTransp && l.transportadora !== filtroTransp) return false;
+    if (filtroResp === 'meus' && Number(l.auditor_id) !== Number(usuario?.id)) return false;
+    if (filtroResp === 'sem' && l.auditor_id) return false;
+    if (/^\d+$/.test(filtroResp) && Number(l.auditor_id) !== Number(filtroResp)) return false;
     const divergente = Number(l.dif_negociado_tabela) !== 0;
     if (filtroStatus === 'ok' && (l.carga_direta || divergente)) return false;
     if (filtroStatus === 'divergente' && (l.carga_direta || !divergente)) return false;
@@ -4041,9 +4046,29 @@ async function enviarEspelhoEmailAuditoria(id) {
   }
 }
 
-['afFiltroTransportadora', 'afFiltroStatus'].forEach((id) => {
+['afFiltroTransportadora', 'afFiltroStatus', 'afFiltroResponsavel'].forEach((id) => {
   document.getElementById(id).addEventListener('change', () => { kanbanLimite = {}; renderizarAuditoriaFrete(); });
 });
+// Fila por responsável: lista os analistas no filtro e, para quem é responsável por alguma transportadora,
+// começa em "Só os meus" (a escolha fica guardada neste navegador).
+let responsaveisCarregados = false;
+async function prepararFiltroResponsavel() {
+  const sel = document.getElementById('afFiltroResponsavel');
+  if (!sel || responsaveisCarregados) return;
+  responsaveisCarregados = true;
+  try {
+    const r = await apiFetch('/api/auditoria-config/responsaveis');
+    if (!r.ok) return;
+    const j = await r.json();
+    const comResp = new Set(j.transportadoras.map((t) => t.auditor_id).filter(Boolean));
+    const nomes = j.usuarios.filter((u) => comResp.has(u.id) && u.id !== usuario?.id);
+    sel.insertAdjacentHTML('beforeend', nomes.map((u) => `<option value="${u.id}">${cfEsc(u.nome)}</option>`).join(''));
+    let salvo = null; try { salvo = localStorage.getItem('auditoria.responsavel'); } catch { /* sem armazenamento */ }
+    if (salvo != null && [...sel.options].some((o) => o.value === salvo)) sel.value = salvo;
+    else if (comResp.has(usuario?.id)) sel.value = 'meus';
+    sel.addEventListener('change', () => { try { localStorage.setItem('auditoria.responsavel', sel.value); } catch { /* sem armazenamento */ } });
+  } catch { /* sem responsáveis: filtro fica só com as opções fixas */ }
+}
 document.getElementById('afFiltroBusca').addEventListener('input', () => { kanbanLimite = {}; renderizarAuditoriaFrete(); });
 
 // ---------- Financeiro ----------
@@ -5088,6 +5113,7 @@ async function carregarConfigAuditoria() {
     document.getElementById('audPctReentrega').value = c.percentual_reentrega ?? 50;
     desenharRegrasTolerancia(c.tolerancias || [], c.componentes || {});
     if (window.carregarRegrasAuditoria) window.carregarRegrasAuditoria();
+    if (window.carregarResponsaveisAuditoria) window.carregarResponsaveisAuditoria();
   } catch (err) {
     console.error(err);
   }
@@ -7043,6 +7069,11 @@ function irParaAlvoNotificacao(alvo) {
       break;
     }
     case 'retidos': destacar(document.getElementById('kanbanAuditoria')); break;
+    case 'meus-retidos': {
+      const sel = document.getElementById('afFiltroResponsavel');
+      if (sel) { sel.value = 'meus'; sel.dispatchEvent(new Event('change')); }
+      destacar(document.getElementById('kanbanAuditoria')); break;
+    }
     case 'vencimentos': destacar(document.querySelector('#pagina-financeiro .painel')); break;
     case 'meta': destacar(document.getElementById('areaProgressoMeta')?.closest('.painel')); break;
     case 'entregas-previstas': mostrarSubabaRelatorio('entregas'); destacar(document.getElementById('painelEntregasPrevistas')); break;

@@ -1829,3 +1829,12 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .cr-mes small { font-size: 10.5px; color: var(--texto-fraco); margin-top: 3px; }
 .cr-leg { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; }
 @media (max-width: 760px) { .cr-duas { grid-template-columns: 1fr; } }
+
+/* Responsáveis e resumo diário (public/js/responsaveisAuditoria.js) */
+.rp-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.rp-lista { display: grid; gap: 4px; margin-top: 8px; max-height: 220px; overflow-y: auto; font-size: 13px; }
+.rp-lista label { display: flex; gap: 6px; align-items: center; }
+#rpHora { padding: 4px 6px; border: 1px solid var(--borda); border-radius: 6px; background: var(--bg-card); color: var(--texto); }
+@media (max-width: 800px) { .rp-duas { grid-template-columns: 1fr; } }
+
+.cn-faixa { display: inline-block; min-width: 22px; text-align: center; padding: 1px 6px; border-radius: 6px; font-weight: 800; color: #fff; background: var(--c); }

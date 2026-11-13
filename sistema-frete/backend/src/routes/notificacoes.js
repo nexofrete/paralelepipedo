@@ -46,6 +46,17 @@ router.get('/', autenticar, async (req, res) => {
       }
     }
 
+    // Fila por responsável: os retidos das transportadoras de quem está usando.
+    if (verAuditoria) {
+      const resp = require('../responsaveisAuditoria');
+      const minhas = await resp.doUsuario(req.usuario.id).catch(() => []);
+      if (minhas.length) {
+        const { rows: [m] } = await pool.query(`SELECT COUNT(*)::int AS qtd FROM fretes f WHERE f.status = 'Frete Retido' AND f.chave_cte IS NOT NULL AND f.cte_cancelado IS NOT TRUE
+            AND ${resp.TRANSP_DO_FRETE('f')} = ANY($1::int[])`, [minhas]);
+        if (m.qtd > 0) notificacoes.push({ tipo: 'alerta', icone: '👤', pagina: 'auditoria-frete', alvo: 'meus-retidos', texto: `${m.qtd} frete(s) retido(s) das transportadoras sob sua responsabilidade` });
+      }
+    }
+
     const { rows: retidos } = verAuditoria
       ? await consultaCliente(req, `SELECT COUNT(*)::int AS qtd FROM fretes WHERE status = 'Frete Retido'`)
       : { rows: [{ qtd: 0 }] };

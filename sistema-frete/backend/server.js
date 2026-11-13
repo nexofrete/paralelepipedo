@@ -377,6 +377,7 @@ async function iniciar() {
     agenda.agendarLembretes();
     require('./src/pastaXml').agendar();
     require('./src/regrasAuditoria').agendar();
+    require('./src/resumoAuditoria').agendar();
     require('./src/caixaEmail').agendar();
     require('./src/contabil').agendar();
     require('./src/faturamento/regua').agendar();

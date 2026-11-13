@@ -2153,6 +2153,10 @@
               <select id="afFiltroTransportadora"><option value="">Todas</option></select>
             </div>
             <div class="campo" style="margin-bottom:0;">
+              <label>Responsável</label>
+              <select id="afFiltroResponsavel" title="Quem confere cada transportadora (Manutenção do sistema » Responsáveis da auditoria)"><option value="">Todos</option><option value="meus">Só os meus</option><option value="sem">Sem responsável</option></select>
+            </div>
+            <div class="campo" style="margin-bottom:0;">
               <label>Status</label>
               <select id="afFiltroStatus">
                 <option value="">Todos</option>
@@ -3576,6 +3580,9 @@
             Valem só para fretes retidos por cobrar a mais, ainda sem decisão, sem glosa e fora de contestação aberta; não mexem em transportadoras diferentes, cobrança em dobro, "não levou" e carga direta.
             A primeira regra da lista que casar decide. Rodam a cada 10 minutos. Use <b>Simular</b> para ver antes o que seria decidido.</p>
           <div id="audRegrasAuto"></div>
+          <h4 style="margin:22px 0 4px; font-size:14px;">👤 Responsáveis e resumo diário</h4>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 8px;">Cada transportadora pode ter um responsável: na Auditoria, o filtro "Só os meus" mostra o que é dele e o sino avisa os retidos dele. Sem responsável, todo mundo vê.</p>
+          <div id="audResponsaveis"></div>
         </div>
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🧹 Limpeza: notas "Aguardando CT-e"</h3>
@@ -4025,6 +4032,7 @@
   <script src="js/cobrancasIndevidas.js"></script>
   <script src="js/contestacoes.js"></script>
   <script src="js/regrasAuditoria.js"></script>
+  <script src="js/responsaveisAuditoria.js"></script>
   <script src="js/notasFiscais.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>

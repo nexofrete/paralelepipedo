@@ -5,6 +5,9 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Auditoria de frete", "texto": "Fila por responsável: cada transportadora pode ter um analista (Manutenção do sistema). Na Auditoria, o filtro \"Responsável\" mostra só os meus, sem responsável ou de um analista; quem é responsável já abre em \"Só os meus\" e o sino avisa os retidos dele."},
+        {"area": "Auditoria de frete", "texto": "Resumo diário por e-mail, logo cedo (de segunda a sábado, na hora escolhida): retidos e quanto somam a mais, os 5 que mais cobraram a mais, contestações vencidas e respondidas pelo link e faturas que vencem na semana. Com prévia e envio de teste."},
+        {"area": "Auditoria de frete", "texto": "Nota das transportadoras (aba nova em Contestações): nota de 0 a 100 e faixa A a D pela % de CT-e divergentes, pelo cobrado a mais por R$ 1.000 de frete, pela aceitação das contestações e pelo tempo de resposta."},
         {"area": "Auditoria de frete", "texto": "Resultado da auditoria (aba nova em Contestações): cobrado a mais, recuperado (glosas, créditos de contestação e CT-e barrados) e a % recuperada, aprovado mesmo divergente (pessoas e regras), em apuração e decididos por regra, com as principais causas, gráfico por mês, tabela por transportadora e planilha."},
         {"area": "Auditoria de frete", "texto": "A transportadora responde a contestação por um link, sem login: marca cada CT-e como aceito (com o valor) ou recusado (com o motivo). A resposta chega já preenchida para conferir e confirmar, e o sino avisa. Botão \"Link de resposta\" para copiar e mandar por WhatsApp."},
         {"area": "Auditoria de frete", "texto": "Desfazer: depois de aprovar, reprovar ou glosar aparece um aviso com \"Desfazer\" por 10 segundos, que devolve o frete para a conferência."},

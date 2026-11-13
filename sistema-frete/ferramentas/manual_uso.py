@@ -582,6 +582,9 @@ def parte_uso(g):
     ])
     s += aviso('nota', '<b>Limite de alçada</b>: se configurado, fretes acima desse valor só podem ser aprovados por quem '
                        'tem a permissão "Aprovar valores altos".')
+    s += aviso('dica', '<b>Fila por responsável</b>: o filtro <b>Responsável</b> da Auditoria mostra "Todos", "Só os meus", '
+                       '"Sem responsável" ou um analista. Quem é responsável por alguma transportadora (capítulo 24) já abre em "Só os meus". '
+                       'A fila do Detalhe (setas e "Aprovar e próximo") segue o mesmo filtro.')
     s += aviso('dica', '<b>Desfazer</b>: logo depois de aprovar, reprovar ou glosar (no cartão, no Detalhe, em lote ou na tela do '
                        'registro), aparece no rodapé um aviso com o botão <b>Desfazer</b> por 10 segundos. Ele devolve o frete para a '
                        'conferência, sem decisão (a glosa feita junto também sai). Só vale para a decisão da própria pessoa, dos últimos 10 '
@@ -681,6 +684,17 @@ def parte_uso(g):
     s.append(P('Abaixo: de onde veio o recuperado, as principais causas (glosas por motivo), o gráfico por mês (cobrado a mais '
                'e recuperado) e a tabela por transportadora, com a % de CT-e divergentes, o recuperado e a principal causa. '
                '<b>Planilha (CSV)</b> baixa os números (total, por mês e por transportadora) para abrir no Excel.'))
+    s += h3('Nota das transportadoras')
+    s.append(P('A aba <b>Nota das transportadoras</b> dá a cada transportadora uma nota de 0 a 100 no período (padrão: últimos 90 '
+               'dias, pela emissão do CT-e), para comparar e negociar. Passe o mouse na nota para ver os pontos de cada parte:'))
+    s += tabela(['Parte', 'Pontos'], [
+        ['CT-e acima da tabela (fora da tolerância)', '40 com nenhum; zero com metade ou mais dos CT-e.'],
+        ['Cobrado a mais a cada R$ 1.000 de frete', '30 com nada; zero com R$ 50 (5%) ou mais.'],
+        ['Contestações: parte do valor contestado que ela aceitou', '20 x a parte aceita (sem contestação respondida: 20).'],
+        ['Tempo de resposta das contestações', '10 respondendo no mesmo dia; zero com 20 dias ou mais (sem: 10).'],
+    ], [0.55, 0.45])
+    s.append(P('Faixas: <b>A</b> (85 ou mais), <b>B</b> (70 ou mais), <b>C</b> (50 ou mais) e <b>D</b> (abaixo de 50). Transportadora '
+               'com menos de 5 CT-e no período aparece sem nota ("poucos CT-e").'))
     s += h3('Glosas por motivo')
     s.append(P('A aba <b>Glosas por motivo</b> da janela de contestações mostra, no período, quanto foi glosado em cada motivo '
                '(com barras) e uma tabela por transportadora com o valor de cada motivo, além dos créditos de contestação '

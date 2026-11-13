@@ -78,6 +78,33 @@ router.put('/tolerancias', autenticar, apenasAdmin, async (req, res) => {
   }
 });
 
+// ---------- Responsáveis por transportadora e resumo diário (src/responsaveisAuditoria.js, src/resumoAuditoria.js) ----------
+router.get('/responsaveis', autenticar, async (req, res) => {
+  try { res.json(await require('../responsaveisAuditoria').listar()); } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao ler os responsáveis.' }); }
+});
+router.put('/responsaveis', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const r = await require('../responsaveisAuditoria').salvar(req.body || {});
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_auditoria_config',
+      detalhes: `Responsáveis da auditoria: ${r.transportadoras.filter((t) => t.auditor_id).length} transportadora(s) com responsável; resumo diário para ${r.usuarios.filter((u) => u.resumo_auditoria).length} usuário(s) às ${r.resumo_hora}h` });
+    res.json(r);
+  } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao salvar os responsáveis.' }); }
+});
+// Como fica o resumo de quem está usando (sem enviar) e o envio de teste para o próprio e-mail.
+router.get('/resumo/previa', autenticar, async (req, res) => {
+  try { const r = await require('../resumoAuditoria').html(req.usuario); res.json({ html: r.html, vazio: r.vazio }); } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao montar o resumo.' }); }
+});
+router.post('/resumo/teste', autenticar, async (req, res) => {
+  try {
+    const { rows: [emp] } = await pool.query('SELECT endereco_publico FROM empresa WHERE id = 1').catch(() => ({ rows: [{}] }));
+    await require('../resumoAuditoria').enviarPara(req.usuario, emp?.endereco_publico ? String(emp.endereco_publico).replace(/\/+$/, '') : null);
+    res.json({ ok: true, para: req.usuario.email });
+  } catch (err) {
+    if (/configurado|SMTP|mail/i.test(err.message || '')) return res.status(400).json({ erro: `Não foi possível enviar: ${err.message}` });
+    console.error(err); res.status(500).json({ erro: 'Erro ao enviar o resumo.' });
+  }
+});
+
 // ---------- Regras automáticas (src/regrasAuditoria.js) ----------
 const regrasAud = require('../regrasAuditoria');
 const erroRegra = (res, err, msg) => { if (err.status) return res.status(err.status).json({ erro: err.message }); console.error(err); res.status(500).json({ erro: msg }); };

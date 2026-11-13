@@ -2354,7 +2354,8 @@ router.get('/auditoria/divergencias', autenticar, permitirAlguma('pode_ver_audit
               tp.gris_percentual AS tabela_gris_percentual, tp.gris_minimo AS tabela_gris_minimo,
               tp.tde AS tabela_tde, tp.tda AS tabela_tda, tp.trt AS tabela_trt, tp.pedagio AS tabela_pedagio,
               tp.ad_valorem_percentual AS tabela_ad_valorem_percentual,
-              COALESCE(tp.transportadora_id, (SELECT tr.id FROM transportadoras tr WHERE UPPER(TRIM(tr.razao_social)) = UPPER(TRIM(COALESCE(fretes.transportadora_cte, fretes.transportadora))) LIMIT 1)) AS transportadora_id_tol
+              COALESCE(tp.transportadora_id, (SELECT tr.id FROM transportadoras tr WHERE UPPER(TRIM(tr.razao_social)) = UPPER(TRIM(COALESCE(fretes.transportadora_cte, fretes.transportadora))) LIMIT 1)) AS transportadora_id_tol,
+              (SELECT ta.auditor_id FROM transportadoras ta WHERE ta.id = COALESCE(tp.transportadora_id, (SELECT tr.id FROM transportadoras tr WHERE UPPER(TRIM(tr.razao_social)) = UPPER(TRIM(COALESCE(fretes.transportadora_cte, fretes.transportadora))) LIMIT 1))) AS auditor_id
        FROM fretes
        LEFT JOIN tabelas_preco tp ON tp.id = fretes.tabela_preco_id_usada
        WHERE ${condicoes.join(' AND ')}

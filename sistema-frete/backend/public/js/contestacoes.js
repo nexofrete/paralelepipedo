@@ -32,10 +32,10 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('oculto') && !document.querySelector('.dlg-fundo')) fechar(); });
 
   const topo = (titulo, extra = '') => `<div class="ct-topo"><h3>${titulo}</h3><div style="display:flex; gap:8px; align-items:center;">${extra}<button class="btn btn-secundario" data-ct="fechar" style="width:auto;">✕</button></div></div>`;
-  const abas = () => `<div class="cte-abas" style="margin-bottom:12px;"><div class="cte-aba ${aba === 'lista' ? 'ativo' : ''}" data-ct-aba="lista">📨 Contestações</div><div class="cte-aba ${aba === 'motivos' ? 'ativo' : ''}" data-ct-aba="motivos">📊 Glosas por motivo</div><div class="cte-aba ${aba === 'padroes' ? 'ativo' : ''}" data-ct-aba="padroes">🔁 Diferenças que se repetem</div><div class="cte-aba ${aba === 'resultado' ? 'ativo' : ''}" data-ct-aba="resultado">📈 Resultado</div></div>`;
+  const abas = () => `<div class="cte-abas" style="margin-bottom:12px;"><div class="cte-aba ${aba === 'lista' ? 'ativo' : ''}" data-ct-aba="lista">📨 Contestações</div><div class="cte-aba ${aba === 'motivos' ? 'ativo' : ''}" data-ct-aba="motivos">📊 Glosas por motivo</div><div class="cte-aba ${aba === 'padroes' ? 'ativo' : ''}" data-ct-aba="padroes">🔁 Diferenças que se repetem</div><div class="cte-aba ${aba === 'resultado' ? 'ativo' : ''}" data-ct-aba="resultado">📈 Resultado</div><div class="cte-aba ${aba === 'notas' ? 'ativo' : ''}" data-ct-aba="notas">🏅 Nota das transportadoras</div></div>`;
   function ligarComuns() {
     caixa.querySelector('[data-ct="fechar"]')?.addEventListener('click', fechar);
-    caixa.querySelectorAll('[data-ct-aba]').forEach((el) => el.addEventListener('click', () => { aba = el.dataset.ctAba; ({ lista, motivos, padroes, resultado }[aba])().catch(erro); }));
+    caixa.querySelectorAll('[data-ct-aba]').forEach((el) => el.addEventListener('click', () => { aba = el.dataset.ctAba; ({ lista, motivos, padroes, resultado, notas }[aba])().catch(erro); }));
   }
   const erro = (e) => mostrarAlerta(e.message || String(e), { tipo: 'erro' });
 
@@ -210,6 +210,35 @@
         ${j.por_transportadora.map((t) => `<tr><td>${esc(t.transportadora || '—')}</td><td class="n">${t.qtd}</td><td class="n"><b>${moeda(t.valor)}</b></td>${usados.map((k) => `<td class="n">${t.motivos[k] ? moeda(t.motivos[k]) : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     };
     ['cmDe', 'cmAte'].forEach((id) => document.getElementById(id).addEventListener('change', () => carregar().catch(erro)));
+    await carregar();
+  }
+
+  // ---------- Nota das transportadoras ----------
+  async function notas() {
+    const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    const ini = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+    caixa.innerHTML = `${topo('🏅 Nota das transportadoras na auditoria')}${abas()}
+      <div class="ct-filtros"><label>CT-e emitidos de<input type="date" id="cnDe" value="${ini}"></label><label>até<input type="date" id="cnAte" value="${hoje}"></label>
+        <button class="btn btn-secundario" id="cnBuscar" style="width:auto; align-self:end;">Atualizar</button></div>
+      <div id="cnCorpo" style="margin-top:12px;">Carregando…</div>`;
+    ligarComuns();
+    const COR = { A: '#16a34a', B: '#2563eb', C: '#ca8a04', D: '#dc2626' };
+    const n1 = (v) => (v == null ? '—' : String(v).replace('.', ','));
+    const carregar = async () => {
+      const el = document.getElementById('cnCorpo'); el.textContent = 'Carregando…';
+      const j = await json(`/api/contestacoes/notas?${new URLSearchParams({ de: document.getElementById('cnDe').value, ate: document.getElementById('cnAte').value })}`);
+      if (!j.transportadoras.length) { el.innerHTML = '<p style="color:var(--texto-fraco);">Nenhum CT-e conferido no período.</p>'; return; }
+      el.innerHTML = `<div class="ct-rolagem"><table class="ct-tabela"><thead><tr><th>Transportadora</th><th class="n">Nota</th><th class="n">CT-e</th><th class="n">Divergentes</th><th class="n">A mais por R$ 1.000</th><th class="n">Contestações</th><th class="n">Aceitou</th><th class="n">Responde em</th></tr></thead><tbody>
+        ${j.transportadoras.map((t) => `<tr><td>${esc(t.transportadora)}</td>
+          <td class="n" title="${t.nota == null ? `Precisa de pelo menos ${j.minimo_ctes} CT-e no período` : `Divergência ${n1(t.pontos.divergencia)}/40 · A mais ${n1(t.pontos.a_mais)}/30 · Contestações ${n1(t.pontos.contestacao)}/20 · Resposta ${n1(t.pontos.resposta)}/10`}">
+            ${t.nota == null ? '<span class="ct-dica">poucos CT-e</span>' : `<span class="cn-faixa" style="--c:${COR[t.faixa]}">${t.faixa}</span> <b>${t.nota}</b>`}</td>
+          <td class="n">${t.ctes}</td><td class="n">${t.divergentes} (${n1(t.pct_divergentes)}%)</td><td class="n">${moeda(t.a_mais_por_mil)}</td>
+          <td class="n">${t.contestacoes || '—'}</td><td class="n">${t.pct_aceito == null ? '—' : `${n1(t.pct_aceito)}%`}</td><td class="n">${t.dias_resposta == null ? '—' : `${n1(t.dias_resposta)} dia(s)`}</td></tr>`).join('')}</tbody></table></div>
+        <p class="ct-dica" style="margin-top:10px;">Nota de 0 a 100 (passe o mouse na nota para ver os pontos): <b>40</b> pela % de CT-e acima da tabela (zero com metade ou mais), <b>30</b> pelo cobrado a mais a cada R$ 1.000 de frete (zero com R$ 50, ou 5%),
+          <b>20</b> pela parte do valor contestado que ela aceitou e <b>10</b> pelo tempo de resposta das contestações (zero com 20 dias). Sem contestação respondida no período, esses 30 pontos contam inteiros.
+          Faixas: <b style="color:${COR.A}">A</b> 85+, <b style="color:${COR.B}">B</b> 70+, <b style="color:${COR.C}">C</b> 50+, <b style="color:${COR.D}">D</b> abaixo de 50. Precisa de pelo menos ${j.minimo_ctes} CT-e no período.</p>`;
+    };
+    document.getElementById('cnBuscar').addEventListener('click', () => carregar().catch(erro));
     await carregar();
   }
 

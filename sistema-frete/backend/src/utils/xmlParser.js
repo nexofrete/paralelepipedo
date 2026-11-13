@@ -98,6 +98,14 @@ function parseNFe(xmlString) {
     }
   }
 
+  // Não achou a cidade pelos formatos acima: usa a leitura completa do endereço (cidade conferida no IBGE).
+  if (!cidadeRedespacho && blocoRedespacho) {
+    try {
+      const lido = require('../enderecoEntrega').lerEndereco(blocoRedespacho);
+      if (lido?.cidade && lido.ibge) cidadeRedespacho = String(lido.cidade).toUpperCase();
+    } catch { /* fica sem a cidade: segue como antes */ }
+  }
+
   // Se o texto não trouxer o "Nr. pedido do cliente", usamos o <xPed> do
   // primeiro item da nota como alternativa (também é o número do pedido do cliente).
   if (!pedidoMercus) {

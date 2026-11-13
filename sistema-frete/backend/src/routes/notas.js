@@ -8,6 +8,16 @@ const nf = require('../notasFiscais');
 const router = express.Router();
 const erro = (res, err, padrao) => { if (!err.status) console.error('[notas]', err.message); res.status(err.status || 500).json({ erro: err.status ? err.message : padrao }); };
 
+// Corrigir à mão o endereço de entrega ou do redespacho.
+router.put('/:id(\\d+)/endereco', autenticar, require('../permissoes').permitirAlguma('pode_editar_registros'), async (req, res) => {
+  try {
+    const r = await nf.corrigirEndereco(req, Number(req.params.id), req.body || {});
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_registro',
+      detalhes: `Corrigiu o endereço ${r.qual === 'redespacho' ? 'do redespacho' : 'de entrega'} do registro #${req.params.id}: ${require('../enderecoEntrega').textoEndereco(r.endereco)}` });
+    res.json(r);
+  } catch (err) { erro(res, err, 'Erro ao corrigir o endereço.'); }
+});
+
 router.get('/', autenticar, async (req, res) => {
   try { res.json(await nf.listar(req, req.query)); } catch (err) { erro(res, err, 'Erro ao listar as notas.'); }
 });

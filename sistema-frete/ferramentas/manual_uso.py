@@ -308,6 +308,26 @@ def parte_uso(g):
     s += h2('Lançar um registro manual')
     s.append(P('"+ Lançar registro manual" abre o formulário vazio, para fretes que não têm XML.'))
 
+    s += h2('Endereço de entrega e redespacho')
+    s.append(P('Ao importar a NF-e, o sistema procura o endereço de entrega nesta ordem:'))
+    s += tabela(['Ordem', 'Onde', 'Para que serve'], [
+        ['1', 'REDESPACHO: escrito nos dados adicionais', 'É para lá que a transportadora contratada leva a carga. A cidade do redespacho é a usada no cálculo do frete.'],
+        ['2', 'Grupo &lt;entrega&gt; do XML', 'Local de entrega diferente do destinatário, já com os campos separados (o mais confiável).'],
+        ['3', 'LOCAL DE ENTREGA, ENDEREÇO DE ENTREGA, ENTREGAR EM... nos dados adicionais', 'Quando a nota não tem o grupo &lt;entrega&gt;.'],
+        ['4', 'Endereço do destinatário', 'Quando não há nada acima.'],
+    ], [0.1, 0.4, 0.5])
+    s += lista([
+        'Do texto livre, o sistema separa nome, CNPJ, inscrição estadual, rua e número, complemento, bairro, cidade, UF e CEP. A cidade '
+        'é conferida na lista oficial de municípios do IBGE (também quando a nota não traz a UF e a cidade só existe num estado). '
+        '"ENTREGA EM 10/11" e frases assim não são confundidas com endereço.',
+        'Quando a leitura não tem certeza (cidade que não está no IBGE ou sem rua), a nota fica com <b>⚠ conferir</b> e o motivo. '
+        'O número de notas a conferir aparece no alto da tela; clique nele para ver só essas.',
+        'Em <b>Abrir</b>, cada endereço mostra a origem, o texto da nota de onde foi lido e o botão <b>Corrigir</b> (quem pode editar '
+        'registros). A cidade corrigida é conferida no IBGE; no redespacho, ela vira também a Cidade do Redespacho do cálculo: se mudou, '
+        'use Recalcular no registro. Endereço corrigido à mão não é mais trocado pela leitura automática.',
+        'As notas que já estavam no sistema são lidas de novo, a partir do XML guardado, quando o sistema liga.',
+        'No Montar relatório (BI) há os campos Endereço de entrega, Endereço do redespacho, Origem do endereço e Endereço a conferir.',
+    ])
     s += h2('Notas fiscais (403)')
     s.append(P('Em <b>Documentos » Notas fiscais</b>, as NF-e importadas com todos os dados da nota: número e série, chave de '
                'acesso, emitente (nome e CNPJ), destinatário, valor dos produtos e total da nota, peso bruto e peso líquido, '
@@ -318,6 +338,8 @@ def parte_uso(g):
         '<b>Filtros</b>: número, chave, cliente ou pedido; emitente e destinatário (nome ou CNPJ); série; cidade e UF; período '
         'pela emissão ou pela saída; situação (autorizada, cancelada, denegada, sem CT-e). No alto, o total de notas, valor, '
         'peso, volumes, canceladas e denegadas.',
+        '<b>Entrega</b> (coluna): para onde a transportadora leva a nota e de onde veio o endereço. Filtro <b>Endereço de entrega</b>: '
+        'a conferir, com redespacho, local de entrega diferente ou corrigidos à mão.',
         '<b>Abrir</b> a nota mostra tudo e os botões <b>DANFE</b> (gerado a partir do XML, pronto para imprimir ou salvar em PDF '
         'pelo navegador) e <b>XML</b> (o arquivo da nota). Nota que entrou só pela planilha do ERP não tem XML.',
         '<b>XML das notas (.zip)</b>: baixa os XML de todas as notas do filtro num arquivo .zip. <b>Excel</b>: a lista com '

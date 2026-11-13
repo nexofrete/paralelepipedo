@@ -13,6 +13,9 @@ const ROTULO_STATUS = (c) => `INITCAP(REPLACE(${c}, '_', ' '))`;
 // Categoria da conta a pagar com o nome da tela (Combustível, Manutenção...); código desconhecido sai como está.
 const CATEGORIA_CONTA = `CASE contas_pagar.categoria ${Object.entries(require('./contasPagar').CATEGORIAS)
   .map(([k, v]) => `WHEN '${k}' THEN '${v.replace(/'/g, "''")}'`).join(' ')} ELSE INITCAP(REPLACE(contas_pagar.categoria, '_', ' ')) END`;
+// Endereço guardado em JSON (entrega_endereco / redespacho_endereco) como uma linha de texto.
+const END_TEXTO = (c) => `NULLIF(CONCAT_WS(' — ', NULLIF(CONCAT_WS(', ', NULLIF(${c}->>'logradouro', ''), NULLIF(${c}->>'numero', ''), NULLIF(${c}->>'complemento', '')), ''),
+  NULLIF(${c}->>'bairro', ''), NULLIF(CONCAT_WS('/', NULLIF(${c}->>'cidade', ''), NULLIF(${c}->>'uf', '')), ''), CASE WHEN ${c}->>'cep' ~ '^[0-9]{8}$' THEN 'CEP ' || LEFT(${c}->>'cep', 5) || '-' || RIGHT(${c}->>'cep', 3) END), '')`;
 const LIMITE_LINHAS = 50000;
 const LIMITE_GRUPOS = 5000;
 
@@ -62,6 +65,11 @@ const FONTES = {
       ['redespacho', 'Redespacho'],
       ['redespacho_cnpj', 'CNPJ do Redespacho'],
       ['cidade_redespacho', 'Cidade do Redespacho'],
+      ['endereco_entrega', 'Endereço de entrega', { sql: END_TEXTO('fretes.entrega_endereco') }],
+      ['endereco_redespacho', 'Endereço do redespacho', { sql: END_TEXTO('fretes.redespacho_endereco') }],
+      ['endereco_origem', 'Origem do endereço', { sql: "CASE fretes.endereco_origem WHEN 'redespacho' THEN 'Redespacho' WHEN 'xml_entrega' THEN 'Local de entrega (XML)' WHEN 'dados_adicionais' THEN 'Dados adicionais' WHEN 'destinatario' THEN 'Destinatário' WHEN 'manual' THEN 'Corrigido à mão' END" }],
+      ['endereco_conferir', 'Endereço a conferir', { tipo: 'simnao' }],
+      ['endereco_conferir_motivo', 'Motivo para conferir o endereço'],
     ] },
     { grupo: 'Emitente e partes do CT-e', campos: [
       ['emitente_nome', 'Emitente da NF'],

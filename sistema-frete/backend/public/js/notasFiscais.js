@@ -17,6 +17,12 @@
   const dataHora = (v) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
   const doc = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length === 14 ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}` : d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : d; };
   const SIT = { autorizada: ['entregue', 'Autorizada'], cancelada: ['devolvido', 'Cancelada'], denegada: ['ocorrencia', 'Denegada'] };
+  // De onde veio o endereço de entrega (src/enderecoEntrega.js).
+  const ORIGEM = { redespacho: 'Redespacho', xml_entrega: 'Local de entrega (XML)', dados_adicionais: 'Dados adicionais', destinatario: 'Destinatário', manual: 'Corrigido à mão' };
+  const json = (v) => { if (typeof v !== 'string') return v || null; try { return JSON.parse(v); } catch { return null; } };
+  const endTexto = (e) => (e ? [[e.logradouro, e.numero, e.complemento].filter(Boolean).join(', '), e.bairro, e.cidade || e.uf ? `${e.cidade || ''}/${e.uf || ''}` : '',
+    e.cep ? `CEP ${String(e.cep).replace(/^(\d{5})(\d{3})$/, '$1-$2')}` : ''].filter(Boolean).join(' — ') : '');
+  const podeCorrigir = () => usuario?.perfil === 'admin' || !!usuario?.pode_editar_registros;
   let dados = null; let montado = false;
   const marcadas = new Set();   // notas marcadas para imprimir o DANFE em lote
   const link = (caminho) => `${caminho}${caminho.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
@@ -33,13 +39,14 @@
         <div class="campo" style="margin:0;"><label>Período pela</label><select id="nfData" class="cte-entrada"><option value="emissao">Emissão</option><option value="saida">Saída</option></select></div>
         <div class="campo" style="margin:0; grid-column:span 2;"><label>Período</label><div style="display:flex; gap:6px; align-items:center;">${Periodo.html('nf')}</div></div>
         <div class="campo" style="margin:0;"><label>Situação</label><select id="nfSit" class="cte-entrada"><option value="">Todas</option><option value="autorizada">Autorizada</option><option value="cancelada">Cancelada</option><option value="denegada">Denegada</option><option value="sem_cte">Sem CT-e</option></select></div>
+        <div class="campo" style="margin:0;"><label>Endereço de entrega</label><select id="nfEnd" class="cte-entrada"><option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option></select></div>
       </div></div>
       <div id="nfResumo" class="oc-resumo"></div>
       <div class="painel" style="overflow-x:auto;"><div id="nfTabela"></div></div>`;
     Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
     let t = null;
     ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
-    ['nfData', 'nfSit'].forEach((id) => $(id).addEventListener('change', carregar));
+    ['nfData', 'nfSit', 'nfEnd'].forEach((id) => $(id).addEventListener('change', carregar));
     $('nfTabela').addEventListener('click', (e) => { const b = e.target.closest('[data-nf-ver]'); if (b) detalhe(Number(b.dataset.nfVer)); });
     $('nfTabela').addEventListener('change', (e) => {
       const c = e.target.closest('[data-nf-marca]');
@@ -52,7 +59,7 @@
     });
   }
   const filtros = () => new URLSearchParams({ busca: $('nfBusca').value.trim(), emitente: $('nfEmit').value.trim(), destinatario: $('nfDest').value.trim(), serie: $('nfSerie').value.trim(),
-    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value });
+    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value });
   async function carregar() {
     const r = await apiFetch(`/api/notas?${filtros()}`);
     const j = await r.json().catch(() => ({}));
@@ -60,16 +67,27 @@
     dados = j;
     const t = j.totais;
     $('nfResumo').innerHTML = `<div>Notas<b>${t.notas}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
-      <div>Peso<b>${kg(t.peso)}</b><span>${t.volumes} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>`;
-    $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Destino</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
+      <div>Peso<b>${kg(t.peso)}</b><span>${t.volumes} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>
+      <div style="cursor:pointer;" id="nfResumoConferir" title="Mostrar só as notas com endereço a conferir">Endereço a conferir<b style="color:${t.conferir_endereco ? '#d97706' : 'inherit'};">${t.conferir_endereco || 0}</b><span>lido do texto sem certeza</span></div>`;
+    $('nfResumoConferir')?.addEventListener('click', () => { $('nfEnd').value = 'conferir'; carregar(); });
+    $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Entrega</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
       ${j.notas.map((n) => `<tr><td>${n.tem_xml ? `<input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} />` : ''}</td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}</td>
         <td>${dia(n.data_emissao_nf)}</td><td>${n.data_saida ? dataHora(n.data_saida) : '—'}</td><td>${esc(n.emitente_nome || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.emitente_cnpj)}</small></td>
-        <td>${esc(n.cliente || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.cliente_documento)}</small></td><td>${esc(n.cidade || '')}/${esc(n.uf || '')}</td>
+        <td>${esc(n.cliente || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.cliente_documento)}</small></td><td>${celulaEntrega(n)}</td>
         <td style="text-align:right;">${moeda(n.valor_produtos)}</td><td style="text-align:right;">${moeda(n.valor_faturado)}</td><td style="text-align:right;">${kg(n.peso_bruto ?? n.peso_kg)}</td><td style="text-align:right;">${n.qtd_volumes ?? '—'}</td>
         <td><span class="oc-sit ${SIT[n.situacao][0]}">${SIT[n.situacao][1]}</span></td>
         <td style="white-space:nowrap;"><button class="btn btn-secundario" data-nf-ver="${n.id}" style="width:auto; padding:4px 9px; font-size:11.5px;">Abrir</button></td></tr>`).join('')}</tbody></table>`
       : '<div style="padding:20px; text-align:center; color:var(--texto-fraco);">Nenhuma nota com esses filtros.</div>';
     botaoDanfes();
+  }
+  // Coluna Entrega: para onde a transportadora leva (redespacho ou local de entrega) e de onde veio.
+  function celulaEntrega(n) {
+    const r = json(n.redespacho_endereco); const e = json(n.entrega_endereco);
+    const alvo = r || e;
+    const cid = alvo?.cidade ? `${alvo.cidade}/${alvo.uf || ''}` : `${n.cidade || ''}/${n.uf || ''}`;
+    const origem = n.endereco_origem || alvo?.origem;
+    const aviso = n.endereco_conferir ? ` <span title="Conferir: ${esc(n.endereco_conferir_motivo || 'leitura sem certeza')}" style="color:#d97706; cursor:help;">⚠</span>` : '';
+    return `${esc(cid)}${aviso}${origem && origem !== 'destinatario' ? `<br><small style="color:var(--texto-fraco);">${esc(ORIGEM[origem] || origem)}${r?.nome ? `: ${esc(r.nome)}` : ''}</small>` : ''}`;
   }
   function botaoDanfes() {
     const b = $('nfDanfes'); if (!b) return;
@@ -80,13 +98,19 @@
   function detalhe(id) {
     const n = dados.notas.find((x) => x.id === id);
     if (!n) return;
-    let e = n.entrega_endereco; if (typeof e === 'string') { try { e = JSON.parse(e); } catch { e = null; } }
-    const linha = (r, v) => `<tr><td style="color:var(--texto-fraco); width:38%;">${r}</td><td><b>${v}</b></td></tr>`;
+    const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco);
+    const blocoEnd = (titulo, x, qual) => `<tr><td style="color:var(--texto-fraco); width:38%; vertical-align:top; white-space:normal;">${titulo}</td><td style="white-space:normal; word-break:break-word;"><b>${x ? esc([x.nome, endTexto(x)].filter(Boolean).join(' — ')) || '—' : '—'}</b>
+      ${x?.origem ? `<br><small style="color:var(--texto-fraco);">Origem: ${esc(ORIGEM[x.origem] || x.origem)}${x.cnpj ? ` · CNPJ ${doc(x.cnpj)}` : ''}</small>` : ''}
+      ${x?.conferir ? `<br><small style="color:#d97706;">⚠ Conferir: ${esc((x.motivos || []).join('; ') || n.endereco_conferir_motivo || 'leitura sem certeza')}</small>` : ''}
+      ${x?.texto && x.origem !== 'manual' ? `<br><small style="color:var(--texto-fraco);">Lido do texto: “${esc(x.texto)}”</small>` : ''}
+      ${podeCorrigir() ? `<br><button class="btn btn-secundario" data-nf-corrigir="${qual}" style="width:auto; padding:3px 9px; font-size:11.5px; margin-top:4px;">✏ Corrigir</button>` : ''}</td></tr>`;
+    const linha = (r, v) => `<tr><td style="color:var(--texto-fraco); width:38%; white-space:normal;">${r}</td><td style="white-space:normal; word-break:break-word;"><b>${v}</b></td></tr>`;
     const corpo = `<table style="width:100%; font-size:13px;"><tbody>
       ${linha('Chave de acesso', `<span style="font-family:monospace;">${esc(String(n.chave_nfe || '—').replace(/(.{4})/g, '$1 '))}</span>`)}
       ${linha('Número / série', `${esc(n.numero_nf)} / ${esc(n.nf_serie || '—')}`)}${linha('Situação', SIT[n.situacao][1])}
       ${linha('Emitente', `${esc(n.emitente_nome || '—')} · ${doc(n.emitente_cnpj)}`)}${linha('Destinatário', `${esc(n.cliente || '—')} · ${doc(n.cliente_documento)}`)}
-      ${linha(e?.local_diferente ? 'Local de entrega (diferente do destinatário)' : 'Endereço de entrega', e ? esc([e.nome, [e.logradouro, e.numero, e.complemento].filter(Boolean).join(', '), e.bairro, `${e.cidade || ''}/${e.uf || ''}`, e.cep ? `CEP ${e.cep}` : ''].filter(Boolean).join(' — ')) : '—')}
+      ${r || n.redespacho ? blocoEnd('Redespacho (para onde a transportadora leva)', r || { nome: n.redespacho, cidade: n.cidade_redespacho }, 'redespacho') : ''}
+      ${blocoEnd(e?.local_diferente ? 'Local de entrega (diferente do destinatário)' : 'Endereço de entrega', e, 'entrega')}
       ${linha('Emissão / saída', `${dia(n.data_emissao_nf)} / ${n.data_saida ? dataHora(n.data_saida) : '—'}`)}
       ${linha('Valor dos produtos / total da nota', `${moeda(n.valor_produtos)} / ${moeda(n.valor_faturado)}`)}
       ${linha('Peso bruto / líquido', `${kg(n.peso_bruto)} / ${kg(n.peso_liquido)}`)}${linha('Volumes', n.qtd_volumes ?? '—')}
@@ -102,7 +126,11 @@
         <a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/xml?token=${encodeURIComponent(token)}">⬇ XML</a>` : '<span style="color:var(--texto-fraco); align-self:center;">Nota sem XML (entrou pela planilha do ERP)</span>'}
         <button class="btn btn-primario" data-nf-fechar style="width:auto;">Fechar</button></div></div>`;
     document.body.appendChild(fundo);
-    fundo.addEventListener('click', (ev) => { if (ev.target === fundo || ev.target.closest('[data-nf-fechar]')) fundo.remove(); });
+    fundo.addEventListener('click', (ev) => {
+      if (ev.target === fundo || ev.target.closest('[data-nf-fechar]')) { fundo.remove(); return; }
+      const c = ev.target.closest('[data-nf-corrigir]');
+      if (c) corrigir(n, c.dataset.nfCorrigir, c.dataset.nfCorrigir === 'redespacho' ? (r || { nome: n.redespacho, cidade: n.cidade_redespacho }) : e, () => { fundo.remove(); carregar().then(() => detalhe(id)); });
+    });
     // Eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega...), com o XML de cada um.
     apiFetch(`/api/notas/${id}/eventos`).then((r) => (r.ok ? r.json() : [])).then((evs) => {
       const alvo = fundo.querySelector('#nfEventos');
@@ -115,12 +143,49 @@
     }).catch(() => {});
   }
 
+  // Corrigir à mão (a cidade é conferida no IBGE; no redespacho ela vira a Cidade do Redespacho do cálculo).
+  function corrigir(n, qual, x, depois) {
+    x = x || {};
+    const UFS = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay'; fundo.style.zIndex = '1200';
+    const campo = (id, r, v, extra = '') => `<div class="campo"><label for="nc${id}">${r}</label><input id="nc${id}" value="${esc(v || '')}" ${extra} /></div>`;
+    fundo.innerHTML = `<div class="painel modal-card" style="max-width:620px; width:100%; padding:20px 22px;">
+      <h3 style="margin-top:0;">✏ ${qual === 'redespacho' ? 'Endereço do redespacho' : 'Endereço de entrega'} — NF ${esc(n.numero_nf)}</h3>
+      ${x.texto ? `<p style="font-size:12px; color:var(--texto-fraco);">Texto da nota: “${esc(x.texto)}”</p>` : ''}
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0 10px;">
+        ${campo('Nome', qual === 'redespacho' ? 'Transportadora / local' : 'Nome do local', x.nome)}${campo('Cnpj', 'CNPJ (opcional)', x.cnpj ? doc(x.cnpj) : '')}
+        ${campo('Log', 'Rua / avenida', x.logradouro)}${campo('Num', 'Número', x.numero)}${campo('Comp', 'Complemento', x.complemento)}${campo('Bairro', 'Bairro', x.bairro)}
+        ${campo('Cidade', 'Cidade', x.cidade)}<div class="campo"><label for="ncUf">UF</label><select id="ncUf"><option value=""></option>${UFS.map((u) => `<option ${u === x.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+        ${campo('Cep', 'CEP', x.cep, 'maxlength="9"')}</div>
+      ${qual === 'redespacho' ? '<p style="font-size:12px; color:var(--texto-fraco);">A cidade também vira a Cidade do Redespacho, que é a usada no cálculo do frete. Depois de salvar, use "Recalcular" no registro se a cidade mudou.</p>' : ''}
+      <div id="ncErro" class="mensagem-erro"></div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn btn-secundario" data-nc-fechar style="width:auto;">Cancelar</button><button class="btn btn-primario" id="ncSalvar" style="width:auto;">Salvar</button></div></div>`;
+    document.body.appendChild(fundo);
+    fundo.addEventListener('click', (ev) => { if (ev.target === fundo || ev.target.closest('[data-nc-fechar]')) fundo.remove(); });
+    const v = (id) => fundo.querySelector(`#nc${id}`).value;
+    fundo.querySelector('#ncSalvar').addEventListener('click', async () => {
+      const erroEl = fundo.querySelector('#ncErro'); erroEl.classList.remove('visivel');
+      try {
+        const resp = await apiFetch(`/api/notas/${n.id}/endereco`, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qual, nome: v('Nome'), cnpj: v('Cnpj'), logradouro: v('Log'), numero: v('Num'), complemento: v('Comp'), bairro: v('Bairro'), cidade: v('Cidade'), uf: v('Uf'), cep: v('Cep') }) });
+        const j = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(j.erro || 'Erro ao salvar.');
+        fundo.remove();
+        mostrarAlerta(`Endereço corrigido.${j.mudouCidadeRedespacho ? ' A Cidade do Redespacho mudou: use "Recalcular" no registro para refazer o frete pela tabela.' : ''}`, { tipo: j.mudouCidadeRedespacho ? 'aviso' : 'sucesso' });
+        depois();
+      } catch (err) { erroEl.textContent = err.message; erroEl.classList.add('visivel'); }
+    });
+  }
+
   $('nfExcel')?.addEventListener('click', () => {
     if (!dados) return;
     window.exportarExcel(`notas-fiscais-${new Date().toISOString().slice(0, 10)}`, [{ nome: 'Notas fiscais',
-      colunas: ['NF', 'Série', 'Chave', 'Emissão', 'Saída', 'Emitente', 'CNPJ emitente', 'Destinatário', 'CNPJ/CPF destinatário', 'Cidade', 'UF', 'Valor produtos', 'Valor total', 'Peso bruto', 'Peso líquido', 'Volumes', 'Pedido', 'CT-e', 'Situação'],
-      linhas: dados.notas.map((n) => [n.numero_nf, n.nf_serie || '', n.chave_nfe || '', dia(n.data_emissao_nf), n.data_saida ? dataHora(n.data_saida) : '', n.emitente_nome || '', doc(n.emitente_cnpj), n.cliente || '', doc(n.cliente_documento),
-        n.cidade || '', n.uf || '', n.valor_produtos, n.valor_faturado, n.peso_bruto ?? n.peso_kg, n.peso_liquido, n.qtd_volumes, n.numero_pedido || '', n.numero_cte || '', SIT[n.situacao][1]]) }]).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+      colunas: ['NF', 'Série', 'Chave', 'Emissão', 'Saída', 'Emitente', 'CNPJ emitente', 'Destinatário', 'CNPJ/CPF destinatário', 'Cidade', 'UF', 'Endereço de entrega', 'Origem do endereço', 'Redespacho', 'Endereço do redespacho', 'Conferir endereço',
+        'Valor produtos', 'Valor total', 'Peso bruto', 'Peso líquido', 'Volumes', 'Pedido', 'CT-e', 'Situação'],
+      linhas: dados.notas.map((n) => { const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco); return [n.numero_nf, n.nf_serie || '', n.chave_nfe || '', dia(n.data_emissao_nf), n.data_saida ? dataHora(n.data_saida) : '', n.emitente_nome || '', doc(n.emitente_cnpj), n.cliente || '', doc(n.cliente_documento),
+        n.cidade || '', n.uf || '', endTexto(e), ORIGEM[n.endereco_origem] || '', r?.nome || n.redespacho || '', endTexto(r), n.endereco_conferir ? `Sim: ${n.endereco_conferir_motivo || ''}` : 'Não',
+        n.valor_produtos, n.valor_faturado, n.peso_bruto ?? n.peso_kg, n.peso_liquido, n.qtd_volumes, n.numero_pedido || '', n.numero_cte || '', SIT[n.situacao][1]]; }) }]).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
   });
   // DANFE em lote: as marcadas ou, sem nenhuma marcada, as do filtro (numa aba nova, um DANFE por folha).
   $('nfDanfes')?.addEventListener('click', () => {

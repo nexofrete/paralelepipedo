@@ -30,9 +30,11 @@ function dadosDaNota(xml) {
   const ide = inf.ide || {}; const emit = inf.emit || {}; const dest = inf.dest || {};
   const tot = inf.total?.ICMSTot || {}; const vols = lista(inf.transp?.vol);
   const soma = (c) => { const v = vols.map((x) => num(x[c])).filter((x) => x != null); return v.length ? v.reduce((s, x) => s + x, 0) : null; };
-  const ent = inf.entrega; const ed = dest.enderDest || {};
-  const end = ent ? { logradouro: ent.xLgr, numero: ent.nro, complemento: ent.xCpl, bairro: ent.xBairro, cidade: ent.xMun, uf: ent.UF, cep: ent.CEP, nome: ent.xNome, local_diferente: true }
-    : { logradouro: ed.xLgr, numero: ed.nro, complemento: ed.xCpl, bairro: ed.xBairro, cidade: ed.xMun, uf: ed.UF, cep: ed.CEP, local_diferente: false };
+  // Endereços: local de entrega (<entrega>, dados adicionais ou destinatário) e redespacho (dados adicionais).
+  const ends = require('./enderecoEntrega').daNfe(inf);
+  const e0 = ends.entrega || {};
+  const end = { logradouro: e0.logradouro, numero: e0.numero, complemento: e0.complemento, bairro: e0.bairro, cidade: e0.cidade, uf: e0.uf, cep: e0.cep, nome: e0.nome,
+    cnpj: e0.cnpj, ibge: e0.ibge, local_diferente: e0.origem !== 'destinatario', origem: e0.origem || null, texto: e0.texto || null };
   const saida = ide.dhSaiEnt || (ide.dSaiEnt ? `${ide.dSaiEnt}T${ide.hSaiEnt || '00:00:00'}` : null);
   return {
     nf_serie: ide.serie != null ? String(ide.serie) : null,
@@ -43,6 +45,8 @@ function dadosDaNota(xml) {
     // Data/hora de saída no horário de Brasília (sem o fuso).
     data_saida: saida ? String(saida).slice(0, 19).replace('T', ' ') : null,
     entrega_endereco: JSON.stringify(Object.fromEntries(Object.entries(end).map(([k, v]) => [k, v == null ? null : typeof v === 'boolean' ? v : String(v)]))),
+    redespacho_endereco: ends.redespacho ? JSON.stringify(ends.redespacho) : null,
+    endereco_origem: ends.origem, endereco_conferir: ends.conferir, endereco_conferir_motivo: ends.motivo ? ends.motivo.slice(0, 300) : null,
     denegada: prot ? CSTAT_DENEGADA.includes(String(prot.cStat)) : false,
     protocolo: prot ? { cStat: String(prot.cStat || ''), xMotivo: prot.xMotivo || '', nProt: prot.nProt || '' } : null,
   };
@@ -55,14 +59,19 @@ async function marcarDenegada(id, motivo) {
     WHERE id = $1 OR frete_principal_id = $1`, [id, `⚠ NF-e com USO DENEGADO pela SEFAZ${motivo ? ` (${motivo})` : ''}: não tem valor fiscal, não deve circular nem gerar frete.`]);
 }
 
+// Grava os endereços lidos (menos na nota com endereço corrigido à mão).
+const gravarEnderecos = (id, d) => pool.query(`UPDATE fretes SET entrega_endereco = $2, redespacho_endereco = $3, endereco_origem = $4, endereco_conferir = $5,
+    endereco_conferir_motivo = $6, endereco_lido_em = NOW() WHERE id = $1 AND NOT endereco_corrigido`,
+  [id, d.entrega_endereco, d.redespacho_endereco, d.endereco_origem, d.endereco_conferir, d.endereco_conferir_motivo]);
 async function completar(id) {
   const { rows: [f] } = await pool.query('SELECT id, xml_nfe_original FROM fretes WHERE id = $1', [id]);
   if (!f?.xml_nfe_original) return false;
   let d;
-  try { d = dadosDaNota(f.xml_nfe_original); } catch { await pool.query('UPDATE fretes SET nf_dados_em = NOW() WHERE id = $1', [id]); return false; }
+  try { d = dadosDaNota(f.xml_nfe_original); } catch { await pool.query('UPDATE fretes SET nf_dados_em = NOW(), endereco_lido_em = NOW() WHERE id = $1', [id]); return false; }
   await pool.query(`UPDATE fretes SET nf_serie = $2, emitente_nome = $3, emitente_cnpj = $4, valor_produtos = $5, peso_bruto = $6, peso_liquido = $7,
-      data_saida = $8, entrega_endereco = $9, nf_dados_em = NOW() WHERE id = $1`,
-  [id, d.nf_serie, d.emitente_nome, d.emitente_cnpj, d.valor_produtos, d.peso_bruto, d.peso_liquido, d.data_saida, d.entrega_endereco]);
+      data_saida = $8, nf_dados_em = NOW() WHERE id = $1`,
+  [id, d.nf_serie, d.emitente_nome, d.emitente_cnpj, d.valor_produtos, d.peso_bruto, d.peso_liquido, d.data_saida]);
+  await gravarEnderecos(id, d);
   if (d.denegada) await marcarDenegada(id, `${d.protocolo.cStat} ${d.protocolo.xMotivo}`.trim());
   return { ok: true, denegada: d.denegada };
 }
@@ -79,7 +88,48 @@ async function completarTodos() {
     }
   } finally { completando = false; }
   if (n) console.log(`[notas] ${n} nota(s) com série, emitente, pesos, saída e endereço lidos do XML.`);
+  // Notas já completas mas com o endereço lido na versão antiga: lê o redespacho e o local de entrega de novo.
+  let e = 0;
+  try {
+    for (;;) {
+      const { rows } = await pool.query('SELECT id, xml_nfe_original FROM fretes WHERE xml_nfe_original IS NOT NULL AND endereco_lido_em IS NULL AND NOT endereco_corrigido LIMIT 300');
+      if (!rows.length) break;
+      for (const r of rows) {
+        try { await gravarEnderecos(r.id, dadosDaNota(r.xml_nfe_original)); } catch { await pool.query('UPDATE fretes SET endereco_lido_em = NOW() WHERE id = $1', [r.id]); }
+        e += 1;
+      }
+    }
+  } catch (err) { console.error('[notas] endereços:', err.message); }
+  if (e) console.log(`[notas] ${e} nota(s) com o endereço de entrega e o redespacho lidos de novo.`);
   return n;
+}
+
+// Correção à mão do endereço (local de entrega ou redespacho): cidade conferida no IBGE; a releitura não mexe mais.
+// No redespacho, a cidade também vai para a "Cidade do Redespacho" (a que o cálculo do frete usa).
+async function corrigirEndereco(req, id, b = {}) {
+  const qual = b.qual === 'redespacho' ? 'redespacho' : 'entrega';
+  const { rows: [f] } = await consultaCliente(req, 'SELECT f.id, f.numero_nf, f.entrega_endereco, f.redespacho_endereco, f.cidade_redespacho FROM fretes f WHERE f.id = $1', [id]);
+  if (!f) throw falha('Nota não encontrada.', 404);
+  const t = (v, max) => { const x = String(v ?? '').trim(); return x ? x.slice(0, max) : null; };
+  const uf = t(b.uf, 2)?.toUpperCase() || null;
+  const { municipio } = require('./roteirizacao/municipios');
+  const m = b.cidade && uf ? municipio({ cidade: b.cidade, uf }) : null;
+  if (!m) throw falha('Cidade não encontrada na lista do IBGE: confira o nome e a UF.');
+  const cep = String(b.cep || '').replace(/\D/g, '');
+  if (cep && cep.length !== 8) throw falha('CEP com 8 números.');
+  const e = { nome: t(b.nome, 120), logradouro: t(b.logradouro, 120), numero: t(b.numero, 20), complemento: t(b.complemento, 60), bairro: t(b.bairro, 80),
+    cidade: m.nome, uf: m.uf, ibge: m.ibge, cep: cep || null, cnpj: String(b.cnpj || '').replace(/\D/g, '') || null, origem: 'manual', conferir: false, motivos: [] };
+  if (qual === 'redespacho') {
+    await pool.query(`UPDATE fretes SET redespacho_endereco = $2, endereco_origem = 'manual', endereco_conferir = FALSE, endereco_conferir_motivo = NULL, endereco_corrigido = TRUE,
+        cidade_redespacho = $3, atualizado_em = NOW() WHERE id = $1`, [id, JSON.stringify(e), m.nome.toUpperCase()]);
+  } else {
+    const ant = typeof f.entrega_endereco === 'string' ? JSON.parse(f.entrega_endereco || '{}') : (f.entrega_endereco || {});
+    await pool.query(`UPDATE fretes SET entrega_endereco = $2, endereco_origem = CASE WHEN redespacho_endereco IS NULL THEN 'manual' ELSE endereco_origem END,
+        endereco_conferir = CASE WHEN redespacho_endereco IS NULL THEN FALSE ELSE endereco_conferir END,
+        endereco_conferir_motivo = CASE WHEN redespacho_endereco IS NULL THEN NULL ELSE endereco_conferir_motivo END, endereco_corrigido = TRUE, atualizado_em = NOW() WHERE id = $1`,
+    [id, JSON.stringify({ ...e, local_diferente: true, texto: ant.texto || null })]);
+  }
+  return { qual, endereco: e, mudouCidadeRedespacho: qual === 'redespacho' && String(f.cidade_redespacho || '').toUpperCase() !== m.nome.toUpperCase() };
 }
 
 // ---------- Consulta ----------
@@ -103,10 +153,15 @@ function filtros(q, params) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(q.ate || '')) add(`${campoData} <= ?::date`, q.ate);
   if (['autorizada', 'cancelada', 'denegada'].includes(q.situacao)) add(`${SITUACAO} = ?`, q.situacao);
   if (q.situacao === 'sem_cte') cond.push(`f.chave_cte IS NULL AND f.cte_coberto_por IS NULL AND f.nf_cancelada IS NOT TRUE`);
+  if (q.endereco === 'conferir') cond.push('f.endereco_conferir');
+  if (q.endereco === 'redespacho') cond.push('f.redespacho_endereco IS NOT NULL');
+  if (q.endereco === 'local') cond.push("f.endereco_origem IN ('xml_entrega', 'dados_adicionais')");
+  if (q.endereco === 'manual') cond.push('f.endereco_corrigido');
   return cond.join(' AND ');
 }
 const COLUNAS = `f.id, f.numero_nf, f.nf_serie, f.chave_nfe, f.data_emissao_nf, f.data_saida, f.emitente_nome, f.emitente_cnpj, f.cliente, f.cliente_documento,
-  f.cidade, f.uf, f.entrega_endereco, f.valor_produtos::float, f.valor_faturado::float, f.peso_bruto::float, f.peso_liquido::float, f.peso_kg::float, f.qtd_volumes,
+  f.cidade, f.uf, f.entrega_endereco, f.redespacho_endereco, f.endereco_origem, f.endereco_conferir, f.endereco_conferir_motivo, f.endereco_corrigido, f.redespacho, f.cidade_redespacho,
+  f.valor_produtos::float, f.valor_faturado::float, f.peso_bruto::float, f.peso_liquido::float, f.peso_kg::float, f.qtd_volumes,
   f.numero_pedido, f.numero_cte, f.transportadora_nfe, f.status, f.data_entrega, (f.xml_nfe_original IS NOT NULL) AS tem_xml, ${SITUACAO} AS situacao`;
 async function listar(req, q = {}) {
   const params = [];
@@ -115,7 +170,8 @@ async function listar(req, q = {}) {
   const { rows: [t] } = await consultaCliente(req,
     `SELECT COUNT(*)::int AS notas, COALESCE(SUM(f.valor_faturado), 0)::float AS valor, COALESCE(SUM(f.valor_produtos), 0)::float AS produtos,
             COALESCE(SUM(COALESCE(f.peso_bruto, f.peso_kg)), 0)::float AS peso, COALESCE(SUM(f.qtd_volumes), 0)::int AS volumes,
-            COUNT(*) FILTER (WHERE f.nf_cancelada AND NOT f.nf_denegada)::int AS canceladas, COUNT(*) FILTER (WHERE f.nf_denegada)::int AS denegadas
+            COUNT(*) FILTER (WHERE f.nf_cancelada AND NOT f.nf_denegada)::int AS canceladas, COUNT(*) FILTER (WHERE f.nf_denegada)::int AS denegadas,
+            COUNT(*) FILTER (WHERE f.endereco_conferir)::int AS conferir_endereco
        FROM fretes f WHERE ${where}`, params);
   return { totais: t, notas: rows, limite: rows.length >= 2000 };
 }
@@ -173,4 +229,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

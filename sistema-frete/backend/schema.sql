@@ -3499,3 +3499,13 @@ ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS envio JSONB;
 ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS proximo_envio TIMESTAMPTZ;
 ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS ultimo_envio TIMESTAMPTZ;
 ALTER TABLE bi_modelos ADD COLUMN IF NOT EXISTS ultimo_envio_status VARCHAR(300);
+
+-- Endereço de entrega da NF-e (src/enderecoEntrega.js): redespacho e local de entrega lidos dos dados adicionais,
+-- de onde veio o endereço usado, e a marca "conferir" quando a leitura do texto não teve certeza.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS redespacho_endereco JSONB;
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_origem VARCHAR(20);          -- redespacho, xml_entrega, dados_adicionais, destinatario, manual
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_conferir BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_conferir_motivo VARCHAR(300);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_corrigido BOOLEAN NOT NULL DEFAULT FALSE;  -- corrigido à mão: a releitura não mexe
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_lido_em TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_fretes_endereco_conferir ON fretes (endereco_conferir) WHERE endereco_conferir;

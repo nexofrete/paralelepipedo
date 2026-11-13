@@ -180,6 +180,8 @@ async function rotear(xml, cnpjEmpresa, nome) {
     const r = await require('../dfe').processarDoc({ nsu: null, schema: 'procNFe_v4.00.xsd', xml }, { cnpj: cnpjEmpresa });
     return { resultado: r === 'novo' ? 'importado' : 'ja_existia', mensagem: r === 'novo' ? 'NF-e de outro emitente: entrou em NF-e contra o CNPJ.' : 'NF-e de outro emitente: já estava em NF-e contra o CNPJ.' };
   }
+  // Evento de NFS-e (padrão nacional: chave de 50 números em <chNFSe>). Não é evento de NF-e/CT-e.
+  if (/<(?:\w+:)?chNFSe\b|sped\.fazenda\.gov\.br\/nfse|<(?:\w+:)?pedRegEvento\b/i.test(xml)) return eventoNfse(xml);
   if (tipo === 'evento') {
     const r = await viaUpload(`Evento ${tag(xml, 'descEvento') || ''}`.trim());
     if (/<chNFe>/.test(xml) && tag(xml, 'tpEvento') === '110111') {
@@ -189,6 +191,23 @@ async function rotear(xml, cnpjEmpresa, nome) {
   }
   if (/<(?:\w+:)?(CompNfse|NFSe|Nfse|infNFSe|InfNfse)\b/.test(xml)) return { resultado: 'ignorado', mensagem: 'NFS-e: guardada só no registro (o sistema não lança NFS-e de terceiros).' };
   return { resultado: 'ignorado', mensagem: 'Documento que o sistema não usa.' };
+}
+
+// Cancelamento (e101101) ou cancelamento por substituição (e105102) de NFS-e: se for uma NFS-e emitida pela
+// empresa que está no sistema, ela passa a cancelada; senão o evento fica só no registro (não é erro).
+async function eventoNfse(xml) {
+  const chave = String(tag(xml, 'chNFSe') || '').replace(/\D/g, '');
+  const desc = tag(xml, 'xDesc') || (/<(?:\w+:)?e105102\b/.test(xml) ? 'Cancelamento por substituição' : /<(?:\w+:)?e101101\b/.test(xml) ? 'Cancelamento' : 'Evento');
+  const cancela = /<(?:\w+:)?e10(1101|5102)\b/.test(xml) || /cancelamento/i.test(desc);
+  if (!chave) return { resultado: 'ignorado', mensagem: `Evento de NFS-e (${desc}) sem a chave da NFS-e: guardado só no registro.` };
+  const { rows: [n] } = await pool.query('SELECT id, numero_nfse, status FROM nfse_emitidas WHERE chave = $1 LIMIT 1', [chave]);
+  if (!n) return { resultado: 'ignorado', mensagem: `Evento de NFS-e (${desc}) de uma NFS-e que não foi emitida por este sistema: guardado só no registro.` };
+  if (!cancela) return { resultado: 'ignorado', mensagem: `Evento de NFS-e (${desc}) da NFS-e nº ${n.numero_nfse || n.id}: guardado só no registro.` };
+  if (n.status === 'cancelada') return { resultado: 'ja_existia', mensagem: `NFS-e nº ${n.numero_nfse || n.id} já estava cancelada.` };
+  const motivo = tag(xml, 'xMotivo') || desc;
+  await pool.query(`UPDATE nfse_emitidas SET status = 'cancelada', cancelada_em = COALESCE(cancelada_em, NOW()), xml_cancelamento = COALESCE(xml_cancelamento, $2),
+      motivo = COALESCE(motivo, $3) WHERE id = $1`, [n.id, xml, `${desc} (recebido do NF-Stock)${motivo && motivo !== desc ? `: ${motivo}` : ''}`.slice(0, 500)]);
+  return { resultado: 'evento', mensagem: `${desc}: NFS-e nº ${n.numero_nfse || n.id} marcada como cancelada.` };
 }
 
 async function registrarDoc(d, campos) {

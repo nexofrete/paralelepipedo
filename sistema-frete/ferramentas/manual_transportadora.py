@@ -1041,7 +1041,8 @@ def parte_integracoes(g):
         'do último NSU. A NF-e emitida pela empresa entra como em "Enviar XML"; a NF-e de outro emitente vai para NF-e contra o '
         'CNPJ (nota de entrada, ou carga sem CT-e quando a empresa é a transportadora); o CT-e de transportadora vai para CT-e '
         'recebidos; os eventos (cancelamento, carta de correção) são aplicados; o CT-e emitido pela própria empresa e a NFS-e '
-        'ficam só registrados.',
+        'ficam só registrados. Evento de <b>NFS-e</b> (cancelamento ou cancelamento por substituição): se a NFS-e foi emitida pelo '
+        'sistema, ela passa a cancelada; de outra NFS-e, o evento fica só registrado.',
         '<b>Enviar os documentos emitidos</b>: os CT-e (e os eventos deles), MDF-e e NFS-e autorizados em produção, a partir da '
         'data escolhida, vão para o NF-Stock. O sistema confere se a Alterdata importou cada um: Importado, Recusado (com o motivo '
         'que ela devolveu, ex.: erro de schema) ou Falhou (sem conexão; tenta de novo sozinho até 6 vezes). O botão '

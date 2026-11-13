@@ -3621,3 +3621,8 @@ ALTER TABLE configuracao_auditoria ADD COLUMN IF NOT EXISTS resumo_hora INTEGER 
 -- Passa para o tipo certo, mantendo o e-mail e a senha (o tipo LD Rio não usa link nem código de empresa).
 UPDATE transportadoras SET portal_tipo = 'ldrio', portal_chave = NULL, portal_empresa = NULL
  WHERE portal_tipo = 'lonngren' AND COALESCE(portal_chave, '') ~* '(ldrio|netlify\.app)';
+
+-- NF-Stock: eventos de NFS-e (cancelamento) que antes eram tratados como evento de NF-e/CT-e e davam erro.
+UPDATE nfstock_docs SET resultado = 'ignorado',
+       mensagem = 'Evento de NFS-e: guardado só no registro. Para aplicar o cancelamento de uma NFS-e emitida pelo sistema, busque de novo a partir de um NSU anterior.'
+ WHERE resultado = 'erro' AND (COALESCE(modelo, '') ILIKE '%nfse%' OR COALESCE(tipo, '') ILIKE '%nfse%') AND COALESCE(mensagem, '') ILIKE '%chave de acesso%';

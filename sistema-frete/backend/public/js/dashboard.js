@@ -5048,6 +5048,7 @@ async function carregarConfigAuditoria() {
     document.getElementById('audLimiteFatura').value = c.limite_alcada_fatura ? formatarMoedaExibicao(c.limite_alcada_fatura) : '';
     document.getElementById('audPctReentrega').value = c.percentual_reentrega ?? 50;
     desenharRegrasTolerancia(c.tolerancias || [], c.componentes || {});
+    if (window.carregarRegrasAuditoria) window.carregarRegrasAuditoria();
   } catch (err) {
     console.error(err);
   }

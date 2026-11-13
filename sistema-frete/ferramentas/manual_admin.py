@@ -308,6 +308,18 @@ def parte_admin(g):
          'peso, pedágio, TDE, TDA, TRT, GRIS, ad valorem, despacho, descarga, outras), para uma ou para todas as transportadoras. '
          'Vale a mais específica (transportadora + item, item para todas, total da transportadora, geral). Ao salvar, os fretes ainda '
          'não decididos por uma pessoa são conferidos de novo: liberam os que passaram a caber e voltam a reter os que deixaram de caber.'],
+        ['Regras automáticas da auditoria', 'Decisões que sempre são tomadas do mesmo jeito saem da fila sozinhas. Cada regra tem '
+         'nome, transportadora (ou todas), condição e ação. Condições: <b>Diferença total até</b> R$ ou % do frete pela tabela; '
+         '<b>Diferença só num componente, até</b> (ex.: toda a diferença está no pedágio e é de até R$ 5); <b>Taxa não prevista na '
+         'tabela</b> (uma taxa que a tabela não tem; dá para limitar a uma taxa e a um valor máximo). Ações: <b>Aprovar</b> (libera, '
+         'com a justificativa da regra) ou <b>Glosar</b> (glosa o que passou da tabela, ou a taxa não prevista, com o motivo '
+         'padronizado). Valem só para fretes retidos por cobrar a mais, sem decisão de uma pessoa, sem glosa e fora de contestação '
+         'aberta; não mexem em transportadoras diferentes, cobrança em dobro, "não levou", carga direta nem frete com motivo de '
+         'conferência. A primeira regra da lista que casar decide (use a seta para subir). <b>Simular</b> mostra o que seria '
+         'decidido agora, sem gravar; <b>Salvar e aplicar</b> grava e já aplica; depois rodam sozinhas a cada 10 minutos '
+         '(<b>Aplicar agora</b> força). A coluna Uso mostra quantos fretes a regra decidiu e quanto glosou; <b>Desfazer</b> '
+         'devolve para a fila os fretes ainda não faturados que ela decidiu (apagando as glosas dela) e desliga a regra. Na '
+         'auditoria, o frete aparece aprovado por "Regra automática: nome da regra". Só o administrador mexe nas regras.'],
         ['Leitura automática de e-mail', 'Finalidades: devoluções/trocas e XML (embarcador), NF-e que viram CT-e, SAC e '
          '<b>EDI das transportadoras</b> (OCOREN, CONEMB, DOCCOB e NOTFIS anexados; capítulo 38). Aceita várias caixas (uma para cada pessoa que envia devoluções). Lê uma pasta de cada caixa (IMAP; no webmail da hospedagem: servidor '
          'mail.dominio, porta 993, o mesmo usuário e senha do webmail). Registra sozinho as devoluções/trocas de nota escritas no '

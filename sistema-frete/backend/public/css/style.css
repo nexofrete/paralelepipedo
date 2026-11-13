@@ -1795,3 +1795,7 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .ct-barra b { text-align: right; }
 .ct-barra small { color: var(--texto-fraco); }
 @media (max-width: 640px) { .ct-barra { grid-template-columns: 1fr 90px; } .ct-barra > div, .ct-barra small { display: none; } }
+/* Regras automáticas da auditoria (public/js/regrasAuditoria.js) */
+#audRegrasAuto .ct-tabela select { max-width: 170px; }
+#audRegrasAuto .ct-tabela td, #audRegrasAuto .ct-tabela th { padding: 5px 5px; }
+#audRegrasAuto .ra-uso { font-size: 11.5px; color: var(--texto-fraco); white-space: nowrap; }

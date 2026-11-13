@@ -3570,6 +3570,11 @@
           <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 8px;">Regras que valem no lugar da tolerância geral. Ex.: pedágio até R$ 5,00 para todas; "Total do frete" até 2% só para uma transportadora.
             Vale a regra mais específica: transportadora + item, depois o item para todas, depois o total da transportadora, depois a geral. Ao salvar, os fretes ainda não decididos são conferidos de novo.</p>
           <div id="audRegrasTolerancia"></div>
+          <h4 style="margin:22px 0 4px; font-size:14px;">⚡ Regras automáticas</h4>
+          <p style="font-size:12.5px; color:var(--texto-fraco); margin:0 0 8px;">O que sempre é decidido do mesmo jeito sai da fila sozinho. Ex.: "diferença só de pedágio até R$ 5: aprovar"; "taxa não prevista na tabela: glosar".
+            Valem só para fretes retidos por cobrar a mais, ainda sem decisão, sem glosa e fora de contestação aberta; não mexem em transportadoras diferentes, cobrança em dobro, "não levou" e carga direta.
+            A primeira regra da lista que casar decide. Rodam a cada 10 minutos. Use <b>Simular</b> para ver antes o que seria decidido.</p>
+          <div id="audRegrasAuto"></div>
         </div>
         <div class="painel" style="padding:24px; margin-bottom:22px;">
           <h3 style="margin-top:0; font-size:15px;">🧹 Limpeza: notas "Aguardando CT-e"</h3>
@@ -4018,6 +4023,7 @@
   <script src="js/nfeCte.js"></script>
   <script src="js/cobrancasIndevidas.js"></script>
   <script src="js/contestacoes.js"></script>
+  <script src="js/regrasAuditoria.js"></script>
   <script src="js/notasFiscais.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>

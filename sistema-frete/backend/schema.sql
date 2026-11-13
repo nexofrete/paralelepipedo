@@ -3571,3 +3571,24 @@ CREATE INDEX IF NOT EXISTS idx_contestacao_itens_frete ON contestacao_itens (fre
 CREATE INDEX IF NOT EXISTS idx_contestacao_itens_credito ON contestacao_itens (situacao) WHERE credito AND abatido_fatura_id IS NULL;
 -- Créditos de contestação abatidos nesta fatura (somados em total_glosas): [{contestacao_id, numero_cte, valor}].
 ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS creditos_contestacao JSONB;
+
+-- Regras automáticas da auditoria (src/regrasAuditoria.js): condição + ação, aplicadas na ordem.
+CREATE TABLE IF NOT EXISTS auditoria_regras (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  ordem INTEGER NOT NULL DEFAULT 0,
+  transportadora_id INTEGER REFERENCES transportadoras(id) ON DELETE CASCADE,   -- NULL = todas
+  tipo VARCHAR(30) NOT NULL,          -- diferenca_ate, componente_ate, taxa_nao_prevista
+  componente VARCHAR(30),
+  valor NUMERIC(14,2),
+  percentual NUMERIC(7,3),
+  acao VARCHAR(10) NOT NULL,          -- aprovar, glosar
+  criado_por VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ultimo_em TIMESTAMPTZ,
+  ultimo_qtd INTEGER
+);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS regra_auditoria_id INTEGER REFERENCES auditoria_regras(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_fretes_regra_auditoria ON fretes (regra_auditoria_id) WHERE regra_auditoria_id IS NOT NULL;

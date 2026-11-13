@@ -78,4 +78,42 @@ router.put('/tolerancias', autenticar, apenasAdmin, async (req, res) => {
   }
 });
 
+// ---------- Regras automáticas (src/regrasAuditoria.js) ----------
+const regrasAud = require('../regrasAuditoria');
+const erroRegra = (res, err, msg) => { if (err.status) return res.status(err.status).json({ erro: err.message }); console.error(err); res.status(500).json({ erro: msg }); };
+router.get('/regras', autenticar, async (req, res) => {
+  try { res.json({ regras: await regrasAud.listar(), tipos: regrasAud.TIPOS, acoes: regrasAud.ACOES }); } catch (err) { erroRegra(res, err, 'Erro ao ler as regras.'); }
+});
+// Simula as regras do corpo (ainda não salvas) ou as gravadas: o que seria decidido agora, sem gravar.
+router.post('/regras/simular', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const teste = Array.isArray(req.body?.regras) ? req.body.regras.map((r) => ({ ...r, valor: r.valor === '' ? null : r.valor, percentual: r.percentual === '' ? null : r.percentual, transportadora_id: Number(r.transportadora_id) || null })) : null;
+    const r = await regrasAud.rodar({ aplicar: false, regrasTeste: teste });
+    res.json({ ...r, decididos: r.decididos.slice(0, 300), total: r.decididos.length });
+  } catch (err) { erroRegra(res, err, 'Erro ao simular.'); }
+});
+router.put('/regras', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const regras = await regrasAud.salvar(req.body?.regras, req.usuario.nome);
+    const r = await regrasAud.rodar({ aplicar: true });
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'editar_auditoria_config',
+      detalhes: `Gravou ${regras.length} regra(s) automática(s) da auditoria; ${r.decididos.length} frete(s) decididos na hora` });
+    res.json({ regras: await regrasAud.listar(), decididos: r.decididos.length });
+  } catch (err) { erroRegra(res, err, 'Erro ao salvar as regras.'); }
+});
+router.post('/regras/aplicar', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const r = await regrasAud.rodar({ aplicar: true });
+    if (r.decididos.length) registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'aplicar_regras_auditoria', detalhes: `Regras automáticas decidiram ${r.decididos.length} frete(s)` });
+    res.json({ decididos: r.decididos.length, por_regra: r.por_regra, regras: await regrasAud.listar() });
+  } catch (err) { erroRegra(res, err, 'Erro ao aplicar as regras.'); }
+});
+router.post('/regras/:id(\\d+)/desfazer', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const r = await regrasAud.desfazer(Number(req.params.id));
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'desfazer_regra_auditoria', detalhes: `Desfez a regra "${r.regra}" (${r.desfeitos} frete(s) voltaram para a fila) e a desligou` });
+    res.json({ ...r, regras: await regrasAud.listar() });
+  } catch (err) { erroRegra(res, err, 'Erro ao desfazer.'); }
+});
+
 module.exports = router;

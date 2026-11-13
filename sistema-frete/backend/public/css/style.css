@@ -1154,6 +1154,12 @@ body:has(#faixaAmbienteTeste:not(.oculto)) .tela-login {
 .dlg-desenho .dlg-traco { stroke-dasharray: 220; stroke-dashoffset: 220; animation: dlgTraco .55s ease-out .08s forwards; }
 .dlg-balanca { transform-origin: 50% 25%; animation: dlgBalanca 1s ease-in-out .3s 2; }
 .dlg-titulo { margin: 6px 0 8px; font-size: 18px; color: var(--texto); }
+.dlg-corpo { text-align: left; margin: 0 0 14px; }
+.glosa-form { display: grid; gap: 10px; }
+.glosa-form label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--texto-fraco); }
+.dlg-campo-livre { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 8px; font: inherit; font-weight: 400; color: var(--texto); background: var(--bg-card); }
+.dlg-erro { color: #c0392b; font-size: 12.5px; min-height: 0; }
+.dlg-erro:empty { display: none; }
 .dlg-mensagem { margin: 0 0 18px; color: var(--texto-fraco); font-size: 13.5px; line-height: 1.5; white-space: pre-line; text-align: center; }
 .dlg-campo {
   width: 100%; box-sizing: border-box; margin: 0 0 18px; padding: 10px 12px; border-radius: var(--raio);
@@ -1765,3 +1771,27 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .dif-nav-aprovar { background:#16a34a; border-color:#16a34a; font-weight:600; }
 .dif-nav-aprovar:hover { background:#15803d; }
 .dif-nav-teclas { opacity:.75; font-size:11.5px; }
+
+/* Contestações de frete (public/js/contestacoes.js) */
+.ct-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.ct-topo h3 { margin: 0; font-size: 16px; }
+.ct-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ct-tabela th, .ct-tabela td { padding: 6px 8px; border-bottom: 1px solid var(--borda); text-align: left; vertical-align: middle; }
+.ct-tabela th.n, .ct-tabela td.n { text-align: right; }
+.ct-tabela input, .ct-tabela select { padding: 4px 6px; border: 1px solid var(--borda); border-radius: 6px; background: var(--bg-card); color: var(--texto); font: inherit; }
+.ct-linha { cursor: pointer; }
+.ct-linha:hover { background: var(--bg-elevado); }
+.ct-rolagem { overflow-x: auto; max-height: 52vh; overflow-y: auto; }
+.ct-selo { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--c); border: 1px solid var(--c); }
+.ct-dica { font-size: 11.5px; color: var(--texto-fraco); }
+.ct-filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.ct-filtros label { display: grid; gap: 4px; font-size: 12px; color: var(--texto-fraco); flex: 1; min-width: 160px; }
+.ct-filtros input { padding: 7px 9px; border: 1px solid var(--borda); border-radius: 8px; background: var(--bg-card); color: var(--texto); font: inherit; }
+.ct-resumo { display: flex; gap: 8px 18px; flex-wrap: wrap; align-items: center; font-size: 13px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; background: var(--bg-elevado); }
+.ct-acoes { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
+.ct-barra { display: grid; grid-template-columns: minmax(150px, 230px) 1fr 110px 80px; gap: 10px; align-items: center; font-size: 12.5px; padding: 3px 0; }
+.ct-barra > div { background: var(--bg-elevado); border-radius: 6px; height: 12px; overflow: hidden; }
+.ct-barra i { display: block; height: 100%; background: var(--azul); border-radius: 6px; }
+.ct-barra b { text-align: right; }
+.ct-barra small { color: var(--texto-fraco); }
+@media (max-width: 640px) { .ct-barra { grid-template-columns: 1fr 90px; } .ct-barra > div, .ct-barra small { display: none; } }

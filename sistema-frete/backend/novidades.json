@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Auditoria de frete", "texto": "Contestação em lote com a transportadora: botão \"Contestações\" na Auditoria junta tudo o que ela cobrou acima da tabela no período (fora da tolerância) e manda um e-mail só, com a planilha anexa. A resposta é registrada CT-e por CT-e (aceito, com o valor, ou recusado): o aceito vira glosa no frete ou, se o CT-e já foi faturado, crédito descontado sozinho na conferência da próxima fatura. Motivos de glosa padronizados (frete acima da tabela, taxa não prevista, peso diferente, cobrança em dobro...), com sugestão automática, aba \"Glosas por motivo\" por transportadora e campo novo no BI."},
         {
           "area": "Auditoria de frete",
           "texto": "Conferir em sequência: no Detalhe, a fila dos fretes divergentes ainda sem decisão (quem mais cobrou a mais primeiro), com ◀ ▶, \"Aprovar e próximo\" e atalhos do teclado (← → A G Esc). Tolerância por transportadora e por taxa (frete peso, pedágio, TDE, GRIS...), valendo também para a liberação automática; ao salvar, os fretes não decididos são conferidos de novo."

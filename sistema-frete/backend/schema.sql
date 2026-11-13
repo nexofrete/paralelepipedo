@@ -3527,3 +3527,47 @@ ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_conferir_motivo VARCHAR(300
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_corrigido BOOLEAN NOT NULL DEFAULT FALSE;  -- corrigido à mão: a releitura não mexe
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_lido_em TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_fretes_endereco_conferir ON fretes (endereco_conferir) WHERE endereco_conferir;
+
+-- Motivo padronizado da glosa (src/contestacoes.js MOTIVOS) e contestação em lote com a transportadora.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS glosa_motivo_codigo VARCHAR(30);
+CREATE TABLE IF NOT EXISTS contestacoes (
+  id SERIAL PRIMARY KEY,
+  transportadora VARCHAR(200) NOT NULL,
+  email_para VARCHAR(300),
+  de DATE,
+  ate DATE,
+  status VARCHAR(20) NOT NULL DEFAULT 'rascunho',   -- rascunho, enviada, aceita, parcial, recusada, abatida, cancelada
+  valor_contestado NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_aceito NUMERIC(14,2),
+  observacao TEXT,
+  resposta TEXT,
+  criado_por VARCHAR(150),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  enviada_em TIMESTAMPTZ,
+  enviada_por VARCHAR(150),
+  respondida_em TIMESTAMPTZ,
+  respondida_por VARCHAR(150),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_contestacoes_transp ON contestacoes (transportadora, status);
+CREATE TABLE IF NOT EXISTS contestacao_itens (
+  id SERIAL PRIMARY KEY,
+  contestacao_id INTEGER NOT NULL REFERENCES contestacoes(id) ON DELETE CASCADE,
+  frete_id INTEGER NOT NULL REFERENCES fretes(id) ON DELETE CASCADE,
+  numero_cte VARCHAR(30),
+  numero_nf VARCHAR(60),
+  valor_cte NUMERIC(14,2),
+  valor_tabela NUMERIC(14,2),
+  valor_contestado NUMERIC(14,2) NOT NULL,
+  motivo_codigo VARCHAR(30),
+  motivo_texto VARCHAR(300),
+  situacao VARCHAR(12) NOT NULL DEFAULT 'pendente',  -- pendente, aceito, recusado
+  valor_aceito NUMERIC(14,2),
+  credito BOOLEAN NOT NULL DEFAULT FALSE,            -- aceito depois de faturado: abate na próxima fatura
+  abatido_fatura_id INTEGER REFERENCES faturas_frete(id) ON DELETE SET NULL,
+  abatido_em TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_contestacao_itens_frete ON contestacao_itens (frete_id);
+CREATE INDEX IF NOT EXISTS idx_contestacao_itens_credito ON contestacao_itens (situacao) WHERE credito AND abatido_fatura_id IS NULL;
+-- Créditos de contestação abatidos nesta fatura (somados em total_glosas): [{contestacao_id, numero_cte, valor}].
+ALTER TABLE faturas_frete ADD COLUMN IF NOT EXISTS creditos_contestacao JSONB;

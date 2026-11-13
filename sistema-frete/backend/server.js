@@ -226,6 +226,7 @@ app.use('/api/notificacoes', notificacoesRoutes);
 app.use('/api/metas-frete', metasFreteRoutes);
 app.use('/api/sinistros', sinistrosRoutes);
 app.use('/api/faturas', faturasRoutes);
+app.use('/api/contestacoes', require('./src/routes/contestacoes'));
 app.use('/api/indicadores', require('./src/routes/indicadores'));
 app.use('/api/nfe-cte', require('./src/routes/nfeCte'));
 app.use('/api/notas', require('./src/routes/notas'));

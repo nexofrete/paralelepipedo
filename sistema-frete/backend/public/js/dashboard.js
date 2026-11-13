@@ -386,6 +386,7 @@ function abrirDialogo(opcoes) {
         ${desenhoDialogo(tipo)}
         <h3 class="dlg-titulo">${esc(opcoes.titulo || cfg.titulo)}</h3>
         ${opcoes.mensagem ? `<p class="dlg-mensagem">${esc(opcoes.mensagem)}</p>` : ''}
+        ${opcoes.corpoHtml ? `<div class="dlg-corpo">${opcoes.corpoHtml}</div>` : ''}
         ${opcoes.campo ? (opcoes.campo.multilinha
           ? `<textarea class="dlg-campo" rows="4" placeholder="${esc(opcoes.campo.placeholder || '')}">${esc(opcoes.campo.valor || '')}</textarea>`
           : `<input class="dlg-campo" type="${opcoes.campo.senha ? 'password' : 'text'}" placeholder="${esc(opcoes.campo.placeholder || '')}" value="${esc(opcoes.campo.valor || '')}" />`) : ''}
@@ -399,23 +400,30 @@ function abrirDialogo(opcoes) {
     const principal = botoes.findIndex((b) => b.estilo === 'primario' || b.estilo === 'perigo');
     const cancelar = botoes.findIndex((b) => b.valor === false || b.valor === null);
     const fechar = (i) => {
-      document.removeEventListener('keydown', teclas, true);
       const botao = botoes[i];
       let valor = botao ? botao.valor : null;
       if (campo && botao && botao.valor === true) valor = campo.value;
+      // Formulário próprio (corpoHtml): devolve { name: valor } de todos os campos com name.
+      if (opcoes.corpoHtml && botao && botao.valor === true) {
+        valor = {};
+        fundo.querySelectorAll('.dlg-corpo [name]').forEach((el) => { valor[el.name] = el.type === 'checkbox' ? el.checked : el.value; });
+        if (opcoes.validar) { const erro = opcoes.validar(valor); if (erro) { const av = fundo.querySelector('.dlg-erro'); if (av) av.textContent = erro; return; } }
+      }
+      document.removeEventListener('keydown', teclas, true);
       fundo.classList.add('saindo');
       setTimeout(() => fundo.remove(), 160);
       resolve(valor);
     };
     const teclas = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); fechar(cancelar >= 0 ? cancelar : 0); }
-      if (e.key === 'Enter' && !(campo && campo.tagName === 'TEXTAREA' && !e.ctrlKey)) {
+      if (e.key === 'Enter' && !(campo && campo.tagName === 'TEXTAREA' && !e.ctrlKey) && !(e.target?.tagName === 'TEXTAREA' && !e.ctrlKey)) {
         e.preventDefault(); fechar(principal >= 0 ? principal : 0);
       }
     };
     document.addEventListener('keydown', teclas, true);
     fundo.querySelectorAll('.dlg-btn').forEach((b) => b.addEventListener('click', () => fechar(Number(b.dataset.i))));
-    setTimeout(() => (campo || fundo.querySelectorAll('.dlg-btn')[principal >= 0 ? principal : 0])?.focus(), 30);
+    if (opcoes.aoAbrir) opcoes.aoAbrir(fundo);
+    setTimeout(() => (campo || fundo.querySelector('.dlg-corpo [autofocus]') || fundo.querySelectorAll('.dlg-btn')[principal >= 0 ? principal : 0])?.focus(), 30);
   }));
   filaDialogos = execucao.catch(() => {});
   return execucao;
@@ -3915,23 +3923,51 @@ async function aprovarComJustificativaAuditoria(id) {
 }
 
 // Acordo Comercial: a transportadora aceita descontar a diferença no boleto.
+// Motivos padronizados da glosa (os mesmos do servidor, src/contestacoes.js) — para ver depois o que mais gera glosa.
+const MOTIVOS_GLOSA = {
+  valor_acima: 'Frete acima da tabela', taxa_acima: 'Taxa acima da tabela', taxa_nao_prevista: 'Taxa não prevista na tabela',
+  peso_divergente: 'Peso ou volumes diferentes da nota', trecho_errado: 'Trecho / cidade errada', icms_errado: 'ICMS errado',
+  cobranca_dobro: 'Cobrança em dobro', nao_levou: 'Transportadora não levou a nota', nota_cancelada: 'Nota cancelada', outro: 'Outro',
+};
+function motivoGlosaSugerido(l) {
+  if (!l) return 'valor_acima';
+  if (l.cte_nao_levou) return 'nao_levou';
+  if (l.nf_cancelada) return 'nota_cancelada';
+  if (l.alerta_cobranca_dupla) return 'cobranca_dobro';
+  const cte = Number(l.valor_total_cte) || 0; const tab = Number(l.valor_total_frete) || 0;
+  if (tab > 0 && cte > 0 && (cte / tab > 2 || cte / tab < 0.5)) return 'trecho_errado';
+  const taxas = conferirTaxas(l).filter((t) => t.divergente && t.diferenca > 0);
+  if (taxas.some((t) => t.esperado === 0)) return 'taxa_nao_prevista';
+  if (taxas.length) return 'taxa_acima';
+  return 'valor_acima';
+}
+
 async function registrarGlosaAuditoria(id, sugerido = null) {
   const linhaGlosa = ultimasLinhasAuditoria.find((l) => l.id === id);
   const dif = sugerido ?? (linhaGlosa && cobradoAMais(linhaGlosa) > 0 ? Math.round(cobradoAMais(linhaGlosa) * 100) / 100 : null);
-  const valorTexto = await pedirTexto(`Valor da glosa combinada com a transportadora (R$).${dif ? ` A diferença acima da tabela é ${formatoMoeda(dif)}.` : ''}`,
-    { titulo: 'Registrar glosa', placeholder: 'Ex: 25,00', valor: dif ? String(Number(dif).toFixed(2)).replace('.', ',') : '' });
-  if (!valorTexto) return;
-  const valor = Number(String(valorTexto).replace(/\./g, '').replace(',', '.'));
-  if (!valor || valor <= 0) { mostrarAlerta('Digite um valor válido, maior que zero.'); return; }
-  const sugestaoMotivo = linhaGlosa ? gerarResumoDivergencias(linhaGlosa) : '';
-  const motivo = await pedirTexto('Motivo ou observação da glosa (edite se quiser).', { titulo: 'Motivo da glosa', valor: sugestaoMotivo, textoOk: 'Registrar glosa', multilinha: true });
-  if (motivo === null) return;
+  const motivoSug = motivoGlosaSugerido(linhaGlosa);
+  const escG = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const form = await abrirDialogo({
+    tipo: 'pergunta', titulo: 'Registrar glosa',
+    mensagem: `Glosa combinada com a transportadora${linhaGlosa ? ` (CT-e ${linhaGlosa.numero_cte || '—'})` : ''}.${dif ? ` A diferença acima da tabela é ${formatoMoeda(dif)}.` : ''}`,
+    corpoHtml: `<div class="glosa-form">
+        <label>Valor da glosa (R$)<input name="valor" class="dlg-campo-livre" autofocus placeholder="Ex: 25,00" value="${dif ? String(Number(dif).toFixed(2)).replace('.', ',') : ''}"></label>
+        <label>Motivo<select name="motivo_codigo" class="dlg-campo-livre">${Object.entries(MOTIVOS_GLOSA).map(([k, v]) => `<option value="${k}" ${k === motivoSug ? 'selected' : ''}>${escG(v)}${k === motivoSug ? ' (sugerido)' : ''}</option>`).join('')}</select></label>
+        <label>Observação<textarea name="motivo" class="dlg-campo-livre" rows="4">${escG(linhaGlosa ? gerarResumoDivergencias(linhaGlosa) : '')}</textarea></label>
+        <div class="dlg-erro"></div></div>`,
+    validar: (v) => { const n = Number(String(v.valor).replace(/\./g, '').replace(',', '.')); return n > 0 ? null : 'Digite um valor válido, maior que zero.'; },
+    botoes: [{ texto: 'Cancelar', valor: null, estilo: 'secundario' }, { texto: 'Registrar glosa', valor: true, estilo: 'primario' }],
+  });
+  if (!form || typeof form !== 'object') return;
+  const valor = Number(String(form.valor).replace(/\./g, '').replace(',', '.'));
+  const motivo = String(form.motivo || '').trim();
+  const motivo_codigo = form.motivo_codigo;
 
   try {
     const resposta = await apiFetch(`/api/fretes/${id}/glosa`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ valor, motivo }),
+      body: JSON.stringify({ valor, motivo, motivo_codigo }),
     });
     const dados = await resposta.json();
     if (!resposta.ok) { mostrarAlerta(dados.erro || 'Erro ao registrar a glosa.'); return; }
@@ -8331,6 +8367,7 @@ async function cfImprimir(id) {
   const m = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const soma = (campo) => itens.reduce((s, i) => s + (Number(i[campo]) || 0), 0);
   const totalGlosas = Number(f.total_glosas || 0);
+  const creditosCt = (f.creditos_contestacao || []).reduce((s, c) => s + (Number(c.valor) || 0), 0);
   const valorEsperadoFatura = Number(f.valor_ctes) - totalGlosas;
   const difFatura = f.valor_informado != null ? Number(f.valor_informado) - valorEsperadoFatura : null;
   const difTabela = Number(f.valor_ctes) - soma('valor_tabela');
@@ -8447,7 +8484,8 @@ async function cfImprimir(id) {
     <table>
       <tr><td>Valor pela tabela de frete</td><td class="n">${m(soma('valor_tabela'))}</td></tr>
       <tr><td>Soma dos CT-e</td><td class="n">${m(f.valor_ctes)}</td></tr>
-      ${totalGlosas > 0 ? `<tr><td>Glosas combinadas (desconto)</td><td class="n">− ${m(totalGlosas)}</td></tr>
+      ${totalGlosas > 0 ? `${creditosCt > 0 ? `<tr><td>Glosas combinadas nos CT-e</td><td class="n">− ${m(totalGlosas - creditosCt)}</td></tr>
+      <tr><td>Créditos de contestação (${(f.creditos_contestacao || []).map((c) => `CT-e ${cfEsc(c.numero_cte)}`).join(', ')})</td><td class="n">− ${m(creditosCt)}</td></tr>` : `<tr><td>Glosas combinadas (desconto)</td><td class="n">− ${m(totalGlosas)}</td></tr>`}
       <tr><td>Fatura deveria vir</td><td class="n">${m(valorEsperadoFatura)}</td></tr>` : ''}
       <tr><td>Valor da fatura (transportadora)</td><td class="n">${m(f.valor_informado)}</td></tr>
       <tr><td>${totalGlosas > 0 ? 'Diferença fatura × esperado' : 'Diferença fatura × CT-e'}</td><td class="n ${difFatura != null && Math.abs(difFatura) >= 0.01 ? 'alerta' : ''}">${difFatura == null ? '—' : m(difFatura)}</td></tr>

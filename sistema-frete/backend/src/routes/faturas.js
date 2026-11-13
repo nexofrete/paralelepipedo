@@ -268,7 +268,11 @@ router.post('/', autenticar, podeConferirFatura, async (req, res) => {
     const valorInformado = valor_informado != null && valor_informado !== '' ? Number(valor_informado) : null;
     const pendencias = foto.filter((i) => i.conferencia !== 'Conferido').length;
     // Com glosa combinada, a fatura deveria vir com o desconto: soma dos CT-e − glosas.
-    const totalGlosas = soma('glosa');
+    // Créditos de contestação aceitos depois de faturado (src/contestacoes.js): abatem nesta fatura.
+    const contestacoes = require('../contestacoes');
+    const creditos = await contestacoes.creditosPendentes(cliente, transportadora);
+    const totalCreditos = Math.round(creditos.reduce((s, c) => s + Number(c.valor_aceito || 0), 0) * 100) / 100;
+    const totalGlosas = Math.round((soma('glosa') + totalCreditos) * 100) / 100;
     const valorEsperado = Math.round((valorCtes - totalGlosas) * 100) / 100;
     const bateFatura = valorInformado == null || Math.abs(valorInformado - valorEsperado) < 0.01;
     const parecer = pendencias === 0 && bateFatura ? 'Conferida' : 'Conferida com ressalvas';
@@ -282,14 +286,16 @@ router.post('/', autenticar, podeConferirFatura, async (req, res) => {
       `INSERT INTO faturas_frete
          (numero, transportadora, data_emissao, data_vencimento, valor_informado, valor_ctes, qtd_ctes,
           total_icms, total_tabela, parecer, observacoes, itens, codigo_verificacao,
-          conferido_por_id, conferido_por_nome, conferido_em, total_glosas)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+          conferido_por_id, conferido_por_nome, conferido_em, total_glosas, creditos_contestacao)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING id`,
       [String(numero).trim(), transportadora, data_emissao || null, data_vencimento || null, valorInformado,
        valorCtes, foto.length, soma('icms'), soma('valor_tabela'), parecer, observacoes || null,
-       JSON.stringify(foto), codigo, req.usuario.id, req.usuario.nome, conferidoEm, totalGlosas]
+       JSON.stringify(foto), codigo, req.usuario.id, req.usuario.nome, conferidoEm, totalGlosas,
+       creditos.length ? JSON.stringify(creditos.map((c) => ({ contestacao_id: c.contestacao_id, numero_cte: c.numero_cte, valor: Number(c.valor_aceito) }))) : null]
     );
     const faturaId = nova[0].id;
+    await contestacoes.abaterCreditos(cliente, faturaId, creditos);
     await faturasFrete.aoConferir(cliente, faturaId, { parecer, pendencias, bateFatura, valorInformado, valorEsperado }, req.usuario.nome);
 
     await cliente.query(
@@ -309,7 +315,7 @@ router.post('/', autenticar, podeConferirFatura, async (req, res) => {
       detalhes: `Fatura ${numero} (${transportadora}) — ${foto.length} CT-e, ${valorCtes.toFixed(2)} — ${parecer}`,
     });
 
-    res.status(201).json({ id: faturaId, parecer, codigo_verificacao: codigo });
+    res.status(201).json({ id: faturaId, parecer, codigo_verificacao: codigo, creditos_contestacao: totalCreditos });
   } catch (err) {
     await cliente.query('ROLLBACK').catch(() => {});
     console.error(err);
@@ -339,6 +345,10 @@ router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
         [item.frete_id, item.status_anterior || 'Pendente', fatura.id]
       );
     }
+    // Créditos de contestação abatidos nela voltam a ficar pendentes (para a próxima fatura).
+    await cliente.query(`UPDATE contestacoes c SET status = CASE WHEN EXISTS (SELECT 1 FROM contestacao_itens r WHERE r.contestacao_id = c.id AND r.situacao = 'recusado') THEN 'parcial' ELSE 'aceita' END, atualizado_em = NOW()
+       WHERE c.status = 'abatida' AND c.id IN (SELECT contestacao_id FROM contestacao_itens WHERE abatido_fatura_id = $1)`, [fatura.id]);
+    await cliente.query('UPDATE contestacao_itens SET abatido_fatura_id = NULL, abatido_em = NULL WHERE abatido_fatura_id = $1', [fatura.id]);
     await cliente.query('DELETE FROM faturas_frete WHERE id = $1', [fatura.id]);
     await cliente.query('COMMIT');
 

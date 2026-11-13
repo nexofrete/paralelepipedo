@@ -310,18 +310,20 @@ router.put('/:id/glosa', autenticar, permitir('pode_aprovar_pagamento'), freteDo
   try {
     const valor = Number(req.body.valor);
     const motivo = (req.body.motivo || '').trim() || null;
+    const { MOTIVOS } = require('../contestacoes');
+    const motivoCodigo = MOTIVOS[req.body.motivo_codigo] ? req.body.motivo_codigo : null;
     if (!valor || valor <= 0) {
       return res.status(400).json({ erro: 'Informe um valor de glosa válido (maior que zero).' });
     }
 
     const { rows } = await pool.query(
       `UPDATE fretes SET
-         glosa_valor = $1, glosa_motivo = $2, glosa_registrada_por = $3, glosa_registrada_em = NOW(),
+         glosa_valor = $1, glosa_motivo = $2, glosa_registrada_por = $3, glosa_registrada_em = NOW(), glosa_motivo_codigo = $6,
          status_aprovacao = 'Aprovado', aprovado_por_nome = $3, aprovado_em = NOW(), motivo_rejeicao = NULL,
          justificativa_aprovacao = $4,
          status = CASE WHEN status = 'Frete Retido' THEN 'Liberado p/ Pagamento' ELSE status END
        WHERE id = $5 RETURNING *`,
-      [valor, motivo, req.usuario.nome, `Divergência resolvida via glosa de ${valor.toFixed(2)} combinada com a transportadora${motivo ? `: ${motivo}` : ''}.`, req.params.id]
+      [valor, motivo, req.usuario.nome, `Divergência resolvida via glosa de ${valor.toFixed(2)} combinada com a transportadora${motivoCodigo ? ` (${MOTIVOS[motivoCodigo]})` : ''}${motivo ? `: ${motivo}` : ''}.`, req.params.id, motivoCodigo]
     );
     if (!rows[0]) return res.status(404).json({ erro: 'Registro não encontrado.' });
 

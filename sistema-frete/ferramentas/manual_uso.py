@@ -574,13 +574,58 @@ def parte_uso(g):
     s += lista([
         '<b>Aprovar</b>: libera o pagamento, com uma justificativa (o sistema já sugere um texto com as divergências).',
         '<b>Aprovar em lote</b>: marque as caixas dos cartões e use "Aprovar selecionados".',
-        '<b>Glosa</b>: a transportadora aceitou descontar a diferença no boleto. Informe o valor e o motivo; o frete é '
-        'liberado e o Financeiro já exporta o valor líquido.',
+        '<b>Glosa</b>: a transportadora aceitou descontar a diferença no boleto. Informe o valor, escolha o <b>motivo</b> '
+        'na lista (o sistema já sugere um) e, se quiser, uma observação; o frete é liberado e o Financeiro já exporta o '
+        'valor líquido.',
         '<b>Email</b>: manda o espelho do cálculo (valores e taxas) para o email da transportadora, para ela corrigir ou '
         'aceitar a glosa. Precisa do envio de email configurado.',
     ])
     s += aviso('nota', '<b>Limite de alçada</b>: se configurado, fretes acima desse valor só podem ser aprovados por quem '
                        'tem a permissão "Aprovar valores altos".')
+    s += h3('Motivos de glosa padronizados')
+    s.append(P('Toda glosa tem um motivo da lista: frete acima da tabela, taxa acima da tabela, taxa não prevista na tabela, '
+               'peso ou volumes diferentes da nota, trecho / cidade errada, ICMS errado, cobrança em dobro, transportadora '
+               'não levou a nota, nota cancelada ou outro. O motivo sugerido vem da conferência do CT-e (por exemplo, '
+               'cobrança em dobro quando o sistema marcou o alerta, taxa não prevista quando a tabela não tem a taxa). '
+               'Com o motivo padronizado dá para ver o que mais gera glosa em cada transportadora (aba <b>Glosas por motivo</b>, '
+               'abaixo) e montar relatórios no BI (campo "Motivo da Glosa (padronizado)").'))
+    s += h2('Contestação em lote com a transportadora')
+    s.append(P('Em vez de mandar um e-mail por CT-e, o botão <b>Contestações</b> da Auditoria junta tudo o que uma '
+               'transportadora cobrou acima da tabela no período e manda <b>um e-mail só</b>, com a lista no corpo e a '
+               'planilha anexa. Ver precisa de "Ver todos os registros" e de "Aprovar pagamento", "Ver auditoria" ou '
+               '"Conferir fatura"; criar, enviar e registrar a resposta precisa de "Aprovar pagamento".'))
+    s += passos([
+        'Clique em <b>Contestações</b> e em <b>Nova contestação</b>.',
+        'Escolha a transportadora e o período (emissão do CT-e) e clique em <b>Buscar CT-e</b>. Entram os CT-e cobrados '
+        'acima da tabela <b>fora da tolerância</b>, ainda sem glosa e fora de outra contestação aberta (os marcados como '
+        'cobrança em dobro, não levou ou nota cancelada entram com o valor inteiro do CT-e).',
+        'Confira cada linha: desmarque o que não quer contestar, ajuste o valor, o motivo e o detalhe (o sistema já '
+        'escreve as taxas a mais que achou no XML). CT-e já faturado aparece com o selo "faturado".',
+        'Confira o e-mail (vem do cadastro da transportadora) e clique em <b>Criar contestação</b>.',
+        'No detalhe, clique em <b>Enviar por e-mail</b> (precisa do envio de e-mail configurado) ou, se mandou por outro '
+        'meio, em <b>Marcar como enviada</b>. <b>Planilha</b> baixa o mesmo arquivo que vai anexo.',
+        'Quando a transportadora responder, marque cada CT-e como <b>Aceito</b> (com o valor aceito, que pode ser menor que '
+        'o contestado) ou <b>Recusado</b>, escreva a resposta se quiser e clique em <b>Registrar resposta</b>.',
+    ])
+    s += tabela(['Situação', 'Quando'], [
+        ['Rascunho', 'Criada, ainda não enviada.'],
+        ['Enviada', 'Enviada por e-mail ou marcada como enviada.'],
+        ['Aceita / Aceita em parte', 'Todos os CT-e aceitos / parte aceita e parte recusada.'],
+        ['Recusada', 'A transportadora recusou todos.'],
+        ['Abatida na fatura', 'Os créditos (CT-e já faturados) foram descontados na fatura seguinte.'],
+        ['Cancelada', 'Cancelada antes da resposta; os CT-e voltam a poder ser contestados.'],
+    ], [0.3, 0.7])
+    s += lista([
+        '<b>CT-e aceito ainda não faturado</b>: vira <b>glosa</b> no frete, com o motivo da contestação, e o frete é liberado. '
+        'A fatura deve vir com o desconto.',
+        '<b>CT-e aceito já faturado</b>: vira <b>crédito</b>. Na conferência da próxima fatura dessa transportadora, o crédito '
+        'é descontado sozinho do valor que a fatura deveria vir (capítulo 17).',
+        '<b>CT-e recusado</b>: nada muda no frete; ele volta à lista de CT-e que podem ser contestados.',
+    ])
+    s += h3('Glosas por motivo')
+    s.append(P('A aba <b>Glosas por motivo</b> da janela de contestações mostra, no período, quanto foi glosado em cada motivo '
+               '(com barras) e uma tabela por transportadora com o valor de cada motivo, além dos créditos de contestação '
+               'a abater e dos já abatidos em fatura.'))
     s += h2('Detalhe do Frete')
     s.append(P('O botão "Detalhe" do cartão abre a janela completa daquele frete:'))
     s += lista([
@@ -653,6 +698,10 @@ def parte_uso(g):
         '<b>código de verificação</b>.',
         'Parecer: <b>Conferida</b> (todos os CT-e conferidos e o total bate com a fatura) ou <b>Conferida com '
         'ressalvas</b>. Glosas combinadas nos CT-e aparecem no documento, para conferir se foram descontadas.',
+        '<b>Créditos de contestação</b>: se a transportadora aceitou uma contestação de CT-e já faturado (capítulo 16), '
+        'o crédito entra sozinho como desconto na conferência da próxima fatura dela: o documento mostra a linha "Créditos de '
+        'contestação" com os CT-e, e a fatura deveria vir com esse desconto. Desfazer a conferência devolve o crédito '
+        'para a fatura seguinte.',
         'A aba "Faturas conferidas" lista o histórico. Só o administrador pode desfazer uma conferência.',
     ])
     s += h2('Importar a fatura em planilha')

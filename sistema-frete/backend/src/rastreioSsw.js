@@ -151,7 +151,10 @@ async function aplicarNaNota(nota, tracking) {
   const cliente = { cidade: semAcento(nota.cidade), uf: semAcento(nota.uf) };
   const noCliente = (o) => { const c = cidadeUf(o.cidade); return c.cidade && c.cidade === cliente.cidade && (!c.uf || !cliente.uf || c.uf === cliente.uf); };
 
-  const entregaDaNota = entregas.find(daTransportadora) || null;                 // vale para o prazo
+  // Nota SEM redespacho: a entrega no cidade do cliente vale mesmo lançada por um parceiro/agente da
+  // transportadora (outro domínio na SSW, ex.: a última milha em outra região). Com redespacho, não:
+  // a parte da transportadora do CT-e termina no ponto de redespacho.
+  const entregaDaNota = entregas.find(daTransportadora) || (!temRedespacho ? entregas.find(noCliente) : null) || null;   // vale para o prazo
   const entregaFinal = entregas.find(noCliente) || entregas[entregas.length - 1] || null; // informativo
   const ultima = ordenado[ordenado.length - 1] || null;
   const deOutra = ultima && !daTransportadora(ultima) ? `[Redespacho ${ultima.dominio || ''}] `.replace(' ]', ']') : '';

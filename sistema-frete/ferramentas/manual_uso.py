@@ -993,7 +993,9 @@ def parte_uso(g):
         'Ocorrência de problema (retida, recusa, avaria, destinatário ausente...) aparece em vermelho e gera aviso no sino.',
         '<b>Só vale a entrega da transportadora do CT-e</b> (a da tabela de preço). Na nota com redespacho, o que a '
         'transportadora do redespacho registra na SSW (entrega ao cliente, agendamento) aparece só como informação — '
-        '"Redespacho (informativo)" na lista e em cinza no histórico — e não muda nenhuma data.',
+        '"Redespacho (informativo)" na lista e em cinza no histórico — e não muda nenhuma data. Na nota <b>sem redespacho</b>, '
+        'a entrega na cidade do cliente vale mesmo quando foi lançada na SSW por um parceiro da transportadora (ex.: a FAST-X '
+        'usa um agente para a entrega em Fortaleza): ela baixa a nota.',
         '<b>Refazer entregas automáticas</b> (botão em Entregas previstas): apaga só as datas de entrega que vieram da '
         'busca automática nos últimos 120 dias — mostrando antes quantas são — e busca de novo com as regras atuais. '
         'Datas lançadas à mão, pelo botão Entregue ou pelo comprovante de entrega, nunca são apagadas.',

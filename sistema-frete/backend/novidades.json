@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Entregas", "texto": "SSW: na nota sem redespacho, a \"MERCADORIA ENTREGUE\" na cidade do cliente lançada por um parceiro da transportadora (outro código na SSW) agora baixa a entrega. Antes ficava só como informação e a nota continuava atrasada."},
         {"area": "Entregas", "texto": "Cadastro da LD Rio salvo como portal \"Lonngren\" com o link do site da LD Rio passa sozinho para \"Central de Canhotos (LD Rio Pizzo)\", mantendo o e-mail e a senha, e as entregas voltam a ser baixadas. O botão \"Conferir no portal\" também aparece nas notas da LD Rio sem o portal configurado, para explicar o que falta."},
         {"area": "Entregas", "texto": "Registrar entrega: a data já vem selecionada e as barras entram sozinhas; é só digitar os números (19102026, ou 1910 para o ano atual)."},
         {"area": "Entregas", "texto": "Na lista de entregas, embaixo do botão \"Entregue\" há um campo para escolher a data em que a entrega foi realizada: a entrega é registrada direto nessa data."},

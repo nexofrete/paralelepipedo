@@ -6059,6 +6059,7 @@ const epSemZeros = (v) => String(v || '').replace(/\D/g, '').replace(/^0+/, '');
 function epBate(x, termo) {
   const numero = epSemZeros(termo);
   if (numero && /^\d[\d.\-\/ ]*$/.test(termo.trim())) {
+    if (numero.length >= 20) return [x.chave_cte, x.chave_nfe].some((v) => String(v || '').includes(String(termo).replace(/\D/g, '')));   // chave de acesso
     return [x.numero_nf, x.numero_cte, x.numero_pedido, x.pedido_mercus].some((v) => epSemZeros(v) && epSemZeros(v).includes(numero));
   }
   const t = epSemAcento(termo).trim();
@@ -6145,7 +6146,9 @@ function epRenderizarLista() {
       <td><b>${formatoData(x.data_entrega_prevista)}</b> ${selo(x.dias)}
         ${sub(`${x.data_coleta ? `coleta ${formatoData(x.data_coleta)}` : `CT-e ${formatoData(x.data_emissao_cte)}`}${x.prazo_dias_tabela != null ? ` + ${x.prazo_dias_tabela} dia(s)` : ''}`)}</td>
       <td>${x.numero_nf ? `<button type="button" class="btn-copiar-nf" data-nf="${String(x.numero_nf).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" title="Clique para copiar a Nota Fiscal (já copiada ${x.nf_copias || 0} vez(es))" aria-label="Copiar Nota Fiscal ${cfEsc(x.numero_nf)}"><span class="icone-copiar-nf">📋</span> <span class="numero-nf-copiar">${cfEsc(x.numero_nf)}</span>${x.nf_copias ? ` <span class="contador-copias-nf">×${x.nf_copias}</span>` : ''}</button>` : '—'}
-        ${sub(`${x.numero_pedido ? `ped. ${cfEsc(x.numero_pedido)}` : ''}${x.numero_pedido && x.numero_cte ? ' · ' : ''}${x.numero_cte ? `CT-e ${cfEsc(x.numero_cte)}` : ''}`)}</td>
+        ${sub(`${x.numero_pedido ? `ped. ${cfEsc(x.numero_pedido)}` : ''}${x.numero_pedido && x.numero_cte ? ' · ' : ''}${x.numero_cte ? `CT-e ${cfEsc(x.numero_cte)}` : ''}`)}
+        ${x.data_emissao_cte ? sub(`CT-e emitido em ${formatoData(x.data_emissao_cte)}`) : ''}
+        ${x.chave_cte ? `<button type="button" class="ep-chave-cte" data-ep-chave="${cfEsc(x.chave_cte)}" title="Chave de acesso do CT-e — clique para copiar">🔑 ${cfEsc(String(x.chave_cte).replace(/(\d{4})(?=\d)/g, '$1 '))}</button>` : ''}</td>
       <td class="ep-cli" title="${cfEsc(x.cliente || '')}">${cfEsc(x.cliente || '—')}${sub(cfEsc([x.cidade, x.uf].filter(Boolean).join('/') || '—'))}</td>
       <td class="ep-transp" title="${cfEsc(x.transportadora || '')}">${cfEsc(x.transportadora || '—')}
         ${x.url_rastreamento ? `<br><button type="button" class="btn-rastrear-transp" data-ep-rastrear="${x.id}" title="Abrir rastreamento da transportadora">🔎 Rastrear</button>` : ''}
@@ -6323,10 +6326,10 @@ async function epAbrirRegistro(id) {
 function epExportar() {
   const linhas = epLinhasFiltradas();
   if (!linhas.length) { mostrarAlerta('Não há linhas para exportar nessa aba.', { tipo: 'aviso' }); return; }
-  const cab = ['Previsão', 'Dias', 'Pedido', 'NF', 'CT-e', 'Cliente', 'Cidade', 'UF', 'Transportadora', 'Última ocorrência (SSW)', 'Rastreamento', 'Data da coleta', 'Emissão do CT-e', 'Prazo (dias)'];
+  const cab = ['Previsão', 'Dias', 'Pedido', 'NF', 'CT-e', 'Cliente', 'Cidade', 'UF', 'Transportadora', 'Última ocorrência (SSW)', 'Rastreamento', 'Data da coleta', 'Emissão do CT-e', 'Prazo (dias)', 'Chave do CT-e'];
   const dataBr = (v) => (v ? new Date(`${String(v).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '');
   const csv = [cab, ...linhas.map((x) => [dataBr(x.data_entrega_prevista), x.dias, x.numero_pedido, x.numero_nf, x.numero_cte, x.cliente,
-    x.cidade, x.uf, x.transportadora, x.rastreio_ultima_ocorrencia || '', x.url_rastreamento || '', dataBr(x.data_coleta), dataBr(x.data_emissao_cte), x.prazo_dias_tabela])]
+    x.cidade, x.uf, x.transportadora, x.rastreio_ultima_ocorrencia || '', x.url_rastreamento || '', dataBr(x.data_coleta), dataBr(x.data_emissao_cte), x.prazo_dias_tabela, x.chave_cte ? `'${x.chave_cte}` : ''])]
     .map((l) => l.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
   const link = document.createElement('a');
@@ -6407,6 +6410,14 @@ document.getElementById('epCorpo').addEventListener('click', async (e) => {
     return;
   }
   if (e.target.closest('.ep-data-entrega')) return;   // o campo de data não abre o registro
+  const chaveCte = e.target.closest('[data-ep-chave]');
+  if (chaveCte) {
+    const valor = chaveCte.dataset.epChave;
+    const pronto = () => avisoSimples('Chave do CT-e copiada.');
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(valor).then(pronto).catch(() => mostrarAlerta(valor));
+    else { const t = document.createElement('textarea'); t.value = valor; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); pronto(); } catch { mostrarAlerta(valor); } t.remove(); }
+    return;
+  }
   const entregue = e.target.closest('[data-ep-entregue]');
   if (entregue) {
     const campo = document.querySelector(`.ep-data-entrega[data-ep-data="${entregue.dataset.epEntregue}"]`);

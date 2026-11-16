@@ -1045,7 +1045,8 @@ def parte_uso(g):
         '<b>Link de rastreamento</b>: no cadastro da transportadora, o endereço com {NF}, {CTE} ou {CHAVE_NFE} coloca o botão '
         'Rastrear na lista.',
         'Sem nenhuma dessas, a entrega é lançada pelo botão <b>Entregue</b> ou pelo comprovante de entrega do registro. '
-        'Na coluna Nota aparecem também a <b>data de emissão do CT-e</b> e a <b>chave de acesso do CT-e</b> (clique nela para copiar); '
+        'Na coluna Nota aparecem também a <b>data de emissão do CT-e</b> e um botãozinho com o começo e o fim da <b>chave de acesso '
+        'do CT-e</b> (passando o mouse aparece a chave inteira; o clique copia a chave completa); '
         'a busca aceita a chave (ou um pedaço dela, com 20 números ou mais) e o Excel traz a chave numa coluna. '
         'Embaixo do botão <b>Entregue</b> há um campo de data: escolha o dia em que a entrega foi realizada e clique em Entregue, '
         'que a entrega é registrada direto nessa data (sem o campo preenchido, o sistema pergunta a data: ela já vem selecionada, '

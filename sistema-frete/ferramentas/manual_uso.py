@@ -345,6 +345,8 @@ def parte_uso(g):
         'X" ou "Faltam N notas: X a Y" (a nota não entrou no sistema ou foi inutilizada), e o quadro <b>Faltando na sequência</b> '
         'mostra o total. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
         'primeiro" ou "mais recentes primeiro".',
+        'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
+        'fim da lista, e o cabeçalho das colunas fica fixo no alto.',
         '<b>Dois cliques</b> na linha abrem o documento. Cada linha tem o botão <b>DANFE</b> (abre o DANFE da nota para imprimir '
         'ou salvar em PDF) e a <b>chave de acesso</b> resumida (clique para copiar a chave inteira).',
         '<b>Abrir</b> a nota mostra tudo e os botões <b>DANFE</b> (gerado a partir do XML, pronto para imprimir ou salvar em PDF '

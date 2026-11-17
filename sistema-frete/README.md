@@ -878,7 +878,7 @@ O QR Code é o **PIX estático do Banco Central** (BR Code). Ele já vem com o v
 
 Em **Documentos → 🧾 Notas fiscais** (código **403**). Regras em `src/notasFiscais.js`, DANFE em `src/danfe.js`, rotas em `/api/notas`.
 
-- **Sequência:** `GET /api/notas?ordem=numero|numero_desc|recentes` (padrão da tela: `numero`, guardado no navegador); nas ordens por número a resposta traz `faltando` (`faltandoNaSequencia`: números pulados por emitente e série entre as notas do filtro, saltos acima de 500 ignorados), mostrados como linhas de aviso na lista. Dois cliques na linha abrem o detalhe; cada linha tem DANFE e a chave para copiar.
+- **Sequência:** `GET /api/notas?ordem=numero|numero_desc|recentes` (padrão da tela: `numero`, guardado no navegador); nas ordens por número a resposta traz `faltando` (`faltandoNaSequencia`: números pulados por emitente e série entre as notas do filtro, saltos acima de 500 ignorados), mostrados como linhas de aviso na lista. Dois cliques na linha abrem o detalhe; cada linha tem DANFE e a chave para copiar. A tabela rola dentro da tela (`.nf-rolagem`: altura da janela, cabeçalho `sticky`), com as barras sempre visíveis.
 
 - **Dados completos da nota**, lidos do XML na importação (e do XML guardado nas notas antigas, ao ligar o sistema — `nf_dados_em` marca as já lidas): série, emitente (nome e CNPJ), valor dos produtos, peso bruto e líquido separados, data/hora de saída e endereço de entrega (`entrega_endereco`, com o grupo `<entrega>` quando a nota tem local de entrega diferente).
 - **Consulta** com filtros (número, chave, cliente, pedido, emitente, destinatário, série, cidade, UF, período por emissão ou saída, situação) e totais; **Excel**; **XML** da nota e **.zip** dos XML filtrados (`GET /api/notas/zip`).

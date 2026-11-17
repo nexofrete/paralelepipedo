@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Notas fiscais (403): a lista rola dentro da tela, com as barras de rolagem sempre visíveis (não precisa ir até o fim para rolar para o lado) e o cabeçalho das colunas fixo."},
         {"area": "Notas fiscais", "texto": "Notas fiscais (403) na sequência das notas (emitente, série e número), com aviso dos números que faltam (\"Faltam 3 notas: 3049 a 3051\"), dois cliques para abrir o documento, botão DANFE em cada linha e a chave de acesso para copiar."},
         {"area": "Entregas", "texto": "Lista de entregas: a nota mostra a data de emissão do CT-e e a chave de acesso do CT-e (clique para copiar). A busca aceita a chave e o Excel traz a chave numa coluna."},
         {"area": "Integrações", "texto": "NF-Stock: eventos de NFS-e (cancelamento e cancelamento por substituição) não dão mais erro. Se a NFS-e foi emitida pelo sistema, ela passa a cancelada; senão o evento fica só registrado."},

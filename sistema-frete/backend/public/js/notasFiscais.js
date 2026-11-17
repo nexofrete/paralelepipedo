@@ -43,7 +43,7 @@
         <div class="campo" style="margin:0;"><label>Endereço de entrega</label><select id="nfEnd" class="cte-entrada"><option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option></select></div>
       </div></div>
       <div id="nfResumo" class="oc-resumo"></div>
-      <div class="painel" style="overflow-x:auto;"><div id="nfTabela"></div></div>`;
+      <div class="painel nf-rolagem-painel"><div id="nfTabela" class="nf-rolagem"></div></div>`;
     Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
     let t = null;
     ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));

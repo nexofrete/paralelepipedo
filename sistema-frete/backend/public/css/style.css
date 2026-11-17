@@ -1853,3 +1853,13 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 #nfTabela tr.nf-linha { cursor: default; }
 #nfTabela tr.nf-linha:hover { background: var(--bg-elevado); }
 #nfTabela tr.nf-faltando td { background: rgba(217,119,6,.08); color: #b45309; font-size: 12px; padding: 5px 10px; border-left: 3px solid #d97706; }
+
+/* Notas fiscais (403): a tabela rola dentro da tela — as barras de rolagem (vertical e horizontal) ficam sempre
+   visíveis, sem precisar ir até o fim da lista, e o cabeçalho das colunas fica fixo no alto. */
+.nf-rolagem-painel { padding: 0 !important; overflow: hidden; }
+.nf-rolagem { max-height: calc(100vh - 170px); min-height: 260px; overflow: auto; scrollbar-gutter: stable; }
+.nf-rolagem table { border-collapse: separate; border-spacing: 0; }
+.nf-rolagem thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-card); box-shadow: inset 0 -1px 0 var(--borda); }
+.nf-rolagem::-webkit-scrollbar { width: 12px; height: 12px; }
+.nf-rolagem::-webkit-scrollbar-thumb { background: rgba(120,130,150,.45); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+.nf-rolagem::-webkit-scrollbar-thumb:hover { background-color: rgba(100,110,130,.7); }

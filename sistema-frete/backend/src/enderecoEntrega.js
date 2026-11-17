@@ -89,8 +89,9 @@ function lerEndereco(texto) {
   // Primeiro com os separadores claros (vírgula, " - ", "Nº"): mantém "RODOVIA BR 101 KM 25" inteiro.
   // Sem eles ("AV BRASIL 500 BAIRRO..."), o número é o primeiro número solto depois do nome.
   const fimNumero = String.raw`\s*(\d+[A-Z]?\b|S\/?N\b)?`;
-  const reLogClaro = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*[A-Z0-9' .\/]{2,60}?)\s*(?:,|\s-\s|\bN[º°O]?\.?\s*(?=\d)|\bNUMERO\s*[:.]?\s*(?=\d))${fimNumero}`);
-  const reLogSolto = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*[A-Z' .]+?)\s(?=\d+\b)${fimNumero}`);
+  // Hífen colado dentro do nome ("ESTRADA PIMENTAS-SAO MIGUEL") faz parte da rua; " - " com espaços separa.
+  const reLogClaro = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*(?:[A-Z0-9' .\/]|-(?=[A-Z0-9])){2,60}?)\s*(?:,|\s-\s|\bN[º°O]?\.?\s*(?=\d)|\bNUMERO\s*[:.]?\s*(?=\d))${fimNumero}`);
+  const reLogSolto = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*(?:[A-Z' .]|-(?=[A-Z]))+?)\s(?=\d+\b)${fimNumero}`);
   const log = T.match(reLogClaro) || T.match(reLogSolto) || T.match(/\bEND(?:ERECO)?\.?\s*[:.]\s*([A-Z0-9' .]+?)\s*(?:,|\s-\s)\s*(\d+[A-Z]?|S\/?N)?/);
   let fimLog = -1;
   if (log) {

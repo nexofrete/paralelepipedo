@@ -82,3 +82,10 @@ test('endereço: rótulo grudado ("RAFAELMUNICIPIO:"), "N 4550" e barracão/mód
   assert.strictEqual(r.nome, 'J A W TRANSPORTES DE CARGAS LTDA'); assert.strictEqual(r.logradouro, 'AV MONTEIRO LOBATO'); assert.strictEqual(r.numero, '4550');
   assert.strictEqual(r.complemento, 'BRCAO ASA 1 MODULO 58'); assert.strictEqual(r.bairro, 'VILA SAO RAFAEL'); assert.strictEqual(r.cidade, 'Guarulhos'); assert.strictEqual(r.conferir, false);
 });
+
+test('endereço: hífen colado dentro do nome da rua ("ESTRADA PIMENTAS-SAO MIGUEL")', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const r = lerEndereco('BILL LOG TRANSPORTE E LOGISTICA LTDA CNPJ:20.345.391/0002-74 ESTRADA PIMENTAS-SAO MIGUEL N 25 CEP:07210380 BAIRRO:VILA ALZIRA CIDADE:GUARULHOS UF:SP');
+  assert.strictEqual(r.logradouro, 'ESTRADA PIMENTAS-SAO MIGUEL'); assert.strictEqual(r.numero, '25'); assert.strictEqual(r.bairro, 'VILA ALZIRA'); assert.strictEqual(r.conferir, false);
+  assert.strictEqual(lerEndereco('TRANSP A - RUA A - 10 - CENTRO - CAMPINAS - SP').logradouro, 'RUA A');   // " - " com espaços continua separando
+});

@@ -33,22 +33,30 @@
     const adm = usuario?.perfil === 'admin';
     document.getElementById('nfNovoRegistro')?.classList.toggle('oculto', !(adm || usuario?.pode_editar_registros));
     document.getElementById('nfExcluir')?.classList.toggle('oculto', !(adm || usuario?.pode_excluir_registros));
-    cont.innerHTML = `<div class="painel" style="margin-bottom:12px;"><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; align-items:end;">
-        <div class="campo" style="margin:0;"><label>NF, chave, CT-e, pedido, cliente ou transportadora</label><input id="nfBusca" class="cte-entrada" /></div>
-        <div class="campo" style="margin:0;"><label>Emitente (nome ou CNPJ)</label><input id="nfEmit" class="cte-entrada" /></div>
-        <div class="campo" style="margin:0;"><label>Destinatário (nome ou CNPJ)</label><input id="nfDest" class="cte-entrada" /></div>
-        <div class="campo" style="margin:0;"><label>Série</label><input id="nfSerie" class="cte-entrada" maxlength="3" /></div>
-        <div class="campo" style="margin:0;"><label>Cidade</label><input id="nfCidade" class="cte-entrada" /></div>
-        <div class="campo" style="margin:0;"><label>UF</label><input id="nfUf" class="cte-entrada" maxlength="2" /></div>
-        <div class="campo" style="margin:0;"><label>Período pela</label><select id="nfData" class="cte-entrada"><option value="emissao">Emissão</option><option value="saida">Saída</option></select></div>
-        <div class="campo" style="margin:0; grid-column:span 2;"><label>Período</label><div style="display:flex; gap:6px; align-items:center;">${Periodo.html('nf')}</div></div>
-        <div class="campo" style="margin:0;"><label>Situação</label><select id="nfSit" class="cte-entrada"><option value="">Todas</option><option value="autorizada">Autorizada</option><option value="cancelada">Cancelada</option><option value="denegada">Denegada</option><option value="sem_cte">Sem CT-e</option></select></div>
-        <div class="campo" style="margin:0;"><label>Entrega</label><select id="nfEntrega" class="cte-entrada"><option value="">Todas</option><option value="entregue">✓ Entregues</option><option value="pendente">Não entregues</option><option value="atrasada">⚠ Atrasadas</option></select></div>
-        <div class="campo" style="margin:0;"><label>Transportadora</label><input id="nfTransp" class="cte-entrada" /></div>
-        <div class="campo" style="margin:0;"><label>Ordem</label><select id="nfOrdem" class="cte-entrada"><option value="numero">Sequência das notas (número)</option><option value="numero_desc">Sequência, maior número primeiro</option><option value="recentes">Mais recentes primeiro</option></select></div>
-        <div class="campo" style="margin:0;"><label>Endereço de entrega</label><select id="nfEnd" class="cte-entrada"><option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option></select></div>
-      </div></div>
-      <div id="nfResumo" class="oc-resumo"></div>
+    const sel = (id, opcoes) => `<select id="${id}" class="cte-entrada">${opcoes}</select>`;
+    cont.innerHTML = `<div class="painel nf-filtros">
+        <div class="nf-linha-filtros">
+          <label class="nf-f nf-f-busca"><span>Buscar</span><input id="nfBusca" class="cte-entrada" placeholder="NF, chave, CT-e, pedido, cliente ou transportadora" /></label>
+          <label class="nf-f"><span>Transportadora</span><input id="nfTransp" class="cte-entrada" placeholder="Todas" /></label>
+          <label class="nf-f"><span>Entrega</span>${sel('nfEntrega', '<option value="">Todas</option><option value="entregue">✓ Entregues</option><option value="pendente">Não entregues</option><option value="atrasada">⚠ Atrasadas</option>')}</label>
+          <label class="nf-f"><span>Situação da NF-e</span>${sel('nfSit', '<option value="">Todas</option><option value="autorizada">Autorizada</option><option value="cancelada">Cancelada</option><option value="denegada">Denegada</option><option value="sem_cte">Sem CT-e</option>')}</label>
+        </div>
+        <div class="nf-linha-filtros">
+          <div class="nf-f nf-f-periodo"><span>Período</span>${Periodo.html('nf')}</div>
+          <label class="nf-f"><span>Período pela</span>${sel('nfData', '<option value="emissao">Emissão</option><option value="saida">Saída</option>')}</label>
+          <label class="nf-f"><span>Ordem</span>${sel('nfOrdem', '<option value="numero">Sequência (número)</option><option value="numero_desc">Sequência, maior primeiro</option><option value="recentes">Mais recentes primeiro</option>')}</label>
+        </div>
+        <details id="nfMaisFiltros" class="nf-mais"><summary>Mais filtros <small>(emitente, destinatário, série, cidade, UF, endereço de entrega)</small></summary>
+          <div class="nf-linha-filtros">
+            <label class="nf-f"><span>Emitente (nome ou CNPJ)</span><input id="nfEmit" class="cte-entrada" /></label>
+            <label class="nf-f"><span>Destinatário (nome ou CNPJ)</span><input id="nfDest" class="cte-entrada" /></label>
+            <label class="nf-f nf-f-curto"><span>Série</span><input id="nfSerie" class="cte-entrada" maxlength="3" /></label>
+            <label class="nf-f"><span>Cidade</span><input id="nfCidade" class="cte-entrada" /></label>
+            <label class="nf-f nf-f-curto"><span>UF</span><input id="nfUf" class="cte-entrada" maxlength="2" /></label>
+            <label class="nf-f"><span>Endereço de entrega</span>${sel('nfEnd', '<option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option>')}</label>
+          </div></details>
+      </div>
+      <div id="nfResumo" class="nf-resumo"></div>
       <div class="painel nf-rolagem-painel"><div id="nfTabela" class="nf-rolagem"></div></div>`;
     Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
     let t = null;
@@ -91,8 +99,8 @@
     if (!r.ok) { $('nfTabela').innerHTML = `<div style="color:var(--vermelho);">${esc(j.erro || 'Erro.')}</div>`; return; }
     dados = j;
     const t = j.totais;
-    $('nfResumo').innerHTML = `<div>Notas<b>${t.notas}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
-      <div>Peso<b>${kg(t.peso)}</b><span>${t.volumes} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>
+    $('nfResumo').innerHTML = `<div>Notas<b>${Number(t.notas).toLocaleString('pt-BR')}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
+      <div>Peso<b>${Number(t.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg</b><span>${Number(t.volumes || 0).toLocaleString('pt-BR')} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>
       <div style="cursor:pointer;" id="nfResumoConferir" title="Mostrar só as notas com endereço a conferir">Endereço a conferir<b style="color:${t.conferir_endereco ? '#d97706' : 'inherit'};">${t.conferir_endereco || 0}</b><span>lido do texto sem certeza</span></div>`;
     $('nfResumo').insertAdjacentHTML('afterbegin', `<div style="cursor:pointer;" data-nf-filtro-entrega="entregue" title="Mostrar só as entregues">Entregues<b style="color:var(--verde);">${t.entregues || 0}</b><span>com data de entrega</span></div>
       <div style="cursor:pointer;" data-nf-filtro-entrega="pendente" title="Mostrar só as não entregues">Não entregues<b>${t.nao_entregues || 0}</b><span>sem data de entrega</span></div>
@@ -101,7 +109,7 @@
     if (j.faltando) {
       $('nfResumo').insertAdjacentHTML('beforeend', `<div title="${esc(j.faltando.faixas.slice(0, 15).map((f) => `${f.emitente || ''} série ${f.serie || '—'}: ${f.de === f.ate ? f.de : `${f.de} a ${f.ate}`}`).join('\n'))}">Faltando na sequência<b style="color:${j.faltando.total ? '#d97706' : 'var(--verde)'};">${j.faltando.total}</b><span>${j.faltando.total ? 'números pulados (veja na lista)' : 'sem números pulados'}</span></div>`);
     }
-    $('nfResumoConferir')?.addEventListener('click', () => { $('nfEnd').value = 'conferir'; carregar(); });
+    $('nfResumoConferir')?.addEventListener('click', () => { $('nfEnd').value = 'conferir'; $('nfMaisFiltros').open = true; carregar(); });
     $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Destino</th><th>Transportadora / CT-e</th><th>Entrega</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
       ${j.notas.map((n) => `${linhaFaltando(n, j)}<tr data-nf-id="${n.id}" class="nf-linha" title="Dois cliques para ver o documento"><td><input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} /></td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}${n.chave_nfe ? `<br><button type="button" class="ep-chave-cte" data-nf-chave="${esc(n.chave_nfe)}" title="Chave de acesso: ${esc(String(n.chave_nfe).replace(/(\d{4})(?=\d)/g, '$1 '))} — clique para copiar">🔑 ${esc(String(n.chave_nfe).slice(0, 4))}…${esc(String(n.chave_nfe).slice(-8).replace(/(\d{4})(?=\d)/, '$1 '))} <span class="ep-chave-copiar">copiar</span></button>` : ''}</td>
         <td>${dia(n.data_emissao_nf)}</td><td>${n.data_saida ? dataHora(n.data_saida) : '—'}</td><td>${esc(n.emitente_nome || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.emitente_cnpj)}</small></td>

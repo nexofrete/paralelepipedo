@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Consulta de notas (403) reorganizada: filtros principais em duas linhas alinhadas (busca, transportadora, entrega, situação; período e ordem), os menos usados em \"Mais filtros\", e os quadros do resumo menores, sem cortar os valores."},
         {"area": "Notas fiscais", "texto": "Endereço escrito sem a cidade: a cidade sai do CEP (capitais na hora, pela faixa dos Correios; outras cidades pela consulta do CEP na BrasilAPI). \"Bairro Cocota\" vira só Cocota, e avisos de boleto/WhatsApp depois do endereço são deixados de fora."},
         {"area": "Notas fiscais", "texto": "Endereço de entrega e redespacho: as notas com \"conferir\" lidas por uma versão anterior das regras são lidas de novo sozinhas ao reiniciar o servidor depois de cada atualização."},
         {"area": "Notas fiscais", "texto": "Endereço de entrega e redespacho: separadores \"pela metade\" (\"1013-JARDIM PRESIDENTE DUTRA -GUARULHOS ,SP\") lidos certo, e o CEP que falta vem do cadastro do CNPJ da transportadora do redespacho quando a cidade é a mesma."},

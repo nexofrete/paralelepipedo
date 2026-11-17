@@ -356,9 +356,11 @@ def parte_uso(g):
                'um diferente do destinatário) e a situação: autorizada, cancelada ou denegada. Esses dados são lidos do XML na '
                'importação; nas notas que já estavam no sistema, são lidos do XML guardado quando o sistema liga.'))
     s += lista([
-        '<b>Filtros</b>: número, chave, cliente ou pedido; emitente e destinatário (nome ou CNPJ); série; cidade e UF; período '
-        'pela emissão ou pela saída; situação (autorizada, cancelada, denegada, sem CT-e). No alto, o total de notas, valor, '
-        'peso, volumes, canceladas e denegadas.',
+        '<b>Filtros</b> em duas linhas: na 1ª, Buscar (número, chave, CT-e, pedido, cliente ou transportadora), Transportadora, '
+        'Entrega e Situação da NF-e (autorizada, cancelada, denegada, sem CT-e); na 2ª, o Período (pela emissão ou pela saída) e '
+        'a Ordem. Os filtros menos usados (emitente, destinatário, série, cidade, UF e endereço de entrega) ficam em <b>Mais '
+        'filtros</b>, que abre ao clicar. Abaixo, uma faixa de quadros compactos com Entregues, Não entregues, Atrasadas, total '
+        'de notas, valor, peso e volumes, canceladas e denegadas, Endereço a conferir e Faltando na sequência.',
         '<b>Entrega</b> (coluna): para onde a transportadora leva a nota e de onde veio o endereço. Filtro <b>Endereço de entrega</b>: '
         'a conferir, com redespacho, local de entrega diferente ou corrigidos à mão.',
         '<b>Ordem</b>: a lista abre na <b>sequência das notas</b> (por emitente, série e número; a escolha fica guardada). '

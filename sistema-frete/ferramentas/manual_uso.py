@@ -325,7 +325,8 @@ def parte_uso(g):
         'é conferida na lista oficial de municípios do IBGE (também quando a nota não traz a UF e a cidade só existe num estado). '
         '"ENTREGA EM 10/11" e frases assim não são confundidas com endereço.',
         'Quando a leitura não tem certeza (cidade que não está no IBGE ou sem rua), a nota fica com <b>⚠ conferir</b> e o motivo. '
-        'O número de notas a conferir aparece no alto da tela; clique nele para ver só essas.',
+        'O número de notas a conferir aparece no alto da tela; clique nele para ver só essas. A rua é reconhecida pelo tipo '
+        '(RUA, AV, ROD, ESTRADA, TRAVESSA, PRAÇA, LARGO, VIELA...) e pelas abreviações dos Correios (VLA, TRV, LGO, PRC, R., AL.).',
         'Em <b>Abrir</b>, cada endereço mostra a origem, o texto da nota de onde foi lido e o botão <b>Corrigir</b> (quem pode editar '
         'registros). A cidade corrigida é conferida no IBGE; no redespacho, ela vira também a Cidade do Redespacho do cálculo: se mudou, '
         'use Recalcular no registro. Endereço corrigido à mão não é mais trocado pela leitura automática.',

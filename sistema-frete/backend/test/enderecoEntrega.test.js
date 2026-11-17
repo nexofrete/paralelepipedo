@@ -57,3 +57,11 @@ test('ordem: redespacho > <entrega> do XML > dados adicionais > destinatário', 
   assert.strictEqual(comRedesp.redespacho.cidade, 'Guarulhos');
   assert.strictEqual(comRedesp.entrega.origem, 'xml_entrega');
 });
+
+test('endereço: abreviações dos Correios (VLA = viela) e o bairro depois do CEP', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const r = lerEndereco('PICCOLI TRANSPORTES LTDA - EPP - VLA URGA, 557 - CEP: 07.175-332 - VILA NOVA BONSUCESSO - GUARULHOS - SP - I.E:336.859.218.117 - CNPJ: 01.496.359/0002-45');
+  assert.strictEqual(r.logradouro, 'VLA URGA'); assert.strictEqual(r.numero, '557'); assert.strictEqual(r.bairro, 'VILA NOVA BONSUCESSO');
+  assert.strictEqual(r.cidade, 'Guarulhos'); assert.strictEqual(r.conferir, false);
+  assert.strictEqual(lerEndereco('TRANSP X - TRV DAS FLORES, 12 - CENTRO - CAMPINAS - SP').logradouro, 'TRV DAS FLORES');
+});

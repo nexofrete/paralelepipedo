@@ -13,7 +13,8 @@ const { municipio, ufsDaCidade, norm } = require('./roteirizacao/municipios');
 const UFS = new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' '));
 const ORIGENS = { redespacho: 'Redespacho', xml_entrega: 'Local de entrega (XML)', dados_adicionais: 'Dados adicionais', destinatario: 'Destinatário', manual: 'Corrigido à mão' };
 // Tipo do logradouro: palavra inteira ou abreviação com ponto ("ROD." sim; "RODOFLUVIAL" não).
-const TIPO_LOGRADOURO = String.raw`(?:(?:RUA|AVENIDA|RODOVIA|ESTRADA|ALAMEDA|TRAVESSA|PRA[CÇ]A|LARGO|VIA|QUADRA|SETOR|LINHA|TRECHO|CONDOM[IÍ]NIO|AV|ROD|PCA|QD)(?=[\s.])\.?|(?:R|ESTR?|AL|TV)\.|(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA)[- ]\d{3}\b)`;
+// Abreviações dos Correios também: VLA = viela, TRV/TRAV = travessa, LGO = largo, PRC = praça.
+const TIPO_LOGRADOURO = String.raw`(?:(?:RUA|AVENIDA|RODOVIA|ESTRADA|ALAMEDA|TRAVESSA|PRA[CÇ]A|LARGO|VIELA|VIA|QUADRA|SETOR|LINHA|TRECHO|CONDOM[IÍ]NIO|AV|ROD|PCA|QD|VLA|TRAV|TRV|LGO|PRC)(?=[\s.])\.?|(?:R|ESTR?|AL|TV|PC)\.|(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA)[- ]\d{3}\b)`;
 // Onde o bloco de um endereço termina nos dados adicionais.
 const FIM_BLOCO = String.raw`(?=\s*(?:-\s*)?(?:FRETE\s+POR\s+CONTA|TERMO\s+DE\s+ISEN|\.\s*PEDIDO\s*:|PEDIDO\s*:|N[Rº°]?\.?\s*PEDIDO|REDESPACHO\s*:|LOCAL\s+DE\s+ENTREGA|ENDERE[CÇ]O\s+DE\s+ENTREGA|OBS(?:ERVA[CÇ][AÃ]O|ERVA[CÇ][OÕ]ES)?\s*:|DOCUMENTO\s+EMITIDO|INF(?:ORMA[CÇ][OÕ]ES)?\s+(?:DO\s+)?CONTRIBUINTE|VALOR\s+APROXIMADO|TRIBUTOS|PROCON|DEVOLU[CÇ][AÃ]O|\|\||\/\/|$))`;
 

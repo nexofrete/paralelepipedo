@@ -61,8 +61,8 @@ async function marcarDenegada(id, motivo) {
 
 // Grava os endereços lidos (menos na nota com endereço corrigido à mão).
 const gravarEnderecos = (id, d) => pool.query(`UPDATE fretes SET entrega_endereco = $2, redespacho_endereco = $3, endereco_origem = $4, endereco_conferir = $5,
-    endereco_conferir_motivo = $6, endereco_lido_em = NOW() WHERE id = $1 AND NOT endereco_corrigido`,
-  [id, d.entrega_endereco, d.redespacho_endereco, d.endereco_origem, d.endereco_conferir, d.endereco_conferir_motivo]);
+    endereco_conferir_motivo = $6, endereco_lido_em = NOW(), endereco_versao = $7 WHERE id = $1 AND NOT endereco_corrigido`,
+  [id, d.entrega_endereco, d.redespacho_endereco, d.endereco_origem, d.endereco_conferir, d.endereco_conferir_motivo, require('./enderecoEntrega').VERSAO_LEITURA]);
 async function completar(id) {
   const { rows: [f] } = await pool.query('SELECT id, xml_nfe_original FROM fretes WHERE id = $1', [id]);
   if (!f?.xml_nfe_original) return false;
@@ -93,10 +93,12 @@ async function completarTodos() {
   let e = 0;
   try {
     for (;;) {
-      const { rows } = await pool.query('SELECT id, xml_nfe_original FROM fretes WHERE xml_nfe_original IS NOT NULL AND endereco_lido_em IS NULL AND NOT endereco_corrigido LIMIT 300');
+      // Nunca lidas, ou marcadas "conferir" por uma versão anterior das regras de leitura.
+      const { rows } = await pool.query(`SELECT id, xml_nfe_original FROM fretes WHERE xml_nfe_original IS NOT NULL AND NOT endereco_corrigido
+          AND (endereco_lido_em IS NULL OR (endereco_conferir AND COALESCE(endereco_versao, 0) < $1)) LIMIT 300`, [require('./enderecoEntrega').VERSAO_LEITURA]);
       if (!rows.length) break;
       for (const r of rows) {
-        try { await gravarEnderecos(r.id, dadosDaNota(r.xml_nfe_original)); } catch { await pool.query('UPDATE fretes SET endereco_lido_em = NOW() WHERE id = $1', [r.id]); }
+        try { await gravarEnderecos(r.id, dadosDaNota(r.xml_nfe_original)); } catch { await pool.query('UPDATE fretes SET endereco_lido_em = NOW(), endereco_versao = $2 WHERE id = $1', [r.id, require('./enderecoEntrega').VERSAO_LEITURA]); }
         e += 1;
       }
     }

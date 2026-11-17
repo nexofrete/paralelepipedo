@@ -3630,5 +3630,5 @@ UPDATE nfstock_docs SET resultado = 'ignorado',
 -- Endereço de entrega: abreviações dos Correios (VLA = viela, TRV/TRAV, LGO, PRC, "R" sem ponto) passaram a ser reconhecidas,
 -- e o número no fim do nome da rua ("AV ANTONIO CARLOS 200 - CENTRO") vira o número do endereço.
 -- As notas marcadas "conferir" lidas antes disso são lidas de novo uma vez (as corrigidas à mão não mudam).
-UPDATE fretes SET endereco_lido_em = NULL
- WHERE endereco_conferir AND NOT endereco_corrigido AND xml_nfe_original IS NOT NULL AND endereco_lido_em < TIMESTAMPTZ '2026-11-18 00:00:00-03';
+-- (A releitura agora é pela versão das regras: fretes.endereco_versao × VERSAO_LEITURA em src/enderecoEntrega.js.)
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_versao INTEGER;

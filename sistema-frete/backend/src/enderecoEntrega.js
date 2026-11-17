@@ -206,4 +206,8 @@ function textoEndereco(e) {
   return [[e.logradouro, e.numero, e.complemento].filter(Boolean).join(', '), e.bairro, e.cidade || e.uf ? `${e.cidade || ''}/${e.uf || ''}` : '', cep].filter(Boolean).join(' — ');
 }
 
-module.exports = { ORIGENS, lerEndereco, conferir, blocoRedespacho, blocoLocalEntrega, daNfe, textoEndereco, acharCidade };
+// Versão das regras de leitura: ao subir, as notas com "conferir" lidas por uma versão anterior são lidas de novo
+// sozinhas ao ligar o sistema (notasFiscais.completarTodos). Suba sempre que melhorar a leitura.
+const VERSAO_LEITURA = 8;
+
+module.exports = { VERSAO_LEITURA, ORIGENS, lerEndereco, conferir, blocoRedespacho, blocoLocalEntrega, daNfe, textoEndereco, acharCidade };

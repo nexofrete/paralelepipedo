@@ -103,3 +103,13 @@ test('endereço: separadores pela metade ("1013-JARDIM ... -GUARULHOS ,SP")', ()
   assert.strictEqual(r.nome, 'AMARAL SOUZA TRANSPORTES LTDA-ME'); assert.strictEqual(r.logradouro, 'RUA MARINOPOLIS'); assert.strictEqual(r.numero, '1013');
   assert.strictEqual(r.bairro, 'JARDIM PRESIDENTE DUTRA'); assert.strictEqual(r.cidade, 'Guarulhos'); assert.strictEqual(r.uf, 'SP'); assert.strictEqual(r.conferir, false);
 });
+
+test('endereço: "Bairro Cocota", cidade pela faixa de CEP da capital e aviso de boleto cortado', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const r = lerEndereco('Rua tenente Cleto Campelo, 174, Bairro Cocota - ilha do governador - CEP: 21921025 / \\n .CASO NAO RECEBA, FAVOR SOLICITAR BOLETOS NO WHATSAPP: 21- 96471-3606, ANTES DO VENCIMENTO');
+  assert.strictEqual(r.logradouro, 'RUA TENENTE CLETO CAMPELO'); assert.strictEqual(r.numero, '174'); assert.strictEqual(r.bairro, 'COCOTA');
+  assert.strictEqual(r.cidade, 'Rio de Janeiro'); assert.strictEqual(r.uf, 'RJ'); assert.strictEqual(r.cidade_pelo_cep, true); assert.strictEqual(r.conferir, false);
+  assert.ok(!/BOLETO|WHATSAPP/.test(r.texto));
+  const { capitalDoCep } = require('../src/cepCidade');
+  assert.deepStrictEqual(capitalDoCep('01310-100'), { cidade: 'São Paulo', uf: 'SP' }); assert.strictEqual(capitalDoCep('13045000'), null);
+});

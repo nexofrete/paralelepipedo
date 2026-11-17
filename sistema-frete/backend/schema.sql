@@ -3632,3 +3632,11 @@ UPDATE nfstock_docs SET resultado = 'ignorado',
 -- As notas marcadas "conferir" lidas antes disso são lidas de novo uma vez (as corrigidas à mão não mudam).
 -- (A releitura agora é pela versão das regras: fretes.endereco_versao × VERSAO_LEITURA em src/enderecoEntrega.js.)
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS endereco_versao INTEGER;
+
+-- CEPs consultados (src/cepCidade.js): a cidade do endereço escrito sem a cidade, fora das capitais.
+CREATE TABLE IF NOT EXISTS cep_consultas (
+  cep CHAR(8) PRIMARY KEY,
+  cidade VARCHAR(120), uf CHAR(2), bairro VARCHAR(120), rua VARCHAR(200),
+  nao_encontrado BOOLEAN NOT NULL DEFAULT FALSE,
+  consultado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

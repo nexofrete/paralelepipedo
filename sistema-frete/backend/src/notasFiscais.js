@@ -73,6 +73,7 @@ async function completar(id) {
   [id, d.nf_serie, d.emitente_nome, d.emitente_cnpj, d.valor_produtos, d.peso_bruto, d.peso_liquido, d.data_saida]);
   await gravarEnderecos(id, d);
   await completarRedespachoPeloCadastro({ id }).catch(() => {});
+  await completarCidadePeloCep({ id }).catch(() => {});
   if (d.denegada) await marcarDenegada(id, `${d.protocolo.cStat} ${d.protocolo.xMotivo}`.trim());
   return { ok: true, denegada: d.denegada };
 }
@@ -106,6 +107,45 @@ async function completarTodos() {
   if (e) console.log(`[notas] ${e} nota(s) com o endereço de entrega e o redespacho lidos de novo.`);
   const c = await completarRedespachoPeloCadastro().catch((err) => { console.error('[notas] redespacho pelo cadastro:', err.message); return 0; });
   if (c) console.log(`[notas] ${c} nota(s) com o endereço do redespacho completado pelo cadastro do CNPJ.`);
+  const cc = await completarCidadePeloCep().catch((err) => { console.error('[notas] cidade pelo CEP:', err.message); return 0; });
+  if (cc) console.log(`[notas] ${cc} nota(s) com a cidade do endereço achada pelo CEP.`);
+  return n;
+}
+
+// Endereço sem a cidade, mas com CEP (fora das capitais, que o leitor já resolve): consulta o CEP (src/cepCidade.js).
+async function completarCidadePeloCep(f = {}) {
+  const { conferir, acharCidade } = require('./enderecoEntrega');
+  const cep = require('./cepCidade');
+  const params = []; let extra = '';
+  if (f.id) { params.push(f.id); extra = ` AND f.id = $${params.length}`; }
+  const { rows } = await pool.query(`SELECT f.id, f.entrega_endereco, f.redespacho_endereco, f.endereco_origem FROM fretes f
+     WHERE NOT f.endereco_corrigido AND (
+       (f.entrega_endereco IS NOT NULL AND NULLIF(f.entrega_endereco->>'cidade', '') IS NULL AND LENGTH(COALESCE(f.entrega_endereco->>'cep', '')) = 8 AND f.entrega_endereco->>'cep_consultado' IS NULL)
+       OR (f.redespacho_endereco IS NOT NULL AND NULLIF(f.redespacho_endereco->>'cidade', '') IS NULL AND LENGTH(COALESCE(f.redespacho_endereco->>'cep', '')) = 8 AND f.redespacho_endereco->>'cep_consultado' IS NULL))${extra}
+     LIMIT 300`, params);
+  let n = 0;
+  for (const r of rows) {
+    const sets = []; const vals = [r.id];
+    for (const campo of ['entrega_endereco', 'redespacho_endereco']) {
+      const e = r[campo] ? (typeof r[campo] === 'string' ? JSON.parse(r[campo]) : { ...r[campo] }) : null;
+      if (!e || e.cidade || !/^\d{8}$/.test(String(e.cep || ''))) continue;
+      const v = await cep.buscar(e.cep);
+      e.cep_consultado = true;
+      if (v) {
+        const c = acharCidade(v.cidade, v.uf) || { cidade: v.cidade, uf: v.uf, ibge: null };
+        Object.assign(e, { cidade: c.cidade, uf: c.uf, ibge: c.ibge, cidade_pelo_cep: true, bairro: e.bairro || v.bairro || null, logradouro: e.logradouro || v.rua || null });
+        const k = conferir(e); e.conferir = k.conferir; e.motivos = k.motivos;
+        const origemDeste = campo === 'redespacho_endereco' ? 'redespacho' : null;
+        if (r.endereco_origem === origemDeste || (campo === 'entrega_endereco' && r.endereco_origem !== 'redespacho')) {
+          vals.push(k.conferir); sets.push(`endereco_conferir = $${vals.length}`);
+          vals.push(k.motivos.join('; ') || null); sets.push(`endereco_conferir_motivo = $${vals.length}`);
+        }
+        n += 1;
+      }
+      vals.push(JSON.stringify(e)); sets.push(`${campo} = $${vals.length}`);
+    }
+    if (sets.length) await pool.query(`UPDATE fretes SET ${sets.join(', ')} WHERE id = $1 AND NOT endereco_corrigido`, vals);
+  }
   return n;
 }
 
@@ -324,4 +364,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

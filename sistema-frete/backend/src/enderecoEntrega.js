@@ -17,7 +17,7 @@ const ORIGENS = { redespacho: 'Redespacho', xml_entrega: 'Local de entrega (XML)
 // "R" sem ponto (= rua) só no começo do endereço (depois de " - ", vírgula ou no início): "... LTDA - R DOMINGOS PACHECO,75".
 const TIPO_LOGRADOURO = String.raw`(?:(?:RUA|AVENIDA|RODOVIA|ESTRADA|ALAMEDA|TRAVESSA|PRA[CÇ]A|LARGO|VIELA|VIA|QUADRA|SETOR|LINHA|TRECHO|CONDOM[IÍ]NIO|AV|ROD|PCA|QD|VLA|TRAV|TRV|LGO|PRC)(?=[\s.])\.?|(?:R|ESTR?|AL|TV|PC)\.|(?<![A-Z0-9&] )R(?=\s+[A-Z]{2})|(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA)[- ]\d{3}\b)`;
 // Onde o bloco de um endereço termina nos dados adicionais.
-const FIM_BLOCO = String.raw`(?=\s*(?:-\s*)?(?:FRETE\s+POR\s+CONTA|TERMO\s+DE\s+ISEN|\.\s*PEDIDO\s*:|PEDIDO\s*:|N[Rº°]?\.?\s*PEDIDO|REDESPACHO\s*:|LOCAL\s+DE\s+ENTREGA|ENDERE[CÇ]O\s+DE\s+ENTREGA|OBS(?:ERVA[CÇ][AÃ]O|ERVA[CÇ][OÕ]ES)?\s*:|DOCUMENTO\s+EMITIDO|INF(?:ORMA[CÇ][OÕ]ES)?\s+(?:DO\s+)?CONTRIBUINTE|VALOR\s+APROXIMADO|TRIBUTOS|PROCON|DEVOLU[CÇ][AÃ]O|\|\||\/\/|$))`;
+const FIM_BLOCO = String.raw`(?=\s*(?:-\s*)?(?:FRETE\s+POR\s+CONTA|TERMO\s+DE\s+ISEN|\.\s*PEDIDO\s*:|PEDIDO\s*:|N[Rº°]?\.?\s*PEDIDO|REDESPACHO\s*:|LOCAL\s+DE\s+ENTREGA|ENDERE[CÇ]O\s+DE\s+ENTREGA|OBS(?:ERVA[CÇ][AÃ]O|ERVA[CÇ][OÕ]ES)?\s*:|DOCUMENTO\s+EMITIDO|INF(?:ORMA[CÇ][OÕ]ES)?\s+(?:DO\s+)?CONTRIBUINTE|VALOR\s+APROXIMADO|TRIBUTOS|PROCON|DEVOLU[CÇ][AÃ]O|CASO\s+N[AÃ]O\s+RECEB|SOLICITAR\s+BOLETO|BOLETOS?\b|WHATSAPP|DADOS\s+BANC|PAGAMENTO|\|\||\/\/|$))`;
 
 const limpo = (t) => String(t || '').replace(/\s+/g, ' ').replace(/^[\s:;,.\-–]+|[\s:;,.\-–]+$/g, '').trim();
 const semAcentoMaiusc = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
@@ -77,7 +77,10 @@ function lerEndereco(texto) {
   const original = limpo(String(texto || '').replace(/\\[nrt]/g, '\n').replace(/\s*[\r\n]+\s*/g, ' - ')
     .replace(/\s+-(?=[^\s\d-])|(?<=[^\s\d-])-\s+/g, ' - ').replace(/(?<=\d)-(?=[A-Za-zÀ-ú]{2})/g, ' - ').replace(/\s+,/g, ','));
   if (!original) return null;
-  const T = separarRotulos(semAcentoMaiusc(original));
+  // Avisos depois do endereço ("CASO NAO RECEBA, FAVOR SOLICITAR BOLETOS NO WHATSAPP...") não fazem parte dele.
+  const corte = semAcentoMaiusc(original).search(/(?:^|[\s.\/,;-])(?:CASO\s+NAO\s+RECEB|SOLICITAR\s+BOLETO|BOLETOS?\b|WHATSAPP|DADOS\s+BANC)/);
+  const base = corte > 10 ? original.slice(0, corte).replace(/[\s.\/,;-]+$/, '') : original;
+  const T = separarRotulos(semAcentoMaiusc(base));
   const end = { nome: null, cnpj: null, ie: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, uf: null, cep: null, ibge: null };
   // CNPJ (com ou sem rótulo; só vale com dígito certo).
   const cnpj = T.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}\s?\/?\s?\d{4}\s?-?\s?\d{2})/);
@@ -136,9 +139,17 @@ function lerEndereco(texto) {
       && !/^(?:SALA|GALP|LOJA|BLOCO|APTO|CONJ|LOTE|KM|ANDAR)\b/.test(s));
     if (cand) end.bairro = cand.slice(0, 80);
   }
+  // "Bairro Cocota" (sem dois-pontos): a palavra BAIRRO não faz parte do nome.
+  if (end.bairro) end.bairro = end.bairro.replace(/^BAIRRO\s*[:.\-]?\s*/, '').trim() || null;
+  // Sem cidade no texto, mas com CEP de capital: a cidade sai da faixa do CEP (Correios).
+  if (!end.cidade && end.cep) {
+    const cap = require('./cepCidade').capitalDoCep(end.cep);
+    const m = cap && municipio({ cidade: cap.cidade, uf: cap.uf });
+    if (m) Object.assign(end, { cidade: m.nome, uf: m.uf, ibge: m.ibge, cidade_pelo_cep: true });
+  }
   // Nome do lugar não pode ser a própria cidade/bairro.
   if (end.nome && end.cidade && norm(end.nome) === norm(end.cidade)) end.nome = null;
-  return { ...end, texto: original.slice(0, 500), ...conferir(end) };
+  return { ...end, texto: base.slice(0, 500), ...conferir(end) };
 }
 
 // O que falta para confiar no endereço. "conferir" = alguém precisa olhar.
@@ -208,6 +219,6 @@ function textoEndereco(e) {
 
 // Versão das regras de leitura: ao subir, as notas com "conferir" lidas por uma versão anterior são lidas de novo
 // sozinhas ao ligar o sistema (notasFiscais.completarTodos). Suba sempre que melhorar a leitura.
-const VERSAO_LEITURA = 8;
+const VERSAO_LEITURA = 9;
 
 module.exports = { VERSAO_LEITURA, ORIGENS, lerEndereco, conferir, blocoRedespacho, blocoLocalEntrega, daNfe, textoEndereco, acharCidade };

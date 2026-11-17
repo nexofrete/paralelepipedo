@@ -71,7 +71,11 @@ function acharCidade(texto, ufDada) {
 // Lê um endereço escrito em texto livre. Devolve os campos achados e a conferência.
 function lerEndereco(texto) {
   // Quebra de linha (de verdade ou escrita como "\\n" no XML) separa as partes do endereço, como " - ".
-  const original = limpo(String(texto || '').replace(/\\[nrt]/g, '\n').replace(/\s*[\r\n]+\s*/g, ' - '));
+  // Separadores "pela metade" ("1013-JARDIM PRESIDENTE DUTRA -GUARULHOS ,SP"): hífen com espaço de um lado só,
+  // ou entre o número e a palavra seguinte, vira " - "; " ," vira ",". Hífen dentro do nome (PIMENTAS-SAO MIGUEL,
+  // LTDA-ME), de telefone e de CEP fica como está.
+  const original = limpo(String(texto || '').replace(/\\[nrt]/g, '\n').replace(/\s*[\r\n]+\s*/g, ' - ')
+    .replace(/\s+-(?=[^\s\d-])|(?<=[^\s\d-])-\s+/g, ' - ').replace(/(?<=\d)-(?=[A-Za-zÀ-ú]{2})/g, ' - ').replace(/\s+,/g, ','));
   if (!original) return null;
   const T = separarRotulos(semAcentoMaiusc(original));
   const end = { nome: null, cnpj: null, ie: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, uf: null, cep: null, ibge: null };

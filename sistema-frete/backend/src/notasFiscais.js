@@ -118,7 +118,8 @@ async function completarRedespachoPeloCadastro(f = {}) {
   const { rows } = await pool.query(`SELECT f.id, f.redespacho_endereco, f.endereco_origem, t.endereco, t.bairro, t.municipio, t.uf, t.cep
       FROM fretes f JOIN transportadoras t ON REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g') = f.redespacho_endereco->>'cnpj'
      WHERE f.redespacho_endereco IS NOT NULL AND NOT f.endereco_corrigido AND NULLIF(t.municipio, '') IS NOT NULL
-       AND (NULLIF(f.redespacho_endereco->>'cidade', '') IS NULL OR NULLIF(f.redespacho_endereco->>'logradouro', '') IS NULL)
+       AND (NULLIF(f.redespacho_endereco->>'cidade', '') IS NULL OR NULLIF(f.redespacho_endereco->>'logradouro', '') IS NULL
+            OR NULLIF(f.redespacho_endereco->>'cep', '') IS NULL)
        AND COALESCE(f.redespacho_endereco->>'do_cadastro', '') <> 'true'${extra}
      LIMIT 5000`, params);
   let n = 0;
@@ -127,6 +128,9 @@ async function completarRedespachoPeloCadastro(f = {}) {
     // "RUA X, 123 - SALA 2" (como o cadastro guarda) → rua, número e complemento.
     const m = String(r.endereco || '').match(/^(.*?)(?:,\s*([^-]+?))?(?:\s+-\s+(.*))?$/) || [];
     const cid = acharCidade(String(r.municipio), r.uf) || { cidade: r.municipio, uf: r.uf, ibge: null };
+    // Nota que já tem a rua e a cidade e só falta o CEP: usa o do cadastro só se a cidade for a mesma.
+    const semAcento = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+    if (e.cidade && e.logradouro && semAcento(e.cidade) !== semAcento(cid.cidade)) continue;
     const novo = {
       ...e,
       logradouro: e.logradouro || (m[1] || '').trim() || null,

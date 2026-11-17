@@ -96,3 +96,10 @@ test('endereço: quebra de linha escrita como "\\n" no XML separa as partes', ()
   assert.strictEqual(r.logradouro, 'RUA LIDICE'); assert.strictEqual(r.numero, '22'); assert.strictEqual(r.bairro, 'PARQUE NOVO MUNDO');
   assert.strictEqual(r.cidade, 'São Paulo'); assert.strictEqual(r.conferir, false); assert.ok(!r.texto.includes('\\n'));
 });
+
+test('endereço: separadores pela metade ("1013-JARDIM ... -GUARULHOS ,SP")', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const r = lerEndereco('AMARAL SOUZA TRANSPORTES LTDA-ME - RUA MARINOPOLIS 1013-JARDIM PRESIDENTE DUTRA -GUARULHOS ,SP CNPJ:10.866.435/0004-10 TELEFONE: 011-2482-1344');
+  assert.strictEqual(r.nome, 'AMARAL SOUZA TRANSPORTES LTDA-ME'); assert.strictEqual(r.logradouro, 'RUA MARINOPOLIS'); assert.strictEqual(r.numero, '1013');
+  assert.strictEqual(r.bairro, 'JARDIM PRESIDENTE DUTRA'); assert.strictEqual(r.cidade, 'Guarulhos'); assert.strictEqual(r.uf, 'SP'); assert.strictEqual(r.conferir, false);
+});

@@ -335,6 +335,8 @@ def parte_uso(g):
         'que o sistema busca sozinho pelo CNPJ (rua, número, bairro, cidade, UF e CEP). No detalhe aparece "endereço completado pelo '
         'cadastro do CNPJ". Se o cadastro ainda não existir, o endereço entra assim que a consulta do CNPJ terminar.',
         'Quebras de linha nos dados adicionais (inclusive as gravadas como o texto "\\n" por alguns ERPs) separam as partes do endereço.',
+        'Separadores "pela metade" ("1013-JARDIM PRESIDENTE DUTRA -GUARULHOS ,SP") também são entendidos. Quando a nota não traz o CEP, '
+        'ele vem do cadastro da transportadora do redespacho, se a cidade do cadastro for a mesma.',
         'Em <b>Abrir</b>, cada endereço mostra a origem, o texto da nota de onde foi lido e o botão <b>Corrigir</b> (quem pode editar '
         'registros). A cidade corrigida é conferida no IBGE; no redespacho, ela vira também a Cidade do Redespacho do cálculo: se mudou, '
         'use Recalcular no registro. Endereço corrigido à mão não é mais trocado pela leitura automática.',

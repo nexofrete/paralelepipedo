@@ -141,7 +141,8 @@ function filtros(q, params) {
   if (t) {
     const d = dig(t);
     if (d.length === 44) add('f.chave_nfe = ?', d);
-    else add(`(LTRIM(f.numero_nf, '0') = LTRIM(?, '0') OR f.cliente ILIKE '%' || ? || '%' OR f.emitente_nome ILIKE '%' || ? || '%' OR f.numero_pedido = ?)`, t);
+    else add(`(LTRIM(f.numero_nf, '0') = LTRIM(?, '0') OR f.cliente ILIKE '%' || ? || '%' OR f.emitente_nome ILIKE '%' || ? || '%' OR f.numero_pedido = ?
+      OR LTRIM(COALESCE(f.numero_cte, ''), '0') = LTRIM(?, '0') OR COALESCE(f.transportadora_cte, f.transportadora) ILIKE '%' || ? || '%' OR f.redespacho ILIKE '%' || ? || '%')`, t);
   }
   if (String(q.emitente || '').trim()) { const e = String(q.emitente).trim(); dig(e).length >= 8 ? add('f.emitente_cnpj LIKE ? || \'%\'', dig(e)) : add("f.emitente_nome ILIKE '%' || ? || '%'", e); }
   if (String(q.destinatario || '').trim()) { const e = String(q.destinatario).trim(); dig(e).length >= 8 ? add("regexp_replace(COALESCE(f.cliente_documento, ''), '\\D', '', 'g') LIKE ? || '%'", dig(e)) : add("f.cliente ILIKE '%' || ? || '%'", e); }
@@ -153,6 +154,12 @@ function filtros(q, params) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(q.ate || '')) add(`${campoData} <= ?::date`, q.ate);
   if (['autorizada', 'cancelada', 'denegada'].includes(q.situacao)) add(`${SITUACAO} = ?`, q.situacao);
   if (q.situacao === 'sem_cte') cond.push(`f.chave_cte IS NULL AND f.cte_coberto_por IS NULL AND f.nf_cancelada IS NOT TRUE`);
+  // Entrega: entregue, não entregue (ainda sem data), atrasada (passou da previsão sem entrega).
+  const aberta = "f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado')";
+  if (q.entrega === 'entregue') cond.push('f.data_entrega IS NOT NULL');
+  if (q.entrega === 'pendente') cond.push(aberta);
+  if (q.entrega === 'atrasada') cond.push(`${aberta} AND f.data_entrega_prevista < CURRENT_DATE`);
+  if (String(q.transportadora || '').trim()) add("COALESCE(f.transportadora_cte, f.transportadora) ILIKE '%' || ? || '%'", String(q.transportadora).trim());
   if (q.endereco === 'conferir') cond.push('f.endereco_conferir');
   if (q.endereco === 'redespacho') cond.push('f.redespacho_endereco IS NOT NULL');
   if (q.endereco === 'local') cond.push("f.endereco_origem IN ('xml_entrega', 'dados_adicionais')");
@@ -162,7 +169,10 @@ function filtros(q, params) {
 const COLUNAS = `f.id, f.numero_nf, f.nf_serie, f.chave_nfe, f.data_emissao_nf, f.data_saida, f.emitente_nome, f.emitente_cnpj, f.cliente, f.cliente_documento,
   f.cidade, f.uf, f.entrega_endereco, f.redespacho_endereco, f.endereco_origem, f.endereco_conferir, f.endereco_conferir_motivo, f.endereco_corrigido, f.redespacho, f.cidade_redespacho,
   f.valor_produtos::float, f.valor_faturado::float, f.peso_bruto::float, f.peso_liquido::float, f.peso_kg::float, f.qtd_volumes,
-  f.numero_pedido, f.numero_cte, f.transportadora_nfe, f.status, f.data_entrega, (f.xml_nfe_original IS NOT NULL) AS tem_xml, ${SITUACAO} AS situacao`;
+  f.numero_pedido, f.numero_cte, f.transportadora_nfe, f.status, f.data_entrega, (f.xml_nfe_original IS NOT NULL) AS tem_xml, ${SITUACAO} AS situacao,
+  COALESCE(f.transportadora_cte, f.transportadora) AS transportadora, f.chave_cte, f.data_emissao_cte, f.valor_total_cte::float, f.data_entrega_prevista,
+  f.data_entrega_origem, f.canhoto_recebido_por, f.rastreio_ultima_ocorrencia, f.rastreio_ultima_em, f.rastreio_problema, f.nf_devolvida,
+  f.status_aprovacao, (SELECT COUNT(*)::int FROM ocorrencias_rastreio o WHERE o.frete_id = f.id) AS qtd_ocorrencias`;
 async function listar(req, q = {}) {
   const params = [];
   const where = filtros(q, params);
@@ -179,7 +189,10 @@ async function listar(req, q = {}) {
     `SELECT COUNT(*)::int AS notas, COALESCE(SUM(f.valor_faturado), 0)::float AS valor, COALESCE(SUM(f.valor_produtos), 0)::float AS produtos,
             COALESCE(SUM(COALESCE(f.peso_bruto, f.peso_kg)), 0)::float AS peso, COALESCE(SUM(f.qtd_volumes), 0)::int AS volumes,
             COUNT(*) FILTER (WHERE f.nf_cancelada AND NOT f.nf_denegada)::int AS canceladas, COUNT(*) FILTER (WHERE f.nf_denegada)::int AS denegadas,
-            COUNT(*) FILTER (WHERE f.endereco_conferir)::int AS conferir_endereco
+            COUNT(*) FILTER (WHERE f.endereco_conferir)::int AS conferir_endereco,
+            COUNT(*) FILTER (WHERE f.data_entrega IS NOT NULL)::int AS entregues,
+            COUNT(*) FILTER (WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado'))::int AS nao_entregues,
+            COUNT(*) FILTER (WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado') AND f.data_entrega_prevista < CURRENT_DATE)::int AS atrasadas
        FROM fretes f WHERE ${where}`, params);
   return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows) };
 }

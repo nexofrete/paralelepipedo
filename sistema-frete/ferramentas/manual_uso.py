@@ -278,7 +278,11 @@ def parte_uso(g):
                'ligada sozinha na importação seguinte.'))
 
     # 14
-    s += h1('14. Todos os registros')
+    s += h1('14. Todos os registros e Consulta de notas')
+    s += aviso('nota', 'A tela <b>Todos os registros (402)</b> saiu do menu: a consulta do dia a dia passou a ser a <b>Consulta de '
+                       'notas (403)</b>, descrita mais abaixo neste capítulo, que mostra também o CT-e, a transportadora e se a nota foi entregue. '
+                       'Lançar registro manual, excluir e editar o registro do frete (dois cliques na nota » Abrir o registro do frete) '
+                       'estão lá. Por um tempo, a tela antiga ainda abre pelo <b>Ctrl+K 402</b>.')
     s.append(P('A lista completa de fretes, ordenada pelo número da NF, no estilo de uma planilha.'))
     s += h2('Encontrar registros')
     s += lista([
@@ -328,7 +332,7 @@ def parte_uso(g):
         'As notas que já estavam no sistema são lidas de novo, a partir do XML guardado, quando o sistema liga.',
         'No Montar relatório (BI) há os campos Endereço de entrega, Endereço do redespacho, Origem do endereço e Endereço a conferir.',
     ])
-    s += h2('Notas fiscais (403)')
+    s += h2('Consulta de notas (403)')
     s.append(P('Em <b>Documentos » Notas fiscais</b>, as NF-e importadas com todos os dados da nota: número e série, chave de '
                'acesso, emitente (nome e CNPJ), destinatário, valor dos produtos e total da nota, peso bruto e peso líquido, '
                'volumes, data de emissão, data e hora de saída, endereço de entrega (o local de entrega, quando a nota informa '
@@ -347,12 +351,22 @@ def parte_uso(g):
         'primeiro" ou "mais recentes primeiro".',
         'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',
+        '<b>Entrega</b> (coluna): <b>Entregue</b> com a data, a origem (SSW, portal, comprovante, lançada à mão) e quem recebeu; '
+        '<b>Atrasada N dias</b> (passou da previsão) ou <b>Em trânsito</b> com a previsão e a última ocorrência do rastreamento; '
+        '<b>Aguardando CT-e</b>. A coluna <b>Transportadora / CT-e</b> mostra quem leva, o número, a emissão e o valor do CT-e. '
+        'Filtros <b>Entrega</b> (entregues, não entregues, atrasadas) e <b>Transportadora</b>; os quadros Entregues, Não entregues e '
+        'Atrasadas também filtram ao clicar. A busca aceita NF, chave, CT-e, pedido, cliente ou transportadora.',
+        'No alto: <b>Lançar registro manual</b> (quem edita registros), <b>Tela cheia</b> e <b>Excluir marcadas</b> (quem exclui '
+        'registros; marque as caixas à esquerda).',
         '<b>Dois cliques</b> na linha abrem o documento. Cada linha tem o botão <b>DANFE</b> (abre o DANFE da nota para imprimir '
         'ou salvar em PDF) e a <b>chave de acesso</b> resumida (clique para copiar a chave inteira).',
         '<b>DANFE em folhas A4</b>: a 1ª folha tem o canhoto, todos os quadros, os produtos que couberem e os dados adicionais no '
         'fim; as folhas seguintes repetem o cabeçalho (emitente, DANFE, chave e código de barras) e continuam os produtos '
         '("continuação"), com "Folha 1/3" em cada uma. Nenhuma linha de produto é cortada entre duas folhas. Para imprimir, use '
         'papel A4, retrato, escala 100% (ou "Ajustar à página" desligado). As duplicatas aparecem em linhas de 7.',
+        'No documento aberto: a transportadora e o CT-e, a entrega e a previsão, e os botões <b>Histórico de rastreamento</b> '
+        '(as ocorrências da SSW ou do portal) e <b>Abrir o registro do frete</b> (valores, cálculo pela tabela, aprovação, comprovante '
+        'de entrega; ao fechar, a lista se atualiza).',
         '<b>Abrir</b> a nota mostra tudo e os botões <b>DANFE</b> (gerado a partir do XML, pronto para imprimir ou salvar em PDF '
         'pelo navegador) e <b>XML</b> (o arquivo da nota). Nota que entrou só pela planilha do ERP não tem XML.',
         '<b>XML das notas (.zip)</b>: baixa os XML de todas as notas do filtro num arquivo .zip. <b>Excel</b>: a lista com '

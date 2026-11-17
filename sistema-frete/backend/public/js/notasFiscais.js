@@ -29,8 +29,12 @@
 
   function montar() {
     montado = true;
+    // Botões que vieram da antiga "Todos os registros", conforme a permissão.
+    const adm = usuario?.perfil === 'admin';
+    document.getElementById('nfNovoRegistro')?.classList.toggle('oculto', !(adm || usuario?.pode_editar_registros));
+    document.getElementById('nfExcluir')?.classList.toggle('oculto', !(adm || usuario?.pode_excluir_registros));
     cont.innerHTML = `<div class="painel" style="margin-bottom:12px;"><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; align-items:end;">
-        <div class="campo" style="margin:0;"><label>Número, chave, cliente ou pedido</label><input id="nfBusca" class="cte-entrada" /></div>
+        <div class="campo" style="margin:0;"><label>NF, chave, CT-e, pedido, cliente ou transportadora</label><input id="nfBusca" class="cte-entrada" /></div>
         <div class="campo" style="margin:0;"><label>Emitente (nome ou CNPJ)</label><input id="nfEmit" class="cte-entrada" /></div>
         <div class="campo" style="margin:0;"><label>Destinatário (nome ou CNPJ)</label><input id="nfDest" class="cte-entrada" /></div>
         <div class="campo" style="margin:0;"><label>Série</label><input id="nfSerie" class="cte-entrada" maxlength="3" /></div>
@@ -39,6 +43,8 @@
         <div class="campo" style="margin:0;"><label>Período pela</label><select id="nfData" class="cte-entrada"><option value="emissao">Emissão</option><option value="saida">Saída</option></select></div>
         <div class="campo" style="margin:0; grid-column:span 2;"><label>Período</label><div style="display:flex; gap:6px; align-items:center;">${Periodo.html('nf')}</div></div>
         <div class="campo" style="margin:0;"><label>Situação</label><select id="nfSit" class="cte-entrada"><option value="">Todas</option><option value="autorizada">Autorizada</option><option value="cancelada">Cancelada</option><option value="denegada">Denegada</option><option value="sem_cte">Sem CT-e</option></select></div>
+        <div class="campo" style="margin:0;"><label>Entrega</label><select id="nfEntrega" class="cte-entrada"><option value="">Todas</option><option value="entregue">✓ Entregues</option><option value="pendente">Não entregues</option><option value="atrasada">⚠ Atrasadas</option></select></div>
+        <div class="campo" style="margin:0;"><label>Transportadora</label><input id="nfTransp" class="cte-entrada" /></div>
         <div class="campo" style="margin:0;"><label>Ordem</label><select id="nfOrdem" class="cte-entrada"><option value="numero">Sequência das notas (número)</option><option value="numero_desc">Sequência, maior número primeiro</option><option value="recentes">Mais recentes primeiro</option></select></div>
         <div class="campo" style="margin:0;"><label>Endereço de entrega</label><select id="nfEnd" class="cte-entrada"><option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option></select></div>
       </div></div>
@@ -46,10 +52,14 @@
       <div class="painel nf-rolagem-painel"><div id="nfTabela" class="nf-rolagem"></div></div>`;
     Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
     let t = null;
-    ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
+    ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf', 'nfTransp'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
     try { const o = localStorage.getItem('notas.ordem'); if (o && [...$('nfOrdem').options].some((x) => x.value === o)) $('nfOrdem').value = o; } catch { /* sem armazenamento */ }
     $('nfOrdem').addEventListener('change', () => { try { localStorage.setItem('notas.ordem', $('nfOrdem').value); } catch { /* sem armazenamento */ } });
-    ['nfData', 'nfSit', 'nfEnd', 'nfOrdem'].forEach((id) => $(id).addEventListener('change', carregar));
+    ['nfData', 'nfSit', 'nfEnd', 'nfOrdem', 'nfEntrega'].forEach((id) => $(id).addEventListener('change', carregar));
+    // Ações que vieram da antiga "Todos os registros".
+    $('nfNovoRegistro')?.addEventListener('click', () => document.getElementById('btnNovoRegistro')?.click());
+    $('nfExcluir')?.addEventListener('click', excluirMarcadas);
+    $('nfTelaCheia')?.addEventListener('click', () => { const ativo = document.querySelector('.app-shell').classList.toggle('tela-cheia'); $('nfTelaCheia').textContent = ativo ? '✕ Sair da tela cheia' : '⛶ Tela cheia'; });
     // Dois cliques na linha: abre o documento.
     $('nfTabela').addEventListener('dblclick', (e) => {
       if (e.target.closest('input, button, a')) return;
@@ -67,14 +77,14 @@
       const c = e.target.closest('[data-nf-marca]');
       if (c) { if (c.checked) marcadas.add(Number(c.dataset.nfMarca)); else marcadas.delete(Number(c.dataset.nfMarca)); botaoDanfes(); return; }
       if (e.target.id === 'nfMarcaTodas') {
-        dados.notas.filter((n) => n.tem_xml).forEach((n) => { if (e.target.checked) marcadas.add(n.id); else marcadas.delete(n.id); });
+        dados.notas.forEach((n) => { if (e.target.checked) marcadas.add(n.id); else marcadas.delete(n.id); });
         $('nfTabela').querySelectorAll('[data-nf-marca]').forEach((x) => { x.checked = e.target.checked; });
         botaoDanfes();
       }
     });
   }
   const filtros = () => new URLSearchParams({ busca: $('nfBusca').value.trim(), emitente: $('nfEmit').value.trim(), destinatario: $('nfDest').value.trim(), serie: $('nfSerie').value.trim(),
-    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value, ordem: $('nfOrdem').value });
+    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value, ordem: $('nfOrdem').value, entrega: $('nfEntrega').value, transportadora: $('nfTransp').value.trim() });
   async function carregar() {
     const r = await apiFetch(`/api/notas?${filtros()}`);
     const j = await r.json().catch(() => ({}));
@@ -84,14 +94,18 @@
     $('nfResumo').innerHTML = `<div>Notas<b>${t.notas}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
       <div>Peso<b>${kg(t.peso)}</b><span>${t.volumes} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>
       <div style="cursor:pointer;" id="nfResumoConferir" title="Mostrar só as notas com endereço a conferir">Endereço a conferir<b style="color:${t.conferir_endereco ? '#d97706' : 'inherit'};">${t.conferir_endereco || 0}</b><span>lido do texto sem certeza</span></div>`;
+    $('nfResumo').insertAdjacentHTML('afterbegin', `<div style="cursor:pointer;" data-nf-filtro-entrega="entregue" title="Mostrar só as entregues">Entregues<b style="color:var(--verde);">${t.entregues || 0}</b><span>com data de entrega</span></div>
+      <div style="cursor:pointer;" data-nf-filtro-entrega="pendente" title="Mostrar só as não entregues">Não entregues<b>${t.nao_entregues || 0}</b><span>sem data de entrega</span></div>
+      <div style="cursor:pointer;" data-nf-filtro-entrega="atrasada" title="Mostrar só as atrasadas">Atrasadas<b style="color:${t.atrasadas ? 'var(--vermelho)' : 'inherit'};">${t.atrasadas || 0}</b><span>passou da previsão</span></div>`);
+    $('nfResumo').querySelectorAll('[data-nf-filtro-entrega]').forEach((el) => el.addEventListener('click', () => { $('nfEntrega').value = el.dataset.nfFiltroEntrega; carregar(); }));
     if (j.faltando) {
       $('nfResumo').insertAdjacentHTML('beforeend', `<div title="${esc(j.faltando.faixas.slice(0, 15).map((f) => `${f.emitente || ''} série ${f.serie || '—'}: ${f.de === f.ate ? f.de : `${f.de} a ${f.ate}`}`).join('\n'))}">Faltando na sequência<b style="color:${j.faltando.total ? '#d97706' : 'var(--verde)'};">${j.faltando.total}</b><span>${j.faltando.total ? 'números pulados (veja na lista)' : 'sem números pulados'}</span></div>`);
     }
     $('nfResumoConferir')?.addEventListener('click', () => { $('nfEnd').value = 'conferir'; carregar(); });
-    $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Entrega</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${j.notas.map((n) => `${linhaFaltando(n, j)}<tr data-nf-id="${n.id}" class="nf-linha" title="Dois cliques para ver o documento"><td>${n.tem_xml ? `<input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} />` : ''}</td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}${n.chave_nfe ? `<br><button type="button" class="ep-chave-cte" data-nf-chave="${esc(n.chave_nfe)}" title="Chave de acesso: ${esc(String(n.chave_nfe).replace(/(\d{4})(?=\d)/g, '$1 '))} — clique para copiar">🔑 ${esc(String(n.chave_nfe).slice(0, 4))}…${esc(String(n.chave_nfe).slice(-8).replace(/(\d{4})(?=\d)/, '$1 '))} <span class="ep-chave-copiar">copiar</span></button>` : ''}</td>
+    $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Destino</th><th>Transportadora / CT-e</th><th>Entrega</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
+      ${j.notas.map((n) => `${linhaFaltando(n, j)}<tr data-nf-id="${n.id}" class="nf-linha" title="Dois cliques para ver o documento"><td><input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} /></td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}${n.chave_nfe ? `<br><button type="button" class="ep-chave-cte" data-nf-chave="${esc(n.chave_nfe)}" title="Chave de acesso: ${esc(String(n.chave_nfe).replace(/(\d{4})(?=\d)/g, '$1 '))} — clique para copiar">🔑 ${esc(String(n.chave_nfe).slice(0, 4))}…${esc(String(n.chave_nfe).slice(-8).replace(/(\d{4})(?=\d)/, '$1 '))} <span class="ep-chave-copiar">copiar</span></button>` : ''}</td>
         <td>${dia(n.data_emissao_nf)}</td><td>${n.data_saida ? dataHora(n.data_saida) : '—'}</td><td>${esc(n.emitente_nome || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.emitente_cnpj)}</small></td>
-        <td>${esc(n.cliente || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.cliente_documento)}</small></td><td>${celulaEntrega(n)}</td>
+        <td>${esc(n.cliente || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.cliente_documento)}</small></td><td>${celulaEntrega(n)}</td><td>${celulaTransp(n)}</td><td>${celulaSituacaoEntrega(n)}</td>
         <td style="text-align:right;">${moeda(n.valor_produtos)}</td><td style="text-align:right;">${moeda(n.valor_faturado)}</td><td style="text-align:right;">${kg(n.peso_bruto ?? n.peso_kg)}</td><td style="text-align:right;">${n.qtd_volumes ?? '—'}</td>
         <td><span class="oc-sit ${SIT[n.situacao][0]}">${SIT[n.situacao][1]}</span></td>
         <td style="white-space:nowrap;"><button class="btn btn-secundario" data-nf-ver="${n.id}" style="width:auto; padding:4px 9px; font-size:11.5px;">Abrir</button>
@@ -105,7 +119,7 @@
     const num = Number(String(n.numero_nf || '').replace(/\D/g, ''));
     const f = j.faltando.faixas.find((x) => x.emitente_cnpj === n.emitente_cnpj && (x.serie || null) === (n.nf_serie || null) && (j.ordem === 'numero' ? x.ate + 1 === num : x.de - 1 === num));
     if (!f) return '';
-    return `<tr class="nf-faltando"><td colspan="13">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.</td></tr>`;
+    return `<tr class="nf-faltando"><td colspan="15">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.</td></tr>`;
   }
   // Coluna Entrega: para onde a transportadora leva (redespacho ou local de entrega) e de onde veio.
   function celulaEntrega(n) {
@@ -116,11 +130,50 @@
     const aviso = n.endereco_conferir ? ` <span title="Conferir: ${esc(n.endereco_conferir_motivo || 'leitura sem certeza')}" style="color:#d97706; cursor:help;">⚠</span>` : '';
     return `${esc(cid)}${aviso}${origem && origem !== 'destinatario' ? `<br><small style="color:var(--texto-fraco);">${esc(ORIGEM[origem] || origem)}${r?.nome ? `: ${esc(r.nome)}` : ''}</small>` : ''}`;
   }
+  const hojeIso = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+  const ORIGEM_ENTREGA = { ssw: 'SSW', portal: 'portal da transportadora', manual: 'lançada à mão', sefaz: 'comprovante na SEFAZ', comprovante: 'comprovante', edi: 'EDI', motorista: 'app do motorista' };
+  function celulaTransp(n) {
+    if (!n.numero_cte && !n.chave_cte) return `<span style="color:var(--texto-fraco);">${esc(n.transportadora_nfe || '—')}</span><br><small style="color:#d97706;">sem CT-e</small>`;
+    return `${esc(n.transportadora || '—')}<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte || '—')}${n.data_emissao_cte ? ` · ${dia(n.data_emissao_cte)}` : ''}${n.valor_total_cte != null ? ` · ${moeda(n.valor_total_cte)}` : ''}</small>`;
+  }
+  // Situação da entrega: entregue (data e origem), atrasada, em trânsito (previsão) ou aguardando o CT-e.
+  function celulaSituacaoEntrega(n) {
+    if (n.data_entrega) return `<span class="oc-sit entregue">✓ Entregue ${dia(n.data_entrega)}</span>${n.data_entrega_origem || n.canhoto_recebido_por ? `<br><small style="color:var(--texto-fraco);">${esc([ORIGEM_ENTREGA[n.data_entrega_origem] || n.data_entrega_origem, n.canhoto_recebido_por ? `recebido por ${n.canhoto_recebido_por}` : ''].filter(Boolean).join(' · '))}</small>` : ''}`;
+    if (n.situacao !== 'autorizada' || n.nf_devolvida) return '<span style="color:var(--texto-fraco);">—</span>';
+    if (!n.numero_cte && !n.chave_cte) return '<span class="oc-sit pendente">Aguardando CT-e</span>';
+    const prev = n.data_entrega_prevista ? String(n.data_entrega_prevista).slice(0, 10) : null;
+    const ult = n.rastreio_ultima_ocorrencia ? `<br><small style="color:${n.rastreio_problema ? 'var(--vermelho)' : 'var(--texto-fraco)'};" title="${esc(n.rastreio_ultima_ocorrencia)}">${esc(String(n.rastreio_ultima_ocorrencia).replace(/^\[Redespacho[^\]]*\]\s*/, '').split(' — ')[0].slice(0, 40))}</small>` : '';
+    if (prev && prev < hojeIso()) {
+      const dias = Math.round((Date.parse(hojeIso()) - Date.parse(prev)) / 86400000);
+      return `<span class="oc-sit ocorrencia">Atrasada ${dias} dia(s)</span><br><small style="color:var(--texto-fraco);">previsão ${dia(prev)}</small>${ult}`;
+    }
+    return `<span class="oc-sit em_transito">Em trânsito</span>${prev ? `<br><small style="color:var(--texto-fraco);">previsão ${dia(prev)}</small>` : ''}${ult}`;
+  }
+  // Excluir as notas marcadas (o mesmo da antiga "Todos os registros").
+  async function excluirMarcadas() {
+    if (!marcadas.size) { mostrarAlerta('Marque as notas que quer excluir (caixas à esquerda).', { tipo: 'aviso' }); return; }
+    if (!await confirmar(`Excluir ${marcadas.size} nota(s) e os fretes ligados a elas? Isso não pode ser desfeito.`, { titulo: 'Excluir notas', tipo: 'perigo', textoOk: 'Excluir' })) return;
+    const r = await apiFetch('/api/fretes/excluir-lote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...marcadas] }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { mostrarAlerta(j.erro || 'Não foi possível excluir.', { tipo: 'erro' }); return; }
+    marcadas.clear(); mostrarAlerta(`${j.excluidos ?? 'As'} nota(s) excluída(s).`, { tipo: 'sucesso' }); carregar();
+  }
   function botaoDanfes() {
     const b = $('nfDanfes'); if (!b) return;
     b.textContent = marcadas.size ? `🖨 Imprimir DANFE (${marcadas.size} marcada${marcadas.size > 1 ? 's' : ''})` : '🖨 Imprimir DANFE (notas do filtro)';
   }
   nav.addEventListener('click', () => { if (!montado) montar(); carregar().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })); });
+  // Fechou a janela do registro do frete (editado a partir daqui): atualiza a lista.
+  const formReg = document.getElementById('painelFormRegistro');
+  if (formReg) new MutationObserver(() => { if (formReg.classList.contains('oculto') && montado && !document.getElementById('pagina-notas-fiscais')?.classList.contains('oculto')) carregar().catch(() => {}); })
+    .observe(formReg, { attributes: true, attributeFilter: ['class'] });
+  // Abrir a consulta já filtrada (ex.: "Aguardando CT-e" da Visão geral).
+  window.abrirConsultaNotas = (f = {}) => {
+    if (!montado) montar();
+    if (f.situacao != null) $('nfSit').value = f.situacao;
+    if (f.entrega != null) $('nfEntrega').value = f.entrega;
+    carregar().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+  };
 
   function detalhe(id) {
     const n = dados.notas.find((x) => x.id === id);
@@ -141,7 +194,10 @@
       ${linha('Emissão / saída', `${dia(n.data_emissao_nf)} / ${n.data_saida ? dataHora(n.data_saida) : '—'}`)}
       ${linha('Valor dos produtos / total da nota', `${moeda(n.valor_produtos)} / ${moeda(n.valor_faturado)}`)}
       ${linha('Peso bruto / líquido', `${kg(n.peso_bruto)} / ${kg(n.peso_liquido)}`)}${linha('Volumes', n.qtd_volumes ?? '—')}
-      ${linha('Pedido / transportadora da nota', `${esc(n.numero_pedido || '—')} / ${esc(n.transportadora_nfe || '—')}`)}${linha('CT-e', esc(n.numero_cte || 'sem CT-e'))}</tbody></table>`;
+      ${linha('Pedido / transportadora da nota', `${esc(n.numero_pedido || '—')} / ${esc(n.transportadora_nfe || '—')}`)}
+      ${linha('Transportadora do CT-e / CT-e', n.numero_cte || n.chave_cte ? `${esc(n.transportadora || '—')} / CT-e ${esc(n.numero_cte || '—')}${n.data_emissao_cte ? ` de ${dia(n.data_emissao_cte)}` : ''}${n.valor_total_cte != null ? ` · ${moeda(n.valor_total_cte)}` : ''}` : 'sem CT-e')}
+      ${linha('Entrega', celulaSituacaoEntrega(n))}
+      ${n.data_entrega_prevista ? linha('Previsão de entrega', dia(n.data_entrega_prevista)) : ''}</tbody></table>`;
     const fundo = document.createElement('div');
     fundo.className = 'modal-overlay';
     fundo.innerHTML = `<div class="painel modal-card" style="max-width:760px; width:100%; max-height:92vh; overflow-y:auto; padding:20px 22px;">
@@ -151,10 +207,14 @@
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
         ${n.tem_xml ? `<a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/danfe?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📄 DANFE (imprimir / PDF)</a>
         <a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/xml?token=${encodeURIComponent(token)}">⬇ XML</a>` : '<span style="color:var(--texto-fraco); align-self:center;">Nota sem XML (entrou pela planilha do ERP)</span>'}
+        ${n.qtd_ocorrencias ? '<button class="btn btn-secundario" data-nf-rastreio style="width:auto;">🚚 Histórico de rastreamento</button>' : ''}
+        <button class="btn btn-secundario" data-nf-registro style="width:auto;" title="O registro completo do frete: valores, cálculo pela tabela, aprovação, comprovante de entrega">✏ Abrir o registro do frete</button>
         <button class="btn btn-primario" data-nf-fechar style="width:auto;">Fechar</button></div></div>`;
     document.body.appendChild(fundo);
     fundo.addEventListener('click', (ev) => {
       if (ev.target === fundo || ev.target.closest('[data-nf-fechar]')) { fundo.remove(); return; }
+      if (ev.target.closest('[data-nf-rastreio]')) { if (typeof epVerOcorrencias === 'function') epVerOcorrencias(id); return; }
+      if (ev.target.closest('[data-nf-registro]')) { fundo.remove(); if (typeof epAbrirRegistro === 'function') epAbrirRegistro(id); return; }
       const c = ev.target.closest('[data-nf-corrigir]');
       if (c) corrigir(n, c.dataset.nfCorrigir, c.dataset.nfCorrigir === 'redespacho' ? (r || { nome: n.redespacho, cidade: n.cidade_redespacho }) : e, () => { fundo.remove(); carregar().then(() => detalhe(id)); });
     });

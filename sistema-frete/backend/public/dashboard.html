@@ -104,9 +104,10 @@
       <div class="nav-grupo oculto" data-grupo="documentos">📄 Documentos <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="documentos">
         <div class="nav-tsub" data-ir="upload" data-modulo="embarcador">📤 Enviar XML</div>
-        <div class="nav-tsub" data-ir="notas-fiscais" data-modulo="embarcador">🧾 Notas fiscais (NF-e)</div>
+        <div class="nav-tsub" data-ir="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
         <div class="nav-tsub" data-ir="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
-        <div class="nav-tsub" data-ir="registros" data-modulo="embarcador">🗂 Fretes (todos os registros)</div>
+        <!-- "Fretes (todos os registros)" (402) saiu do menu: substituída pela Consulta de notas (403). Fica escondida e ainda abre pelo Ctrl+K 402. -->
+        <div class="nav-tsub nav-escondido" data-ir="registros" data-modulo="embarcador">🗂 Fretes (todos os registros) — antiga</div>
         <div class="nav-tsub" data-familia="nfecte" data-modulo="embarcador">🔗 NF-e × CT-e</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
       </div>
@@ -197,8 +198,8 @@
       <!-- Telas do embarcador: itens de página escondidos (guardam a permissão); o menu abre por eles. -->
       <div class="nav-item nav-no-grupo" data-pagina="visao-geral" data-modulo="embarcador">📊 Fretes contratados (visão geral)</div>
       <div class="nav-item nav-no-grupo" data-pagina="upload" id="navUpload" data-modulo="embarcador">📤 Enviar XML</div>
-      <div class="nav-item nav-no-grupo" data-pagina="registros" data-modulo="embarcador">🗂 Todos os registros</div>
-      <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Notas fiscais</div>
+      <div class="nav-item nav-no-grupo nav-escondido" data-pagina="registros" data-modulo="embarcador">🗂 Todos os registros (antiga)</div>
+      <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
       <div class="nav-item nav-no-grupo" data-pagina="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
       <div class="nav-item nav-no-grupo" data-pagina="auditoria-frete" data-modulo="embarcador">⚖️ Auditoria de Frete</div>
       <div class="nav-item nav-no-grupo" data-pagina="financeiro" data-modulo="embarcador">💰 Pagamento de fretes</div>
@@ -358,13 +359,16 @@
       <section id="pagina-notas-fiscais" class="oculto">
         <div class="cabecalho-pagina">
           <div>
-            <h2>🧾 Notas fiscais</h2>
-            <p>As NF-e importadas com todos os dados da nota: série, emitente, destinatário, valores, pesos, volumes, emissão, saída, endereço de entrega e situação; XML e DANFE</p>
+            <h2>🧾 Consulta de notas</h2>
+            <p>Todas as notas na sequência: CT-e e transportadora, se foi entregue (e quando), rastreamento, valores, pesos, endereço de entrega e situação; dois cliques abrem a nota, com o registro do frete, o DANFE e o XML</p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-primario oculto" id="nfNovoRegistro" style="width:auto;">+ Lançar registro manual</button>
+            <button class="btn btn-secundario" id="nfTelaCheia" style="width:auto;">⛶ Tela cheia</button>
             <button class="btn btn-secundario" id="nfExcel" style="width:auto;">⬇ Excel</button>
             <button class="btn btn-secundario" id="nfZip" style="width:auto;" title="Os XML das notas filtradas, num arquivo .zip">🗜 XML das notas (.zip)</button>
             <button class="btn btn-secundario" id="nfDanfes" style="width:auto;" title="Os DANFE das notas marcadas (ou, sem nenhuma marcada, das notas filtradas) numa página só, para imprimir ou salvar num PDF">🖨 Imprimir DANFE</button>
+            <button class="btn btn-secundario oculto" id="nfExcluir" style="width:auto; color:var(--vermelho); border-color:var(--vermelho);">🗑 Excluir marcadas</button>
           </div>
         </div>
         <div id="nfConteudo"></div>

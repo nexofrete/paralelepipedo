@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Consulta de notas (403) no lugar de \"Todos os registros\": mostra a transportadora e o CT-e e se a nota foi entregue (data, origem e quem recebeu), atrasada ou em trânsito, com filtros de entrega e transportadora. Lançar registro manual, excluir, tela cheia, histórico de rastreamento e o registro do frete estão nela. A tela antiga saiu do menu e ainda abre pelo Ctrl+K 402."},
         {"area": "Notas fiscais", "texto": "DANFE com quebra de página em A4: a 1ª folha com o canhoto, os quadros e os dados adicionais; as seguintes repetem o cabeçalho e continuam os produtos, com \"Folha x/y\". Nenhuma linha de produto é cortada entre folhas."},
         {"area": "Notas fiscais", "texto": "Notas fiscais (403): a lista rola dentro da tela, com as barras de rolagem sempre visíveis (não precisa ir até o fim para rolar para o lado) e o cabeçalho das colunas fixo."},
         {"area": "Notas fiscais", "texto": "Notas fiscais (403) na sequência das notas (emitente, série e número), com aviso dos números que faltam (\"Faltam 3 notas: 3049 a 3051\"), dois cliques para abrir o documento, botão DANFE em cada linha e a chave de acesso para copiar."},

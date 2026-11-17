@@ -863,7 +863,7 @@ function preencherVisaoGeral(dados) {
   // 1) Fluxo do frete, etapa por etapa.
   const etapas = [
     { titulo: 'Aguardando CT-e', icone: '📄', cor: '#8a94a6', qtd: dados.aguardando_cte, valor: null,
-      desc: 'Pedidos que ainda não receberam o CT-e da transportadora', pagina: 'registros' },
+      desc: 'Pedidos que ainda não receberam o CT-e da transportadora', pagina: 'notas-fiscais', filtroNotas: 'sem_cte' },
     { titulo: 'Em conferência', icone: '🔎', cor: '#4d7cff', qtd: dados.em_conferencia, valor: dados.valor_em_conferencia,
       desc: 'CT-e recebido, falta comparar com a tabela', pagina: 'auditoria-frete' },
     { titulo: 'Frete Retido', icone: '🔶', cor: '#f97316', qtd: dados.retidos, valor: dados.valor_retido,
@@ -875,7 +875,7 @@ function preencherVisaoGeral(dados) {
   ];
   const fluxo = document.getElementById('vgFluxo');
   fluxo.innerHTML = etapas.map((e, i) => `
-    <div class="vg-etapa ${paginaPermitida(e.pagina) ? 'clicavel' : ''}" style="--cor-etapa:${e.cor};" data-vg-pagina="${e.pagina}" data-vg-i="${i}">
+    <div class="vg-etapa ${paginaPermitida(e.pagina) ? 'clicavel' : ''}" style="--cor-etapa:${e.cor};" data-vg-pagina="${e.pagina}" data-vg-filtro="${e.filtroNotas || ''}" data-vg-i="${i}">
       <div class="vg-etapa-topo"><span>${e.titulo}</span><span>${e.icone}</span></div>
       <div class="vg-etapa-num">${Number(e.qtd || 0).toLocaleString('pt-BR')}</div>
       <div class="vg-etapa-valor">${e.valor != null ? formatoMoeda(e.valor) : ''}</div>
@@ -987,7 +987,10 @@ function desenharGraficosVisaoGeral() {
 
 document.getElementById('vgFluxo').addEventListener('click', (e) => {
   const etapa = e.target.closest('.vg-etapa.clicavel');
-  if (etapa) irParaPagina(etapa.dataset.vgPagina);
+  if (etapa) {
+    irParaPagina(etapa.dataset.vgPagina);
+    if (etapa.dataset.vgFiltro && window.abrirConsultaNotas) setTimeout(() => window.abrirConsultaNotas({ situacao: etapa.dataset.vgFiltro }), 200);
+  }
 });
 
 // Redesenha os gráficos da Visão geral ao voltar pra ela ou redimensionar a janela.
@@ -1772,6 +1775,12 @@ gridFormRegistro.innerHTML = CAMPOS_REGISTRO_MANUAL.map((f) => {
   return `<div class="campo" style="margin-bottom:0;"><label>${f.label}${rotuloExtra}</label>${campoHtml}</div>`;
 }).join('');
 
+// As janelas do registro (editar, comprovante de entrega, busca de endereço) ficavam dentro da tela "Todos os registros";
+// passam para o corpo da página para abrirem de qualquer tela (Consulta de notas, Entregas...).
+['painelFormRegistro', 'painelBuscarEndereco', 'painelCanhoto'].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el && el.closest('section')) document.body.appendChild(el);
+});
 const painelFormRegistro = document.getElementById('painelFormRegistro');
 const tituloFormRegistro = document.querySelector('#painelFormRegistro h3');
 const btnSalvarRegistro = document.getElementById('btnSalvarRegistro');

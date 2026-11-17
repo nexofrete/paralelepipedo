@@ -274,7 +274,11 @@ async function listar(req, q = {}) {
     numero_desc: `f.emitente_cnpj NULLS LAST, COALESCE(f.nf_serie, ''), ${NUM} DESC NULLS LAST, f.id DESC`,
   };
   const ordem = ORDENS[q.ordem] ? q.ordem : 'recentes';
-  const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY ${ORDENS[ordem]} LIMIT 2000`, params);
+  // Consulta rápida (campo da Visão geral): só as primeiras notas, sem os totais.
+  const rapida = q.rapida === '1' || q.rapida === true;
+  const lim = rapida ? Math.min(Math.max(parseInt(q.limite, 10) || 8, 1), 30) : 2000;
+  const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY ${ORDENS[ordem]} LIMIT ${lim}`, params);
+  if (rapida) return { notas: rows, mais: rows.length >= lim };
   const { rows: [t] } = await consultaCliente(req,
     `SELECT COUNT(*)::int AS notas, COALESCE(SUM(f.valor_faturado), 0)::float AS valor, COALESCE(SUM(f.valor_produtos), 0)::float AS produtos,
             COALESCE(SUM(COALESCE(f.peso_bruto, f.peso_kg)), 0)::float AS peso, COALESCE(SUM(f.qtd_volumes), 0)::int AS volumes,

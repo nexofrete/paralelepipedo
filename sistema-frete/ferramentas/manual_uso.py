@@ -74,6 +74,13 @@ def parte_uso(g):
     s += h1('11. Visão geral')
     s.append(P('É a tela inicial. Mostra o retrato do momento e leva direto para o que precisa de ação — cada quadro é '
                'clicável e abre a tela certa (se o usuário tiver permissão para ela).'))
+    s += h2('Consultar nota')
+    s.append(P('No alto da tela, o campo <b>Consultar nota</b> procura a nota sem sair da Visão geral: digite o número da NF, a '
+               'chave de acesso, o número do CT-e, o pedido, o cliente ou a transportadora. Aparecem na hora as 8 notas mais '
+               'recentes que batem, de qualquer data, com o cliente e a cidade, a transportadora e o CT-e e a situação da entrega '
+               '(entregue com a data, atrasada, em trânsito ou aguardando CT-e). Um clique abre a nota completa, com o DANFE, o XML, '
+               'o histórico de rastreamento e o registro do frete. <b>Enter</b> (ou "Abrir na Consulta de notas") leva para a '
+               'Consulta de notas (403) já com a busca, em todas as datas. Esc fecha a lista.'))
     s += h2('Fluxo do frete')
     s.append(P('Cinco quadros com a quantidade (e o valor) em cada etapa: Aguardando CT-e, Em conferência, Frete Retido, '
                'Liberado p/ Pagamento e Faturado.'))

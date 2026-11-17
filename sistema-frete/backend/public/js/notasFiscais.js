@@ -183,8 +183,59 @@
     carregar().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
   };
 
-  function detalhe(id) {
-    const n = dados.notas.find((x) => x.id === id);
+  // Consulta rápida na Visão geral: digita NF, chave, CT-e, pedido, cliente ou transportadora e vê as notas
+  // na hora (sem período), com a entrega; clique abre a nota; Enter (ou "ver todas") abre a Consulta de notas.
+  (() => {
+    const campo = $('vgBuscaNota'); const caixa = $('vgBuscaRes');
+    if (!campo || !caixa) return;
+    let t; let seq = 0; let achadas = [];
+    const fechar = () => caixa.classList.add('oculto');
+    const abrirConsulta = () => {
+      fechar();
+      if (!montado) montar();
+      // A busca vale para todas as datas (só nesta abertura; o período escolhido fica guardado como estava).
+      $('nfBusca').value = campo.value.trim(); $('nfPer').value = 'tudo'; $('nfPer').closest('.periodo')?.classList.add('periodo-tudo'); $('nfDe').value = ''; $('nfAte').value = '';
+      nav.click();   // abre a tela e carrega com a busca
+    };
+    async function buscar() {
+      const termo = campo.value.trim();
+      if (termo.length < 2) { fechar(); return; }
+      const meu = ++seq;
+      caixa.innerHTML = '<div class="vg-busca-vazio">Procurando…</div>'; caixa.classList.remove('oculto');
+      const r = await apiFetch(`/api/notas?${new URLSearchParams({ busca: termo, rapida: '1', limite: '8', ordem: 'recentes' })}`).catch(() => null);
+      if (meu !== seq) return;
+      const j = r && r.ok ? await r.json().catch(() => ({})) : {};
+      achadas = j.notas || [];
+      caixa.innerHTML = achadas.length ? `${achadas.map((n, i) => `<div class="vg-busca-item" data-i="${i}" tabindex="-1">
+          <div class="vg-busca-nf"><b>NF ${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small>série ${esc(n.nf_serie)}</small>` : ''}<br><small>${dia(n.data_emissao_nf)}</small></div>
+          <div class="vg-busca-cli">${esc(n.cliente || '—')}<br><small>${esc([n.cidade, n.uf].filter(Boolean).join('/'))}${n.numero_pedido ? ` · pedido ${esc(n.numero_pedido)}` : ''}</small></div>
+          <div class="vg-busca-tr">${celulaTransp(n)}</div>
+          <div class="vg-busca-ent">${n.situacao !== 'autorizada' ? `<span class="oc-sit ocorrencia">${SIT[n.situacao][1]}</span>` : celulaSituacaoEntrega(n)}</div></div>`).join('')}
+        <div class="vg-busca-rodape"><span>${j.mais ? 'Mostrando as 8 mais recentes.' : `${achadas.length} nota(s).`} Clique para ver a nota.</span><a href="#" data-vg-todas>Abrir na Consulta de notas (Enter) »</a></div>`
+        : `<div class="vg-busca-vazio">Nenhuma nota com “${esc(termo)}”.</div>`;
+    }
+    campo.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => buscar().catch(() => {}), 300); });
+    campo.addEventListener('focus', () => { if (caixa.innerHTML && campo.value.trim().length >= 2) caixa.classList.remove('oculto'); });
+    campo.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { fechar(); campo.blur(); }
+      if (e.key === 'Enter' && campo.value.trim()) { e.preventDefault(); abrirConsulta(); }
+    });
+    caixa.addEventListener('mousedown', (e) => e.preventDefault());   // não perde o foco ao clicar
+    caixa.addEventListener('click', (e) => {
+      if (e.target.closest('[data-vg-todas]')) { e.preventDefault(); abrirConsulta(); return; }
+      const it = e.target.closest('.vg-busca-item');
+      if (!it) return;
+      const n = achadas[Number(it.dataset.i)];
+      if (!n) return;
+      fechar();
+      if (!montado) montar();
+      detalhe(n.id, n);
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.vg-busca')) fechar(); });
+  })();
+
+  function detalhe(id, nota) {
+    const n = nota || (dados?.notas || []).find((x) => x.id === id);
     if (!n) return;
     const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco);
     const blocoEnd = (titulo, x, qual) => `<tr><td style="color:var(--texto-fraco); width:38%; vertical-align:top; white-space:normal;">${titulo}</td><td style="white-space:normal; word-break:break-word;"><b>${x ? esc([x.nome, endTexto(x)].filter(Boolean).join(' — ')) || '—' : '—'}</b>

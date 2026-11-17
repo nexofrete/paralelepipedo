@@ -3627,7 +3627,8 @@ UPDATE nfstock_docs SET resultado = 'ignorado',
        mensagem = 'Evento de NFS-e: guardado só no registro. Para aplicar o cancelamento de uma NFS-e emitida pelo sistema, busque de novo a partir de um NSU anterior.'
  WHERE resultado = 'erro' AND (COALESCE(modelo, '') ILIKE '%nfse%' OR COALESCE(tipo, '') ILIKE '%nfse%') AND COALESCE(mensagem, '') ILIKE '%chave de acesso%';
 
--- Endereço de entrega: abreviações dos Correios (VLA = viela, TRV/TRAV, LGO, PRC) passaram a ser reconhecidas.
+-- Endereço de entrega: abreviações dos Correios (VLA = viela, TRV/TRAV, LGO, PRC, "R" sem ponto) passaram a ser reconhecidas,
+-- e o número no fim do nome da rua ("AV ANTONIO CARLOS 200 - CENTRO") vira o número do endereço.
 -- As notas marcadas "conferir" lidas antes disso são lidas de novo uma vez (as corrigidas à mão não mudam).
 UPDATE fretes SET endereco_lido_em = NULL
- WHERE endereco_conferir AND NOT endereco_corrigido AND xml_nfe_original IS NOT NULL AND endereco_lido_em < TIMESTAMPTZ '2026-11-17 12:00:00-03';
+ WHERE endereco_conferir AND NOT endereco_corrigido AND xml_nfe_original IS NOT NULL AND endereco_lido_em < TIMESTAMPTZ '2026-11-18 00:00:00-03';

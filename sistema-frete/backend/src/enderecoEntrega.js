@@ -14,7 +14,8 @@ const UFS = new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN
 const ORIGENS = { redespacho: 'Redespacho', xml_entrega: 'Local de entrega (XML)', dados_adicionais: 'Dados adicionais', destinatario: 'Destinatário', manual: 'Corrigido à mão' };
 // Tipo do logradouro: palavra inteira ou abreviação com ponto ("ROD." sim; "RODOFLUVIAL" não).
 // Abreviações dos Correios também: VLA = viela, TRV/TRAV = travessa, LGO = largo, PRC = praça.
-const TIPO_LOGRADOURO = String.raw`(?:(?:RUA|AVENIDA|RODOVIA|ESTRADA|ALAMEDA|TRAVESSA|PRA[CÇ]A|LARGO|VIELA|VIA|QUADRA|SETOR|LINHA|TRECHO|CONDOM[IÍ]NIO|AV|ROD|PCA|QD|VLA|TRAV|TRV|LGO|PRC)(?=[\s.])\.?|(?:R|ESTR?|AL|TV|PC)\.|(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA)[- ]\d{3}\b)`;
+// "R" sem ponto (= rua) só no começo do endereço (depois de " - ", vírgula ou no início): "... LTDA - R DOMINGOS PACHECO,75".
+const TIPO_LOGRADOURO = String.raw`(?:(?:RUA|AVENIDA|RODOVIA|ESTRADA|ALAMEDA|TRAVESSA|PRA[CÇ]A|LARGO|VIELA|VIA|QUADRA|SETOR|LINHA|TRECHO|CONDOM[IÍ]NIO|AV|ROD|PCA|QD|VLA|TRAV|TRV|LGO|PRC)(?=[\s.])\.?|(?:R|ESTR?|AL|TV|PC)\.|(?<![A-Z0-9&] )R(?=\s+[A-Z]{2})|(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA)[- ]\d{3}\b)`;
 // Onde o bloco de um endereço termina nos dados adicionais.
 const FIM_BLOCO = String.raw`(?=\s*(?:-\s*)?(?:FRETE\s+POR\s+CONTA|TERMO\s+DE\s+ISEN|\.\s*PEDIDO\s*:|PEDIDO\s*:|N[Rº°]?\.?\s*PEDIDO|REDESPACHO\s*:|LOCAL\s+DE\s+ENTREGA|ENDERE[CÇ]O\s+DE\s+ENTREGA|OBS(?:ERVA[CÇ][AÃ]O|ERVA[CÇ][OÕ]ES)?\s*:|DOCUMENTO\s+EMITIDO|INF(?:ORMA[CÇ][OÕ]ES)?\s+(?:DO\s+)?CONTRIBUINTE|VALOR\s+APROXIMADO|TRIBUTOS|PROCON|DEVOLU[CÇ][AÃ]O|\|\||\/\/|$))`;
 
@@ -93,6 +94,12 @@ function lerEndereco(texto) {
   if (log) {
     end.logradouro = limpo(log[1]);
     end.numero = log[2] ? log[2].replace(/^S\/?N$/, 'S/N') : null;
+    // "AV ANTONIO CARLOS 200 - CENTRO": sem número separado, o número no fim do nome é o número do endereço
+    // (menos quando faz parte do nome: "RODOVIA BR 101", "KM 25", "RUA 7").
+    if (!end.numero) {
+      const m = end.logradouro.match(/^(.*[A-Z].*?)\s+(\d+[A-Z]?)$/);
+      if (m && !/(?:\b(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA|KM|N[º°O]?)[- ]?$)|^(?:\S+)$/.test(m[1]) && m[1].split(/\s+/).length >= 2) { end.logradouro = m[1]; end.numero = m[2]; }
+    }
     fimLog = log.index + log[0].length;
     // Complemento logo depois do número ("SALA 2", "GALPAO 3", "KM 12").
     const comp = T.slice(fimLog).match(/^\s*[-,]?\s*((?:SALA|GALP[AÃ]O|LOJA|BLOCO|BL|APTO|AP|CONJ|LOTE|LT|QUADRA|QD|KM|ANDAR|FUNDOS|BOX|DEPOSITO|ARMAZEM|PAVILH[AÃ]O)\b[^-,]*)/);

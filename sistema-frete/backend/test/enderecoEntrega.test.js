@@ -65,3 +65,13 @@ test('endereço: abreviações dos Correios (VLA = viela) e o bairro depois do C
   assert.strictEqual(r.cidade, 'Guarulhos'); assert.strictEqual(r.conferir, false);
   assert.strictEqual(lerEndereco('TRANSP X - TRV DAS FLORES, 12 - CENTRO - CAMPINAS - SP').logradouro, 'TRV DAS FLORES');
 });
+
+test('endereço: "R" sem ponto no começo do endereço e o número no fim do nome da rua', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const a = lerEndereco('CAMPINENSE TRANSPORTE DE CARGAS LTDA - R DOMINGOS PACHECO,75 - CEP:02.162-020 - JARDIM GUACA - SAO PAULO - SP - I.E:117.098.756.112 - CNPJ: 08.706.145/0008-90');
+  assert.strictEqual(a.logradouro, 'R DOMINGOS PACHECO'); assert.strictEqual(a.numero, '75'); assert.strictEqual(a.bairro, 'JARDIM GUACA'); assert.strictEqual(a.conferir, false);
+  assert.strictEqual(lerEndereco('TRANSPORTES R LTDA - AV BRASIL, 500 - CENTRO - CAMPINAS - SP').logradouro, 'AV BRASIL');   // "R" no meio do nome não é rua
+  const b = lerEndereco('AV ANTONIO CARLOS 200 - CENTRO - OSASCO - SP');
+  assert.strictEqual(b.logradouro, 'AV ANTONIO CARLOS'); assert.strictEqual(b.numero, '200');
+  assert.strictEqual(lerEndereco('RUA 7 - CENTRO - GOIANIA - GO').logradouro, 'RUA 7');
+});

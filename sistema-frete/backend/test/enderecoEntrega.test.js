@@ -89,3 +89,10 @@ test('endereço: hífen colado dentro do nome da rua ("ESTRADA PIMENTAS-SAO MIGU
   assert.strictEqual(r.logradouro, 'ESTRADA PIMENTAS-SAO MIGUEL'); assert.strictEqual(r.numero, '25'); assert.strictEqual(r.bairro, 'VILA ALZIRA'); assert.strictEqual(r.conferir, false);
   assert.strictEqual(lerEndereco('TRANSP A - RUA A - 10 - CENTRO - CAMPINAS - SP').logradouro, 'RUA A');   // " - " com espaços continua separando
 });
+
+test('endereço: quebra de linha escrita como "\\n" no XML separa as partes', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const r = lerEndereco('MF TRANSPORTE LOGISTICA LTDA - ME CNPJ: 08.800.073/0002-50 \\nRUA LIDICE N 22 GALPAO: 10; LADO B CEP: 02.174-010 BAIRRO: PARQUE NOVO MUNDO\\nSAO PAULO');
+  assert.strictEqual(r.logradouro, 'RUA LIDICE'); assert.strictEqual(r.numero, '22'); assert.strictEqual(r.bairro, 'PARQUE NOVO MUNDO');
+  assert.strictEqual(r.cidade, 'São Paulo'); assert.strictEqual(r.conferir, false); assert.ok(!r.texto.includes('\\n'));
+});

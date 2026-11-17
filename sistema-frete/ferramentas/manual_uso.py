@@ -334,6 +334,7 @@ def parte_uso(g):
         '<b>Redespacho só com nome e CNPJ</b> (a nota não traz o endereço): o endereço é completado com o cadastro da transportadora, '
         'que o sistema busca sozinho pelo CNPJ (rua, número, bairro, cidade, UF e CEP). No detalhe aparece "endereço completado pelo '
         'cadastro do CNPJ". Se o cadastro ainda não existir, o endereço entra assim que a consulta do CNPJ terminar.',
+        'Quebras de linha nos dados adicionais (inclusive as gravadas como o texto "\\n" por alguns ERPs) separam as partes do endereço.',
         'Em <b>Abrir</b>, cada endereço mostra a origem, o texto da nota de onde foi lido e o botão <b>Corrigir</b> (quem pode editar '
         'registros). A cidade corrigida é conferida no IBGE; no redespacho, ela vira também a Cidade do Redespacho do cálculo: se mudou, '
         'use Recalcular no registro. Endereço corrigido à mão não é mais trocado pela leitura automática.',

@@ -70,7 +70,8 @@ function acharCidade(texto, ufDada) {
 
 // Lê um endereço escrito em texto livre. Devolve os campos achados e a conferência.
 function lerEndereco(texto) {
-  const original = limpo(texto);
+  // Quebra de linha (de verdade ou escrita como "\\n" no XML) separa as partes do endereço, como " - ".
+  const original = limpo(String(texto || '').replace(/\\[nrt]/g, '\n').replace(/\s*[\r\n]+\s*/g, ' - '));
   if (!original) return null;
   const T = separarRotulos(semAcentoMaiusc(original));
   const end = { nome: null, cnpj: null, ie: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, uf: null, cep: null, ibge: null };
@@ -172,7 +173,8 @@ const deXml = (g, origem) => (g ? {
 
 // Tudo de uma vez a partir do <infNFe> já lido: { entrega, redespacho, efetivo: 'redespacho'|..., conferir, motivo }.
 function daNfe(inf) {
-  const infCpl = String(inf?.infAdic?.infCpl || '');
+  // Alguns ERPs gravam a quebra de linha como o texto "\\n": vira quebra de verdade.
+  const infCpl = String(inf?.infAdic?.infCpl || '').replace(/\\[nrt]/g, '\n');
   const dest = inf?.dest || {};
   // Local de entrega final (para quem recebe): <entrega>, senão dados adicionais, senão destinatário.
   let entrega = deXml(inf?.entrega, 'xml_entrega');

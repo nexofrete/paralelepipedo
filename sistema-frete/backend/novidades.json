@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Endereço de entrega e redespacho: quebra de linha gravada como o texto \"\\n\" nos dados adicionais (alguns ERPs fazem isso) passa a separar as partes do endereço; rua, bairro e cidade são lidos certo."},
         {"area": "Notas fiscais", "texto": "Redespacho que vem na nota só com o nome e o CNPJ: o endereço é completado com o cadastro da transportadora (buscado sozinho pelo CNPJ) e o aviso \"conferir\" some."},
         {"area": "Notas fiscais", "texto": "Endereço de entrega e redespacho: abreviações dos Correios (VLA = viela, TRV, LGO, PRC e o \"R\" sem ponto) passam a ser reconhecidas como rua, o número colado no nome da rua (ou \"N 4550\") vira o número do endereço, rótulos grudados (\"RAFAELMUNICIPIO:\") são separados barracão/asa/módulo vão para o complemento e o hífen colado faz parte do nome da rua (\"ESTRADA PIMENTAS-SAO MIGUEL\"), e o bairro escrito depois do CEP também. As notas marcadas \"conferir\" são lidas de novo ao reiniciar o servidor."},
         {"area": "Notas fiscais", "texto": "Consulta de notas (403) no lugar de \"Todos os registros\": mostra a transportadora e o CT-e e se a nota foi entregue (data, origem e quem recebeu), atrasada ou em trânsito, com filtros de entrega e transportadora. Lançar registro manual, excluir, tela cheia, histórico de rastreamento e o registro do frete estão nela. A tela antiga saiu do menu e ainda abre pelo Ctrl+K 402."},

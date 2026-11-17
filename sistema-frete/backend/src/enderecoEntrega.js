@@ -23,8 +23,10 @@ const limpo = (t) => String(t || '').replace(/\s+/g, ' ').replace(/^[\s:;,.\-–
 const semAcentoMaiusc = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 
 // Procura a cidade num texto: rótulo "CIDADE:", "CIDADE/UF", "CIDADE - UF" ou pedaços conferidos no IBGE.
+// Rótulo grudado na palavra de antes ("VILA SAO RAFAELMUNICIPIO:GUARULHOS"): separa para os rótulos serem achados.
+const separarRotulos = (t) => t.replace(/([A-Z0-9])(MUNICIPIO|CIDADE|BAIRRO|CEP|UF|CNPJ|ESTADO|FONE)(?=\s*:)/g, '$1 $2');
 function acharCidade(texto, ufDada) {
-  const T = semAcentoMaiusc(texto);
+  const T = separarRotulos(semAcentoMaiusc(texto));
   const tentar = (cidade, uf) => {
     const c = limpo(cidade).replace(/\b(?:CEP|CNPJ|FONE|TEL|IE|I\.E)\b.*$/, '').trim();
     if (!c || c.length < 2) return null;
@@ -70,7 +72,7 @@ function acharCidade(texto, ufDada) {
 function lerEndereco(texto) {
   const original = limpo(texto);
   if (!original) return null;
-  const T = semAcentoMaiusc(original);
+  const T = separarRotulos(semAcentoMaiusc(original));
   const end = { nome: null, cnpj: null, ie: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, uf: null, cep: null, ibge: null };
   // CNPJ (com ou sem rótulo; só vale com dígito certo).
   const cnpj = T.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}\s?\/?\s?\d{4}\s?-?\s?\d{2})/);
@@ -87,7 +89,7 @@ function lerEndereco(texto) {
   // Primeiro com os separadores claros (vírgula, " - ", "Nº"): mantém "RODOVIA BR 101 KM 25" inteiro.
   // Sem eles ("AV BRASIL 500 BAIRRO..."), o número é o primeiro número solto depois do nome.
   const fimNumero = String.raw`\s*(\d+[A-Z]?\b|S\/?N\b)?`;
-  const reLogClaro = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*[A-Z0-9' .\/]{2,60}?)\s*(?:,|\s-\s|\bN[º°O]\.?\s*(?=\d)|\bNUMERO\s*[:.]?\s*(?=\d))${fimNumero}`);
+  const reLogClaro = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*[A-Z0-9' .\/]{2,60}?)\s*(?:,|\s-\s|\bN[º°O]?\.?\s*(?=\d)|\bNUMERO\s*[:.]?\s*(?=\d))${fimNumero}`);
   const reLogSolto = new RegExp(String.raw`\b(${TIPO_LOGRADOURO}\s*[A-Z' .]+?)\s(?=\d+\b)${fimNumero}`);
   const log = T.match(reLogClaro) || T.match(reLogSolto) || T.match(/\bEND(?:ERECO)?\.?\s*[:.]\s*([A-Z0-9' .]+?)\s*(?:,|\s-\s)\s*(\d+[A-Z]?|S\/?N)?/);
   let fimLog = -1;
@@ -102,7 +104,7 @@ function lerEndereco(texto) {
     }
     fimLog = log.index + log[0].length;
     // Complemento logo depois do número ("SALA 2", "GALPAO 3", "KM 12").
-    const comp = T.slice(fimLog).match(/^\s*[-,]?\s*((?:SALA|GALP[AÃ]O|LOJA|BLOCO|BL|APTO|AP|CONJ|LOTE|LT|QUADRA|QD|KM|ANDAR|FUNDOS|BOX|DEPOSITO|ARMAZEM|PAVILH[AÃ]O)\b[^-,]*)/);
+    const comp = T.slice(fimLog).match(/^\s*[-,]?\s*((?:SALA|GALP[AÃ]O|LOJA|BLOCO|BL|APTO|AP|CONJ|LOTE|LT|QUADRA|QD|KM|ANDAR|FUNDOS|BOX|DEPOSITO|ARMAZEM|PAVILH[AÃ]O|BARRAC[AÃ]O|BRCAO|ASA|MODULO|MOD)\b(?:(?!\bCEP\b|\bBAIRRO\b|\bCIDADE\b|\bMUNICIPIO\b|\bUF\b)[^-,])*)/);
     if (comp) end.complemento = limpo(comp[1]);
     // Nome: o que vem antes do endereço (tira CNPJ e rótulos).
     const antes = limpo(T.slice(0, log.index).replace(/\bCNPJ\b.*$/, '').replace(/\bEND(?:ERECO)?\.?\s*[:.]?\s*$/, ''));

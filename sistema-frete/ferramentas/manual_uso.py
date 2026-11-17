@@ -327,7 +327,9 @@ def parte_uso(g):
         'Quando a leitura não tem certeza (cidade que não está no IBGE ou sem rua), a nota fica com <b>⚠ conferir</b> e o motivo. '
         'O número de notas a conferir aparece no alto da tela; clique nele para ver só essas. A rua é reconhecida pelo tipo '
         '(RUA, AV, ROD, ESTRADA, TRAVESSA, PRAÇA, LARGO, VIELA...) e pelas abreviações dos Correios (VLA, TRV, LGO, PRC, R ou R., AL.); '
-        'quando o número vem colado no nome ("AV ANTONIO CARLOS 200"), ele vira o número do endereço.',
+        'quando o número vem colado no nome ("AV ANTONIO CARLOS 200" ou "N 4550"), ele vira o número do endereço; rótulos '
+        'grudados na palavra de antes ("VILA SAO RAFAELMUNICIPIO:GUARULHOS") também são separados, e barracão, asa e módulo '
+        '("BRCAO ASA 1 MODULO 58") vão para o complemento.',
         'Em <b>Abrir</b>, cada endereço mostra a origem, o texto da nota de onde foi lido e o botão <b>Corrigir</b> (quem pode editar '
         'registros). A cidade corrigida é conferida no IBGE; no redespacho, ela vira também a Cidade do Redespacho do cálculo: se mudou, '
         'use Recalcular no registro. Endereço corrigido à mão não é mais trocado pela leitura automática.',

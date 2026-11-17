@@ -75,3 +75,10 @@ test('endereço: "R" sem ponto no começo do endereço e o número no fim do nom
   assert.strictEqual(b.logradouro, 'AV ANTONIO CARLOS'); assert.strictEqual(b.numero, '200');
   assert.strictEqual(lerEndereco('RUA 7 - CENTRO - GOIANIA - GO').logradouro, 'RUA 7');
 });
+
+test('endereço: rótulo grudado ("RAFAELMUNICIPIO:"), "N 4550" e barracão/módulo no complemento', () => {
+  const { lerEndereco } = require('../src/enderecoEntrega');
+  const r = lerEndereco('J A W TRANSPORTES DE CARGAS LTDA CNPJ:33.812.468/0004-82 AV MONTEIRO LOBATO N 4550 BRCAO ASA 1 MODULO 58 CEP:07180-000 BAIRRO:VILA SAO RAFAELMUNICIPIO:GUARULHOS UF:SP');
+  assert.strictEqual(r.nome, 'J A W TRANSPORTES DE CARGAS LTDA'); assert.strictEqual(r.logradouro, 'AV MONTEIRO LOBATO'); assert.strictEqual(r.numero, '4550');
+  assert.strictEqual(r.complemento, 'BRCAO ASA 1 MODULO 58'); assert.strictEqual(r.bairro, 'VILA SAO RAFAEL'); assert.strictEqual(r.cidade, 'Guarulhos'); assert.strictEqual(r.conferir, false);
+});

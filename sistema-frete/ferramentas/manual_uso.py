@@ -340,6 +340,13 @@ def parte_uso(g):
         'peso, volumes, canceladas e denegadas.',
         '<b>Entrega</b> (coluna): para onde a transportadora leva a nota e de onde veio o endereço. Filtro <b>Endereço de entrega</b>: '
         'a conferir, com redespacho, local de entrega diferente ou corrigidos à mão.',
+        '<b>Ordem</b>: a lista abre na <b>sequência das notas</b> (por emitente, série e número; a escolha fica guardada). '
+        'Nessa ordem, quando falta um número entre duas notas do mesmo emitente e série, aparece uma linha amarela "Falta a nota '
+        'X" ou "Faltam N notas: X a Y" (a nota não entrou no sistema ou foi inutilizada), e o quadro <b>Faltando na sequência</b> '
+        'mostra o total. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
+        'primeiro" ou "mais recentes primeiro".',
+        '<b>Dois cliques</b> na linha abrem o documento. Cada linha tem o botão <b>DANFE</b> (abre o DANFE da nota para imprimir '
+        'ou salvar em PDF) e a <b>chave de acesso</b> resumida (clique para copiar a chave inteira).',
         '<b>Abrir</b> a nota mostra tudo e os botões <b>DANFE</b> (gerado a partir do XML, pronto para imprimir ou salvar em PDF '
         'pelo navegador) e <b>XML</b> (o arquivo da nota). Nota que entrou só pela planilha do ERP não tem XML.',
         '<b>XML das notas (.zip)</b>: baixa os XML de todas as notas do filtro num arquivo .zip. <b>Excel</b>: a lista com '

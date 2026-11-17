@@ -39,6 +39,7 @@
         <div class="campo" style="margin:0;"><label>Período pela</label><select id="nfData" class="cte-entrada"><option value="emissao">Emissão</option><option value="saida">Saída</option></select></div>
         <div class="campo" style="margin:0; grid-column:span 2;"><label>Período</label><div style="display:flex; gap:6px; align-items:center;">${Periodo.html('nf')}</div></div>
         <div class="campo" style="margin:0;"><label>Situação</label><select id="nfSit" class="cte-entrada"><option value="">Todas</option><option value="autorizada">Autorizada</option><option value="cancelada">Cancelada</option><option value="denegada">Denegada</option><option value="sem_cte">Sem CT-e</option></select></div>
+        <div class="campo" style="margin:0;"><label>Ordem</label><select id="nfOrdem" class="cte-entrada"><option value="numero">Sequência das notas (número)</option><option value="numero_desc">Sequência, maior número primeiro</option><option value="recentes">Mais recentes primeiro</option></select></div>
         <div class="campo" style="margin:0;"><label>Endereço de entrega</label><select id="nfEnd" class="cte-entrada"><option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option></select></div>
       </div></div>
       <div id="nfResumo" class="oc-resumo"></div>
@@ -46,8 +47,22 @@
     Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
     let t = null;
     ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
-    ['nfData', 'nfSit', 'nfEnd'].forEach((id) => $(id).addEventListener('change', carregar));
-    $('nfTabela').addEventListener('click', (e) => { const b = e.target.closest('[data-nf-ver]'); if (b) detalhe(Number(b.dataset.nfVer)); });
+    try { const o = localStorage.getItem('notas.ordem'); if (o && [...$('nfOrdem').options].some((x) => x.value === o)) $('nfOrdem').value = o; } catch { /* sem armazenamento */ }
+    $('nfOrdem').addEventListener('change', () => { try { localStorage.setItem('notas.ordem', $('nfOrdem').value); } catch { /* sem armazenamento */ } });
+    ['nfData', 'nfSit', 'nfEnd', 'nfOrdem'].forEach((id) => $(id).addEventListener('change', carregar));
+    // Dois cliques na linha: abre o documento.
+    $('nfTabela').addEventListener('dblclick', (e) => {
+      if (e.target.closest('input, button, a')) return;
+      const tr = e.target.closest('tr[data-nf-id]'); if (tr) detalhe(Number(tr.dataset.nfId));
+    });
+    $('nfTabela').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-nf-ver]'); if (b) { detalhe(Number(b.dataset.nfVer)); return; }
+      const c = e.target.closest('[data-nf-chave]');
+      if (c) {
+        const v = c.dataset.nfChave; const ok = () => mostrarAlerta('Chave da NF-e copiada.', { tipo: 'sucesso' });
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(v).then(ok).catch(() => mostrarAlerta(v)); else mostrarAlerta(v);
+      }
+    });
     $('nfTabela').addEventListener('change', (e) => {
       const c = e.target.closest('[data-nf-marca]');
       if (c) { if (c.checked) marcadas.add(Number(c.dataset.nfMarca)); else marcadas.delete(Number(c.dataset.nfMarca)); botaoDanfes(); return; }
@@ -59,7 +74,7 @@
     });
   }
   const filtros = () => new URLSearchParams({ busca: $('nfBusca').value.trim(), emitente: $('nfEmit').value.trim(), destinatario: $('nfDest').value.trim(), serie: $('nfSerie').value.trim(),
-    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value });
+    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value, ordem: $('nfOrdem').value });
   async function carregar() {
     const r = await apiFetch(`/api/notas?${filtros()}`);
     const j = await r.json().catch(() => ({}));
@@ -69,16 +84,28 @@
     $('nfResumo').innerHTML = `<div>Notas<b>${t.notas}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
       <div>Peso<b>${kg(t.peso)}</b><span>${t.volumes} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>
       <div style="cursor:pointer;" id="nfResumoConferir" title="Mostrar só as notas com endereço a conferir">Endereço a conferir<b style="color:${t.conferir_endereco ? '#d97706' : 'inherit'};">${t.conferir_endereco || 0}</b><span>lido do texto sem certeza</span></div>`;
+    if (j.faltando) {
+      $('nfResumo').insertAdjacentHTML('beforeend', `<div title="${esc(j.faltando.faixas.slice(0, 15).map((f) => `${f.emitente || ''} série ${f.serie || '—'}: ${f.de === f.ate ? f.de : `${f.de} a ${f.ate}`}`).join('\n'))}">Faltando na sequência<b style="color:${j.faltando.total ? '#d97706' : 'var(--verde)'};">${j.faltando.total}</b><span>${j.faltando.total ? 'números pulados (veja na lista)' : 'sem números pulados'}</span></div>`);
+    }
     $('nfResumoConferir')?.addEventListener('click', () => { $('nfEnd').value = 'conferir'; carregar(); });
     $('nfTabela').innerHTML = j.notas.length ? `<table style="width:100%;"><thead><tr><th style="width:24px;"><input type="checkbox" id="nfMarcaTodas" title="Marcar todas (para imprimir o DANFE)" /></th><th>NF / série</th><th>Emissão</th><th>Saída</th><th>Emitente</th><th>Destinatário</th><th>Entrega</th><th style="text-align:right;">Produtos</th><th style="text-align:right;">Total</th><th style="text-align:right;">Peso bruto</th><th style="text-align:right;">Vol.</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${j.notas.map((n) => `<tr><td>${n.tem_xml ? `<input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} />` : ''}</td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}</td>
+      ${j.notas.map((n) => `${linhaFaltando(n, j)}<tr data-nf-id="${n.id}" class="nf-linha" title="Dois cliques para ver o documento"><td>${n.tem_xml ? `<input type="checkbox" data-nf-marca="${n.id}" ${marcadas.has(n.id) ? 'checked' : ''} />` : ''}</td><td><b>${esc(n.numero_nf)}</b>${n.nf_serie ? ` <small style="color:var(--texto-fraco);">série ${esc(n.nf_serie)}</small>` : ''}${n.numero_cte ? `<br><small style="color:var(--texto-fraco);">CT-e ${esc(n.numero_cte)}</small>` : ''}${n.chave_nfe ? `<br><button type="button" class="ep-chave-cte" data-nf-chave="${esc(n.chave_nfe)}" title="Chave de acesso: ${esc(String(n.chave_nfe).replace(/(\d{4})(?=\d)/g, '$1 '))} — clique para copiar">🔑 ${esc(String(n.chave_nfe).slice(0, 4))}…${esc(String(n.chave_nfe).slice(-8).replace(/(\d{4})(?=\d)/, '$1 '))} <span class="ep-chave-copiar">copiar</span></button>` : ''}</td>
         <td>${dia(n.data_emissao_nf)}</td><td>${n.data_saida ? dataHora(n.data_saida) : '—'}</td><td>${esc(n.emitente_nome || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.emitente_cnpj)}</small></td>
         <td>${esc(n.cliente || '—')}<br><small style="color:var(--texto-fraco);">${doc(n.cliente_documento)}</small></td><td>${celulaEntrega(n)}</td>
         <td style="text-align:right;">${moeda(n.valor_produtos)}</td><td style="text-align:right;">${moeda(n.valor_faturado)}</td><td style="text-align:right;">${kg(n.peso_bruto ?? n.peso_kg)}</td><td style="text-align:right;">${n.qtd_volumes ?? '—'}</td>
         <td><span class="oc-sit ${SIT[n.situacao][0]}">${SIT[n.situacao][1]}</span></td>
-        <td style="white-space:nowrap;"><button class="btn btn-secundario" data-nf-ver="${n.id}" style="width:auto; padding:4px 9px; font-size:11.5px;">Abrir</button></td></tr>`).join('')}</tbody></table>`
+        <td style="white-space:nowrap;"><button class="btn btn-secundario" data-nf-ver="${n.id}" style="width:auto; padding:4px 9px; font-size:11.5px;">Abrir</button>
+          ${n.tem_xml ? `<a class="btn btn-secundario" href="${link(`/api/notas/${n.id}/danfe`)}" target="_blank" rel="noopener" style="width:auto; padding:4px 9px; font-size:11.5px;" title="Gerar o DANFE desta nota (imprimir ou salvar em PDF)">📄 DANFE</a>` : ''}</td></tr>`).join('')}</tbody></table>`
       : '<div style="padding:20px; text-align:center; color:var(--texto-fraco);">Nenhuma nota com esses filtros.</div>';
     botaoDanfes();
+  }
+  // Na ordem da sequência: antes da nota, uma linha avisando os números pulados (mesmo emitente e série).
+  function linhaFaltando(n, j) {
+    if (!j.faltando?.faixas?.length) return '';
+    const num = Number(String(n.numero_nf || '').replace(/\D/g, ''));
+    const f = j.faltando.faixas.find((x) => x.emitente_cnpj === n.emitente_cnpj && (x.serie || null) === (n.nf_serie || null) && (j.ordem === 'numero' ? x.ate + 1 === num : x.de - 1 === num));
+    if (!f) return '';
+    return `<tr class="nf-faltando"><td colspan="13">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.</td></tr>`;
   }
   // Coluna Entrega: para onde a transportadora leva (redespacho ou local de entrega) e de onde veio.
   function celulaEntrega(n) {

@@ -166,14 +166,46 @@ const COLUNAS = `f.id, f.numero_nf, f.nf_serie, f.chave_nfe, f.data_emissao_nf, 
 async function listar(req, q = {}) {
   const params = [];
   const where = filtros(q, params);
-  const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY f.data_emissao_nf DESC NULLS LAST, f.id DESC LIMIT 2000`, params);
+  // Ordem: as mais recentes (padrão antigo) ou a sequência das notas (emitente, série e número).
+  const NUM = "NULLIF(regexp_replace(COALESCE(f.numero_nf, ''), '\\D', '', 'g'), '')::numeric";
+  const ORDENS = {
+    recentes: 'f.data_emissao_nf DESC NULLS LAST, f.id DESC',
+    numero: `f.emitente_cnpj NULLS LAST, COALESCE(f.nf_serie, '') , ${NUM} ASC NULLS LAST, f.id`,
+    numero_desc: `f.emitente_cnpj NULLS LAST, COALESCE(f.nf_serie, ''), ${NUM} DESC NULLS LAST, f.id DESC`,
+  };
+  const ordem = ORDENS[q.ordem] ? q.ordem : 'recentes';
+  const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY ${ORDENS[ordem]} LIMIT 2000`, params);
   const { rows: [t] } = await consultaCliente(req,
     `SELECT COUNT(*)::int AS notas, COALESCE(SUM(f.valor_faturado), 0)::float AS valor, COALESCE(SUM(f.valor_produtos), 0)::float AS produtos,
             COALESCE(SUM(COALESCE(f.peso_bruto, f.peso_kg)), 0)::float AS peso, COALESCE(SUM(f.qtd_volumes), 0)::int AS volumes,
             COUNT(*) FILTER (WHERE f.nf_cancelada AND NOT f.nf_denegada)::int AS canceladas, COUNT(*) FILTER (WHERE f.nf_denegada)::int AS denegadas,
             COUNT(*) FILTER (WHERE f.endereco_conferir)::int AS conferir_endereco
        FROM fretes f WHERE ${where}`, params);
-  return { totais: t, notas: rows, limite: rows.length >= 2000 };
+  return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows) };
+}
+
+// Números pulados na sequência (mesmo emitente e série), entre a menor e a maior nota do filtro:
+// notas que não entraram no sistema (ou foram inutilizadas). Saltos de mais de 500 números não contam (outra faixa).
+function faltandoNaSequencia(rows) {
+  const grupos = new Map();
+  for (const r of rows) {
+    const n = Number(String(r.numero_nf || '').replace(/\D/g, ''));
+    if (!n) continue;
+    const k = `${r.emitente_cnpj || ''}|${r.nf_serie || ''}`;
+    if (!grupos.has(k)) grupos.set(k, { emitente: r.emitente_nome, emitente_cnpj: r.emitente_cnpj, serie: r.nf_serie, numeros: new Set() });
+    grupos.get(k).numeros.add(n);
+  }
+  const faixas = []; let total = 0;
+  for (const g of grupos.values()) {
+    const nums = [...g.numeros].sort((a, b) => a - b);
+    for (let i = 1; i < nums.length; i += 1) {
+      const qtd = nums[i] - nums[i - 1] - 1;
+      if (qtd < 1 || qtd > 500) continue;
+      total += qtd;
+      faixas.push({ emitente: g.emitente, emitente_cnpj: g.emitente_cnpj, serie: g.serie, de: nums[i - 1] + 1, ate: nums[i] - 1, qtd, depois_de: nums[i - 1] });
+    }
+  }
+  return { total, faixas: faixas.slice(0, 200) };
 }
 
 async function xmlDaNota(req, id) {

@@ -72,6 +72,7 @@ async function completar(id) {
       data_saida = $8, nf_dados_em = NOW() WHERE id = $1`,
   [id, d.nf_serie, d.emitente_nome, d.emitente_cnpj, d.valor_produtos, d.peso_bruto, d.peso_liquido, d.data_saida]);
   await gravarEnderecos(id, d);
+  await completarRedespachoPeloCadastro({ id }).catch(() => {});
   if (d.denegada) await marcarDenegada(id, `${d.protocolo.cStat} ${d.protocolo.xMotivo}`.trim());
   return { ok: true, denegada: d.denegada };
 }
@@ -101,6 +102,49 @@ async function completarTodos() {
     }
   } catch (err) { console.error('[notas] endereços:', err.message); }
   if (e) console.log(`[notas] ${e} nota(s) com o endereço de entrega e o redespacho lidos de novo.`);
+  const c = await completarRedespachoPeloCadastro().catch((err) => { console.error('[notas] redespacho pelo cadastro:', err.message); return 0; });
+  if (c) console.log(`[notas] ${c} nota(s) com o endereço do redespacho completado pelo cadastro do CNPJ.`);
+  return n;
+}
+
+// Redespacho que veio só com o nome e o CNPJ (sem rua/cidade no texto da nota): completa o endereço com o cadastro da
+// transportadora, que o sistema busca sozinho pelo CNPJ (src/transportadorasRedespacho.js). Só preenche o que falta;
+// nota com endereço corrigido à mão não muda. f: { id } (uma nota) ou { cnpj } (as notas desse CNPJ) ou nada (todas).
+async function completarRedespachoPeloCadastro(f = {}) {
+  const { conferir, acharCidade } = require('./enderecoEntrega');
+  const params = []; let extra = '';
+  if (f.id) { params.push(f.id); extra = ` AND f.id = $${params.length}`; }
+  if (f.cnpj) { params.push(String(f.cnpj).replace(/\D/g, '')); extra += ` AND f.redespacho_endereco->>'cnpj' = $${params.length}`; }
+  const { rows } = await pool.query(`SELECT f.id, f.redespacho_endereco, f.endereco_origem, t.endereco, t.bairro, t.municipio, t.uf, t.cep
+      FROM fretes f JOIN transportadoras t ON REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g') = f.redespacho_endereco->>'cnpj'
+     WHERE f.redespacho_endereco IS NOT NULL AND NOT f.endereco_corrigido AND NULLIF(t.municipio, '') IS NOT NULL
+       AND (NULLIF(f.redespacho_endereco->>'cidade', '') IS NULL OR NULLIF(f.redespacho_endereco->>'logradouro', '') IS NULL)
+       AND COALESCE(f.redespacho_endereco->>'do_cadastro', '') <> 'true'${extra}
+     LIMIT 5000`, params);
+  let n = 0;
+  for (const r of rows) {
+    const e = typeof r.redespacho_endereco === 'string' ? JSON.parse(r.redespacho_endereco) : { ...r.redespacho_endereco };
+    // "RUA X, 123 - SALA 2" (como o cadastro guarda) → rua, número e complemento.
+    const m = String(r.endereco || '').match(/^(.*?)(?:,\s*([^-]+?))?(?:\s+-\s+(.*))?$/) || [];
+    const cid = acharCidade(String(r.municipio), r.uf) || { cidade: r.municipio, uf: r.uf, ibge: null };
+    const novo = {
+      ...e,
+      logradouro: e.logradouro || (m[1] || '').trim() || null,
+      numero: e.numero || (e.logradouro ? null : (m[2] || '').trim() || null),
+      complemento: e.complemento || (e.logradouro ? null : (m[3] || '').trim() || null),
+      bairro: e.bairro || r.bairro || null,
+      cidade: e.cidade || cid.cidade, uf: e.uf || cid.uf, ibge: e.ibge || cid.ibge,
+      cep: e.cep || String(r.cep || '').replace(/\D/g, '') || null,
+      do_cadastro: true,
+    };
+    const c = conferir(novo);
+    novo.conferir = c.conferir; novo.motivos = c.motivos;
+    await pool.query(`UPDATE fretes SET redespacho_endereco = $2,
+        endereco_conferir = CASE WHEN endereco_origem = 'redespacho' THEN $3 ELSE endereco_conferir END,
+        endereco_conferir_motivo = CASE WHEN endereco_origem = 'redespacho' THEN $4 ELSE endereco_conferir_motivo END
+      WHERE id = $1 AND NOT endereco_corrigido`, [r.id, JSON.stringify(novo), c.conferir, c.motivos.join('; ') || null]);
+    n += 1;
+  }
   return n;
 }
 
@@ -274,4 +318,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

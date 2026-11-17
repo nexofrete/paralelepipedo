@@ -180,7 +180,7 @@
     if (!n) return;
     const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco);
     const blocoEnd = (titulo, x, qual) => `<tr><td style="color:var(--texto-fraco); width:38%; vertical-align:top; white-space:normal;">${titulo}</td><td style="white-space:normal; word-break:break-word;"><b>${x ? esc([x.nome, endTexto(x)].filter(Boolean).join(' — ')) || '—' : '—'}</b>
-      ${x?.origem ? `<br><small style="color:var(--texto-fraco);">Origem: ${esc(ORIGEM[x.origem] || x.origem)}${x.cnpj ? ` · CNPJ ${doc(x.cnpj)}` : ''}</small>` : ''}
+      ${x?.origem ? `<br><small style="color:var(--texto-fraco);">Origem: ${esc(ORIGEM[x.origem] || x.origem)}${x.cnpj ? ` · CNPJ ${doc(x.cnpj)}` : ''}${x.do_cadastro ? ' · endereço completado pelo cadastro do CNPJ (a nota só trazia o nome e o CNPJ)' : ''}</small>` : ''}
       ${x?.conferir ? `<br><small style="color:#d97706;">⚠ Conferir: ${esc((x.motivos || []).join('; ') || n.endereco_conferir_motivo || 'leitura sem certeza')}</small>` : ''}
       ${x?.texto && x.origem !== 'manual' ? `<br><small style="color:var(--texto-fraco);">Lido do texto: “${esc(x.texto)}”</small>` : ''}
       ${podeCorrigir() ? `<br><button class="btn btn-secundario" data-nf-corrigir="${qual}" style="width:auto; padding:3px 9px; font-size:11.5px; margin-top:4px;">✏ Corrigir</button>` : ''}</td></tr>`;

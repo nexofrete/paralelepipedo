@@ -191,6 +191,8 @@ async function garantir(cnpj, nomeDaNota, { forcar = false } = {}) {
        api.cep ? soDigitos(api.cep) : null, api.telefone ? soDigitos(api.telefone) : null, api.email || null,
        (api.nome_fantasia && String(api.nome_fantasia).trim() && !/^\*+$/.test(String(api.nome_fantasia).trim())) ? String(api.nome_fantasia).trim().slice(0, 150) : null]);
     cacheCidades.quando = 0;   // a cidade nova vale já no próximo cálculo
+    // Notas cujo redespacho veio só com o nome e o CNPJ: o endereço passa a vir deste cadastro.
+    require('./notasFiscais').completarRedespachoPeloCadastro({ cnpj: d }).catch((e) => console.error('[redespacho] endereço das notas:', e.message));
   } catch (err) {
     console.error(`[redespacho] Não consegui consultar o CNPJ ${formatarCnpj(d)}:`, err.message);
     if (forcar) throw err;

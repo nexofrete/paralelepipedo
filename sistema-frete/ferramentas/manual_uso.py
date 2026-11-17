@@ -349,6 +349,10 @@ def parte_uso(g):
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',
         '<b>Dois cliques</b> na linha abrem o documento. Cada linha tem o botão <b>DANFE</b> (abre o DANFE da nota para imprimir '
         'ou salvar em PDF) e a <b>chave de acesso</b> resumida (clique para copiar a chave inteira).',
+        '<b>DANFE em folhas A4</b>: a 1ª folha tem o canhoto, todos os quadros, os produtos que couberem e os dados adicionais no '
+        'fim; as folhas seguintes repetem o cabeçalho (emitente, DANFE, chave e código de barras) e continuam os produtos '
+        '("continuação"), com "Folha 1/3" em cada uma. Nenhuma linha de produto é cortada entre duas folhas. Para imprimir, use '
+        'papel A4, retrato, escala 100% (ou "Ajustar à página" desligado). As duplicatas aparecem em linhas de 7.',
         '<b>Abrir</b> a nota mostra tudo e os botões <b>DANFE</b> (gerado a partir do XML, pronto para imprimir ou salvar em PDF '
         'pelo navegador) e <b>XML</b> (o arquivo da nota). Nota que entrou só pela planilha do ERP não tem XML.',
         '<b>XML das notas (.zip)</b>: baixa os XML de todas as notas do filtro num arquivo .zip. <b>Excel</b>: a lista com '

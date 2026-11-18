@@ -397,7 +397,9 @@ def parte_uso(g):
         '<b>Ordem</b>: a lista abre na <b>sequência das notas</b> (por emitente, série e número; a escolha fica guardada). '
         'Nessa ordem, quando falta um número entre duas notas do mesmo emitente e série, aparece uma linha amarela "Falta a nota '
         'X" ou "Faltam N notas: X a Y" (a nota não entrou no sistema ou foi inutilizada), e o quadro <b>Faltando na sequência</b> '
-        'mostra o total. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
+        'mostra o total. Na própria linha amarela, o botão <b>Enviar o XML</b> (para quem pode enviar XML) abre a escolha do '
+        'arquivo: escolha o XML da nota que falta (ou um .zip com os XML) e ela é importada ali mesmo, como no Enviar XML; a '
+        'linha amarela some quando a nota entra. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
         'primeiro" ou "mais recentes primeiro".',
         'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',

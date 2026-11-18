@@ -22,6 +22,24 @@
   const json = (v) => { if (typeof v !== 'string') return v || null; try { return JSON.parse(v); } catch { return null; } };
   const endTexto = (e) => (e ? [[e.logradouro, e.numero, e.complemento].filter(Boolean).join(', '), e.bairro, e.cidade || e.uf ? `${e.cidade || ''}/${e.uf || ''}` : '',
     e.cep ? `CEP ${String(e.cep).replace(/^(\d{5})(\d{3})$/, '$1-$2')}` : ''].filter(Boolean).join(' — ') : '');
+  const podeEnviarXml = () => usuario?.perfil === 'admin' || !!usuario?.pode_enviar_xml;
+  // Enviar o XML da nota que falta direto da linha "Falta a nota" (o mesmo do Enviar XML: /api/upload/nfe ou /zip).
+  async function enviarXmls(arquivos) {
+    let ok = 0; const erros = [];
+    for (const arq of arquivos) {
+      const fd = new FormData(); fd.append('arquivo', arq, arq.name);
+      const zip = /\.zip$/i.test(arq.name);
+      try {
+        const r = await apiFetch(`/api/upload/${zip ? 'zip' : 'nfe'}`, { method: 'POST', body: fd });
+        const j = await r.json().catch(() => ({}));
+        if (zip && r.ok) { (j.resultados || []).forEach((x) => (x.ok ? ok++ : erros.push(`${x.nome}: ${x.mensagem}`))); continue; }
+        if (r.ok || r.status === 409) ok += 1; else erros.push(`${arq.name}: ${j.erro || 'erro ao importar'}`);
+      } catch { erros.push(`${arq.name}: falha de conexão`); }
+    }
+    if (ok) mostrarAlerta(`${ok} nota(s) importada(s).`, { tipo: 'sucesso' });
+    if (erros.length) mostrarAlerta(erros.join('\n'), { tipo: 'erro' });
+    carregar().catch(() => {});
+  }
   const podeCorrigir = () => usuario?.perfil === 'admin' || !!usuario?.pode_editar_registros;
   let dados = null; let montado = false;
   const marcadas = new Set();   // notas marcadas para imprimir o DANFE em lote
@@ -75,6 +93,13 @@
       const tr = e.target.closest('tr[data-nf-id]'); if (tr) detalhe(Number(tr.dataset.nfId));
     });
     $('nfTabela').addEventListener('click', (e) => {
+      if (e.target.closest('[data-nf-enviar-xml]')) {
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = '.xml,.zip'; inp.multiple = true;
+        inp.addEventListener('change', () => { if (inp.files?.length) enviarXmls([...inp.files]); });
+        inp.click();
+        return;
+      }
       const b = e.target.closest('[data-nf-ver]'); if (b) { detalhe(Number(b.dataset.nfVer)); return; }
       const c = e.target.closest('[data-nf-chave]');
       if (c) {
@@ -128,7 +153,7 @@
     const num = Number(String(n.numero_nf || '').replace(/\D/g, ''));
     const f = j.faltando.faixas.find((x) => x.emitente_cnpj === n.emitente_cnpj && (x.serie || null) === (n.nf_serie || null) && (j.ordem === 'numero' ? x.ate + 1 === num : x.de - 1 === num));
     if (!f) return '';
-    return `<tr class="nf-faltando"><td colspan="15">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.</td></tr>`;
+    return `<tr class="nf-faltando"><td colspan="15">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.${podeEnviarXml() ? ` <button type="button" class="nf-faltando-enviar" data-nf-enviar-xml title="Escolha o XML (ou um .zip com os XML) da nota que falta: ele é importado aqui mesmo, como no Enviar XML">⬆ Enviar o XML</button>` : ''}</td></tr>`;
   }
   // Coluna Entrega: para onde a transportadora leva (redespacho ou local de entrega) e de onde veio.
   function celulaEntrega(n) {

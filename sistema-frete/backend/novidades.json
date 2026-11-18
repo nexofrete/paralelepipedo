@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Consulta de notas: na linha \"Falta a nota\" da sequência, o botão \"Enviar o XML\" importa ali mesmo o XML (ou um .zip) da nota que não entrou no sistema."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia conta só as notas de venda e de bonificação, pelo CFOP dos itens (bonificação: 5910/6910 ou natureza \"bonificação\"), com a divisão entre venda e bonificação; remessas, transferências, devoluções e notas sem XML ficam de fora e aparecem contadas embaixo. Consulta de notas ganhou o filtro Operação e o detalhe mostra a natureza e os CFOP."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia na Visão geral: total das NF-e emitidas no dia, comparação com o mesmo dia da semana anterior, notas, clientes, ticket médio e peso, os 5 estados que mais compraram e o gráfico dos últimos 14 dias. Clique num estado ou num dia para ver as notas."},
         {"area": "Notas fiscais", "texto": "Consultar nota direto na Visão geral: digite NF, chave, CT-e, pedido, cliente ou transportadora e as notas aparecem na hora, de qualquer data, com a transportadora, o CT-e e a entrega. Um clique abre a nota (DANFE, XML, rastreamento, registro do frete); Enter leva para a Consulta de notas com a busca."},

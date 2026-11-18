@@ -1981,3 +1981,6 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-split small { font-size: 11px; color: var(--texto-fraco); white-space: nowrap; }
 .vg-fat-fora { margin-top: 8px; font-size: 11.5px; color: var(--texto-fraco); line-height: 1.45; }
 .vg-fat-fora a { color: var(--azul); }
+
+#nfTabela .nf-faltando-enviar { margin-left: 10px; padding: 2px 9px; font-size: 11.5px; border-radius: 6px; border: 1px solid #d97706; background: transparent; color: #b45309; cursor: pointer; font-weight: 600; }
+#nfTabela .nf-faltando-enviar:hover { background: rgba(217,119,6,.14); }

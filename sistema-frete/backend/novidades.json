@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "DANFE no layout dos ERPs: canhoto com destinatário e valor, logo da empresa no quadro do emitente, Saída/Entrada e \"FL x / y\", fatura numa linha, CST com a origem e os dados adicionais no rodapé de todas as folhas (o texto que não cabe continua na última folha)."},
         {"area": "Visão geral", "texto": "Imagem do faturamento do dia para o WhatsApp: rodapé com \"gerado pelo\" e a marca Nexofrete."},
         {"area": "Visão geral", "texto": "Faturamento do dia: o gráfico dos últimos 14 dias mostra o valor exato de cada dia dentro da coluna (também na imagem para o WhatsApp); a média e os 5 estados também mostram o valor exato."},
         {"area": "Notas fiscais", "texto": "Etiquetas de volume: a transportadora vem da nota, do CT-e ou do redespacho, e pode ser digitada na janela antes de imprimir; nome comprido quebra em duas linhas em vez de cortar."},

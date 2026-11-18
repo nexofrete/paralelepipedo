@@ -460,10 +460,14 @@ def parte_uso(g):
         'registros; marque as caixas à esquerda).',
         '<b>Dois cliques</b> na linha abrem o documento. Cada linha tem o botão <b>DANFE</b> (abre o DANFE da nota para imprimir '
         'ou salvar em PDF) e a <b>chave de acesso</b> resumida (clique para copiar a chave inteira).',
-        '<b>DANFE em folhas A4</b>: a 1ª folha tem o canhoto, todos os quadros, os produtos que couberem e os dados adicionais no '
-        'fim; as folhas seguintes repetem o cabeçalho (emitente, DANFE, chave e código de barras) e continuam os produtos '
-        '("continuação"), com "Folha 1/3" em cada uma. Nenhuma linha de produto é cortada entre duas folhas. Para imprimir, use '
-        'papel A4, retrato, escala 100% (ou "Ajustar à página" desligado). As duplicatas aparecem em linhas de 7.',
+        '<b>DANFE em folhas A4, no layout dos ERPs</b>: canhoto com o destinatário, o endereço, a emissão e o valor total (com a '
+        'linha de corte); quadro do emitente com o <b>logo da empresa</b> (o de Cadastros » Empresa, só nas notas emitidas por ela); '
+        'quadro DANFE com Saída/Entrada, "FL 1 / 3", número e série; código de barras e chave; natureza e protocolo; inscrições; '
+        'destinatário (com o indicador da IE); fatura (número, valor original, desconto e líquido); cálculo do imposto; '
+        'transportador/volumes; produtos (CST com a origem, ex.: 100). Os <b>dados adicionais ficam no rodapé de todas as '
+        'folhas</b>; o texto das informações complementares que não cabe no quadro continua na última folha ("Continuação - '
+        'informações complementares"). As folhas seguintes repetem o canhoto e o cabeçalho e continuam os produtos. Nenhuma '
+        'linha de produto é cortada entre duas folhas. Para imprimir, use papel A4, retrato, escala 100%.',
         'No documento aberto: a transportadora e o CT-e, a entrega e a previsão, e os botões <b>Histórico de rastreamento</b> '
         '(as ocorrências da SSW ou do portal) e <b>Abrir o registro do frete</b> (valores, cálculo pela tabela, aprovação, comprovante '
         'de entrega; ao fechar, a lista se atualiza).',

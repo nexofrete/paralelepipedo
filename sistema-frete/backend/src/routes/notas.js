@@ -127,7 +127,8 @@ router.get('/:id(\\d+)/danfe', autenticar, async (req, res) => {
     res.set('Content-Type', 'text/html; charset=utf-8');
     // O DANFE é gerado por nós a partir do XML (texto escapado); sem scripts de terceiros.
     res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'unsafe-inline'");
-    res.send(require('../danfe').danfeHtml(x.xml, { marca: x.cancelada ? 'CANCELADA' : null }));
+    const danfe = require('../danfe');
+    res.send(danfe.danfeHtml(x.xml, { marca: x.cancelada ? 'CANCELADA' : null, empresa: await danfe.empresaDanfe() }));
   } catch (err) { erro(res, err, 'Erro ao montar o DANFE.'); }
 });
 

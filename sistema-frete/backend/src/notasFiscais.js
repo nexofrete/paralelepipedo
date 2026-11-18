@@ -554,7 +554,8 @@ async function danfesEmLote(req, q = {}) {
      WHERE ${where} AND f.xml_nfe_original IS NOT NULL ORDER BY f.data_emissao_nf, f.numero_nf LIMIT ${LIMITE_LOTE + 1}`, params);
   if (!rows.length) throw falha('Nenhuma nota com XML para imprimir.', 404);
   if (rows.length > LIMITE_LOTE) throw falha(`São mais de ${LIMITE_LOTE} notas: filtre um período menor ou marque as notas.`, 400);
-  return { quantidade: rows.length, html: require('./danfe').danfeLote(rows.map((r) => ({ xml: r.xml_nfe_original, numero: r.numero_nf, marca: r.nf_cancelada && !r.nf_denegada ? 'CANCELADA' : null }))) };
+  const danfe = require('./danfe');
+  return { quantidade: rows.length, html: danfe.danfeLote(rows.map((r) => ({ xml: r.xml_nfe_original, numero: r.numero_nf, marca: r.nf_cancelada && !r.nf_denegada ? 'CANCELADA' : null })), { empresa: await danfe.empresaDanfe() }) };
 }
 // Eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega...), com o XML guardado.
 async function eventosDaNota(req, id) {

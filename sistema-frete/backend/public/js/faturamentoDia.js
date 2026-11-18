@@ -116,7 +116,7 @@
         <div class="vg-fat-uf" data-fat-uf="${esc(u.uf)}" data-i="${i}" tabindex="0" role="button" aria-label="${esc(UF[u.uf] || u.uf)}: ${moeda(u.valor)}, ${pct(u.pct)} do dia, ${u.notas} notas">
           <div class="vg-fat-uf-nome"><span class="vg-fat-uf-sigla">${esc(u.uf === '?' ? '—' : u.uf)}</span><span class="vg-fat-uf-ext">${esc(UF[u.uf] || u.uf)}</span></div>
           <div class="vg-fat-uf-trilho"><div class="vg-fat-uf-barra" style="width:${Math.max(2, (u.valor / maxUf) * 100)}%"></div></div>
-          <div class="vg-fat-uf-val"><b>${moedaCurta(u.valor)}</b><small>${pct(u.pct)} · ${u.notas} nota${u.notas === 1 ? '' : 's'}</small></div>
+          <div class="vg-fat-uf-val"><b>${moeda(u.valor)}</b><small>${pct(u.pct)} · ${u.notas} nota${u.notas === 1 ? '' : 's'}</small></div>
         </div>`).join('')}
         ${d.outros ? `<div class="vg-fat-outros">+ ${d.outros.estados} outro${d.outros.estados > 1 ? 's' : ''} estado${d.outros.estados > 1 ? 's' : ''}: ${moeda(d.outros.valor)} (${pct(d.valor ? d.outros.valor / d.valor : 0)}) em ${d.outros.notas} nota${d.outros.notas === 1 ? '' : 's'}</div>` : ''}
       </div>` : '<div class="vg-fat-vazio">Nenhuma nota emitida neste dia.</div>';
@@ -128,9 +128,9 @@
     const rotDia = (x) => `${SEMANA[diaSemana(x.dia)]} ${ddmm(x.dia)}: ${moeda(x.valor)}, ${x.notas} notas`;
     const colunas = `<div class="vg-fat-dias">
         <div class="vg-fat-plot">
-          ${media ? `<div class="vg-fat-media" style="bottom:${(media / maxDia) * 100}%"><span>média ${moedaCurta(media)}</span></div>` : ''}
+          ${media ? `<div class="vg-fat-media" style="bottom:${(media / maxDia) * 100}%"><span>média ${moeda(media)}</span></div>` : ''}
           ${d.dias.map((x, i) => `<div class="vg-fat-col${x.dia === d.data ? ' sel' : ''}" data-fat-dia="${x.dia}" data-i="${i}" role="button" tabindex="0" aria-label="${rotDia(x)}">
-            <div class="vg-fat-col-barra" style="height:${x.valor ? Math.max(2, (x.valor / maxDia) * 100) : 0}%">${x.valor ? `<span class="vg-fat-col-val">${moedaCurta(x.valor)}</span>` : ''}</div></div>`).join('')}
+            <div class="vg-fat-col-barra" style="height:${x.valor ? Math.max(2, (x.valor / maxDia) * 100) : 0}%">${x.valor ? `<span class="vg-fat-col-val">${moeda(x.valor)}</span>` : ''}</div></div>`).join('')}
         </div>
         <div class="vg-fat-eixo">${d.dias.map((x, i) => `<div class="${x.dia === d.data ? 'sel' : ''}${[0, 6].includes(diaSemana(x.dia)) ? ' fds' : ''}" data-fat-dia="${x.dia}" data-i="${i}">
           <b>${x.dia.slice(8, 10)}</b><span>${SEMANA_CURTA[diaSemana(x.dia)]}</span></div>`).join('')}</div>
@@ -218,7 +218,7 @@
     const nomeEmp = emp.nome_fantasia || emp.razao_social || '';
     const W = 1080; const P = 64;
     const nEst = d.estados.length;
-    const H = 704 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 332 + 110;   // estados + 14 dias + rodapé
+    const H = 704 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 392 + 110;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
     const esc2 = 2;
     const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
     const c = cv.getContext('2d'); c.scale(esc2, esc2);
@@ -306,23 +306,24 @@
 
     // Últimos 14 dias
     y += 52; txt('Últimos 14 dias', P, y, { tam: 28, peso: 700 });
-    const topo = y + 46; const base = topo + 150;
+    const ALT = 210; const topo = y + 46; const base = topo + ALT;   // altura das colunas (cabe o valor exato dentro)
     const maxDia = Math.max(...d.dias.map((x) => x.valor), 1);
     const cw = (W - 2 * P) / 14;
     const comValor = d.dias.filter((x) => x.valor > 0);
     const media = comValor.length ? comValor.reduce((s, x) => s + x.valor, 0) / comValor.length : 0;
     d.dias.forEach((x, i) => {
       const sel = x.dia === d.data; const bx = P + i * cw + 7; const bw = cw - 14;
-      const h = x.valor ? Math.max(4, (x.valor / maxDia) * 150) : 0;
+      const h = x.valor ? Math.max(4, (x.valor / maxDia) * ALT) : 0;
       if (h) { c.beginPath(); c.roundRect(bx, base - h, bw, h, [6, 6, 0, 0]); c.fillStyle = sel ? COR.azul : COR.azulClaro; c.fill(); }
       if (x.valor) {
         // Valor na vertical, dentro da coluna (ou acima dela, se a coluna for baixa).
         c.save(); c.font = f(15, sel ? 700 : 600);
-        const tw = c.measureText(moedaCurta(x.valor)).width;
+        const rotulo = moeda(x.valor);
+        const tw = c.measureText(rotulo).width;
         const dentro = h >= tw + 14;
         c.translate(bx + bw / 2 + 5, dentro ? base - 8 : base - h - 6);
         c.rotate(-Math.PI / 2); c.textAlign = 'left'; c.fillStyle = dentro && sel ? '#ffffff' : COR.texto;
-        if (dentro || base - h - 6 - tw > topo - 40) c.fillText(moedaCurta(x.valor), 0, 0);
+        if (dentro || base - h - 6 - tw > topo - 30) c.fillText(rotulo, 0, 0);
         c.restore();
       }
       const fds = [0, 6].includes(diaSemana(x.dia));
@@ -331,7 +332,7 @@
     });
     c.fillStyle = COR.borda; c.fillRect(P, base, W - 2 * P, 1.5);
     if (media) {
-      const ym = base - (media / maxDia) * 150;
+      const ym = base - (media / maxDia) * ALT;
       c.setLineDash([6, 5]); c.strokeStyle = '#9aa1ac'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(P, ym); c.lineTo(W - P, ym); c.stroke(); c.setLineDash([]);
     }
     txt(media ? `linha tracejada: média dos dias com nota, ${moeda(media)}` : '', P, base + 84, { tam: 17, cor: COR.fraco });

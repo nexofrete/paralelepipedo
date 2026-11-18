@@ -120,8 +120,8 @@ def parte_uso(g):
         '(Ctrl+V) na conversa do WhatsApp Web ou do computador; <b>Compartilhar</b> (no celular e no Windows) e escolher o '
         'WhatsApp; ou <b>Baixar PNG</b> e anexar na conversa. Copiar só aparece quando o sistema é aberto por https ou no '
         'próprio computador do servidor (regra do navegador); senão use Baixar.',
-        '<b>Últimos 14 dias</b>: o valor de cada dia aparece escrito dentro da coluna (na vertical; em coluna baixa, logo acima '
-        'dela). Uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
+        '<b>Últimos 14 dias</b>: o valor exato de cada dia (ex.: R$ 707.776,00) aparece escrito dentro da coluna (na vertical; '
+        'em coluna baixa, logo acima dela). Uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
         'nota. Passe o mouse para ver o valor, as notas e o ticket médio do dia; clique numa coluna para ver aquele dia.',
     ])
     s += h2('Fluxo do frete')

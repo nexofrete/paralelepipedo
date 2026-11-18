@@ -5,7 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
-        {"area": "Visão geral", "texto": "Faturamento do dia: o gráfico dos últimos 14 dias mostra o valor de cada dia dentro da coluna (também na imagem para o WhatsApp)."},
+        {"area": "Visão geral", "texto": "Faturamento do dia: o gráfico dos últimos 14 dias mostra o valor exato de cada dia dentro da coluna (também na imagem para o WhatsApp); a média e os 5 estados também mostram o valor exato."},
         {"area": "Notas fiscais", "texto": "Etiquetas de volume: a transportadora vem da nota, do CT-e ou do redespacho, e pode ser digitada na janela antes de imprimir; nome comprido quebra em duas linhas em vez de cortar."},
         {"area": "Notas fiscais", "texto": "Etiquetas de volume das notas (10 × 7 cm, padrão do ERP) na Consulta de notas: destinatário, endereço, transportadora, \"Volumes: 1 / 68\", pedido e nota, uma por volume (ou só os volumes escolhidos). Imprime pelo navegador (driver da Zebra), baixa o ZPL ou manda direto para a Zebra na rede (IP, porta 9100)."},
         {"area": "Visão geral", "texto": "Atualização automática: escolha de quantos em quantos minutos a Visão geral se atualiza sozinha (1, 2, 5, 10, 15 ou desligado), com \"atualizado às\" e o botão para atualizar na hora."},

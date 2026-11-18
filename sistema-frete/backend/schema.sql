@@ -3640,3 +3640,10 @@ CREATE TABLE IF NOT EXISTS cep_consultas (
   nao_encontrado BOOLEAN NOT NULL DEFAULT FALSE,
   consultado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Operação da NF-e pelo CFOP dos itens (src/notasFiscais.js classificarOperacao): venda, bonificacao ou outra.
+-- O "Faturamento do dia" da Visão geral soma só venda e bonificação.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_natureza VARCHAR(120);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_cfops VARCHAR(4)[];
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_operacao VARCHAR(12);
+CREATE INDEX IF NOT EXISTS idx_fretes_emissao_operacao ON fretes (data_emissao_nf) WHERE nf_operacao IN ('venda', 'bonificacao');

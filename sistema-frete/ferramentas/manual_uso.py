@@ -82,13 +82,22 @@ def parte_uso(g):
                'o histórico de rastreamento e o registro do frete. <b>Enter</b> (ou "Abrir na Consulta de notas") leva para a '
                'Consulta de notas (403) já com a busca, em todas as datas. Esc fecha a lista.'))
     s += h2('Faturamento do dia')
-    s.append(P('Logo abaixo do fluxo do frete, o quadro <b>Faturamento do dia</b> mostra as NF-e emitidas na data (pela data '
-               'de emissão; notas canceladas e denegadas não contam). Abre no dia de hoje e se atualiza sozinho a cada 5 minutos; '
-               'as setas e o campo de data mudam o dia.'))
+    s.append(P('Logo abaixo do fluxo do frete, o quadro <b>Faturamento do dia</b> mostra as NF-e de <b>venda</b> e de '
+               '<b>bonificação</b> emitidas na data (pela data de emissão; notas canceladas e denegadas não contam). Abre no dia '
+               'de hoje e se atualiza sozinho a cada 5 minutos; as setas e o campo de data mudam o dia.'))
+    s.append(P('A operação de cada nota sai do <b>CFOP dos itens</b> no XML: <b>venda</b> = CFOP de venda (5101 a 5125 e 6101 a '
+               '6125, com substituição tributária 5401 a 5405 e 6401 a 6405, combustíveis 5651 a 5656 e 5667, exportação 7101, 7102, '
+               '7105, 7106 e 7127); <b>bonificação</b> = 5910 ou 6910 (remessa em bonificação, doação ou brinde) ou, sem CFOP de '
+               'venda, a natureza da operação com "bonificação" (há quem use 5949). Nota com itens de venda e de bonificação conta '
+               'como venda. Ficam de fora remessas, transferências, devoluções, consertos, demonstrações e notas de entrada. As notas '
+               'sem XML (que entraram pela planilha do ERP) também ficam de fora, porque não têm o CFOP. Embaixo do quadro, a linha '
+               '"Não entraram na soma" diz quantas ficaram de fora no dia; clique para ver quais. Nas notas que já estavam no '
+               'sistema, a natureza e o CFOP são lidos do XML guardado quando o sistema liga.'))
     s += lista([
         '<b>Total das notas</b> do dia (soma do valor total das NF-e), com a comparação com o mesmo dia da semana anterior '
         '(por exemplo, "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, ticket médio '
-        '(total dividido pelo número de notas), peso e volumes. "Ver as notas do dia" abre a Consulta de notas com essas notas.',
+        '(total dividido pelo número de notas), peso e volumes, e a divisão entre <b>Venda</b> e <b>Bonificação</b> (valor e '
+        'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
         '<b>Últimos 14 dias</b>: uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
@@ -381,6 +390,8 @@ def parte_uso(g):
         'a Ordem. Os filtros menos usados (emitente, destinatário, série, cidade, UF e endereço de entrega) ficam em <b>Mais '
         'filtros</b>, que abre ao clicar. Abaixo, uma faixa de quadros compactos com Entregues, Não entregues, Atrasadas, total '
         'de notas, valor, peso e volumes, canceladas e denegadas, Endereço a conferir e Faltando na sequência.',
+        '<b>Operação (pelo CFOP)</b>, em Mais filtros: venda e bonificação, só venda, só bonificação, outras (remessa, '
+        'transferência, devolução...) ou sem XML. O detalhe da nota mostra a natureza da operação e os CFOP.',
         '<b>Entrega</b> (coluna): para onde a transportadora leva a nota e de onde veio o endereço. Filtro <b>Endereço de entrega</b>: '
         'a conferir, com redespacho, local de entrega diferente ou corrigidos à mão.',
         '<b>Ordem</b>: a lista abre na <b>sequência das notas</b> (por emitente, série e número; a escolha fica guardada). '

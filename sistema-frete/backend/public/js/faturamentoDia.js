@@ -1,5 +1,5 @@
 // =====================================================================
-// Visão geral » 🧾 Faturamento do dia: as NF-e emitidas na data (soma do valor total das notas, quantidade,
+// Visão geral » 🧾 Faturamento do dia: as NF-e de venda e bonificação (pelo CFOP) emitidas na data (soma do valor total das notas, quantidade,
 // clientes, ticket médio, peso), comparação com o mesmo dia da semana anterior, os 5 estados que mais
 // compraram e os últimos 14 dias (clique num dia para ver aquele dia). Dados: GET /api/notas/faturamento-dia.
 // Usa do dashboard.js: apiFetch; do notasFiscais.js: window.abrirConsultaNotas.
@@ -76,6 +76,16 @@
       <span class="vg-fat-comp-ref">em relação ${ref} (${ddmm(sp.dia)}: ${moeda(sp.valor)})</span></div>`;
   }
 
+  // As notas do dia que não entraram na soma (outras operações e sem XML).
+  function foraTexto(f) {
+    if (!f) return '';
+    const partes = [];
+    if (f.outras) partes.push(`<a href="#" data-fat-fora="outra">${f.outras} de outras operações</a> (remessa, transferência, devolução...)`);
+    if (f.sem_xml) partes.push(`<a href="#" data-fat-fora="sem_xml">${f.sem_xml} sem XML</a> (entraram pela planilha do ERP, sem o CFOP)`);
+    if (f.lendo) partes.push(`${f.lendo} ainda sendo lidas`);
+    return partes.length ? `<div class="vg-fat-fora">Não entraram na soma: ${partes.join('; ')}.</div>` : '';
+  }
+
   function desenhar() {
     const d = dados;
     if (!d) return;
@@ -94,7 +104,11 @@
         <div><span>Ticket médio</span><b>${d.notas ? moeda(d.ticket_medio) : '—'}</b></div>
         <div><span>Peso / volumes</span><b>${num(d.peso)} kg</b><small>${num(d.volumes)} vol.</small></div>
       </div>
-      ${d.notas ? '<a href="#" class="vg-fat-link" data-fat-notas>Ver as notas do dia »</a>' : ''}</div>`;
+      ${d.notas ? `<div class="vg-fat-split">
+        <div><span class="vg-fat-split-rot">Venda</span><b>${moeda(d.valor_venda)}</b><small>${num(d.notas_venda)} nota${d.notas_venda === 1 ? '' : 's'}</small></div>
+        <div><span class="vg-fat-split-rot">Bonificação</span><b>${moeda(d.valor_bonificacao)}</b><small>${num(d.notas_bonificacao)} nota${d.notas_bonificacao === 1 ? '' : 's'}</small></div></div>` : ''}
+      ${d.notas ? '<a href="#" class="vg-fat-link" data-fat-notas>Ver as notas do dia »</a>' : ''}
+      ${foraTexto(d.fora)}</div>`;
 
     // 2) Os 5 estados que mais compraram (barras horizontais, escala pelo 1º).
     const maxUf = d.estados[0]?.valor || 1;
@@ -131,13 +145,15 @@
   }
 
   // Abre a Consulta de notas com as notas do dia (e do estado, se escolhido).
-  function abrirNotas(uf) {
+  function abrirNotas(uf, operacao) {
     if (typeof window.abrirConsultaNotas !== 'function') return;
-    window.abrirConsultaNotas({ de: dados.data, ate: dados.data, uf: uf || '', abrir: true });
+    window.abrirConsultaNotas({ de: dados.data, ate: dados.data, uf: uf || '', operacao: operacao || 'faturamento', abrir: true });
   }
 
   corpo.addEventListener('click', (e) => {
     if (e.target.closest('[data-fat-notas]')) { e.preventDefault(); abrirNotas(); return; }
+    const fora = e.target.closest('[data-fat-fora]');
+    if (fora) { e.preventDefault(); abrirNotas('', fora.dataset.fatFora); return; }
     const uf = e.target.closest('[data-fat-uf]');
     if (uf) { esconderDica(); abrirNotas(uf.dataset.fatUf === '?' ? '' : uf.dataset.fatUf); return; }
     const dia = e.target.closest('[data-fat-dia]');

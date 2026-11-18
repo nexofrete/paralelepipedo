@@ -24,6 +24,31 @@ function lerXml(xml) {
   return { inf, prot: j.nfeProc?.protNFe?.infProt || null };
 }
 
+// Operação da nota pelo CFOP dos itens (e pela natureza da operação):
+//  venda       — CFOP de venda: x101 a x125 (produção/revenda, a não contribuinte, entrega futura, ordem...),
+//                x401 a x405 (com substituição tributária), x651 a x656 e x667 (combustíveis), 7xxx de exportação;
+//  bonificacao — x910 (remessa em bonificação, doação ou brinde) ou, sem CFOP de venda, a natureza "bonificação" (ex.: 5949);
+//  outra       — remessa, transferência, devolução, conserto, demonstração, nota de entrada etc.
+// Nota com itens de venda e de bonificação conta como venda.
+const FINAIS_VENDA = new Set(['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116', '117', '118',
+  '119', '120', '122', '123', '124', '125', '127', '401', '402', '403', '405', '651', '652', '653', '654', '655', '656', '667']);
+function classificarOperacao({ cfops = [], natureza = '', tpNF = '1', finNFe = '1' } = {}) {
+  if (String(tpNF) === '0' || String(finNFe) === '4') return 'outra';   // entrada ou devolução
+  const saida = cfops.filter((c) => /^[567]\d{3}$/.test(c));
+  if (saida.some((c) => FINAIS_VENDA.has(c.slice(1)))) return 'venda';
+  if (saida.some((c) => c.slice(1) === '910')) return 'bonificacao';
+  const nat = String(natureza || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  if (/BONIFIC/.test(nat)) return 'bonificacao';   // há quem emita a bonificação com 5949/6949 (outra saída)
+  if (!saida.length && /^VENDA|\bVENDA DE (MERCADORIA|PRODU)/.test(nat)) return 'venda';
+  return 'outra';
+}
+function operacaoDoXml(inf) {
+  const ide = inf.ide || {};
+  const cfops = [...new Set(lista(inf.det).map((d) => String(d?.prod?.CFOP ?? '').replace(/\D/g, '')).filter((c) => c.length === 4))];
+  const natureza = ide.natOp ? String(ide.natOp).slice(0, 120) : null;
+  return { nf_natureza: natureza, nf_cfops: cfops, nf_operacao: classificarOperacao({ cfops, natureza, tpNF: ide.tpNF ?? '1', finNFe: ide.finNFe ?? '1' }) };
+}
+
 // Os campos novos da nota, a partir do XML.
 function dadosDaNota(xml) {
   const { inf, prot } = lerXml(xml);
@@ -49,6 +74,7 @@ function dadosDaNota(xml) {
     endereco_origem: ends.origem, endereco_conferir: ends.conferir, endereco_conferir_motivo: ends.motivo ? ends.motivo.slice(0, 300) : null,
     denegada: prot ? CSTAT_DENEGADA.includes(String(prot.cStat)) : false,
     protocolo: prot ? { cStat: String(prot.cStat || ''), xMotivo: prot.xMotivo || '', nProt: prot.nProt || '' } : null,
+    ...operacaoDoXml(inf),
   };
 }
 
@@ -69,8 +95,8 @@ async function completar(id) {
   let d;
   try { d = dadosDaNota(f.xml_nfe_original); } catch { await pool.query('UPDATE fretes SET nf_dados_em = NOW(), endereco_lido_em = NOW() WHERE id = $1', [id]); return false; }
   await pool.query(`UPDATE fretes SET nf_serie = $2, emitente_nome = $3, emitente_cnpj = $4, valor_produtos = $5, peso_bruto = $6, peso_liquido = $7,
-      data_saida = $8, nf_dados_em = NOW() WHERE id = $1`,
-  [id, d.nf_serie, d.emitente_nome, d.emitente_cnpj, d.valor_produtos, d.peso_bruto, d.peso_liquido, d.data_saida]);
+      data_saida = $8, nf_natureza = $9, nf_cfops = $10, nf_operacao = $11, nf_dados_em = NOW() WHERE id = $1`,
+  [id, d.nf_serie, d.emitente_nome, d.emitente_cnpj, d.valor_produtos, d.peso_bruto, d.peso_liquido, d.data_saida, d.nf_natureza, d.nf_cfops, d.nf_operacao]);
   await gravarEnderecos(id, d);
   await completarRedespachoPeloCadastro({ id }).catch(() => {});
   await completarCidadePeloCep({ id }).catch(() => {});
@@ -90,6 +116,21 @@ async function completarTodos() {
     }
   } finally { completando = false; }
   if (n) console.log(`[notas] ${n} nota(s) com série, emitente, pesos, saída e endereço lidos do XML.`);
+  // Notas já completas antes de existir a operação (venda, bonificação, outra): lê a natureza e os CFOP do XML.
+  let o = 0;
+  try {
+    for (;;) {
+      const { rows } = await pool.query('SELECT id, xml_nfe_original FROM fretes WHERE xml_nfe_original IS NOT NULL AND nf_operacao IS NULL LIMIT 300');
+      if (!rows.length) break;
+      for (const r of rows) {
+        let x = { nf_natureza: null, nf_cfops: [], nf_operacao: 'outra' };
+        try { x = operacaoDoXml(lerXml(r.xml_nfe_original).inf); } catch { /* XML ilegível: fica como outra */ }
+        await pool.query('UPDATE fretes SET nf_natureza = $2, nf_cfops = $3, nf_operacao = $4 WHERE id = $1', [r.id, x.nf_natureza, x.nf_cfops, x.nf_operacao]);
+        o += 1;
+      }
+    }
+  } catch (err) { console.error('[notas] operação:', err.message); }
+  if (o) console.log(`[notas] ${o} nota(s) com a operação (venda, bonificação ou outra) lida do CFOP do XML.`);
   // Notas já completas mas com o endereço lido na versão antiga: lê o redespacho e o local de entrega de novo.
   let e = 0;
   try {
@@ -250,6 +291,9 @@ function filtros(q, params) {
   if (q.entrega === 'pendente') cond.push(aberta);
   if (q.entrega === 'atrasada') cond.push(`${aberta} AND f.data_entrega_prevista < CURRENT_DATE`);
   if (String(q.transportadora || '').trim()) add("COALESCE(f.transportadora_cte, f.transportadora) ILIKE '%' || ? || '%'", String(q.transportadora).trim());
+  if (q.operacao === 'faturamento') cond.push("f.nf_operacao IN ('venda', 'bonificacao')");
+  if (['venda', 'bonificacao', 'outra'].includes(q.operacao)) add('f.nf_operacao = ?', q.operacao);
+  if (q.operacao === 'sem_xml') cond.push('f.xml_nfe_original IS NULL AND f.nf_operacao IS NULL');
   if (q.endereco === 'conferir') cond.push('f.endereco_conferir');
   if (q.endereco === 'redespacho') cond.push('f.redespacho_endereco IS NOT NULL');
   if (q.endereco === 'local') cond.push("f.endereco_origem IN ('xml_entrega', 'dados_adicionais')");
@@ -262,7 +306,7 @@ const COLUNAS = `f.id, f.numero_nf, f.nf_serie, f.chave_nfe, f.data_emissao_nf, 
   f.numero_pedido, f.numero_cte, f.transportadora_nfe, f.status, f.data_entrega, (f.xml_nfe_original IS NOT NULL) AS tem_xml, ${SITUACAO} AS situacao,
   COALESCE(f.transportadora_cte, f.transportadora) AS transportadora, f.chave_cte, f.data_emissao_cte, f.valor_total_cte::float, f.data_entrega_prevista,
   f.data_entrega_origem, f.canhoto_recebido_por, f.rastreio_ultima_ocorrencia, f.rastreio_ultima_em, f.rastreio_problema, f.nf_devolvida,
-  f.status_aprovacao, (SELECT COUNT(*)::int FROM ocorrencias_rastreio o WHERE o.frete_id = f.id) AS qtd_ocorrencias`;
+  f.status_aprovacao, f.nf_natureza, f.nf_cfops, f.nf_operacao, (SELECT COUNT(*)::int FROM ocorrencias_rastreio o WHERE o.frete_id = f.id) AS qtd_ocorrencias`;
 async function listar(req, q = {}) {
   const params = [];
   const where = filtros(q, params);
@@ -292,26 +336,36 @@ async function listar(req, q = {}) {
 }
 
 // ---------- Faturamento do dia (Visão geral) ----------
-// As NF-e emitidas num dia (pela data de emissão): soma do valor total das notas, quantidade, clientes, peso,
-// os estados (UF do destinatário) que mais compraram e os 14 dias até ele, para comparar. Não contam notas
-// canceladas nem denegadas; a mesma nota em dois registros (dois CT-e) conta uma vez só (pela chave).
+// As NF-e de VENDA e de BONIFICAÇÃO emitidas num dia (pela data de emissão; operação pelo CFOP, ver
+// classificarOperacao): soma do valor total das notas, quantidade, clientes, peso, os estados (UF do destinatário)
+// que mais compraram e os 14 dias até ele, para comparar. Não contam notas canceladas nem denegadas, nem as de outras
+// operações (remessa, transferência, devolução...) e as sem XML (sem CFOP), que só aparecem contadas em "fora".
+// A mesma nota em dois registros conta uma vez só (pela chave).
 const hojeSaoPaulo = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 async function faturamentoDia(req, q = {}) {
   const data = /^\d{4}-\d{2}-\d{2}$/.test(String(q.data || '')) && !Number.isNaN(Date.parse(q.data)) ? String(q.data) : hojeSaoPaulo();
   const NOTAS = `n AS (SELECT DISTINCT ON (COALESCE(NULLIF(f.chave_nfe, ''), COALESCE(f.emitente_cnpj, '') || '-' || COALESCE(f.nf_serie, '') || '-' || f.numero_nf))
         f.data_emissao_nf AS dia, COALESCE(f.valor_faturado, f.valor_produtos, 0)::float AS valor, COALESCE(f.peso_bruto, f.peso_kg, 0)::float AS peso,
-        COALESCE(f.qtd_volumes, 0)::int AS volumes, UPPER(NULLIF(TRIM(f.uf), '')) AS uf, COALESCE(NULLIF(regexp_replace(COALESCE(f.cliente_documento, ''), '\\D', '', 'g'), ''), f.cliente) AS cliente
+        COALESCE(f.qtd_volumes, 0)::int AS volumes, f.nf_operacao AS operacao, UPPER(NULLIF(TRIM(f.uf), '')) AS uf, COALESCE(NULLIF(regexp_replace(COALESCE(f.cliente_documento, ''), '\\D', '', 'g'), ''), f.cliente) AS cliente
       FROM fretes f
      WHERE f.frete_principal_id IS NULL AND f.numero_nf IS NOT NULL AND f.numero_nf <> '' AND f.nf_cancelada IS NOT TRUE AND f.nf_denegada IS NOT TRUE
-       AND f.data_emissao_nf BETWEEN $1::date - 13 AND $1::date
+       AND f.nf_operacao IN ('venda', 'bonificacao') AND f.data_emissao_nf BETWEEN $1::date - 13 AND $1::date
      ORDER BY COALESCE(NULLIF(f.chave_nfe, ''), COALESCE(f.emitente_cnpj, '') || '-' || COALESCE(f.nf_serie, '') || '-' || f.numero_nf), f.id)`;
-  const [{ rows: [dia] }, { rows: ufs }, { rows: dias }] = await Promise.all([
+  const [{ rows: [dia] }, { rows: ufs }, { rows: dias }, { rows: [fora] }] = await Promise.all([
     consultaCliente(req, `WITH ${NOTAS} SELECT COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor, COALESCE(SUM(peso), 0)::float AS peso,
+        COALESCE(SUM(valor) FILTER (WHERE operacao = 'venda'), 0)::float AS valor_venda, COUNT(*) FILTER (WHERE operacao = 'venda')::int AS notas_venda,
+        COALESCE(SUM(valor) FILTER (WHERE operacao = 'bonificacao'), 0)::float AS valor_bonificacao, COUNT(*) FILTER (WHERE operacao = 'bonificacao')::int AS notas_bonificacao,
         COALESCE(SUM(volumes), 0)::int AS volumes, COUNT(DISTINCT cliente)::int AS clientes, COUNT(DISTINCT uf)::int AS estados FROM n WHERE dia = $1::date`, [data]),
     consultaCliente(req, `WITH ${NOTAS} SELECT COALESCE(uf, '?') AS uf, COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor
         FROM n WHERE dia = $1::date GROUP BY 1 ORDER BY 3 DESC, 2 DESC`, [data]),
     consultaCliente(req, `WITH ${NOTAS} SELECT to_char(d, 'YYYY-MM-DD') AS dia, COALESCE(COUNT(n.dia), 0)::int AS notas, COALESCE(SUM(n.valor), 0)::float AS valor
         FROM generate_series($1::date - 13, $1::date, INTERVAL '1 day') d LEFT JOIN n ON n.dia = d::date GROUP BY d ORDER BY d`, [data]),
+    // As notas do dia que ficaram fora: outras operações e sem XML (sem CFOP para saber a operação).
+    consultaCliente(req, `SELECT COUNT(*) FILTER (WHERE f.nf_operacao = 'outra')::int AS outras,
+        COUNT(*) FILTER (WHERE f.xml_nfe_original IS NULL AND f.nf_operacao IS NULL)::int AS sem_xml,
+        COUNT(*) FILTER (WHERE f.xml_nfe_original IS NOT NULL AND f.nf_operacao IS NULL)::int AS lendo
+      FROM fretes f WHERE f.frete_principal_id IS NULL AND f.numero_nf IS NOT NULL AND f.numero_nf <> '' AND f.nf_cancelada IS NOT TRUE AND f.nf_denegada IS NOT TRUE
+        AND f.data_emissao_nf = $1::date`, [data]),
   ]);
   const semanaPassada = dias[dias.length - 8] || null;   // o mesmo dia da semana anterior
   const top = ufs.slice(0, 5);
@@ -323,6 +377,7 @@ async function faturamentoDia(req, q = {}) {
     outros: resto.length ? { estados: resto.length, notas: resto.reduce((s, u) => s + u.notas, 0), valor: resto.reduce((s, u) => s + u.valor, 0) } : null,
     dias,
     semana_passada: semanaPassada,
+    fora,
   };
 }
 
@@ -403,4 +458,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

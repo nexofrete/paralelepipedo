@@ -46,13 +46,14 @@
           <label class="nf-f"><span>Período pela</span>${sel('nfData', '<option value="emissao">Emissão</option><option value="saida">Saída</option>')}</label>
           <label class="nf-f"><span>Ordem</span>${sel('nfOrdem', '<option value="numero">Sequência (número)</option><option value="numero_desc">Sequência, maior primeiro</option><option value="recentes">Mais recentes primeiro</option>')}</label>
         </div>
-        <details id="nfMaisFiltros" class="nf-mais"><summary>Mais filtros <small>(emitente, destinatário, série, cidade, UF, endereço de entrega)</small></summary>
+        <details id="nfMaisFiltros" class="nf-mais"><summary>Mais filtros <small>(emitente, destinatário, série, cidade, UF, operação, endereço de entrega)</small></summary>
           <div class="nf-linha-filtros">
             <label class="nf-f"><span>Emitente (nome ou CNPJ)</span><input id="nfEmit" class="cte-entrada" /></label>
             <label class="nf-f"><span>Destinatário (nome ou CNPJ)</span><input id="nfDest" class="cte-entrada" /></label>
             <label class="nf-f nf-f-curto"><span>Série</span><input id="nfSerie" class="cte-entrada" maxlength="3" /></label>
             <label class="nf-f"><span>Cidade</span><input id="nfCidade" class="cte-entrada" /></label>
             <label class="nf-f nf-f-curto"><span>UF</span><input id="nfUf" class="cte-entrada" maxlength="2" /></label>
+            <label class="nf-f"><span>Operação (pelo CFOP)</span>${sel('nfOper', '<option value="">Todas</option><option value="faturamento">Venda e bonificação</option><option value="venda">Só venda</option><option value="bonificacao">Só bonificação</option><option value="outra">Outras (remessa, transferência, devolução...)</option><option value="sem_xml">Sem XML (sem CFOP)</option>')}</label>
             <label class="nf-f"><span>Endereço de entrega</span>${sel('nfEnd', '<option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option>')}</label>
           </div></details>
       </div>
@@ -63,7 +64,7 @@
     ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf', 'nfTransp'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
     try { const o = localStorage.getItem('notas.ordem'); if (o && [...$('nfOrdem').options].some((x) => x.value === o)) $('nfOrdem').value = o; } catch { /* sem armazenamento */ }
     $('nfOrdem').addEventListener('change', () => { try { localStorage.setItem('notas.ordem', $('nfOrdem').value); } catch { /* sem armazenamento */ } });
-    ['nfData', 'nfSit', 'nfEnd', 'nfOrdem', 'nfEntrega'].forEach((id) => $(id).addEventListener('change', carregar));
+    ['nfData', 'nfSit', 'nfEnd', 'nfOrdem', 'nfEntrega', 'nfOper'].forEach((id) => $(id).addEventListener('change', carregar));
     // Ações que vieram da antiga "Todos os registros".
     $('nfNovoRegistro')?.addEventListener('click', () => document.getElementById('btnNovoRegistro')?.click());
     $('nfExcluir')?.addEventListener('click', excluirMarcadas);
@@ -92,7 +93,7 @@
     });
   }
   const filtros = () => new URLSearchParams({ busca: $('nfBusca').value.trim(), emitente: $('nfEmit').value.trim(), destinatario: $('nfDest').value.trim(), serie: $('nfSerie').value.trim(),
-    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value, ordem: $('nfOrdem').value, entrega: $('nfEntrega').value, transportadora: $('nfTransp').value.trim() });
+    cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value, ordem: $('nfOrdem').value, entrega: $('nfEntrega').value, transportadora: $('nfTransp').value.trim(), operacao: $('nfOper').value });
   async function carregar() {
     const r = await apiFetch(`/api/notas?${filtros()}`);
     const j = await r.json().catch(() => ({}));
@@ -184,7 +185,8 @@
     if (f.de) {
       ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfTransp'].forEach((id) => { $(id).value = ''; });
       $('nfEntrega').value = ''; $('nfEnd').value = ''; $('nfSit').value = 'autorizada'; $('nfData').value = 'emissao';
-      $('nfUf').value = f.uf || ''; if (f.uf) $('nfMaisFiltros').open = true;
+      $('nfUf').value = f.uf || ''; $('nfOper').value = f.operacao || '';
+      if (f.uf || f.operacao) $('nfMaisFiltros').open = true;
       $('nfPer').value = 'custom'; $('nfPer').closest('.periodo')?.classList.remove('periodo-tudo');
       $('nfDe').value = f.de; $('nfAte').value = f.ate || f.de;
     }
@@ -262,6 +264,7 @@
       ${linha('Emissão / saída', `${dia(n.data_emissao_nf)} / ${n.data_saida ? dataHora(n.data_saida) : '—'}`)}
       ${linha('Valor dos produtos / total da nota', `${moeda(n.valor_produtos)} / ${moeda(n.valor_faturado)}`)}
       ${linha('Peso bruto / líquido', `${kg(n.peso_bruto)} / ${kg(n.peso_liquido)}`)}${linha('Volumes', n.qtd_volumes ?? '—')}
+      ${linha('Natureza da operação / CFOP', `${esc(n.nf_natureza || '—')}${(n.nf_cfops || []).length ? ` · CFOP ${esc(n.nf_cfops.join(', '))}` : ''}${n.nf_operacao ? ` <small style="color:var(--texto-fraco);">(${({ venda: 'venda', bonificacao: 'bonificação', outra: 'não entra no faturamento' })[n.nf_operacao] || esc(n.nf_operacao)})</small>` : ''}`)}
       ${linha('Pedido / transportadora da nota', `${esc(n.numero_pedido || '—')} / ${esc(n.transportadora_nfe || '—')}`)}
       ${linha('Transportadora do CT-e / CT-e', n.numero_cte || n.chave_cte ? `${esc(n.transportadora || '—')} / CT-e ${esc(n.numero_cte || '—')}${n.data_emissao_cte ? ` de ${dia(n.data_emissao_cte)}` : ''}${n.valor_total_cte != null ? ` · ${moeda(n.valor_total_cte)}` : ''}` : 'sem CT-e')}
       ${linha('Entrega', celulaSituacaoEntrega(n))}

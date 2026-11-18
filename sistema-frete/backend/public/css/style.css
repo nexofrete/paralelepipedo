@@ -1973,3 +1973,11 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 @media (max-width: 1500px) { .vg-fat-grade { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .vg-fat-grade > :last-child { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .vg-fat-grade { grid-template-columns: 1fr; } .vg-fat-uf { grid-template-columns: 1fr auto; } .vg-fat-uf-trilho { grid-column: 1 / -1; grid-row: 2; } }
 .vg-fat-col-rot.fim { left: auto; right: 0; transform: none; }
+
+.vg-fat-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.vg-fat-split div { border: 1px solid var(--borda); border-radius: var(--raio); padding: 7px 11px; min-width: 0; }
+.vg-fat-split-rot { display: block; font-size: 11px; color: var(--texto-fraco); }
+.vg-fat-split b { display: block; font-size: 13.5px; color: var(--texto); font-variant-numeric: tabular-nums; }
+.vg-fat-split small { font-size: 11px; color: var(--texto-fraco); white-space: nowrap; }
+.vg-fat-fora { margin-top: 8px; font-size: 11.5px; color: var(--texto-fraco); line-height: 1.45; }
+.vg-fat-fora a { color: var(--azul); }

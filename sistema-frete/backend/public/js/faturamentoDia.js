@@ -218,7 +218,7 @@
     const nomeEmp = emp.nome_fantasia || emp.razao_social || '';
     const W = 1080; const P = 64;
     const nEst = d.estados.length;
-    const H = 704 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 392 + 110;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
+    const H = 704 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 392 + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
     const esc2 = 2;
     const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
     const c = cv.getContext('2d'); c.scale(esc2, esc2);
@@ -337,10 +337,17 @@
     }
     txt(media ? `linha tracejada: média dos dias com nota, ${moeda(media)}` : '', P, base + 84, { tam: 17, cor: COR.fraco });
 
-    // Rodapé
+    // Rodapé: o que foi somado e quando (à esquerda); "gerado pelo" e a marca Nexofrete (à direita).
     const agora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    c.fillStyle = COR.borda; c.fillRect(P, H - 70, W - 2 * P, 1.5);
-    txt(`NF-e de venda e bonificação emitidas no dia (pelo CFOP), sem canceladas e denegadas · gerado em ${agora}`, P, H - 34, { tam: 16, cor: COR.fraco, max: W - 2 * P });
+    c.fillStyle = COR.borda; c.fillRect(P, H - 92, W - 2 * P, 1.5);
+    const marca = await carregarImg('img/nexofrete-horizontal-fundo-claro.svg');
+    const hM = 40; const wM = marca ? (marca.width / marca.height) * hM : 0;
+    const xM = W - P - (marca ? wM : 130);
+    txt('NF-e de venda e bonificação emitidas no dia (pelo CFOP),', P, H - 52, { tam: 16, cor: COR.fraco, max: xM - P - 130 });
+    txt(`sem canceladas e denegadas · gerado em ${agora}`, P, H - 28, { tam: 16, cor: COR.fraco, max: xM - P - 130 });
+    txt('gerado pelo', xM - 12, H - 36, { tam: 16, cor: COR.fraco, alinhar: 'right' });
+    if (marca) c.drawImage(marca, xM, H - 70, wM, hM);
+    else txt('nexofrete', W - P, H - 36, { tam: 28, peso: 800, cor: COR.texto, alinhar: 'right' });
     return cv;
   }
 

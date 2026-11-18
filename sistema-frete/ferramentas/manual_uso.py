@@ -116,7 +116,7 @@ def parte_uso(g):
         'sistema mas não está na lista colada.',
         '<b>Imagem para o WhatsApp</b>: o botão <b>Imagem</b> (ao lado das datas) gera um PNG em pé, com fundo claro e letras '
         'grandes para ler no celular: logo e nome da empresa, dia, total, comparação com a semana anterior, notas, clientes, '
-        'ticket médio, peso, venda e bonificação, os 5 estados e os últimos 14 dias. Na janela: <b>Copiar imagem</b> e colar '
+        'ticket médio, peso, venda e bonificação, os 5 estados e os últimos 14 dias; no rodapé, "gerado pelo" e a marca Nexofrete. Na janela: <b>Copiar imagem</b> e colar '
         '(Ctrl+V) na conversa do WhatsApp Web ou do computador; <b>Compartilhar</b> (no celular e no Windows) e escolher o '
         'WhatsApp; ou <b>Baixar PNG</b> e anexar na conversa. Copiar só aparece quando o sistema é aberto por https ou no '
         'próprio computador do servidor (regra do navegador); senão use Baixar.',

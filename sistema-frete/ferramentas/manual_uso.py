@@ -461,7 +461,8 @@ def parte_uso(g):
         '<b>Dois cliques</b> na linha abrem o documento. Cada linha tem o botão <b>DANFE</b> (abre o DANFE da nota para imprimir '
         'ou salvar em PDF) e a <b>chave de acesso</b> resumida (clique para copiar a chave inteira).',
         '<b>DANFE em folhas A4, no layout dos ERPs</b>: canhoto com o destinatário, o endereço, a emissão e o valor total (com a '
-        'linha de corte); quadro do emitente com o <b>logo da empresa</b> (o de Cadastros » Empresa, só nas notas emitidas por ela); '
+        'linha de corte); quadro do emitente com o <b>logo da empresa</b> (o de Cadastros » Empresa, só nas notas emitidas por ela; '
+        'logo largo, com o nome ao lado do símbolo, vai em cima do endereço, e logo quadrado fica ao lado); '
         'quadro DANFE com Saída/Entrada, "FL 1 / 3", número e série; código de barras e chave; natureza e protocolo; inscrições; '
         'destinatário (com o indicador da IE); fatura (número, valor original, desconto e líquido); cálculo do imposto; '
         'transportador/volumes; produtos (CST com a origem, ex.: 100). Os <b>dados adicionais ficam no rodapé de todas as '

@@ -826,4 +826,4 @@ async function revisarCtesDeOutraTransportadora() {
   }
 }
 
-module.exports = { CAMPOS_DO_CTE, ehTransportadoraDoRedespacho, gravarDadosCte, revisarCtesDeOutraTransportadora, definirTransportadoraQueLevou, desfazerTransportadoraQueLevou, calcularRedespachosSemCalculo, reconciliarCtesSoltos, numerosDasChaves, acharPrincipal, gravarCteAdicional, recalcularFilhos, vincularCtesAntigos, percentualReentrega, cancelarCte };
+module.exports = { atualizarAlertaNota, CAMPOS_DO_CTE, ehTransportadoraDoRedespacho, gravarDadosCte, revisarCtesDeOutraTransportadora, definirTransportadoraQueLevou, desfazerTransportadoraQueLevou, calcularRedespachosSemCalculo, reconciliarCtesSoltos, numerosDasChaves, acharPrincipal, gravarCteAdicional, recalcularFilhos, vincularCtesAntigos, percentualReentrega, cancelarCte };

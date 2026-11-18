@@ -150,7 +150,9 @@ def parte_uso(g):
         '<b>NF-e que já está no sistema</b>: enviar o XML de novo não duplica a nota. O sistema completa o registro com o '
         'XML (guarda o XML se ele faltava, corrige o número, a data de emissão, a série e o emitente pelo XML, preenche '
         'cliente, UF, valor e a operação pelo CFOP) e diz onde a nota está ("registro #, NF e data") e, se for o caso, por que '
-        'ela não aparece: guardada dentro de outro registro, cancelada ou denegada. Use isso quando uma nota que está no '
+        'ela não aparece: cancelada ou denegada. Nota que tinha ficado guardada como "CT-e a mais" dentro de outro registro '
+        '(erro corrigido na 1.73.0) volta a ser um registro próprio, com o CT-e dela; se for a mesma nota do registro, a NF-e '
+        'passa para ele. O sistema também faz essa correção sozinho, em todas as notas, quando o servidor liga. Use isso quando uma nota que está no '
         'ERP não aparece na Consulta de notas ou no Faturamento do dia (por exemplo, nota que entrou pela planilha do ERP com '
         'outra data).',
         '<b>Mesmo pedido em mais de uma nota</b> (refaturamento por troca de tabela de preço, pedido dividido): cada NF-e '

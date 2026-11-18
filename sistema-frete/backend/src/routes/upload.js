@@ -25,6 +25,15 @@ async function notaJaImportada(dados, xmlString) {
       emitente_cnpj, nf_serie, nf_operacao, frete_principal_id, cte_cancelado, nf_cancelada, nf_denegada, status, (xml_nfe_original IS NULL) AS sem_xml
     FROM fretes WHERE chave_nfe = $1`, [dados.chave_nfe]);
   if (!f) return null;
+  // Guardada como "CT-e a mais" de outro registro (importação antiga): volta a ser registro próprio (ou vai para o principal).
+  let solta = null;
+  if (f.frete_principal_id) {
+    solta = await require('../notasFiscais').soltarNotasDentroDeOutroRegistro({ id: f.id }).then((r) => r[0] || null).catch((e) => { console.error('[soltar nota]', e.message); return null; });
+    if (solta) {
+      const { rows: [g] } = await pool.query('SELECT id, numero_nf, to_char(data_emissao_nf, \'YYYY-MM-DD\') AS data_iso FROM fretes WHERE chave_nfe = $1', [dados.chave_nfe]);
+      if (g) { f.id = g.id; f.frete_principal_id = null; f.data_iso = g.data_iso; }
+    }
+  }
   const br = (iso) => (iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : 'vazia');
   const semZeros = (v) => String(v || '').replace(/^0+/, '');
   const sets = []; const vals = [f.id]; const ajustes = [];
@@ -48,6 +57,7 @@ async function notaJaImportada(dados, xmlString) {
     if (!f.nf_operacao) ajustes.push('operação pelo CFOP');
   }
   const motivos = [];
+  if (solta) ajustes.unshift(solta.acao === 'soltou' ? `estava guardada como CT-e a mais do registro #${solta.principal} e voltou a ser um registro próprio` : `estava guardada como CT-e a mais e passou para o registro da nota (#${solta.principal})`);
   if (f.frete_principal_id) motivos.push(`ela está guardada dentro do registro #${f.frete_principal_id} (como CT-e a mais), por isso não aparece sozinha na lista`);
   if (f.nf_denegada) motivos.push('está como DENEGADA (não entra no faturamento)');
   else if (f.nf_cancelada) motivos.push('está como CANCELADA, porque o cancelamento dela foi importado (não entra no faturamento)');
@@ -113,7 +123,8 @@ const tratar_nfe = async (req, res) => {
     }
     if (!idExistente && dados.numero_nf) {
       const r = await pool.query(
-        'SELECT id FROM fretes WHERE numero_nf = $1 AND chave_nfe IS NULL',
+        // Só o registro da nota (nunca a linha de um "CT-e a mais", que fica dentro de outro registro).
+        'SELECT id FROM fretes WHERE numero_nf = $1 AND chave_nfe IS NULL AND frete_principal_id IS NULL ORDER BY id LIMIT 1',
         [dados.numero_nf]
       );
       if (r.rows.length > 0) idExistente = r.rows[0].id;
@@ -255,7 +266,7 @@ const tratar_nfe = async (req, res) => {
     ctesVinculados.reconciliarCtesSoltos().catch(() => {});
     res.status(201).json({ mensagem: `NF-e importada com sucesso${comPlanilha ? ' (com os dados da planilha do ERP que estavam esperando)' : ''}.${jaCancelada ? ' ⚠ Essa NF-e já tinha o cancelamento importado: entrou como CANCELADA.' : ''}${nfc?.denegada ? ' ⚠ NF-e com USO DENEGADO pela SEFAZ: marcada como DENEGADA (não gera frete).' : ''}`, frete: resultado.rows[0] });
   } catch (err) {
-    console.error(err);
+    if (err.code !== '23505') console.error(err);   // nota enviada de novo não é erro do servidor
     if (err.code === '23505') {
       const j = await notaJaImportada(dadosNf, xmlNf).catch((e) => { console.error('[nfe já importada]', e.message); return null; });
       if (!j) return res.status(409).json({ erro: 'Essa NF-e (mesma chave de acesso) já foi importada antes.' });

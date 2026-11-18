@@ -133,6 +133,8 @@ async function completarTodos() {
     }
   } catch (err) { console.error('[notas] operação:', err.message); }
   if (o) console.log(`[notas] ${o} nota(s) com a operação (venda, bonificação ou outra) lida do CFOP do XML.`);
+  const soltas = await soltarNotasDentroDeOutroRegistro().catch((err) => { console.error('[notas] notas dentro de outro registro:', err.message); return []; });
+  if (soltas.length) console.log(`[notas] ${soltas.length} NF-e que estavam guardadas como CT-e a mais de outro registro voltaram para a lista.`);
   // Notas já completas mas com o endereço lido na versão antiga: lê o redespacho e o local de entrega de novo.
   let e = 0;
   try {
@@ -337,6 +339,50 @@ async function listar(req, q = {}) {
   return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows) };
 }
 
+// ---------- NF-e guardada dentro de outro registro ----------
+// Até a 1.73.0, a NF-e que chegava podia ser gravada na linha de um "CT-e a mais" (que fica dentro de outro registro)
+// com o mesmo número de NF e sem chave, e sumia da lista. A linha de CT-e a mais copia a NF do registro principal; então:
+//  - NF-e com OUTRO número que a do principal (ou principal que já tem a sua NF-e): volta a ser um registro próprio,
+//    com o CT-e que estava nela (o CT-e é dela), e o alerta do principal é recalculado;
+//  - mesma NF e o principal sem a NF-e: a NF-e (chave e XML) passa para o registro principal.
+// f: { id } (uma linha) ou nada (todas). Devolve [{ id, principal, acao }].
+async function soltarNotasDentroDeOutroRegistro(f = {}) {
+  const params = []; let extra = '';
+  if (f.id) { params.push(f.id); extra = ` AND c.id = $${params.length}`; }
+  const { rows } = await pool.query(`SELECT c.id, c.numero_nf, c.chave_nfe, c.chave_cte, c.frete_principal_id, p.numero_nf AS nf_principal, p.chave_nfe AS chave_principal
+      FROM fretes c JOIN fretes p ON p.id = c.frete_principal_id
+     WHERE c.chave_nfe IS NOT NULL${extra} ORDER BY c.id LIMIT 500`, params);
+  const feitos = [];
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  for (const r of rows) {
+    const mesmaNf = String(r.numero_nf || '').replace(/^0+/, '') === String(r.nf_principal || '').replace(/^0+/, '');
+    if (!mesmaNf || r.chave_principal) {
+      await pool.query(`UPDATE fretes SET frete_principal_id = NULL, vinculo_cte = NULL, alerta_transportadora_diferente = FALSE, valor_total_calculado = NULL,
+          status = CASE WHEN status IN ('Faturado', 'Cancelado', 'Não cobrado') THEN status ELSE 'Pendente' END,
+          observacoes = CONCAT_WS(E'\n', NULLIF(observacoes, ''), $2::text), atualizado_em = NOW() WHERE id = $1`,
+      [r.id, `NF-e ${r.numero_nf} estava guardada como CT-e a mais do registro #${r.frete_principal_id} (NF ${r.nf_principal || '?'}); voltou a ser um registro próprio em ${hoje}.`]);
+      await completar(r.id).catch(() => {});
+      if (r.chave_cte) await require('./calculoFrete').calcularEGravar(r.id, 'correcao-nota').catch(() => {});
+      await require('./ctesVinculados').atualizarAlertaNota(pool, r.frete_principal_id).catch(() => {});
+      feitos.push({ id: r.id, principal: r.frete_principal_id, acao: 'soltou' });
+    } else {
+      const c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        const { rows: [x] } = await c.query('SELECT chave_nfe, xml_nfe_original FROM fretes WHERE id = $1 FOR UPDATE', [r.id]);
+        await c.query('UPDATE fretes SET chave_nfe = NULL, xml_nfe_original = NULL WHERE id = $1', [r.id]);
+        await c.query(`UPDATE fretes SET chave_nfe = $2, xml_nfe_original = COALESCE($3, xml_nfe_original),
+            observacoes = CONCAT_WS(E'\n', NULLIF(observacoes, ''), $4::text), atualizado_em = NOW() WHERE id = $1`,
+        [r.frete_principal_id, x.chave_nfe, x.xml_nfe_original, `NF-e ${r.numero_nf} estava gravada na linha de um CT-e a mais (#${r.id}); passou para este registro em ${hoje}.`]);
+        await c.query('COMMIT');
+      } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; } finally { c.release(); }
+      await completar(r.frete_principal_id).catch(() => {});
+      feitos.push({ id: r.frete_principal_id, principal: r.frete_principal_id, acao: 'principal' });
+    }
+  }
+  return feitos;
+}
+
 // ---------- Notas substituídas pelo mesmo pedido ----------
 // Até a versão 1.73.0, a NF-e que chegava com o número de pedido de um registro que já tinha outra NF-e era escrita
 // POR CIMA dele (pedido faturado em duas notas: a segunda apagava a primeira). Pelo registro de auditoria acha as
@@ -482,4 +528,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { notasSubstituidas, classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { soltarNotasDentroDeOutroRegistro, notasSubstituidas, classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

@@ -61,9 +61,14 @@ const tratar_nfe = async (req, res) => {
     // Procura uma linha já existente para juntar com esta NF-e: primeiro pelo
     // número de pedido (se veio um), senão pelo número da NF (caso o CT-e
     // correspondente já tenha sido importado antes e criado a linha).
+    // Pelo pedido, só junta num registro que ainda NÃO tem NF-e (criado pelo CT-e, pela planilha do ERP ou à mão)
+    // e cuja NF é esta ou não foi informada. Pedido faturado em várias notas (ex.: 195963 e 195965 do pedido 213351):
+    // cada nota é um registro; antes a segunda escrevia por cima da primeira e a primeira sumia.
     let idExistente = null;
     if (numeroPedido) {
-      const r = await pool.query('SELECT id FROM fretes WHERE numero_pedido = $1', [numeroPedido]);
+      const r = await pool.query(`SELECT id FROM fretes WHERE numero_pedido = $1 AND chave_nfe IS NULL AND frete_principal_id IS NULL
+          AND (NULLIF(TRIM(numero_nf), '') IS NULL OR LTRIM(numero_nf, '0') = LTRIM($2, '0'))
+        ORDER BY (LTRIM(COALESCE(numero_nf, ''), '0') = LTRIM($2, '0')) DESC, id LIMIT 1`, [numeroPedido, String(dados.numero_nf || '')]);
       if (r.rows.length > 0) idExistente = r.rows[0].id;
     }
     if (!idExistente && dados.numero_nf) {
@@ -182,6 +187,18 @@ const tratar_nfe = async (req, res) => {
       detalhes: `Importou NF-e ${dados.numero_nf || '?'} (novo registro #${resultado.rows[0].id})`,
       registroId: resultado.rows[0].id,
     });
+    // Outra NF-e do mesmo pedido já no sistema (refaturamento por troca de tabela de preço, pedido dividido...):
+    // cada nota fica no seu registro e as duas ganham uma observação apontando uma para a outra.
+    if (numeroPedido) {
+      const { rows: irmas } = await pool.query(`SELECT id, numero_nf FROM fretes WHERE numero_pedido = $1 AND id <> $2 AND chave_nfe IS NOT NULL
+          AND frete_principal_id IS NULL AND LTRIM(COALESCE(numero_nf, ''), '0') <> LTRIM($3, '0') ORDER BY id`, [numeroPedido, resultado.rows[0].id, String(dados.numero_nf || '')]).catch(() => ({ rows: [] }));
+      const anotar = (id, texto) => pool.query(`UPDATE fretes SET observacoes = CASE WHEN POSITION($2 IN COALESCE(observacoes, '')) > 0 THEN observacoes
+          ELSE CONCAT_WS(E'\\n', NULLIF(observacoes, ''), $2::text) END WHERE id = $1`, [id, texto]).catch(() => {});
+      for (const i of irmas) {
+        await anotar(resultado.rows[0].id, `Mesmo pedido ${numeroPedido} da NF ${i.numero_nf} (refaturamento ou pedido em mais de uma nota).`);
+        await anotar(i.id, `Mesmo pedido ${numeroPedido} da NF ${dados.numero_nf} (refaturamento ou pedido em mais de uma nota).`);
+      }
+    }
     const comPlanilha = await aplicarPendenteDaNota(resultado.rows[0].id);
     const jaCancelada = await aplicarCancelamentoGuardado(resultado.rows[0].id, dados.chave_nfe);
     await require('../trocasNota').aplicarPendentesDaNota(dados.numero_nf).catch(() => {});

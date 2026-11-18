@@ -335,6 +335,26 @@ async function listar(req, q = {}) {
   return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows) };
 }
 
+// ---------- Notas substituídas pelo mesmo pedido ----------
+// Até a versão 1.73.0, a NF-e que chegava com o número de pedido de um registro que já tinha outra NF-e era escrita
+// POR CIMA dele (pedido faturado em duas notas: a segunda apagava a primeira). Pelo registro de auditoria acha as
+// notas que sumiram assim e ainda não voltaram (a nota que está no lugar, o pedido e o CT-e que ficou no registro).
+async function notasSubstituidas(req) {
+  if (req.usuario?.perfil === 'cliente') return [];
+  const { rows } = await pool.query(`WITH imp AS (
+        SELECT registro_id, criado_em, substring(detalhes from 'Importou NF-e ([0-9]+)') AS nf, detalhes LIKE '%e vinculou ao registro #%' AS vinculou
+          FROM auditoria WHERE acao = 'importar_nfe' AND registro_id IS NOT NULL AND detalhes LIKE 'Importou NF-e %')
+      SELECT DISTINCT ON (LTRIM(a.nf, '0')) a.nf AS nf_sumiu, b.nf AS nf_no_lugar, b.registro_id, b.criado_em AS quando,
+             f.numero_pedido, f.numero_cte, f.numero_nf AS nf_atual
+        FROM imp a JOIN imp b ON b.registro_id = a.registro_id AND b.vinculou AND b.criado_em > a.criado_em AND LTRIM(b.nf, '0') <> LTRIM(a.nf, '0')
+        LEFT JOIN fretes f ON f.id = b.registro_id
+       WHERE a.nf IS NOT NULL AND b.nf IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM fretes x WHERE LTRIM(x.numero_nf, '0') = LTRIM(a.nf, '0') AND x.chave_nfe IS NOT NULL)
+       ORDER BY LTRIM(a.nf, '0'), b.criado_em DESC
+       LIMIT 500`);
+  return rows;
+}
+
 // ---------- Faturamento do dia (Visão geral) ----------
 // As NF-e de VENDA e de BONIFICAÇÃO emitidas num dia (pela data de emissão; operação pelo CFOP, ver
 // classificarOperacao): soma do valor total das notas, quantidade, clientes, peso, os estados (UF do destinatário)
@@ -458,4 +478,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { notasSubstituidas, classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

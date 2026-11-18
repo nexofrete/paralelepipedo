@@ -22,6 +22,10 @@ router.get('/', autenticar, async (req, res) => {
   try { res.json(await nf.listar(req, req.query)); } catch (err) { erro(res, err, 'Erro ao listar as notas.'); }
 });
 // Faturamento do dia (Visão geral): ?data=AAAA-MM-DD (padrão: hoje).
+// Notas que sumiram por terem sido escritas por cima por outra nota do mesmo pedido (corrigido na 1.73.0).
+router.get('/substituidas', autenticar, async (req, res) => {
+  try { res.json(await nf.notasSubstituidas(req)); } catch (err) { erro(res, err, 'Erro ao procurar as notas substituídas.'); }
+});
 router.get('/faturamento-dia', autenticar, async (req, res) => {
   try { res.json(await nf.faturamentoDia(req, req.query)); } catch (err) { erro(res, err, 'Erro ao calcular o faturamento do dia.'); }
 });

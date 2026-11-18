@@ -37,6 +37,7 @@
       } catch { erros.push(`${arq.name}: falha de conexão`); }
     }
     if (ok) mostrarAlerta(`${ok} nota(s) importada(s).`, { tipo: 'sucesso' });
+    avisoSubstituidas(true).catch(() => {});
     if (erros.length) mostrarAlerta(erros.join('\n'), { tipo: 'erro' });
     carregar().catch(() => {});
   }
@@ -75,6 +76,7 @@
             <label class="nf-f"><span>Endereço de entrega</span>${sel('nfEnd', '<option value="">Todos</option><option value="conferir">⚠ A conferir</option><option value="redespacho">Com redespacho</option><option value="local">Local de entrega diferente</option><option value="manual">Corrigidos à mão</option>')}</label>
           </div></details>
       </div>
+      <div id="nfSubstituidas" class="nf-substituidas oculto"></div>
       <div id="nfResumo" class="nf-resumo"></div>
       <div class="painel nf-rolagem-painel"><div id="nfTabela" class="nf-rolagem"></div></div>`;
     Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
@@ -92,12 +94,16 @@
       if (e.target.closest('input, button, a')) return;
       const tr = e.target.closest('tr[data-nf-id]'); if (tr) detalhe(Number(tr.dataset.nfId));
     });
+    const escolherXmls = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = '.xml,.zip'; inp.multiple = true;
+      inp.addEventListener('change', () => { if (inp.files?.length) enviarXmls([...inp.files]); });
+      inp.click();
+    };
+    $('nfSubstituidas').addEventListener('click', (e) => { if (e.target.closest('[data-nf-enviar-xml]')) escolherXmls(); });
     $('nfTabela').addEventListener('click', (e) => {
       if (e.target.closest('[data-nf-enviar-xml]')) {
-        const inp = document.createElement('input');
-        inp.type = 'file'; inp.accept = '.xml,.zip'; inp.multiple = true;
-        inp.addEventListener('change', () => { if (inp.files?.length) enviarXmls([...inp.files]); });
-        inp.click();
+        escolherXmls();
         return;
       }
       const b = e.target.closest('[data-nf-ver]'); if (b) { detalhe(Number(b.dataset.nfVer)); return; }
@@ -119,7 +125,24 @@
   }
   const filtros = () => new URLSearchParams({ busca: $('nfBusca').value.trim(), emitente: $('nfEmit').value.trim(), destinatario: $('nfDest').value.trim(), serie: $('nfSerie').value.trim(),
     cidade: $('nfCidade').value.trim(), uf: $('nfUf').value.trim(), data: $('nfData').value, de: $('nfDe').value, ate: $('nfAte').value, situacao: $('nfSit').value, endereco: $('nfEnd').value, ordem: $('nfOrdem').value, entrega: $('nfEntrega').value, transportadora: $('nfTransp').value.trim(), operacao: $('nfOper').value });
+  // Aviso das notas que sumiram por outra nota do mesmo pedido (até a 1.73.0): lista e botão para enviar os XML de novo.
+  let substituidasEm = 0;
+  async function avisoSubstituidas(forcar) {
+    const el = $('nfSubstituidas'); if (!el) return;
+    if (!forcar && Date.now() - substituidasEm < 120000) return;
+    substituidasEm = Date.now();
+    const r = await apiFetch('/api/notas/substituidas').catch(() => null);
+    const lista = r && r.ok ? await r.json().catch(() => []) : [];
+    if (!lista.length) { el.classList.add('oculto'); el.innerHTML = ''; return; }
+    const item = (x) => `<li><b>NF ${esc(x.nf_sumiu)}</b> — no lugar dela ficou a NF ${esc(x.nf_atual || x.nf_no_lugar)}${x.numero_pedido ? ` (pedido ${esc(x.numero_pedido)})` : ''}${x.numero_cte ? `; o CT-e ${esc(x.numero_cte)} ficou nesse registro: confira de qual das duas notas ele é` : ''}.</li>`;
+    el.innerHTML = `<div class="nf-substituidas-topo"><div><b>⚠ ${lista.length} nota${lista.length > 1 ? 's sumiram' : ' sumiu'} da lista por um erro já corrigido:</b> quando o mesmo pedido tinha mais de uma nota (refaturamento por troca de tabela de preço, pedido dividido), a nota importada depois era gravada por cima da anterior. Envie de novo o XML ${lista.length > 1 ? 'dessas notas' : 'dessa nota'} (a pasta inteira também serve: as que já estão no sistema são puladas).</div>
+      ${podeEnviarXml() ? '<button type="button" class="btn btn-secundario" data-nf-enviar-xml style="width:auto; padding:5px 11px; font-size:12.5px;">⬆ Enviar os XML</button>' : ''}</div>
+      <ul>${lista.slice(0, 30).map(item).join('')}</ul>${lista.length > 30 ? `<div>… e mais ${lista.length - 30}: ${lista.slice(30).map((x) => esc(x.nf_sumiu)).join(', ')}.</div>` : ''}`;
+    el.classList.remove('oculto');
+  }
+
   async function carregar() {
+    avisoSubstituidas().catch(() => {});
     const r = await apiFetch(`/api/notas?${filtros()}`);
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { $('nfTabela').innerHTML = `<div style="color:var(--vermelho);">${esc(j.erro || 'Erro.')}</div>`; return; }

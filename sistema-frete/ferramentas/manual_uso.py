@@ -139,6 +139,11 @@ def parte_uso(g):
         '<b>Não é preciso descompactar</b>: suba o .zip como veio.',
         '"Selecionar uma pasta inteira" importa todos os XML de uma pasta de uma vez.',
         'O "Número do pedido" é opcional: serve para forçar que NF-e e CT-e caiam no mesmo registro.',
+        '<b>Mesmo pedido em mais de uma nota</b> (refaturamento por troca de tabela de preço, pedido dividido): cada NF-e '
+        'fica no seu próprio registro, e as duas ganham a observação "Mesmo pedido X da NF Y". A nota só se junta a um '
+        'registro do mesmo pedido que ainda não tem NF-e (criado pelo CT-e, pela planilha do ERP ou lançado à mão). Até a '
+        'versão 1.73.0, a nota importada depois era gravada por cima da anterior, e a anterior sumia da lista. A Consulta '
+        'de notas (403) mostra um aviso com as notas que sumiram assim, com o botão "Enviar os XML" para trazê-las de volta.',
         '<b>Retorno da SEFAZ</b> (o recibo que o ERP salva como "-ret.xml"): é reconhecido, mas não tem dados da nota, '
         'então não cria nada — só aparece como "Recibo da SEFAZ... nada a importar". Se a SEFAZ informar que a nota ou o '
         'CT-e foi cancelado ou denegado, o sistema anota isso nas observações do registro.',
@@ -399,7 +404,9 @@ def parte_uso(g):
         'X" ou "Faltam N notas: X a Y" (a nota não entrou no sistema ou foi inutilizada), e o quadro <b>Faltando na sequência</b> '
         'mostra o total. Na própria linha amarela, o botão <b>Enviar o XML</b> (para quem pode enviar XML) abre a escolha do '
         'arquivo: escolha o XML da nota que falta (ou um .zip com os XML) e ela é importada ali mesmo, como no Enviar XML; a '
-        'linha amarela some quando a nota entra. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
+        'linha amarela some quando a nota entra. Se a nota sumiu porque outra nota do mesmo pedido foi gravada por cima dela '
+        '(erro corrigido na 1.73.0), o aviso laranja no alto da Consulta lista essas notas, diz qual nota ficou no lugar e '
+        'se há um CT-e no registro para conferir de qual das duas notas ele é. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
         'primeiro" ou "mais recentes primeiro".',
         'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',

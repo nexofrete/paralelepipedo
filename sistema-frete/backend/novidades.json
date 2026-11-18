@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Correção: NF-e com o mesmo número de pedido de outra já importada (refaturamento por troca de tabela de preço, pedido dividido) era gravada por cima da anterior, que sumia da lista. Agora cada nota fica no seu registro, com a observação \"Mesmo pedido X da NF Y\". A Consulta de notas avisa quais notas sumiram assim, para enviar os XML de novo."},
         {"area": "Notas fiscais", "texto": "Consulta de notas: na linha \"Falta a nota\" da sequência, o botão \"Enviar o XML\" importa ali mesmo o XML (ou um .zip) da nota que não entrou no sistema."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia conta só as notas de venda e de bonificação, pelo CFOP dos itens (bonificação: 5910/6910 ou natureza \"bonificação\"), com a divisão entre venda e bonificação; remessas, transferências, devoluções e notas sem XML ficam de fora e aparecem contadas embaixo. Consulta de notas ganhou o filtro Operação e o detalhe mostra a natureza e os CFOP."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia na Visão geral: total das NF-e emitidas no dia, comparação com o mesmo dia da semana anterior, notas, clientes, ticket médio e peso, os 5 estados que mais compraram e o gráfico dos últimos 14 dias. Clique num estado ou num dia para ver as notas."},

@@ -36,10 +36,15 @@ async function notaJaImportada(dados, xmlString) {
   if (!f.uf && dados.uf) por('uf', dados.uf, 'UF');
   if (f.valor_faturado == null && dados.valor_faturado != null) por('valor_faturado', dados.valor_faturado, 'valor');
   if (sets.length) await pool.query(`UPDATE fretes SET ${sets.join(', ')}, atualizado_em = NOW() WHERE id = $1`, vals);
-  // Série, emitente, operação (CFOP) e endereço: relidos do XML quando faltam.
-  if (sets.length || !f.emitente_cnpj || !f.nf_serie || !f.nf_operacao) {
+  // Série, emitente, operação (CFOP) e endereço: relidos do XML quando faltam ou diferem (ex.: série "001" da planilha).
+  let doXml = {};
+  try { doXml = require('../notasFiscais').dadosDaNota(xmlString); } catch { /* XML ilegível */ }
+  const serieDifere = doXml.nf_serie && String(f.nf_serie || '') !== String(doXml.nf_serie);
+  const emitDifere = doXml.emitente_cnpj && String(f.emitente_cnpj || '').replace(/\D/g, '') !== doXml.emitente_cnpj;
+  if (sets.length || serieDifere || emitDifere || !f.nf_operacao) {
     await require('../notasFiscais').completar(f.id).catch(() => {});
-    if (!f.emitente_cnpj || !f.nf_serie) ajustes.push('emitente e série');
+    if (serieDifere) ajustes.push(`série ${f.nf_serie || 'vazia'} para ${doXml.nf_serie}`);
+    if (emitDifere) ajustes.push('emitente');
     if (!f.nf_operacao) ajustes.push('operação pelo CFOP');
   }
   const motivos = [];

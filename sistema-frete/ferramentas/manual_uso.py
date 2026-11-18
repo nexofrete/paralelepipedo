@@ -148,8 +148,8 @@ def parte_uso(g):
         '"Selecionar uma pasta inteira" importa todos os XML de uma pasta de uma vez.',
         'O "Número do pedido" é opcional: serve para forçar que NF-e e CT-e caiam no mesmo registro.',
         '<b>NF-e que já está no sistema</b>: enviar o XML de novo não duplica a nota. O sistema completa o registro com o '
-        'XML (guarda o XML se ele faltava, corrige o número e a data de emissão pelo XML, preenche cliente, UF, valor, '
-        'emitente, série e a operação pelo CFOP) e diz onde a nota está ("registro #, NF e data") e, se for o caso, por que '
+        'XML (guarda o XML se ele faltava, corrige o número, a data de emissão, a série e o emitente pelo XML, preenche '
+        'cliente, UF, valor e a operação pelo CFOP) e diz onde a nota está ("registro #, NF e data") e, se for o caso, por que '
         'ela não aparece: guardada dentro de outro registro, cancelada ou denegada. Use isso quando uma nota que está no '
         'ERP não aparece na Consulta de notas ou no Faturamento do dia (por exemplo, nota que entrou pela planilha do ERP com '
         'outra data).',
@@ -418,7 +418,8 @@ def parte_uso(g):
         'X" ou "Faltam N notas: X a Y" (a nota não entrou no sistema ou foi inutilizada), e o quadro <b>Faltando na sequência</b> '
         'mostra o total. Na própria linha amarela, o botão <b>Enviar o XML</b> (para quem pode enviar XML) abre a escolha do '
         'arquivo: escolha o XML da nota que falta (ou um .zip com os XML) e ela é importada ali mesmo, como no Enviar XML; a '
-        'linha amarela some quando a nota entra. Se a nota sumiu porque outra nota do mesmo pedido foi gravada por cima dela '
+        'linha amarela some quando a nota entra. A janela mostra a resposta para cada arquivo: importada, já estava no '
+        'sistema (e o que foi completado com o XML) ou o erro. A série "001" e a série "1" contam como a mesma. Se a nota sumiu porque outra nota do mesmo pedido foi gravada por cima dela '
         '(erro corrigido na 1.73.0), o aviso laranja no alto da Consulta lista essas notas, diz qual nota ficou no lugar e '
         'se há um CT-e no registro para conferir de qual das duas notas ele é. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
         'primeiro" ou "mais recentes primeiro".',

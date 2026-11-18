@@ -410,8 +410,10 @@ function faltandoNaSequencia(rows) {
   for (const r of rows) {
     const n = Number(String(r.numero_nf || '').replace(/\D/g, ''));
     if (!n) continue;
-    const k = `${r.emitente_cnpj || ''}|${r.nf_serie || ''}`;
-    if (!grupos.has(k)) grupos.set(k, { emitente: r.emitente_nome, emitente_cnpj: r.emitente_cnpj, serie: r.nf_serie, numeros: new Set() });
+    // Série "001" é a mesma que "1" (planilha do ERP x XML).
+    const serie = String(r.nf_serie || '').replace(/^0+(?=\d)/, '');
+    const k = `${dig(r.emitente_cnpj)}|${serie}`;
+    if (!grupos.has(k)) grupos.set(k, { emitente: r.emitente_nome, emitente_cnpj: r.emitente_cnpj, serie: serie || null, numeros: new Set() });
     grupos.get(k).numeros.add(n);
   }
   const faixas = []; let total = 0;

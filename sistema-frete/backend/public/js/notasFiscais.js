@@ -25,21 +25,25 @@
   const podeEnviarXml = () => usuario?.perfil === 'admin' || !!usuario?.pode_enviar_xml;
   // Enviar o XML da nota que falta direto da linha "Falta a nota" (o mesmo do Enviar XML: /api/upload/nfe ou /zip).
   async function enviarXmls(arquivos) {
-    let ok = 0; const erros = [];
+    // Mostra a resposta do sistema para cada arquivo (importada, já estava no sistema e o que foi completado, erro).
+    const linhas = []; let novas = 0; let jaTinha = 0; let erros = 0;
+    const anotar = (nome, texto, tipo) => { linhas.push(`${nome}: ${texto}`); if (tipo === 'ok') novas++; else if (tipo === 'ja') jaTinha++; else erros++; };
+    const tipoDe = (status, ok, texto) => (status === 409 || /já (estava|está) no sistema|já foi importad/i.test(texto || '') ? 'ja' : ok ? 'ok' : 'erro');
     for (const arq of arquivos) {
       const fd = new FormData(); fd.append('arquivo', arq, arq.name);
       const zip = /\.zip$/i.test(arq.name);
       try {
         const r = await apiFetch(`/api/upload/${zip ? 'zip' : 'nfe'}`, { method: 'POST', body: fd });
         const j = await r.json().catch(() => ({}));
-        if (zip && r.ok) { (j.resultados || []).forEach((x) => (x.ok ? ok++ : erros.push(`${x.nome}: ${x.mensagem}`))); continue; }
-        if (r.ok || r.status === 409) ok += 1; else erros.push(`${arq.name}: ${j.erro || 'erro ao importar'}`);
-      } catch { erros.push(`${arq.name}: falha de conexão`); }
+        if (zip && r.ok) { (j.resultados || []).forEach((x) => anotar(x.nome, x.mensagem || '', tipoDe(null, x.ok, x.mensagem))); continue; }
+        const texto = j.mensagem || j.erro || (r.ok ? 'importada' : 'erro ao importar');
+        anotar(arq.name, texto, tipoDe(r.status, r.ok, texto));
+      } catch { anotar(arq.name, 'falha de conexão', 'erro'); }
     }
-    if (ok) mostrarAlerta(`${ok} nota(s) importada(s).`, { tipo: 'sucesso' });
+    const titulo = [novas ? `${novas} importada(s)` : '', jaTinha ? `${jaTinha} já estava(m) no sistema` : '', erros ? `${erros} com erro` : ''].filter(Boolean).join(' · ');
+    mostrarAlerta(linhas.join('\n\n'), { tipo: erros ? 'erro' : jaTinha && !novas ? 'aviso' : 'sucesso', titulo });
     avisoSubstituidas(true).catch(() => {});
     window.dispatchEvent(new Event('nexofrete:notas-alteradas'));
-    if (erros.length) mostrarAlerta(erros.join('\n'), { tipo: 'erro' });
     carregar().catch(() => {});
   }
   const podeCorrigir = () => usuario?.perfil === 'admin' || !!usuario?.pode_editar_registros;
@@ -175,7 +179,9 @@
   function linhaFaltando(n, j) {
     if (!j.faltando?.faixas?.length) return '';
     const num = Number(String(n.numero_nf || '').replace(/\D/g, ''));
-    const f = j.faltando.faixas.find((x) => x.emitente_cnpj === n.emitente_cnpj && (x.serie || null) === (n.nf_serie || null) && (j.ordem === 'numero' ? x.ate + 1 === num : x.de - 1 === num));
+    const serie = (v) => String(v || '').replace(/^0+(?=\d)/, '') || null;
+    const cnpj = (v) => String(v || '').replace(/\D/g, '');
+    const f = j.faltando.faixas.find((x) => cnpj(x.emitente_cnpj) === cnpj(n.emitente_cnpj) && serie(x.serie) === serie(n.nf_serie) && (j.ordem === 'numero' ? x.ate + 1 === num : x.de - 1 === num));
     if (!f) return '';
     return `<tr class="nf-faltando"><td colspan="15">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.${podeEnviarXml() ? ` <button type="button" class="nf-faltando-enviar" data-nf-enviar-xml title="Escolha o XML (ou um .zip com os XML) da nota que falta: ele é importado aqui mesmo, como no Enviar XML">⬆ Enviar o XML</button>` : ''}</td></tr>`;
   }

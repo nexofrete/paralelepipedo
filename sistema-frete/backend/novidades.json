@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Consulta de notas: o \"Enviar o XML\" mostra a resposta de cada arquivo (antes dizia \"importada\" mesmo quando a nota já estava no sistema). O reenvio também corrige a série e o emitente pelo XML, e a sequência trata a série \"001\" igual à \"1\": some o falso \"Falta a nota\"."},
         {"area": "Notas fiscais", "texto": "XML de uma NF-e que já está no sistema: em vez de só dizer \"já foi importada\", o sistema completa o registro com o XML (data de emissão, número, XML que faltava, emitente, série, operação) e diz onde a nota está e por que não aparecia. Notas com o CT-e cancelado voltam a aparecer na Consulta de notas e no Faturamento do dia."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia: botão \"Imagem\" gera um PNG do resumo do dia (total, comparação, venda e bonificação, 5 estados e 14 dias), pronto para copiar e colar no WhatsApp, compartilhar ou baixar."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia se atualiza logo depois de importar XML, ao voltar para a Visão geral e a cada 2 minutos, em qualquer dia escolhido (antes, um dia que não fosse hoje ficava com o valor antigo)."},

@@ -74,6 +74,12 @@ def parte_uso(g):
     s += h1('11. Visão geral')
     s.append(P('É a tela inicial. Mostra o retrato do momento e leva direto para o que precisa de ação — cada quadro é '
                'clicável e abre a tela certa (se o usuário tiver permissão para ela).'))
+    s += h2('Atualização automática')
+    s.append(P('Com a Visão geral aberta, os quadros do fluxo, o "Precisa de atenção", o gasto do mês, os gráficos e o '
+               'Faturamento do dia são atualizados sozinhos. Abaixo do campo Consultar nota, escolha <b>Atualizar a cada</b> 1, 2, '
+               '5 (padrão), 10 ou 15 minutos, ou Desligado; a escolha fica guardada no navegador de cada usuário. Ao lado aparece '
+               '"atualizado às HH:MM", e o botão com a seta circular atualiza na hora. Com a aba do navegador escondida, não '
+               'atualiza; ao voltar para ela depois do tempo escolhido, atualiza na hora.'))
     s += h2('Consultar nota')
     s.append(P('No alto da tela, o campo <b>Consultar nota</b> procura a nota sem sair da Visão geral: digite o número da NF, a '
                'chave de acesso, o número do CT-e, o pedido, o cliente ou a transportadora. Aparecem na hora as 8 notas mais '

@@ -484,6 +484,7 @@ async function carregarResumo() {
     const resposta = await apiFetch('/api/fretes/resumo');
     const dados = await resposta.json();
     preencherVisaoGeral(dados);
+    window.dispatchEvent(new Event('nexofrete:visao-geral-atualizada'));
   } catch (err) {
     console.error(err);
   }
@@ -493,6 +494,39 @@ async function carregarResumo() {
 window.addEventListener('load', () => setTimeout(() => {
   if (!document.getElementById('pagina-visao-geral')?.classList.contains('oculto')) carregarResumo();
 }, 0));
+
+// Visão geral: atualiza sozinha a cada N minutos (1, 2, 5, 10, 15 ou desligado; escolha guardada no navegador de cada
+// usuário), só com a tela aberta e a aba visível. Mostra "atualizado às HH:MM" e tem o botão ↻ para atualizar na hora.
+(() => {
+  const sel = document.getElementById('vgAutoMin');
+  const pagina = document.getElementById('pagina-visao-geral');
+  if (!sel || !pagina) return;
+  const chave = `nexofreteVgAutoMin:${usuario?.id || ''}`;
+  try { const v = localStorage.getItem(chave); if (v !== null && [...sel.options].some((o) => o.value === v)) sel.value = v; } catch (e) { /* sem localStorage */ }
+  let ultimo = 0; let rodando = false;
+  window.addEventListener('nexofrete:visao-geral-atualizada', () => {
+    ultimo = Date.now();
+    const el = document.getElementById('vgAtualizadoEm');
+    if (el) el.textContent = `atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  });
+  const atualizar = async () => {
+    if (rodando) return; rodando = true;
+    try {
+      graficosSemAnimacaoAte = Date.now() + 3000;   // atualização sozinha não anima os gráficos de novo
+      await carregarResumo();
+      window.dispatchEvent(new Event('nexofrete:notas-alteradas'));   // Faturamento do dia
+    } finally { rodando = false; }
+  };
+  document.getElementById('vgAtualizarAgora')?.addEventListener('click', () => atualizar());
+  sel.addEventListener('change', () => { try { localStorage.setItem(chave, sel.value); } catch (e) { /* ok */ } });
+  const talvez = () => {
+    const min = Number(sel.value);
+    if (!min || pagina.classList.contains('oculto') || document.hidden || !ultimo) return;
+    if (Date.now() - ultimo >= min * 60000 - 5000) atualizar();
+  };
+  setInterval(talvez, 30000);
+  document.addEventListener('visibilitychange', talvez);   // voltou para a aba depois do tempo: atualiza já
+})();
 
 // Tolerância de auditoria: buscada uma vez e guardada aqui, pra usar tanto
 // na Auditoria de Frete quanto em qualquer conferência de taxas.

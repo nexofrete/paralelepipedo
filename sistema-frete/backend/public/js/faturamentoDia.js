@@ -193,8 +193,15 @@
 
   // Carrega quando a Visão geral aparece; atualiza sozinho a cada 5 minutos enquanto mostra o dia de hoje.
   const visivel = () => !pagina.classList.contains('oculto') && !document.hidden;
-  const aoMostrar = () => { if (visivel() && (!dados || Date.now() - carregadoEm > 60000)) carregar(dados && dados.data !== dados.hoje ? dados.data : null); };
+  // Recarrega o dia que está na tela (hoje segue "hoje" mesmo virando a meia-noite).
+  const recarregar = () => carregar(dados && dados.data !== dados.hoje ? dados.data : null);
+  // Ao voltar para a Visão geral: sempre recarrega (só não repete se acabou de carregar).
+  const aoMostrar = () => { if (visivel() && (!dados || Date.now() - carregadoEm > 5000)) recarregar(); };
   new MutationObserver(aoMostrar).observe(pagina, { attributes: true, attributeFilter: ['class'] });
   window.addEventListener('load', () => setTimeout(aoMostrar, 0));
-  setInterval(() => { if (visivel() && dados && dados.data === dados.hoje) carregar(null); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', aoMostrar);
+  // XML importado (Enviar XML, botões da Consulta de notas): recarrega já, ou ao voltar para a tela.
+  window.addEventListener('nexofrete:notas-alteradas', () => { carregadoEm = 0; if (visivel()) recarregar(); });
+  // Notas que entram sozinhas (pasta monitorada, NF-Stock, e-mail): a cada 2 minutos com a tela aberta, qualquer dia.
+  setInterval(() => { if (visivel() && dados) recarregar(); }, 2 * 60 * 1000);
 })();

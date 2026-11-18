@@ -1382,6 +1382,7 @@ async function processarVarios(arquivos) {
 
   carregarRegistros();
   carregarResumo();
+  window.dispatchEvent(new Event('nexofrete:notas-alteradas'));   // Faturamento do dia e outras telas de notas
 }
 
 // Um .zip: manda pro servidor e mostra uma linha pra cada XML de dentro.

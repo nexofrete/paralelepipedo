@@ -84,7 +84,9 @@ def parte_uso(g):
     s += h2('Faturamento do dia')
     s.append(P('Logo abaixo do fluxo do frete, o quadro <b>Faturamento do dia</b> mostra as NF-e de <b>venda</b> e de '
                '<b>bonificação</b> emitidas na data (pela data de emissão; notas canceladas e denegadas não contam). Abre no dia '
-               'de hoje e se atualiza sozinho a cada 5 minutos; as setas e o campo de data mudam o dia.'))
+               'de hoje; as setas e o campo de data mudam o dia. O dia que está na tela é recalculado sozinho: logo depois de '
+               'importar XML (Enviar XML ou os botões da Consulta de notas), sempre que você volta para a Visão geral e a cada '
+               '2 minutos com a tela aberta (para as notas que entram pela pasta, NF-Stock ou e-mail).'))
     s.append(P('A operação de cada nota sai do <b>CFOP dos itens</b> no XML: <b>venda</b> = CFOP de venda (5101 a 5125 e 6101 a '
                '6125, com substituição tributária 5401 a 5405 e 6401 a 6405, combustíveis 5651 a 5656 e 5667, exportação 7101, 7102, '
                '7105, 7106 e 7127); <b>bonificação</b> = 5910 ou 6910 (remessa em bonificação, doação ou brinde) ou, sem CFOP de '

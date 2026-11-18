@@ -38,6 +38,7 @@
     }
     if (ok) mostrarAlerta(`${ok} nota(s) importada(s).`, { tipo: 'sucesso' });
     avisoSubstituidas(true).catch(() => {});
+    window.dispatchEvent(new Event('nexofrete:notas-alteradas'));
     if (erros.length) mostrarAlerta(erros.join('\n'), { tipo: 'erro' });
     carregar().catch(() => {});
   }

@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Notas fiscais", "texto": "Etiquetas de volume: a transportadora vem da nota, do CT-e ou do redespacho, e pode ser digitada na janela antes de imprimir; nome comprido quebra em duas linhas em vez de cortar."},
         {"area": "Notas fiscais", "texto": "Etiquetas de volume das notas (10 × 7 cm, padrão do ERP) na Consulta de notas: destinatário, endereço, transportadora, \"Volumes: 1 / 68\", pedido e nota, uma por volume (ou só os volumes escolhidos). Imprime pelo navegador (driver da Zebra), baixa o ZPL ou manda direto para a Zebra na rede (IP, porta 9100)."},
         {"area": "Visão geral", "texto": "Atualização automática: escolha de quantos em quantos minutos a Visão geral se atualiza sozinha (1, 2, 5, 10, 15 ou desligado), com \"atualizado às\" e o botão para atualizar na hora."},
         {"area": "Notas fiscais", "texto": "Faturamento do dia: \"Conferir com o ERP\". Cole a lista de notas copiada do ERP e veja o total do ERP, o do sistema e a diferença, nota por nota: confere, falta no sistema (com Enviar o XML), fora da soma e por quê, outra data, valor diferente ou só no sistema."},

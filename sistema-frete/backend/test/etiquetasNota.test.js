@@ -36,3 +36,10 @@ test('ZPL sem acentos e sem caracteres de comando', () => {
   const z = e.zpl([{ ...ex, nome: 'JOÃO ^ SÃO ~ AÇÚCAR' }]);
   assert.match(z, /\^FDJOAO SAO ACUCAR\^FS/);
 });
+
+test('transportadora: XML, CT-e, registro e, por último, o redespacho da nota', () => {
+  assert.strictEqual(e.transportadoraDe({ transportadora_nfe: 'B' }, { transportadora: 'A' }), 'A');
+  assert.strictEqual(e.transportadoraDe({ transportadora_nfe: null, transportadora_cte: 'C', transportadora: 'D' }), 'C');
+  assert.strictEqual(e.transportadoraDe({ redespacho_endereco: JSON.stringify({ nome: 'PICCOLI TRANSPORTES LTDA' }) }), 'REDESP. PICCOLI TRANSPORTES LTDA');
+  assert.strictEqual(e.transportadoraDe({}), '');
+});

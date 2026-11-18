@@ -42,12 +42,19 @@ function doXml(xml) {
   } catch { return {}; }
 }
 
-// ids: notas (registros); faixas: { [id]: "1-5" }. Devolve a lista de etiquetas, na ordem das notas.
-async function etiquetasDasNotas(req, ids, faixas = {}) {
+// Transportadora da etiqueta: a do XML; senão a do CT-e; senão a do registro; senão o redespacho escrito na nota.
+function transportadoraDe(r, x = {}) {
+  const red = (() => { try { const e = typeof r.redespacho_endereco === 'string' ? JSON.parse(r.redespacho_endereco) : r.redespacho_endereco; return e?.nome || r.redespacho || ''; } catch { return r.redespacho || ''; } })();
+  return x.transportadora || r.transportadora_nfe || r.transportadora_cte || r.transportadora || (red ? `REDESP. ${red}` : '');
+}
+
+// ids: notas (registros); faixas: { [id]: "1-5" }; transps: { [id]: "NOME" } (a transportadora digitada na tela, que
+// vale no lugar da encontrada). Devolve a lista de etiquetas, na ordem das notas.
+async function etiquetasDasNotas(req, ids, faixas = {}, transps = {}) {
   const lista = [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 500);
   if (!lista.length) return [];
   const { rows } = await consultaCliente(req, `SELECT f.id, f.numero_nf, f.numero_pedido, f.cliente, f.cidade, f.uf, f.bairro, f.qtd_volumes,
-      f.transportadora_nfe, f.transportadora, f.xml_nfe_original FROM fretes f WHERE f.id = ANY($1)`, [lista], { comCteCancelado: true });
+      f.transportadora_nfe, f.transportadora_cte, f.transportadora, f.redespacho, f.redespacho_endereco, f.xml_nfe_original FROM fretes f WHERE f.id = ANY($1)`, [lista], { comCteCancelado: true });
   const porId = new Map(rows.map((r) => [r.id, r]));
   const etiquetas = [];
   for (const id of lista) {
@@ -56,7 +63,8 @@ async function etiquetasDasNotas(req, ids, faixas = {}) {
     const total = Math.max(1, Number(x.volumes || r.qtd_volumes) || 1);
     const base = {
       nome: x.nome || r.cliente || '', rua: x.rua || '', complemento: x.complemento || '', bairro: x.bairro || r.bairro || '',
-      cidade: x.cidade || r.cidade || '', uf: x.uf || r.uf || '', cep: cepFmt(x.cep), transportadora: x.transportadora || r.transportadora_nfe || r.transportadora || '',
+      cidade: x.cidade || r.cidade || '', uf: x.uf || r.uf || '', cep: cepFmt(x.cep),
+      transportadora: (transps[id] ?? transps[String(id)]) != null ? String(transps[id] ?? transps[String(id)]).slice(0, 80) : transportadoraDe(r, x),
       pedido: r.numero_pedido || '', nota: r.numero_nf || '', total,
     };
     for (const v of volumesDaFaixa(faixas[id] ?? faixas[String(id)], total)) {
@@ -74,7 +82,7 @@ function html(etiquetas) {
       <div class="l">${esc(t.rua)}${t.complemento ? ` <small>${esc(t.complemento)}</small>` : ''}</div>
       <div class="l duas"><span>${esc(t.bairro)}</span><span>${esc(t.cidade)}${t.uf ? `/${esc(t.uf)}` : ''}</span></div>
       <div class="l">${esc(t.cep)}</div>
-      <div class="l">${esc(t.transportadora)}</div>
+      <div class="l transp">${esc(t.transportadora)}</div>
       <div class="vol">Volumes: <b>${t.volume}</b> / <b>${t.total}</b></div>
       <div class="ped"><span>Pedido: <b>${esc(t.pedido)}</b></span><span>Nota: <b>${esc(t.nota)}</b></span></div>
     </section>`).join('');
@@ -85,6 +93,7 @@ function html(etiquetas) {
     .nome { font-size: 15pt; font-weight: 700; line-height: 1.1; text-transform: uppercase; max-height: 12mm; overflow: hidden; }
     .l { font-size: 11pt; font-weight: 700; line-height: 1.15; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .l small { font-size: 9pt; font-weight: 400; }
+    .transp { white-space: normal; max-height: 9.2mm; }
     .duas { display: flex; gap: 4mm; } .duas span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; } .duas span:last-child { flex: 1.1; }
     .vol { font-family: Arial, Helvetica, sans-serif; font-size: 14pt; font-weight: 700; margin-top: auto; }
     .vol b { font-size: 16pt; }
@@ -154,4 +163,4 @@ async function salvarConfig(b = {}) {
   return config();
 }
 
-module.exports = { volumesDaFaixa, etiquetasDasNotas, html, zpl, enviarParaZebra, config, salvarConfig, LARGURA_MM, ALTURA_MM };
+module.exports = { transportadoraDe, volumesDaFaixa, etiquetasDasNotas, html, zpl, enviarParaZebra, config, salvarConfig, LARGURA_MM, ALTURA_MM };

@@ -445,7 +445,9 @@ def parte_uso(g):
         'escolher só alguns volumes (ex.: 1-5,8). <b>Imprimir</b> abre as etiquetas no navegador (na Zebra, papel 100 x 70 mm, '
         'margens nenhuma e escala 100%); <b>Baixar ZPL</b> gera o arquivo da Zebra; com a Zebra na rede, o administrador '
         'cadastra o IP em <b>Impressora</b> (porta 9100, 203 ou 300 dpi, com etiqueta de teste) e aparece <b>Enviar para a '
-        'Zebra</b>, que imprime direto. Os dados saem do XML da NF-e; nota sem transportadora no XML usa a do CT-e.',
+        'Zebra</b>, que imprime direto. Os dados saem do XML da NF-e. A coluna <b>Transportadora</b> da janela vem preenchida '
+        'com a da nota (XML), ou a do CT-e, ou o redespacho escrito na nota ("REDESP. ..."); se estiver vazia ou errada, digite '
+        'antes de imprimir: vale para todas as etiquetas daquela nota.',
         'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',
         '<b>Entrega</b> (coluna): <b>Entregue</b> com a data, a origem (SSW, portal, comprovante, lançada à mão) e quem recebeu; '

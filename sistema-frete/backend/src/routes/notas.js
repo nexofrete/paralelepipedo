@@ -26,10 +26,12 @@ router.get('/', autenticar, async (req, res) => {
 // ids=1,2,3 e faixas=1:1-5;2:3 (reimprimir só alguns volumes de uma nota).
 const etq = require('../etiquetasNota');
 const idsQ = (v) => String(v || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
+// transp: JSON { id: "NOME" } com a transportadora digitada na tela.
+const transpQ = (v) => { try { const o = JSON.parse(String(v || '{}')); return o && typeof o === 'object' ? o : {}; } catch { return {}; } };
 const faixasQ = (v) => Object.fromEntries(String(v || '').split(';').map((p) => p.split(':')).filter((p) => p.length === 2 && /^\d+$/.test(p[0])).map(([id, f]) => [id, f]));
 router.get('/etiquetas', autenticar, async (req, res) => {
   try {
-    const lista = await etq.etiquetasDasNotas(req, idsQ(req.query.ids), faixasQ(req.query.faixas));
+    const lista = await etq.etiquetasDasNotas(req, idsQ(req.query.ids), faixasQ(req.query.faixas), transpQ(req.query.transp));
     if (!lista.length) return res.status(404).send('Nenhuma nota encontrada para as etiquetas.');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(etq.html(lista));
@@ -37,7 +39,7 @@ router.get('/etiquetas', autenticar, async (req, res) => {
 });
 router.get('/etiquetas/zpl', autenticar, async (req, res) => {
   try {
-    const lista = await etq.etiquetasDasNotas(req, idsQ(req.query.ids), faixasQ(req.query.faixas));
+    const lista = await etq.etiquetasDasNotas(req, idsQ(req.query.ids), faixasQ(req.query.faixas), transpQ(req.query.transp));
     if (!lista.length) return res.status(404).send('Nenhuma nota encontrada para as etiquetas.');
     const c = await etq.config();
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -53,7 +55,7 @@ router.post('/etiquetas/zebra', autenticar, async (req, res) => {
       await etq.enviarParaZebra(etq.zpl([{ nome: 'TESTE DE IMPRESSAO NEXOFRETE', rua: 'ETIQUETA 10 X 7 CM', bairro: 'BAIRRO', cidade: 'CIDADE', uf: 'UF', cep: '00000-000', transportadora: 'TRANSPORTADORA', volume: 1, total: 1, pedido: '0', nota: '0' }], { dpi: c.dpi }), c);
       return res.json({ ok: true, mensagem: `Etiqueta de teste enviada para ${c.ip}:${c.porta}.` });
     }
-    const lista = await etq.etiquetasDasNotas(req, (Array.isArray(b.ids) ? b.ids : []), b.faixas || {});
+    const lista = await etq.etiquetasDasNotas(req, (Array.isArray(b.ids) ? b.ids : []), b.faixas || {}, b.transps || {});
     if (!lista.length) throw Object.assign(new Error('Nenhuma nota encontrada para as etiquetas.'), { status: 404 });
     await etq.enviarParaZebra(etq.zpl(lista, { dpi: c.dpi }), c);
     registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'etiquetas', detalhes: `Mandou ${lista.length} etiqueta(s) de volume para a Zebra ${c.ip} (NF ${[...new Set(lista.map((x) => x.nota))].join(', ')})` });

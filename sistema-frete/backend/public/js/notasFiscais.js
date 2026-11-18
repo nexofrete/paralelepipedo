@@ -416,12 +416,16 @@
     try { const r = await apiFetch('/api/notas/etiquetas/config'); if (r.ok) cfg = await r.json(); } catch { /* padrão */ }
     const fundo = document.createElement('div');
     fundo.className = 'modal-overlay';
-    const linhas = notas.map((n) => `<tr><td><b>${esc(n.numero_nf)}</b></td><td>${esc(n.cliente || '—')}</td><td class="n">${Number(n.qtd_volumes) || 1}</td>
-      <td><input class="cte-entrada" data-et-faixa="${n.id}" data-total="${Number(n.qtd_volumes) || 1}" placeholder="todos" title="Todos, ou só alguns: 1-5,8" style="width:110px; padding:4px 7px;" /></td></tr>`).join('');
+    // Transportadora da etiqueta: a da nota (XML), a do CT-e ou o redespacho; editável aqui.
+    const transpDe = (n) => { const r = json(n.redespacho_endereco); const red = r?.nome || n.redespacho || ''; return n.transportadora_nfe || n.transportadora || (red ? `REDESP. ${red}` : ''); };
+    const linhas = notas.map((n) => `<tr><td><b>${esc(n.numero_nf)}</b></td><td>${esc(n.cliente || '—')}</td>
+      <td><input class="cte-entrada" data-et-transp="${n.id}" value="${esc(transpDe(n))}" placeholder="digite a transportadora" maxlength="80" style="width:100%; min-width:180px; padding:4px 7px;" /></td>
+      <td class="n">${Number(n.qtd_volumes) || 1}</td>
+      <td><input class="cte-entrada" data-et-faixa="${n.id}" data-total="${Number(n.qtd_volumes) || 1}" placeholder="todos" title="Todos, ou só alguns: 1-5,8" style="width:96px; padding:4px 7px;" /></td></tr>`).join('');
     fundo.innerHTML = `<div class="painel modal-card nf-et-card">
       <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">🏷 Etiquetas de volume (10 × 7 cm)</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
-      <p class="vg-fat-img-dica">Uma etiqueta por volume ("Volumes: 1 / 68"), com o destinatário, o endereço, a transportadora, o pedido e a nota. Para reimprimir só alguns volumes, escreva na coluna "Imprimir" (ex.: 1-5,8).</p>
-      <div class="nf-et-tab"><table class="edi-tabela"><thead><tr><th>NF</th><th>Destinatário</th><th class="n">Volumes</th><th>Imprimir</th></tr></thead><tbody>${linhas}</tbody></table></div>
+      <p class="vg-fat-img-dica">Uma etiqueta por volume ("Volumes: 1 / 68"), com o destinatário, o endereço, a transportadora, o pedido e a nota. A transportadora vem da nota (ou do CT-e, ou do redespacho): se estiver vazia ou errada, digite. Para reimprimir só alguns volumes, escreva na coluna "Imprimir" (ex.: 1-5,8).</p>
+      <div class="nf-et-tab"><table class="edi-tabela"><thead><tr><th>NF</th><th>Destinatário</th><th>Transportadora</th><th class="n">Volumes</th><th>Imprimir</th></tr></thead><tbody>${linhas}</tbody></table></div>
       <div class="nf-et-total" id="nfEtTotal"></div>
       <div class="nf-et-acoes">
         ${usuario?.perfil === 'admin' ? '<button type="button" class="btn btn-secundario" data-et-config style="width:auto;">⚙ Impressora</button>' : ''}
@@ -446,7 +450,8 @@
     const mostrarTotal = () => { fundo.querySelector('#nfEtTotal').textContent = `${total()} etiqueta(s) de ${notas.length} nota(s)`; };
     mostrarTotal();
     fundo.addEventListener('input', mostrarTotal);
-    const q = () => { const f = faixas(); return new URLSearchParams({ ids: ids.join(','), ...(Object.keys(f).length ? { faixas: Object.entries(f).map(([k, v]) => `${k}:${v}`).join(';') } : {}) }); };
+    const transps = () => Object.fromEntries([...fundo.querySelectorAll('[data-et-transp]')].map((i) => [i.dataset.etTransp, i.value.trim()]));
+    const q = () => { const f = faixas(); return new URLSearchParams({ ids: ids.join(','), transp: JSON.stringify(transps()), ...(Object.keys(f).length ? { faixas: Object.entries(f).map(([k, v]) => `${k}:${v}`).join(';') } : {}) }); };
     fundo.addEventListener('click', async (e) => {
       if (e.target === fundo || e.target.closest('[data-fechar]')) { fundo.remove(); return; }
       if (!total() && (e.target.closest('[data-et-html]') || e.target.closest('[data-et-zpl]') || e.target.closest('[data-et-zebra]'))) { mostrarAlerta('Nenhum volume escolhido.', { tipo: 'aviso' }); return; }
@@ -461,7 +466,7 @@
       if (z) {
         z.disabled = true; const t0 = z.textContent; z.textContent = 'Enviando…';
         try {
-          const r = await apiFetch('/api/notas/etiquetas/zebra', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, faixas: faixas() }) });
+          const r = await apiFetch('/api/notas/etiquetas/zebra', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, faixas: faixas(), transps: transps() }) });
           const j = await r.json().catch(() => ({}));
           mostrarAlerta(j.mensagem || j.erro || 'Erro ao enviar.', { tipo: r.ok ? 'sucesso' : 'erro' });
         } finally { z.disabled = false; z.textContent = t0; }

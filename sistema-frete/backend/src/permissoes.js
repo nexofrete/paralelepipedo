@@ -82,18 +82,20 @@ async function verificarVersaoBanco() {
     suportaNotMaterialized = Number(rows[0].server_version_num) >= 120000;
   } catch (e) { suportaNotMaterialized = false; }
 }
-function sqlComEscopoCliente(req, sql, params = []) {
+// opcoes.comCteCancelado: inclui os registros com o CT-e cancelado (a consulta de NOTAS: cancelar o CT-e não cancela a NF-e).
+function sqlComEscopoCliente(req, sql, params = [], opcoes = {}) {
   const restrito = !vePotudo(req);
   const n = params.length + 1;
-  const filtro = restrito ? `NOT cte_cancelado AND cliente = $${n}` : 'NOT cte_cancelado';
+  const base = opcoes.comCteCancelado ? 'TRUE' : 'NOT cte_cancelado';
+  const filtro = restrito ? `${base} AND cliente = $${n}` : base;
   const cte = `fretes AS ${suportaNotMaterialized ? 'NOT MATERIALIZED ' : ''}(SELECT * FROM public.fretes WHERE ${filtro})`;
   const texto = sql.trimStart();
   const novoSql = /^WITH\s/i.test(texto) ? `WITH ${cte}, ${texto.slice(5)}` : `WITH ${cte} ${texto}`;
   return { sql: novoSql, params: restrito ? [...params, textoLimpo(req.usuario?.cliente_nome) ?? null] : params };
 }
-async function consultaCliente(req, sql, params = []) {
+async function consultaCliente(req, sql, params = [], opcoes = {}) {
   await verificarVersaoBanco();
-  const q = sqlComEscopoCliente(req, sql, params);
+  const q = sqlComEscopoCliente(req, sql, params, opcoes);
   return pool.query(q.sql, q.params);
 }
 

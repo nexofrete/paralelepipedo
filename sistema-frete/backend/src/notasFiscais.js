@@ -7,7 +7,9 @@ const path = require('path');
 const crypto = require('crypto');
 const { XMLParser } = require('fast-xml-parser');
 const pool = require('./db');
-const { consultaCliente } = require('./permissoes');
+const { consultaCliente: consultaComEscopo } = require('./permissoes');
+// As NOTAS aparecem mesmo com o CT-e cancelado (o cancelamento é do CT-e; a NF-e continua valendo).
+const consultaCliente = (req, sql, params = []) => consultaComEscopo(req, sql, params, { comCteCancelado: true });
 
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', parseTagValue: false });
 const falha = (msg, status = 400) => Object.assign(new Error(msg), { status });

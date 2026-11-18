@@ -147,6 +147,12 @@ def parte_uso(g):
         '<b>Não é preciso descompactar</b>: suba o .zip como veio.',
         '"Selecionar uma pasta inteira" importa todos os XML de uma pasta de uma vez.',
         'O "Número do pedido" é opcional: serve para forçar que NF-e e CT-e caiam no mesmo registro.',
+        '<b>NF-e que já está no sistema</b>: enviar o XML de novo não duplica a nota. O sistema completa o registro com o '
+        'XML (guarda o XML se ele faltava, corrige o número e a data de emissão pelo XML, preenche cliente, UF, valor, '
+        'emitente, série e a operação pelo CFOP) e diz onde a nota está ("registro #, NF e data") e, se for o caso, por que '
+        'ela não aparece: guardada dentro de outro registro, cancelada ou denegada. Use isso quando uma nota que está no '
+        'ERP não aparece na Consulta de notas ou no Faturamento do dia (por exemplo, nota que entrou pela planilha do ERP com '
+        'outra data).',
         '<b>Mesmo pedido em mais de uma nota</b> (refaturamento por troca de tabela de preço, pedido dividido): cada NF-e '
         'fica no seu próprio registro, e as duas ganham a observação "Mesmo pedido X da NF Y". A nota só se junta a um '
         'registro do mesmo pedido que ainda não tem NF-e (criado pelo CT-e, pela planilha do ERP ou lançado à mão). Até a '

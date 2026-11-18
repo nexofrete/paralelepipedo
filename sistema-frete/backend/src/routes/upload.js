@@ -17,14 +17,49 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
  * POST /api/upload/nfe
  * Form-data: arquivo (o .xml), numero_pedido (opcional, para já vincular a um pedido existente)
  */
+// NF-e enviada de novo (a chave já está no sistema): completa a linha com o XML (o XML é a fonte da nota) e diz onde
+// ela está e por que pode não aparecer na Consulta de notas / no Faturamento do dia.
+async function notaJaImportada(dados, xmlString) {
+  if (!dados?.chave_nfe) return null;
+  const { rows: [f] } = await pool.query(`SELECT id, numero_nf, to_char(data_emissao_nf, 'YYYY-MM-DD') AS data_iso, cliente, uf, valor_faturado,
+      emitente_cnpj, nf_serie, nf_operacao, frete_principal_id, cte_cancelado, nf_cancelada, nf_denegada, status, (xml_nfe_original IS NULL) AS sem_xml
+    FROM fretes WHERE chave_nfe = $1`, [dados.chave_nfe]);
+  if (!f) return null;
+  const br = (iso) => (iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : 'vazia');
+  const semZeros = (v) => String(v || '').replace(/^0+/, '');
+  const sets = []; const vals = [f.id]; const ajustes = [];
+  const por = (col, v, rotulo) => { vals.push(v); sets.push(`${col} = $${vals.length}`); ajustes.push(rotulo); };
+  if (f.sem_xml) por('xml_nfe_original', xmlString, 'XML guardado');
+  if (dados.numero_nf && semZeros(f.numero_nf) !== semZeros(dados.numero_nf)) por('numero_nf', dados.numero_nf, `número ${f.numero_nf || 'vazio'} para ${dados.numero_nf}`);
+  if (dados.data_emissao_nf && f.data_iso !== String(dados.data_emissao_nf).slice(0, 10)) por('data_emissao_nf', dados.data_emissao_nf, `emissão ${br(f.data_iso)} para ${br(dados.data_emissao_nf)}`);
+  if (!f.cliente && dados.cliente) por('cliente', dados.cliente, 'cliente');
+  if (!f.uf && dados.uf) por('uf', dados.uf, 'UF');
+  if (f.valor_faturado == null && dados.valor_faturado != null) por('valor_faturado', dados.valor_faturado, 'valor');
+  if (sets.length) await pool.query(`UPDATE fretes SET ${sets.join(', ')}, atualizado_em = NOW() WHERE id = $1`, vals);
+  // Série, emitente, operação (CFOP) e endereço: relidos do XML quando faltam.
+  if (sets.length || !f.emitente_cnpj || !f.nf_serie || !f.nf_operacao) {
+    await require('../notasFiscais').completar(f.id).catch(() => {});
+    if (!f.emitente_cnpj || !f.nf_serie) ajustes.push('emitente e série');
+    if (!f.nf_operacao) ajustes.push('operação pelo CFOP');
+  }
+  const motivos = [];
+  if (f.frete_principal_id) motivos.push(`ela está guardada dentro do registro #${f.frete_principal_id} (como CT-e a mais), por isso não aparece sozinha na lista`);
+  if (f.nf_denegada) motivos.push('está como DENEGADA (não entra no faturamento)');
+  else if (f.nf_cancelada) motivos.push('está como CANCELADA, porque o cancelamento dela foi importado (não entra no faturamento)');
+  if (f.cte_cancelado) motivos.push('o CT-e dela foi cancelado (ela continua aparecendo como nota)');
+  return { id: f.id, numero: dados.numero_nf || f.numero_nf, data: br(dados.data_emissao_nf || f.data_iso), ajustes, motivos };
+}
+
 const tratar_nfe = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhum arquivo XML enviado.' });
   }
 
+  let dadosNf = null; let xmlNf = null;
   try {
     const xmlString = req.file.buffer.toString('utf-8');
     const dados = parseNFe(xmlString);
+    dadosNf = dados; xmlNf = xmlString;
     // Prioriza o número de pedido digitado na tela; se não foi digitado,
     // usa o que foi extraído automaticamente do texto da NF-e.
     const numeroPedido = req.body.numero_pedido || dados.numero_pedido || null;
@@ -217,7 +252,14 @@ const tratar_nfe = async (req, res) => {
   } catch (err) {
     console.error(err);
     if (err.code === '23505') {
-      return res.status(409).json({ erro: 'Essa NF-e (mesma chave de acesso) já foi importada antes.' });
+      const j = await notaJaImportada(dadosNf, xmlNf).catch((e) => { console.error('[nfe já importada]', e.message); return null; });
+      if (!j) return res.status(409).json({ erro: 'Essa NF-e (mesma chave de acesso) já foi importada antes.' });
+      const onde = `registro #${j.id}, NF ${j.numero} de ${j.data}`;
+      const porque = j.motivos.length ? ` Atenção: ${j.motivos.join('; ')}.` : '';
+      if (j.ajustes.length) {
+        return res.json({ mensagem: `NF-e já estava no sistema (${onde}) e foi completada com o XML: ${j.ajustes.join(', ')}.${porque}` });
+      }
+      return res.status(409).json({ erro: `Essa NF-e já está no sistema (${onde}).${porque || ' Os dados conferem com o XML.'}` });
     }
     res.status(400).json({ erro: err.message || 'Erro ao processar o XML da NF-e.' });
   }

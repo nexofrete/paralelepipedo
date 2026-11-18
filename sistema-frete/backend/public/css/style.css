@@ -2037,3 +2037,11 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .nf-et-tab td.n, .nf-et-tab th.n { text-align: right; }
 .nf-et-total { font-size: 12.5px; color: var(--texto-fraco); margin: 8px 0; }
 .nf-et-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Valor de cada dia dentro da coluna (vertical, de baixo para cima) */
+.vg-fat-col-barra { position: relative; }
+.vg-fat-col-val { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%) rotate(180deg); writing-mode: vertical-rl;
+  font-size: 10.5px; font-weight: 600; color: var(--texto); white-space: nowrap; pointer-events: none; line-height: 1; }
+.vg-fat-col.sel .vg-fat-col-val { color: #fff; font-weight: 700; }
+.vg-fat-col-val.fora { bottom: calc(100% + 4px); color: var(--texto); }
+.vg-fat-col.sel .vg-fat-col-val.fora { color: var(--azul); }

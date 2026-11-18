@@ -130,8 +130,7 @@
         <div class="vg-fat-plot">
           ${media ? `<div class="vg-fat-media" style="bottom:${(media / maxDia) * 100}%"><span>média ${moedaCurta(media)}</span></div>` : ''}
           ${d.dias.map((x, i) => `<div class="vg-fat-col${x.dia === d.data ? ' sel' : ''}" data-fat-dia="${x.dia}" data-i="${i}" role="button" tabindex="0" aria-label="${rotDia(x)}">
-            ${x.dia === d.data && x.valor ? `<span class="vg-fat-col-rot${i >= 12 ? ' fim' : ''}" style="bottom:calc(${(x.valor / maxDia) * 100}% + 4px)">${moedaCurta(x.valor)}</span>` : ''}
-            <div class="vg-fat-col-barra" style="height:${x.valor ? Math.max(2, (x.valor / maxDia) * 100) : 0}%"></div></div>`).join('')}
+            <div class="vg-fat-col-barra" style="height:${x.valor ? Math.max(2, (x.valor / maxDia) * 100) : 0}%">${x.valor ? `<span class="vg-fat-col-val">${moedaCurta(x.valor)}</span>` : ''}</div></div>`).join('')}
         </div>
         <div class="vg-fat-eixo">${d.dias.map((x, i) => `<div class="${x.dia === d.data ? 'sel' : ''}${[0, 6].includes(diaSemana(x.dia)) ? ' fds' : ''}" data-fat-dia="${x.dia}" data-i="${i}">
           <b>${x.dia.slice(8, 10)}</b><span>${SEMANA_CURTA[diaSemana(x.dia)]}</span></div>`).join('')}</div>
@@ -142,7 +141,18 @@
       <div class="vg-fat-bloco"><div class="vg-fat-sub">Os 5 estados que mais compraram <small>(UF do destinatário)</small></div>${estados}</div>
       <div class="vg-fat-bloco"><div class="vg-fat-sub">Últimos 14 dias <small>(clique num dia para ver)</small></div>${colunas}</div>
     </div>`;
+    posicionarValores();
   }
+
+  // Valor de cada dia dentro da coluna (na vertical); coluna baixa demais para o texto: o valor vai logo acima dela.
+  function posicionarValores() {
+    corpo.querySelectorAll('.vg-fat-col-barra').forEach((b) => {
+      const v = b.querySelector('.vg-fat-col-val'); if (!v) return;
+      v.classList.remove('fora');
+      if (v.offsetHeight + 10 > b.clientHeight) v.classList.add('fora');
+    });
+  }
+  window.addEventListener('resize', () => { if (dados) posicionarValores(); });
 
   // Abre a Consulta de notas com as notas do dia (e do estado, se escolhido).
   function abrirNotas(uf, operacao) {
@@ -305,10 +315,19 @@
       const sel = x.dia === d.data; const bx = P + i * cw + 7; const bw = cw - 14;
       const h = x.valor ? Math.max(4, (x.valor / maxDia) * 150) : 0;
       if (h) { c.beginPath(); c.roundRect(bx, base - h, bw, h, [6, 6, 0, 0]); c.fillStyle = sel ? COR.azul : COR.azulClaro; c.fill(); }
+      if (x.valor) {
+        // Valor na vertical, dentro da coluna (ou acima dela, se a coluna for baixa).
+        c.save(); c.font = f(15, sel ? 700 : 600);
+        const tw = c.measureText(moedaCurta(x.valor)).width;
+        const dentro = h >= tw + 14;
+        c.translate(bx + bw / 2 + 5, dentro ? base - 8 : base - h - 6);
+        c.rotate(-Math.PI / 2); c.textAlign = 'left'; c.fillStyle = dentro && sel ? '#ffffff' : COR.texto;
+        if (dentro || base - h - 6 - tw > topo - 40) c.fillText(moedaCurta(x.valor), 0, 0);
+        c.restore();
+      }
       const fds = [0, 6].includes(diaSemana(x.dia));
       txt(x.dia.slice(8, 10), bx + bw / 2, base + 30, { tam: 19, peso: sel ? 700 : 600, cor: sel ? COR.azul : (fds ? '#9aa1ac' : COR.texto), alinhar: 'center' });
       txt(SEMANA_CURTA[diaSemana(x.dia)], bx + bw / 2, base + 54, { tam: 16, cor: sel ? COR.azul : COR.fraco, alinhar: 'center' });
-      if (sel && x.valor) txt(moedaCurta(x.valor), Math.min(Math.max(bx + bw / 2, P + 60), W - P - 60), base - h - 10, { tam: 18, peso: 700, alinhar: 'center' });
     });
     c.fillStyle = COR.borda; c.fillRect(P, base, W - 2 * P, 1.5);
     if (media) {

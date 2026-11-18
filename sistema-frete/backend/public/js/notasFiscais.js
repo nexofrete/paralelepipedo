@@ -339,11 +339,13 @@
         ${n.tem_xml ? `<a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/danfe?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">📄 DANFE (imprimir / PDF)</a>
         <a class="btn btn-secundario" style="width:auto;" href="/api/notas/${n.id}/xml?token=${encodeURIComponent(token)}">⬇ XML</a>` : '<span style="color:var(--texto-fraco); align-self:center;">Nota sem XML (entrou pela planilha do ERP)</span>'}
         ${n.qtd_ocorrencias ? '<button class="btn btn-secundario" data-nf-rastreio style="width:auto;">🚚 Histórico de rastreamento</button>' : ''}
+        <button class="btn btn-secundario" data-nf-etiquetas style="width:auto;" title="Etiquetas de volume desta nota (10 × 7 cm)">🏷 Etiquetas</button>
         <button class="btn btn-secundario" data-nf-registro style="width:auto;" title="O registro completo do frete: valores, cálculo pela tabela, aprovação, comprovante de entrega">✏ Abrir o registro do frete</button>
         <button class="btn btn-primario" data-nf-fechar style="width:auto;">Fechar</button></div></div>`;
     document.body.appendChild(fundo);
     fundo.addEventListener('click', (ev) => {
       if (ev.target === fundo || ev.target.closest('[data-nf-fechar]')) { fundo.remove(); return; }
+      if (ev.target.closest('[data-nf-etiquetas]')) { abrirEtiquetas([n]); return; }
       if (ev.target.closest('[data-nf-rastreio]')) { if (typeof epVerOcorrencias === 'function') epVerOcorrencias(id); return; }
       if (ev.target.closest('[data-nf-registro]')) { fundo.remove(); if (typeof epAbrirRegistro === 'function') epAbrirRegistro(id); return; }
       const c = ev.target.closest('[data-nf-corrigir]');
@@ -404,6 +406,94 @@
       linhas: dados.notas.map((n) => { const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco); return [n.numero_nf, n.nf_serie || '', n.chave_nfe || '', dia(n.data_emissao_nf), n.data_saida ? dataHora(n.data_saida) : '', n.emitente_nome || '', doc(n.emitente_cnpj), n.cliente || '', doc(n.cliente_documento),
         n.cidade || '', n.uf || '', endTexto(e), ORIGEM[n.endereco_origem] || '', r?.nome || n.redespacho || '', endTexto(r), n.endereco_conferir ? `Sim: ${n.endereco_conferir_motivo || ''}` : 'Não',
         n.valor_produtos, n.valor_faturado, n.peso_bruto ?? n.peso_kg, n.peso_liquido, n.qtd_volumes, n.numero_pedido || '', n.numero_cte || '', SIT[n.situacao][1]]; }) }]).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
+  });
+
+  // ---------- Etiquetas de volume (10 × 7 cm, padrão do ERP) ----------
+  // notas: [{ id, numero_nf, cliente, qtd_volumes }]. Uma etiqueta por volume; dá para escolher os volumes (1-5,8).
+  async function abrirEtiquetas(notas) {
+    if (!notas.length) { mostrarAlerta('Marque as notas na lista (caixinha da esquerda) para imprimir as etiquetas.', { tipo: 'info' }); return; }
+    let cfg = { ip: '', porta: 9100, dpi: 203 };
+    try { const r = await apiFetch('/api/notas/etiquetas/config'); if (r.ok) cfg = await r.json(); } catch { /* padrão */ }
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay';
+    const linhas = notas.map((n) => `<tr><td><b>${esc(n.numero_nf)}</b></td><td>${esc(n.cliente || '—')}</td><td class="n">${Number(n.qtd_volumes) || 1}</td>
+      <td><input class="cte-entrada" data-et-faixa="${n.id}" data-total="${Number(n.qtd_volumes) || 1}" placeholder="todos" title="Todos, ou só alguns: 1-5,8" style="width:110px; padding:4px 7px;" /></td></tr>`).join('');
+    fundo.innerHTML = `<div class="painel modal-card nf-et-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">🏷 Etiquetas de volume (10 × 7 cm)</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
+      <p class="vg-fat-img-dica">Uma etiqueta por volume ("Volumes: 1 / 68"), com o destinatário, o endereço, a transportadora, o pedido e a nota. Para reimprimir só alguns volumes, escreva na coluna "Imprimir" (ex.: 1-5,8).</p>
+      <div class="nf-et-tab"><table class="edi-tabela"><thead><tr><th>NF</th><th>Destinatário</th><th class="n">Volumes</th><th>Imprimir</th></tr></thead><tbody>${linhas}</tbody></table></div>
+      <div class="nf-et-total" id="nfEtTotal"></div>
+      <div class="nf-et-acoes">
+        ${usuario?.perfil === 'admin' ? '<button type="button" class="btn btn-secundario" data-et-config style="width:auto;">⚙ Impressora</button>' : ''}
+        <span style="flex:1;"></span>
+        <button type="button" class="btn btn-secundario" data-et-zpl style="width:auto;" title="Arquivo ZPL para mandar à Zebra (Zebra Setup Utilities ou impressora compartilhada)">⬇ Baixar ZPL</button>
+        <button type="button" class="btn btn-secundario" data-et-html style="width:auto;" title="Abre as etiquetas para imprimir pelo navegador, com o driver da Zebra (papel 100 × 70 mm)">🖨 Imprimir</button>
+        ${cfg.ip ? `<button type="button" class="btn btn-primario" data-et-zebra style="width:auto;" title="Manda direto para a Zebra na rede (${esc(cfg.ip)}:${cfg.porta})">📤 Enviar para a Zebra</button>` : ''}
+      </div>
+      ${cfg.ip ? '' : '<p class="vg-fat-img-dica" style="margin:8px 0 0;">Zebra na rede (com IP)? O administrador cadastra o IP em ⚙ Impressora e aparece o botão "Enviar para a Zebra", que imprime direto, sem abrir janela.</p>'}
+    </div>`;
+    document.body.appendChild(fundo);
+    const ids = notas.map((n) => n.id);
+    const faixas = () => Object.fromEntries([...fundo.querySelectorAll('[data-et-faixa]')].map((i) => [i.dataset.etFaixa, i.value.trim()]).filter(([, v]) => v && v.toLowerCase() !== 'todos'));
+    const contar = (faixa, total) => {
+      const t = String(faixa || '').trim().toLowerCase();
+      if (!t || t === 'todos') return total;
+      const s = new Set();
+      t.split(/[,;\s]+/).forEach((p) => { const m = p.match(/^(\d+)(?:-(\d+))?$/); if (!m) return; const a = +m[1]; const b = m[2] ? +m[2] : a; for (let v = Math.max(1, Math.min(a, b)); v <= Math.min(total, Math.max(a, b)); v += 1) s.add(v); });
+      return s.size;
+    };
+    const total = () => [...fundo.querySelectorAll('[data-et-faixa]')].reduce((s, i) => s + contar(i.value, Number(i.dataset.total)), 0);
+    const mostrarTotal = () => { fundo.querySelector('#nfEtTotal').textContent = `${total()} etiqueta(s) de ${notas.length} nota(s)`; };
+    mostrarTotal();
+    fundo.addEventListener('input', mostrarTotal);
+    const q = () => { const f = faixas(); return new URLSearchParams({ ids: ids.join(','), ...(Object.keys(f).length ? { faixas: Object.entries(f).map(([k, v]) => `${k}:${v}`).join(';') } : {}) }); };
+    fundo.addEventListener('click', async (e) => {
+      if (e.target === fundo || e.target.closest('[data-fechar]')) { fundo.remove(); return; }
+      if (!total() && (e.target.closest('[data-et-html]') || e.target.closest('[data-et-zpl]') || e.target.closest('[data-et-zebra]'))) { mostrarAlerta('Nenhum volume escolhido.', { tipo: 'aviso' }); return; }
+      if (e.target.closest('[data-et-html]')) { window.open(link(`/api/notas/etiquetas?${q()}`), '_blank'); return; }
+      if (e.target.closest('[data-et-zpl]')) {
+        const r = await apiFetch(`/api/notas/etiquetas/zpl?${q()}`);
+        if (!r.ok) { mostrarAlerta(await r.text(), { tipo: 'erro' }); return; }
+        const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = `etiquetas-notas-${new Date().toISOString().slice(0, 10)}.zpl`; a.click();
+        return;
+      }
+      const z = e.target.closest('[data-et-zebra]');
+      if (z) {
+        z.disabled = true; const t0 = z.textContent; z.textContent = 'Enviando…';
+        try {
+          const r = await apiFetch('/api/notas/etiquetas/zebra', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, faixas: faixas() }) });
+          const j = await r.json().catch(() => ({}));
+          mostrarAlerta(j.mensagem || j.erro || 'Erro ao enviar.', { tipo: r.ok ? 'sucesso' : 'erro' });
+        } finally { z.disabled = false; z.textContent = t0; }
+        return;
+      }
+      if (e.target.closest('[data-et-config]')) {
+        const v = await abrirDialogo({ tipo: 'info', titulo: 'Impressora Zebra na rede',
+          mensagem: 'Com o IP, o botão "Enviar para a Zebra" imprime direto (o servidor manda pela porta 9100). Zebra no USB: deixe o IP em branco e use "Imprimir" (pelo driver) ou "Baixar ZPL".',
+          corpoHtml: `<div style="display:grid; grid-template-columns:1fr 90px 110px; gap:8px; text-align:left;">
+              <label>IP da impressora<input class="cte-entrada" name="ip" value="${esc(cfg.ip || '')}" placeholder="192.168.0.50" autofocus /></label>
+              <label>Porta<input class="cte-entrada" name="porta" value="${esc(String(cfg.porta || 9100))}" /></label>
+              <label>Resolução<select class="cte-entrada" name="dpi"><option value="203" ${Number(cfg.dpi) >= 300 ? '' : 'selected'}>203 dpi</option><option value="300" ${Number(cfg.dpi) >= 300 ? 'selected' : ''}>300 dpi</option></select></label></div>
+            <label style="display:flex; gap:6px; align-items:center; margin-top:10px; text-align:left;"><input type="checkbox" name="teste" checked style="width:auto;" /> Imprimir uma etiqueta de teste depois de salvar</label>`,
+          botoes: [{ texto: 'Cancelar', valor: null, estilo: 'secundario' }, { texto: 'Salvar', valor: true, estilo: 'primario' }] });
+        if (!v || typeof v !== 'object') return;
+        const sv = await apiFetch('/api/notas/etiquetas/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: v.ip, porta: v.porta, dpi: v.dpi }) });
+        const j = await sv.json().catch(() => ({}));
+        if (!sv.ok) { mostrarAlerta(j.erro || 'Erro ao salvar.', { tipo: 'erro' }); return; }
+        if (v.teste && j.ip) {
+          const t = await apiFetch('/api/notas/etiquetas/zebra', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teste: true }) });
+          const tj = await t.json().catch(() => ({}));
+          mostrarAlerta(tj.mensagem || tj.erro || 'Erro.', { tipo: t.ok ? 'sucesso' : 'erro' });
+        }
+        fundo.remove(); abrirEtiquetas(notas);
+      }
+    });
+  }
+  window.abrirEtiquetasNotas = abrirEtiquetas;
+
+  $('nfEtiquetas')?.addEventListener('click', () => {
+    if (!montado || !dados) return;
+    abrirEtiquetas(dados.notas.filter((n) => marcadas.has(n.id)));
   });
   // DANFE em lote: as marcadas ou, sem nenhuma marcada, as do filtro (numa aba nova, um DANFE por folha).
   $('nfDanfes')?.addEventListener('click', () => {

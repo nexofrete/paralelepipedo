@@ -439,6 +439,13 @@ def parte_uso(g):
         '(erro corrigido na 1.73.0), o aviso laranja no alto da Consulta lista essas notas, diz qual nota ficou no lugar e '
         'se há um CT-e no registro para conferir de qual das duas notas ele é. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
         'primeiro" ou "mais recentes primeiro".',
+        '<b>Etiquetas de volume</b> (10 x 7 cm, no padrão do ERP): marque as notas e clique em <b>Etiquetas</b> (ou use o '
+        'botão Etiquetas no detalhe da nota). Sai uma etiqueta por volume, com o destinatário, a rua e o número, o bairro, a '
+        'cidade/UF, o CEP, a transportadora da nota, "Volumes: 1 / 68", o pedido e a nota. Na coluna "Imprimir" dá para '
+        'escolher só alguns volumes (ex.: 1-5,8). <b>Imprimir</b> abre as etiquetas no navegador (na Zebra, papel 100 x 70 mm, '
+        'margens nenhuma e escala 100%); <b>Baixar ZPL</b> gera o arquivo da Zebra; com a Zebra na rede, o administrador '
+        'cadastra o IP em <b>Impressora</b> (porta 9100, 203 ou 300 dpi, com etiqueta de teste) e aparece <b>Enviar para a '
+        'Zebra</b>, que imprime direto. Os dados saem do XML da NF-e; nota sem transportadora no XML usa a do CT-e.',
         'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',
         '<b>Entrega</b> (coluna): <b>Entregue</b> com a data, a origem (SSW, portal, comprovante, lançada à mão) e quem recebeu; '

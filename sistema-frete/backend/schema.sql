@@ -3657,3 +3657,8 @@ CREATE TABLE IF NOT EXISTS notas_sem_frete (
   criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_notas_sem_frete_emitente ON notas_sem_frete (emitente_cnpj, nf_serie);
+
+-- Impressora Zebra na rede para as etiquetas das notas (src/etiquetasNota.js): IP, porta RAW e resolução.
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS zebra_ip VARCHAR(60);
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS zebra_porta INTEGER DEFAULT 9100;
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS zebra_dpi INTEGER DEFAULT 203;

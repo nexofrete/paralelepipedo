@@ -22,6 +22,51 @@ router.get('/', autenticar, async (req, res) => {
   try { res.json(await nf.listar(req, req.query)); } catch (err) { erro(res, err, 'Erro ao listar as notas.'); }
 });
 // Faturamento do dia (Visão geral): ?data=AAAA-MM-DD (padrão: hoje).
+// ---------- Etiquetas de volume das notas (10 × 7 cm, padrão do ERP) ----------
+// ids=1,2,3 e faixas=1:1-5;2:3 (reimprimir só alguns volumes de uma nota).
+const etq = require('../etiquetasNota');
+const idsQ = (v) => String(v || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
+const faixasQ = (v) => Object.fromEntries(String(v || '').split(';').map((p) => p.split(':')).filter((p) => p.length === 2 && /^\d+$/.test(p[0])).map(([id, f]) => [id, f]));
+router.get('/etiquetas', autenticar, async (req, res) => {
+  try {
+    const lista = await etq.etiquetasDasNotas(req, idsQ(req.query.ids), faixasQ(req.query.faixas));
+    if (!lista.length) return res.status(404).send('Nenhuma nota encontrada para as etiquetas.');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(etq.html(lista));
+  } catch (err) { res.status(err.status || 500).send(String(err.message || 'Erro ao montar as etiquetas.')); }
+});
+router.get('/etiquetas/zpl', autenticar, async (req, res) => {
+  try {
+    const lista = await etq.etiquetasDasNotas(req, idsQ(req.query.ids), faixasQ(req.query.faixas));
+    if (!lista.length) return res.status(404).send('Nenhuma nota encontrada para as etiquetas.');
+    const c = await etq.config();
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="etiquetas-notas-${Date.now()}.zpl"`);
+    res.send(etq.zpl(lista, { dpi: req.query.dpi || c.dpi }));
+  } catch (err) { res.status(err.status || 500).send(String(err.message || 'Erro ao gerar o ZPL.')); }
+});
+router.post('/etiquetas/zebra', autenticar, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const c = await etq.config();
+    if (b.teste) {
+      await etq.enviarParaZebra(etq.zpl([{ nome: 'TESTE DE IMPRESSAO NEXOFRETE', rua: 'ETIQUETA 10 X 7 CM', bairro: 'BAIRRO', cidade: 'CIDADE', uf: 'UF', cep: '00000-000', transportadora: 'TRANSPORTADORA', volume: 1, total: 1, pedido: '0', nota: '0' }], { dpi: c.dpi }), c);
+      return res.json({ ok: true, mensagem: `Etiqueta de teste enviada para ${c.ip}:${c.porta}.` });
+    }
+    const lista = await etq.etiquetasDasNotas(req, (Array.isArray(b.ids) ? b.ids : []), b.faixas || {});
+    if (!lista.length) throw Object.assign(new Error('Nenhuma nota encontrada para as etiquetas.'), { status: 404 });
+    await etq.enviarParaZebra(etq.zpl(lista, { dpi: c.dpi }), c);
+    registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'etiquetas', detalhes: `Mandou ${lista.length} etiqueta(s) de volume para a Zebra ${c.ip} (NF ${[...new Set(lista.map((x) => x.nota))].join(', ')})` });
+    res.json({ ok: true, mensagem: `${lista.length} etiqueta(s) enviada(s) para a Zebra (${c.ip}).` });
+  } catch (err) { erro(res, err, 'Erro ao mandar para a Zebra.'); }
+});
+router.get('/etiquetas/config', autenticar, async (req, res) => {
+  try { res.json(await etq.config()); } catch (err) { erro(res, err, 'Erro.'); }
+});
+router.put('/etiquetas/config', autenticar, require('../middlewareAuth').apenasAdmin, async (req, res) => {
+  try { res.json(await etq.salvarConfig(req.body || {})); } catch (err) { erro(res, err, 'Erro ao salvar a impressora.'); }
+});
+
 // Notas que sumiram por terem sido escritas por cima por outra nota do mesmo pedido (corrigido na 1.73.0).
 router.get('/substituidas', autenticar, async (req, res) => {
   try { res.json(await nf.notasSubstituidas(req)); } catch (err) { erro(res, err, 'Erro ao procurar as notas substituídas.'); }

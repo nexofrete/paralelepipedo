@@ -180,6 +180,15 @@
     if (!montado) montar();
     if (f.situacao != null) $('nfSit').value = f.situacao;
     if (f.entrega != null) $('nfEntrega').value = f.entrega;
+    // Notas de um dia (Faturamento do dia da Visão geral): só as autorizadas da data, e do estado se escolhido.
+    if (f.de) {
+      ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfTransp'].forEach((id) => { $(id).value = ''; });
+      $('nfEntrega').value = ''; $('nfEnd').value = ''; $('nfSit').value = 'autorizada'; $('nfData').value = 'emissao';
+      $('nfUf').value = f.uf || ''; if (f.uf) $('nfMaisFiltros').open = true;
+      $('nfPer').value = 'custom'; $('nfPer').closest('.periodo')?.classList.remove('periodo-tudo');
+      $('nfDe').value = f.de; $('nfAte').value = f.ate || f.de;
+    }
+    if (f.abrir) { nav.click(); return; }   // abre a tela, que carrega com esses filtros
     carregar().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
   };
 

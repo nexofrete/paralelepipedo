@@ -890,6 +890,20 @@
         <!-- Fluxo do frete: cada etapa leva pra tela onde se resolve -->
         <div class="vg-fluxo" id="vgFluxo"></div>
 
+        <!-- Faturamento do dia: NF-e emitidas na data, estados e últimos 14 dias (js/faturamentoDia.js) -->
+        <div class="painel vg-painel vg-fat" id="vgFat">
+          <div class="vg-fat-topo">
+            <h3 class="vg-titulo">🧾 Faturamento do dia <span class="vg-titulo-nota">(NF-e emitidas na data, sem canceladas e denegadas)</span></h3>
+            <div class="vg-fat-nav">
+              <button type="button" class="btn btn-secundario" id="vgFatAnt" title="Dia anterior" aria-label="Dia anterior">‹</button>
+              <input type="date" id="vgFatData" class="cte-entrada" aria-label="Dia" />
+              <button type="button" class="btn btn-secundario" id="vgFatProx" title="Próximo dia" aria-label="Próximo dia">›</button>
+              <button type="button" class="btn btn-secundario oculto" id="vgFatHoje">Hoje</button>
+            </div>
+          </div>
+          <div id="vgFatCorpo"></div>
+        </div>
+
         <div class="vg-grade">
           <div class="painel vg-painel">
             <h3 class="vg-titulo">⚡ Precisa de atenção</h3>
@@ -4042,6 +4056,7 @@
   <script src="js/regrasAuditoria.js"></script>
   <script src="js/responsaveisAuditoria.js"></script>
   <script src="js/notasFiscais.js"></script>
+  <script src="js/faturamentoDia.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>

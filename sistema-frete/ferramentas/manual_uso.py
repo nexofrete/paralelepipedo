@@ -81,6 +81,19 @@ def parte_uso(g):
                '(entregue com a data, atrasada, em trânsito ou aguardando CT-e). Um clique abre a nota completa, com o DANFE, o XML, '
                'o histórico de rastreamento e o registro do frete. <b>Enter</b> (ou "Abrir na Consulta de notas") leva para a '
                'Consulta de notas (403) já com a busca, em todas as datas. Esc fecha a lista.'))
+    s += h2('Faturamento do dia')
+    s.append(P('Logo abaixo do fluxo do frete, o quadro <b>Faturamento do dia</b> mostra as NF-e emitidas na data (pela data '
+               'de emissão; notas canceladas e denegadas não contam). Abre no dia de hoje e se atualiza sozinho a cada 5 minutos; '
+               'as setas e o campo de data mudam o dia.'))
+    s += lista([
+        '<b>Total das notas</b> do dia (soma do valor total das NF-e), com a comparação com o mesmo dia da semana anterior '
+        '(por exemplo, "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, ticket médio '
+        '(total dividido pelo número de notas), peso e volumes. "Ver as notas do dia" abre a Consulta de notas com essas notas.',
+        '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
+        'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
+        '<b>Últimos 14 dias</b>: uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
+        'nota. Passe o mouse para ver o valor, as notas e o ticket médio do dia; clique numa coluna para ver aquele dia.',
+    ])
     s += h2('Fluxo do frete')
     s.append(P('Cinco quadros com a quantidade (e o valor) em cada etapa: Aguardando CT-e, Em conferência, Frete Retido, '
                'Liberado p/ Pagamento e Faturado.'))

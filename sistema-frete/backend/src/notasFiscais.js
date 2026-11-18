@@ -291,6 +291,41 @@ async function listar(req, q = {}) {
   return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows) };
 }
 
+// ---------- Faturamento do dia (Visão geral) ----------
+// As NF-e emitidas num dia (pela data de emissão): soma do valor total das notas, quantidade, clientes, peso,
+// os estados (UF do destinatário) que mais compraram e os 14 dias até ele, para comparar. Não contam notas
+// canceladas nem denegadas; a mesma nota em dois registros (dois CT-e) conta uma vez só (pela chave).
+const hojeSaoPaulo = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+async function faturamentoDia(req, q = {}) {
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(String(q.data || '')) && !Number.isNaN(Date.parse(q.data)) ? String(q.data) : hojeSaoPaulo();
+  const NOTAS = `n AS (SELECT DISTINCT ON (COALESCE(NULLIF(f.chave_nfe, ''), COALESCE(f.emitente_cnpj, '') || '-' || COALESCE(f.nf_serie, '') || '-' || f.numero_nf))
+        f.data_emissao_nf AS dia, COALESCE(f.valor_faturado, f.valor_produtos, 0)::float AS valor, COALESCE(f.peso_bruto, f.peso_kg, 0)::float AS peso,
+        COALESCE(f.qtd_volumes, 0)::int AS volumes, UPPER(NULLIF(TRIM(f.uf), '')) AS uf, COALESCE(NULLIF(regexp_replace(COALESCE(f.cliente_documento, ''), '\\D', '', 'g'), ''), f.cliente) AS cliente
+      FROM fretes f
+     WHERE f.frete_principal_id IS NULL AND f.numero_nf IS NOT NULL AND f.numero_nf <> '' AND f.nf_cancelada IS NOT TRUE AND f.nf_denegada IS NOT TRUE
+       AND f.data_emissao_nf BETWEEN $1::date - 13 AND $1::date
+     ORDER BY COALESCE(NULLIF(f.chave_nfe, ''), COALESCE(f.emitente_cnpj, '') || '-' || COALESCE(f.nf_serie, '') || '-' || f.numero_nf), f.id)`;
+  const [{ rows: [dia] }, { rows: ufs }, { rows: dias }] = await Promise.all([
+    consultaCliente(req, `WITH ${NOTAS} SELECT COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor, COALESCE(SUM(peso), 0)::float AS peso,
+        COALESCE(SUM(volumes), 0)::int AS volumes, COUNT(DISTINCT cliente)::int AS clientes, COUNT(DISTINCT uf)::int AS estados FROM n WHERE dia = $1::date`, [data]),
+    consultaCliente(req, `WITH ${NOTAS} SELECT COALESCE(uf, '?') AS uf, COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor
+        FROM n WHERE dia = $1::date GROUP BY 1 ORDER BY 3 DESC, 2 DESC`, [data]),
+    consultaCliente(req, `WITH ${NOTAS} SELECT to_char(d, 'YYYY-MM-DD') AS dia, COALESCE(COUNT(n.dia), 0)::int AS notas, COALESCE(SUM(n.valor), 0)::float AS valor
+        FROM generate_series($1::date - 13, $1::date, INTERVAL '1 day') d LEFT JOIN n ON n.dia = d::date GROUP BY d ORDER BY d`, [data]),
+  ]);
+  const semanaPassada = dias[dias.length - 8] || null;   // o mesmo dia da semana anterior
+  const top = ufs.slice(0, 5);
+  const resto = ufs.slice(5);
+  return {
+    data, hoje: hojeSaoPaulo(), ...dia,
+    ticket_medio: dia.notas ? dia.valor / dia.notas : 0,
+    estados: top.map((u) => ({ ...u, pct: dia.valor ? u.valor / dia.valor : 0 })),
+    outros: resto.length ? { estados: resto.length, notas: resto.reduce((s, u) => s + u.notas, 0), valor: resto.reduce((s, u) => s + u.valor, 0) } : null,
+    dias,
+    semana_passada: semanaPassada,
+  };
+}
+
 // Números pulados na sequência (mesmo emitente e série), entre a menor e a maior nota do filtro:
 // notas que não entraram no sistema (ou foram inutilizadas). Saltos de mais de 500 números não contam (outra faixa).
 function faltandoNaSequencia(rows) {
@@ -368,4 +403,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

@@ -21,6 +21,10 @@ router.put('/:id(\\d+)/endereco', autenticar, require('../permissoes').permitirA
 router.get('/', autenticar, async (req, res) => {
   try { res.json(await nf.listar(req, req.query)); } catch (err) { erro(res, err, 'Erro ao listar as notas.'); }
 });
+// Faturamento do dia (Visão geral): ?data=AAAA-MM-DD (padrão: hoje).
+router.get('/faturamento-dia', autenticar, async (req, res) => {
+  try { res.json(await nf.faturamentoDia(req, req.query)); } catch (err) { erro(res, err, 'Erro ao calcular o faturamento do dia.'); }
+});
 router.get('/zip', autenticar, async (req, res) => {
   try {
     const z = await nf.zipDasNotas(req, req.query);

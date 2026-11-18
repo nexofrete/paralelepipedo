@@ -186,6 +186,182 @@
   });
   corpo.addEventListener('mouseleave', esconderDica);
 
+
+  // ---------- Imagem para o WhatsApp ----------
+  // Desenha o resumo do dia num PNG em pé (1080 px de largura, fundo claro, letras grandes para ler no celular):
+  // cabeçalho com o logo e o nome da empresa, total e comparação, números do dia, venda x bonificação, os 5 estados
+  // e os últimos 14 dias. Copiar (colar com Ctrl+V no WhatsApp Web), compartilhar (celular/Windows) ou baixar.
+  let empresa = null;
+  async function dadosEmpresa() {
+    if (empresa) return empresa;
+    try { const r = await apiFetch('/api/empresa'); empresa = r.ok ? ((await r.json()) || {}) : {}; } catch { empresa = {}; }
+    return empresa;
+  }
+  const carregarImg = (src) => new Promise((ok) => { if (!src) return ok(null); const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+  const COR = { fundo: '#ffffff', caixa: '#f3f5f9', borda: '#e1e4ea', texto: '#1a1d24', fraco: '#656d7c', azul: '#3b68e8', azulClaro: '#b9c8f7', verde: '#1f9d5c', vermelho: '#d63a40' };
+  const FONTE = '"Segoe UI", Inter, "Helvetica Neue", Arial, sans-serif';
+
+  async function desenharImagem() {
+    const d = dados; if (!d) return null;
+    const emp = await dadosEmpresa();
+    const logo = await carregarImg(emp.logo);
+    const nomeEmp = emp.nome_fantasia || emp.razao_social || '';
+    const W = 1080; const P = 64;
+    const nEst = d.estados.length;
+    const H = 704 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 332 + 110;   // estados + 14 dias + rodapé
+    const esc2 = 2;
+    const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
+    const c = cv.getContext('2d'); c.scale(esc2, esc2);
+    const f = (tam, peso = 400) => `${peso} ${tam}px ${FONTE}`;
+    const txt = (t, x, y, { tam = 22, peso = 400, cor = COR.texto, alinhar = 'left', max } = {}) => {
+      c.font = f(tam, peso); c.fillStyle = cor; c.textAlign = alinhar; c.textBaseline = 'alphabetic';
+      let s = String(t);
+      if (max) { while (s.length > 1 && c.measureText(s).width > max) s = s.slice(0, -1); if (s !== String(t)) s = `${s.trimEnd()}…`; }
+      c.fillText(s, x, y); return c.measureText(s).width;
+    };
+    const ret = (x, y, w, h, r, cor, borda) => {
+      c.beginPath(); c.roundRect(x, y, w, h, r);
+      if (cor) { c.fillStyle = cor; c.fill(); }
+      if (borda) { c.strokeStyle = borda; c.lineWidth = 1.5; c.stroke(); }
+    };
+    c.fillStyle = COR.fundo; c.fillRect(0, 0, W, H);
+    c.fillStyle = COR.azul; c.fillRect(0, 0, W, 10);
+
+    // Cabeçalho
+    let y = 64; let xNome = P;
+    if (logo) {
+      const h = 64; const w = Math.min(200, (logo.width / logo.height) * h);
+      c.drawImage(logo, P, y - 6, w, h); xNome = P + w + 20;
+    }
+    const sem = SEMANA[diaSemana(d.data)];
+    const semExt = `${sem.charAt(0).toUpperCase()}${sem.slice(1)}${['sábado', 'domingo'].includes(sem) ? '' : '-feira'}`;
+    txt(semExt, W - P, y + 18, { tam: 22, cor: COR.fraco, alinhar: 'right' });
+    txt(`${ddmm(d.data)}/${d.data.slice(0, 4)}`, W - P, y + 54, { tam: 34, peso: 700, alinhar: 'right' });
+    if (nomeEmp) txt(nomeEmp, xNome, y + 20, { tam: 26, peso: 700, max: W - P - 260 - xNome });
+    txt('Faturamento do dia', xNome, y + (nomeEmp ? 54 : 36), { tam: nomeEmp ? 22 : 30, peso: nomeEmp ? 400 : 700, cor: nomeEmp ? COR.fraco : COR.texto });
+    y = 160; c.fillStyle = COR.borda; c.fillRect(P, y, W - 2 * P, 1.5);
+
+    // Total e comparação
+    y = 212; txt('Total das notas de venda e bonificação', P, y, { tam: 22, cor: COR.fraco });
+    y = 300; txt(moeda(d.valor), P, y, { tam: 82, peso: 700 });
+    y = 348;
+    const sp = d.semana_passada;
+    const masc = sem === 'sábado' || sem === 'domingo';
+    if (sp && sp.valor) {
+      const v = (d.valor - sp.valor) / sp.valor; const sobe = v >= 0;
+      const w1 = txt(`${sobe ? '▲' : '▼'} ${sobe ? '+' : '−'}${pct(Math.abs(v))}`, P, y, { tam: 26, peso: 700, cor: sobe ? COR.verde : COR.vermelho });
+      txt(` em relação ${masc ? 'ao' : 'à'} ${sem} passad${masc ? 'o' : 'a'} (${ddmm(sp.dia)}: ${moeda(sp.valor)})`, P + w1, y, { tam: 22, cor: COR.fraco });
+    } else {
+      txt(`Sem notas ${masc ? 'no' : 'na'} ${sem} passad${masc ? 'o' : 'a'} para comparar`, P, y, { tam: 22, cor: COR.fraco });
+    }
+
+    // Números do dia
+    y = 392; const gap = 16; const wK = (W - 2 * P - 3 * gap) / 4;
+    [['Notas', num(d.notas)], ['Clientes', num(d.clientes)], ['Ticket médio', d.notas ? moeda(d.ticket_medio) : '—'], ['Peso', `${num(d.peso)} kg`]].forEach(([r, v], i) => {
+      const x = P + i * (wK + gap);
+      ret(x, y, wK, 108, 14, COR.caixa);
+      txt(r, x + 20, y + 40, { tam: 20, cor: COR.fraco });
+      txt(v, x + 20, y + 84, { tam: 30, peso: 700, max: wK - 36 });
+    });
+    y = 516; const wV = (W - 2 * P - gap) / 2;
+    [['Venda', d.valor_venda, d.notas_venda], ['Bonificação', d.valor_bonificacao, d.notas_bonificacao]].forEach(([r, v, n], i) => {
+      const x = P + i * (wV + gap);
+      ret(x, y, wV, 96, 14, null, COR.borda);
+      txt(r, x + 20, y + 36, { tam: 20, cor: COR.fraco });
+      const wv = txt(moeda(v), x + 20, y + 76, { tam: 30, peso: 700 });
+      txt(`${num(n)} nota${n === 1 ? '' : 's'}`, x + 32 + wv, y + 76, { tam: 20, cor: COR.fraco });
+    });
+
+    // Os 5 estados
+    y = 682; txt('Os 5 estados que mais compraram', P, y, { tam: 28, peso: 700 });
+    y += 22;
+    const maxUf = d.estados[0]?.valor || 1;
+    if (!nEst) { txt('Nenhuma nota emitida neste dia.', P, y + 40, { tam: 22, cor: COR.fraco }); y += 64; }
+    d.estados.forEach((u) => {
+      const yl = y + 42;
+      ret(P, y + 12, 58, 40, 9, COR.caixa, COR.borda);
+      txt(u.uf === '?' ? '—' : u.uf, P + 29, yl, { tam: 21, peso: 700, alinhar: 'center' });
+      txt(UF[u.uf] || u.uf, P + 74, yl, { tam: 23, max: 230 });
+      const bx = 392; const bw = 300;
+      ret(bx, y + 22, bw, 20, 5, COR.caixa);
+      ret(bx, y + 22, Math.max(6, (u.valor / maxUf) * bw), 20, 5, COR.azul);
+      txt(moeda(u.valor), W - P, yl - 4, { tam: 24, peso: 700, alinhar: 'right' });
+      txt(`${pct(u.pct)} · ${u.notas} nota${u.notas === 1 ? '' : 's'}`, W - P, yl + 22, { tam: 18, cor: COR.fraco, alinhar: 'right' });
+      y += 64;
+    });
+    if (d.outros) {
+      txt(`+ ${d.outros.estados} outro${d.outros.estados > 1 ? 's' : ''} estado${d.outros.estados > 1 ? 's' : ''}: ${moeda(d.outros.valor)} (${pct(d.valor ? d.outros.valor / d.valor : 0)}) em ${d.outros.notas} nota${d.outros.notas === 1 ? '' : 's'}`, P, y + 26, { tam: 19, cor: COR.fraco });
+      y += 40;
+    }
+
+    // Últimos 14 dias
+    y += 52; txt('Últimos 14 dias', P, y, { tam: 28, peso: 700 });
+    const topo = y + 46; const base = topo + 150;
+    const maxDia = Math.max(...d.dias.map((x) => x.valor), 1);
+    const cw = (W - 2 * P) / 14;
+    const comValor = d.dias.filter((x) => x.valor > 0);
+    const media = comValor.length ? comValor.reduce((s, x) => s + x.valor, 0) / comValor.length : 0;
+    d.dias.forEach((x, i) => {
+      const sel = x.dia === d.data; const bx = P + i * cw + 7; const bw = cw - 14;
+      const h = x.valor ? Math.max(4, (x.valor / maxDia) * 150) : 0;
+      if (h) { c.beginPath(); c.roundRect(bx, base - h, bw, h, [6, 6, 0, 0]); c.fillStyle = sel ? COR.azul : COR.azulClaro; c.fill(); }
+      const fds = [0, 6].includes(diaSemana(x.dia));
+      txt(x.dia.slice(8, 10), bx + bw / 2, base + 30, { tam: 19, peso: sel ? 700 : 600, cor: sel ? COR.azul : (fds ? '#9aa1ac' : COR.texto), alinhar: 'center' });
+      txt(SEMANA_CURTA[diaSemana(x.dia)], bx + bw / 2, base + 54, { tam: 16, cor: sel ? COR.azul : COR.fraco, alinhar: 'center' });
+      if (sel && x.valor) txt(moedaCurta(x.valor), Math.min(Math.max(bx + bw / 2, P + 60), W - P - 60), base - h - 10, { tam: 18, peso: 700, alinhar: 'center' });
+    });
+    c.fillStyle = COR.borda; c.fillRect(P, base, W - 2 * P, 1.5);
+    if (media) {
+      const ym = base - (media / maxDia) * 150;
+      c.setLineDash([6, 5]); c.strokeStyle = '#9aa1ac'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(P, ym); c.lineTo(W - P, ym); c.stroke(); c.setLineDash([]);
+    }
+    txt(media ? `linha tracejada: média dos dias com nota, ${moeda(media)}` : '', P, base + 84, { tam: 17, cor: COR.fraco });
+
+    // Rodapé
+    const agora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    c.fillStyle = COR.borda; c.fillRect(P, H - 70, W - 2 * P, 1.5);
+    txt(`NF-e de venda e bonificação emitidas no dia (pelo CFOP), sem canceladas e denegadas · gerado em ${agora}`, P, H - 34, { tam: 16, cor: COR.fraco, max: W - 2 * P });
+    return cv;
+  }
+
+  async function abrirImagem() {
+    if (!dados) return;
+    const cv = await desenharImagem();
+    if (!cv) return;
+    const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
+    const nome = `faturamento-${dados.data}.png`;
+    const url = URL.createObjectURL(blob);
+    const arquivo = new File([blob], nome, { type: 'image/png' });
+    const podeCopiar = !!(window.isSecureContext && navigator.clipboard?.write && window.ClipboardItem);
+    let podeCompartilhar = false;
+    try { podeCompartilhar = !!navigator.canShare?.({ files: [arquivo] }); } catch { /* sem compartilhar */ }
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay';
+    fundo.innerHTML = `<div class="painel modal-card vg-fat-img-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">📷 Imagem do faturamento do dia</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
+      <p class="vg-fat-img-dica">${podeCopiar ? '<b>Copiar</b> e colar (Ctrl+V) na conversa do WhatsApp Web ou do WhatsApp do computador' : '<b>Baixar</b> e anexar na conversa do WhatsApp (clipe » Fotos e vídeos)'}${podeCompartilhar ? ', ou <b>Compartilhar</b> e escolher o WhatsApp' : ''}.</p>
+      <div class="vg-fat-img-prev"><img src="${url}" alt="Faturamento do dia ${ddmm(dados.data)}" /></div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        ${podeCompartilhar ? '<button type="button" class="btn btn-secundario" data-compartilhar style="width:auto;">📤 Compartilhar</button>' : ''}
+        <a class="btn btn-secundario" style="width:auto;" href="${url}" download="${nome}">⬇ Baixar PNG</a>
+        ${podeCopiar ? '<button type="button" class="btn btn-primario" data-copiar style="width:auto;">📋 Copiar imagem</button>' : ''}
+      </div></div>`;
+    document.body.appendChild(fundo);
+    const fechar = () => { fundo.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); };
+    fundo.addEventListener('click', async (e) => {
+      if (e.target === fundo || e.target.closest('[data-fechar]')) { fechar(); return; }
+      if (e.target.closest('[data-copiar]')) {
+        try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); mostrarAlerta('Imagem copiada. Cole (Ctrl+V) na conversa do WhatsApp.', { tipo: 'sucesso' }); }
+        catch { mostrarAlerta('O navegador não deixou copiar a imagem. Use "Baixar PNG" e anexe na conversa.', { tipo: 'aviso' }); }
+        return;
+      }
+      if (e.target.closest('[data-compartilhar]')) {
+        try { await navigator.share({ files: [arquivo], title: `Faturamento do dia ${ddmm(dados.data)}` }); } catch { /* cancelou */ }
+      }
+    });
+  }
+
+  document.getElementById('vgFatImagem').addEventListener('click', () => abrirImagem().catch((e) => mostrarAlerta(`Não consegui gerar a imagem: ${e.message}`, { tipo: 'erro' })));
   document.getElementById('vgFatAnt').addEventListener('click', () => carregar(somarDias(dados?.data || campoData.value, -1)));
   document.getElementById('vgFatProx').addEventListener('click', () => { if (dados && dados.data < dados.hoje) carregar(somarDias(dados.data, 1)); });
   document.getElementById('vgFatHoje').addEventListener('click', () => carregar(null));

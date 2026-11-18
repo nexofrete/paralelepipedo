@@ -102,6 +102,12 @@ def parte_uso(g):
         'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
+        '<b>Imagem para o WhatsApp</b>: o botão <b>Imagem</b> (ao lado das datas) gera um PNG em pé, com fundo claro e letras '
+        'grandes para ler no celular: logo e nome da empresa, dia, total, comparação com a semana anterior, notas, clientes, '
+        'ticket médio, peso, venda e bonificação, os 5 estados e os últimos 14 dias. Na janela: <b>Copiar imagem</b> e colar '
+        '(Ctrl+V) na conversa do WhatsApp Web ou do computador; <b>Compartilhar</b> (no celular e no Windows) e escolher o '
+        'WhatsApp; ou <b>Baixar PNG</b> e anexar na conversa. Copiar só aparece quando o sistema é aberto por https ou no '
+        'próprio computador do servidor (regra do navegador); senão use Baixar.',
         '<b>Últimos 14 dias</b>: uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
         'nota. Passe o mouse para ver o valor, as notas e o ticket médio do dia; clique numa coluna para ver aquele dia.',
     ])

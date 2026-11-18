@@ -37,3 +37,10 @@ test('logo só na nota emitida pela empresa', () => {
   assert.match(danfeFolha(XML, { empresa: { logo: 'data:image/png;base64,AAAA', cnpj: '00.955.719/0001-86' } }).folha, /class="logo"/);
   assert.doesNotMatch(danfeFolha(XML, { empresa: { logo: 'data:image/png;base64,AAAA', cnpj: '11111111000111' } }).folha, /class="logo"/);
 });
+
+test('logo largo (nome ao lado do símbolo) vai em cima do endereço; logo quadrado fica ao lado', () => {
+  // PNG 1×1 e PNG 300×100 (só o cabeçalho com largura e altura importa)
+  const png = (w, h) => { const b = Buffer.alloc(33); b.writeUInt32BE(0x89504e47, 0); b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20); return `data:image/png;base64,${b.toString('base64')}`; };
+  assert.match(danfeFolha(XML, { empresa: { logo: png(300, 100) } }).folha, /emit-corpo largo/);
+  assert.doesNotMatch(danfeFolha(XML, { empresa: { logo: png(100, 100) } }).folha, /emit-corpo largo/);
+});

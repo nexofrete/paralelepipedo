@@ -48,6 +48,23 @@ function linhasDoTexto(texto, largura) {
   while (linhas.length && !linhas[linhas.length - 1]) linhas.pop();
   return linhas;
 }
+// Largura e altura do logo (PNG ou JPEG em data URL), para escolher o arranjo do quadro do emitente.
+function tamanhoImagem(dataUrl) {
+  try {
+    const b = Buffer.from(String(dataUrl).split(',')[1] || '', 'base64');
+    if (b.length > 24 && b.readUInt32BE(0) === 0x89504e47) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+    if (b[0] === 0xff && b[1] === 0xd8) {
+      let i = 2;
+      while (i + 9 < b.length) {
+        if (b[i] !== 0xff) { i += 1; continue; }
+        const m = b[i + 1];
+        if (m >= 0xc0 && m <= 0xc3) return { w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5) };
+        i += 2 + b.readUInt16BE(i + 2);
+      }
+    }
+  } catch { /* formato desconhecido */ }
+  return null;
+}
 const LARG_INFO = 86; const LINHAS_INFO = 9;   // quadro "Informações complementares" do rodapé (Courier 7 pt)
 
 // Uma DANFE (uma ou mais folhas). opcoes: { marca: 'CANCELADA', empresa: { logo, cnpj } }.
@@ -67,6 +84,9 @@ function danfeFolha(xml, { marca = null, empresa = null } = {}) {
   const situacao = prot && ['110', '301', '302', '303'].includes(String(prot.cStat)) ? 'USO DENEGADO' : marca;
   const id = `d${chave || ide.nNF}${Math.random().toString(36).slice(2, 7)}`;
   const logo = empresa?.logo && (!empresa.cnpj || dig(empresa.cnpj) === dig(emit.CNPJ)) ? empresa.logo : null;
+  // Logo largo (mais de 1,8 vez mais largo que alto, ex.: símbolo e nome lado a lado): vai em cima, e o endereço embaixo.
+  const tam = logo ? tamanhoImagem(logo) : null;
+  const logoLargo = !!(tam && tam.h && tam.w / tam.h >= 1.8);
 
   // Canhoto (todas as folhas).
   const destEnd = [[ed.xLgr, ed.nro].filter(Boolean).join(', '), ed.xCpl, ed.xBairro, ed.xMun, ed.UF].filter(Boolean).join(' - ');
@@ -79,7 +99,7 @@ function danfeFolha(xml, { marca = null, empresa = null } = {}) {
   // Cabeçalho (todas as folhas): emitente, quadro DANFE, código de barras e chave; natureza, protocolo; IE e CNPJ.
   const cabecalho = `<div class="linha cab">
     <div class="c emit"><b class="emit-nome">${esc(String(emit.xNome || '').toUpperCase())}</b>
-      <div class="emit-corpo">${logo ? `<img class="logo" src="${esc(logo)}" alt="" />` : ''}<div class="emit-end">
+      <div class="emit-corpo${logoLargo ? ' largo' : ''}">${logo ? `<img class="logo" src="${esc(logo)}" alt="" />` : ''}<div class="emit-end">
         <div>${esc([ee.xLgr, ee.nro].filter(Boolean).join(', ').toUpperCase())}</div>${ee.xCpl ? `<div>${esc(String(ee.xCpl).toUpperCase())}</div>` : ''}
         <div>${esc(String(ee.xBairro || '').toUpperCase())}</div><div class="emit-mun">${esc(String(ee.xMun || '').toUpperCase())}</div>
         <div class="emit-ult"><span>${esc(ee.UF)}</span><span>${esc(fone(ee.fone))}</span><span>${cep(ee.CEP)}</span></div></div></div></div>
@@ -148,7 +168,9 @@ const ESTILO = `
   .cab { min-height: 41mm; } .cab > .c, .cab > .dir { min-height: 41mm; }
   .emit { flex: 2.35; padding: 1.5mm 2mm; } .emit-nome { display: block; font-size: 10pt; margin-bottom: 2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .emit-corpo { display: flex; gap: 3mm; align-items: flex-start; } .logo { max-width: 30mm; max-height: 26mm; object-fit: contain; margin-top: 1mm; }
-  .emit-end { font-size: 9pt; line-height: 1.35; flex: 1; } .emit-mun { margin-top: 1.4mm; } .emit-ult { display: flex; gap: 7mm; margin-top: 1.6mm; }
+  .emit-end { font-size: 9pt; line-height: 1.35; flex: 1; min-width: 0; } .emit-mun { margin-top: 1.4mm; } .emit-ult { display: flex; gap: 6mm; margin-top: 1.6mm; white-space: nowrap; }
+  .emit-corpo.largo { flex-direction: column; gap: 1mm; } .emit-corpo.largo .logo { max-width: 70mm; max-height: 15.5mm; margin: 0; }
+  .emit-corpo.largo .emit-end { font-size: 8.5pt; line-height: 1.25; } .emit-corpo.largo .emit-mun { margin-top: 0; } .emit-corpo.largo .emit-ult { margin-top: 0.4mm; }
   .danfe-box { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.6mm; padding: 1.5mm 1mm; font-size: 9pt; }
   .danfe-box .g2 { font-size: 13pt; } .danfe-box .mini { font-size: 7pt; line-height: 1.15; }
   .es { display: flex; align-items: center; gap: 2mm; font-size: 7.5pt; text-align: left; font-weight: bold; } .tpnf { border: 0.8pt solid #000; padding: 0.6mm 2.4mm; font-size: 10pt; }

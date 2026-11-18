@@ -3647,3 +3647,13 @@ ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_natureza VARCHAR(120);
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_cfops VARCHAR(4)[];
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_operacao VARCHAR(12);
 CREATE INDEX IF NOT EXISTS idx_fretes_emissao_operacao ON fretes (data_emissao_nf) WHERE nf_operacao IN ('venda', 'bonificacao');
+
+-- NF-e que o sistema pulou de propósito (baixa de estoque, complementar, entrada/devolução, exportação): não geram
+-- frete, mas contam na sequência das notas (a Consulta de notas não acusa "Falta a nota" e mostra o motivo).
+CREATE TABLE IF NOT EXISTS notas_sem_frete (
+  chave_nfe VARCHAR(44) PRIMARY KEY,
+  numero_nf VARCHAR(20), nf_serie VARCHAR(5), emitente_cnpj VARCHAR(14), data_emissao_nf DATE,
+  natureza VARCHAR(120), motivo VARCHAR(300),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notas_sem_frete_emitente ON notas_sem_frete (emitente_cnpj, nf_serie);

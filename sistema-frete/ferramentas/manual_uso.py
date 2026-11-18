@@ -102,6 +102,12 @@ def parte_uso(g):
         'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
+        '<b>Conferir com o ERP</b>: no ERP, abra a lista das notas do dia, selecione as linhas e copie (Ctrl+C); no '
+        'quadro, clique em <b>Conferir com o ERP</b>, cole (Ctrl+V) e clique em Conferir. Em cada linha o sistema pega o '
+        'número da nota e o valor, e mostra o total do ERP, o do sistema e a diferença, e nota por nota: confere; falta no '
+        'sistema (com o botão Enviar o XML); está no sistema mas fora da soma (e o motivo: outra operação pelo CFOP, sem '
+        'XML, cancelada, guardada dentro de outro registro); está com outra data de emissão; valor diferente; ou conta no '
+        'sistema mas não está na lista colada.',
         '<b>Imagem para o WhatsApp</b>: o botão <b>Imagem</b> (ao lado das datas) gera um PNG em pé, com fundo claro e letras '
         'grandes para ler no celular: logo e nome da empresa, dia, total, comparação com a semana anterior, notas, clientes, '
         'ticket médio, peso, venda e bonificação, os 5 estados e os últimos 14 dias. Na janela: <b>Copiar imagem</b> e colar '
@@ -420,7 +426,9 @@ def parte_uso(g):
         'X" ou "Faltam N notas: X a Y" (a nota não entrou no sistema ou foi inutilizada), e o quadro <b>Faltando na sequência</b> '
         'mostra o total. Na própria linha amarela, o botão <b>Enviar o XML</b> (para quem pode enviar XML) abre a escolha do '
         'arquivo: escolha o XML da nota que falta (ou um .zip com os XML) e ela é importada ali mesmo, como no Enviar XML; a '
-        'linha amarela some quando a nota entra. A janela mostra a resposta para cada arquivo: importada, já estava no '
+        'linha amarela some quando a nota entra. Notas que o sistema pula de propósito (baixa de estoque, complementar, '
+        'entrada ou devolução, exportação) ficam guardadas com o motivo: na sequência elas aparecem numa linha cinza ("NF X '
+        'não entra como frete: baixa de estoque...") e não contam como faltando. A janela mostra a resposta para cada arquivo: importada, já estava no '
         'sistema (e o que foi completado com o XML) ou o erro. A série "001" e a série "1" contam como a mesma. Se a nota sumiu porque outra nota do mesmo pedido foi gravada por cima dela '
         '(erro corrigido na 1.73.0), o aviso laranja no alto da Consulta lista essas notas, diz qual nota ficou no lugar e '
         'se há um CT-e no registro para conferir de qual das duas notas ele é. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '

@@ -27,8 +27,10 @@
   async function enviarXmls(arquivos) {
     // Mostra a resposta do sistema para cada arquivo (importada, já estava no sistema e o que foi completado, erro).
     const linhas = []; let novas = 0; let jaTinha = 0; let erros = 0;
-    const anotar = (nome, texto, tipo) => { linhas.push(`${nome}: ${texto}`); if (tipo === 'ok') novas++; else if (tipo === 'ja') jaTinha++; else erros++; };
-    const tipoDe = (status, ok, texto) => (status === 409 || /já (estava|está) no sistema|já foi importad/i.test(texto || '') ? 'ja' : ok ? 'ok' : 'erro');
+    let fora = 0;
+    const anotar = (nome, texto, tipo) => { linhas.push(`${nome}: ${texto}`); if (tipo === 'ok') novas++; else if (tipo === 'ja') jaTinha++; else if (tipo === 'fora') fora++; else erros++; };
+    const tipoDe = (status, ok, texto, pulado) => (status === 409 || /já (estava|está) no sistema|já foi importad/i.test(texto || '') ? 'ja'
+      : pulado || /não foi importada|não importada|não gera frete|nada a importar/i.test(texto || '') ? 'fora' : ok ? 'ok' : 'erro');
     for (const arq of arquivos) {
       const fd = new FormData(); fd.append('arquivo', arq, arq.name);
       const zip = /\.zip$/i.test(arq.name);
@@ -37,11 +39,11 @@
         const j = await r.json().catch(() => ({}));
         if (zip && r.ok) { (j.resultados || []).forEach((x) => anotar(x.nome, x.mensagem || '', tipoDe(null, x.ok, x.mensagem))); continue; }
         const texto = j.mensagem || j.erro || (r.ok ? 'importada' : 'erro ao importar');
-        anotar(arq.name, texto, tipoDe(r.status, r.ok, texto));
+        anotar(arq.name, texto, tipoDe(r.status, r.ok, texto, j.pulado));
       } catch { anotar(arq.name, 'falha de conexão', 'erro'); }
     }
-    const titulo = [novas ? `${novas} importada(s)` : '', jaTinha ? `${jaTinha} já estava(m) no sistema` : '', erros ? `${erros} com erro` : ''].filter(Boolean).join(' · ');
-    mostrarAlerta(linhas.join('\n\n'), { tipo: erros ? 'erro' : jaTinha && !novas ? 'aviso' : 'sucesso', titulo });
+    const titulo = [novas ? `${novas} importada(s)` : '', fora ? `${fora} sem frete (não importada${fora > 1 ? 's' : ''})` : '', jaTinha ? `${jaTinha} já estava(m) no sistema` : '', erros ? `${erros} com erro` : ''].filter(Boolean).join(' · ');
+    mostrarAlerta(linhas.join('\n\n'), { tipo: erros ? 'erro' : novas ? 'sucesso' : 'aviso', titulo });
     avisoSubstituidas(true).catch(() => {});
     window.dispatchEvent(new Event('nexofrete:notas-alteradas'));
     carregar().catch(() => {});
@@ -177,13 +179,16 @@
   }
   // Na ordem da sequência: antes da nota, uma linha avisando os números pulados (mesmo emitente e série).
   function linhaFaltando(n, j) {
-    if (!j.faltando?.faixas?.length) return '';
+    const fx = j.faltando?.faixas || []; const sf = j.faltando?.sem_frete || [];
+    if (!fx.length && !sf.length) return '';
     const num = Number(String(n.numero_nf || '').replace(/\D/g, ''));
     const serie = (v) => String(v || '').replace(/^0+(?=\d)/, '') || null;
     const cnpj = (v) => String(v || '').replace(/\D/g, '');
-    const f = j.faltando.faixas.find((x) => cnpj(x.emitente_cnpj) === cnpj(n.emitente_cnpj) && serie(x.serie) === serie(n.nf_serie) && (j.ordem === 'numero' ? x.ate + 1 === num : x.de - 1 === num));
-    if (!f) return '';
-    return `<tr class="nf-faltando"><td colspan="15">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.${podeEnviarXml() ? ` <button type="button" class="nf-faltando-enviar" data-nf-enviar-xml title="Escolha o XML (ou um .zip com os XML) da nota que falta: ele é importado aqui mesmo, como no Enviar XML">⬆ Enviar o XML</button>` : ''}</td></tr>`;
+    const doGrupo = (x) => cnpj(x.emitente_cnpj) === cnpj(n.emitente_cnpj) && serie(x.serie) === serie(n.nf_serie) && (j.ordem === 'numero' ? x.proxima === num : x.anterior === num);
+    const itens = [...fx.filter(doGrupo).map((f) => ({ n: f.de, html: `<tr class="nf-faltando"><td colspan="15">⚠ ${f.qtd === 1 ? `Falta a nota <b>${f.de}</b>` : `Faltam <b>${f.qtd}</b> notas: <b>${f.de}</b> a <b>${f.ate}</b>`} na sequência (série ${esc(f.serie || '—')}) — ${f.qtd === 1 ? 'não entrou no sistema ou foi inutilizada' : 'não entraram no sistema ou foram inutilizadas'}.${podeEnviarXml() ? ` <button type="button" class="nf-faltando-enviar" data-nf-enviar-xml title="Escolha o XML (ou um .zip com os XML) da nota que falta: ele é importado aqui mesmo, como no Enviar XML">⬆ Enviar o XML</button>` : ''}</td></tr>` })),
+      ...sf.filter(doGrupo).map((x) => ({ n: x.numero, html: `<tr class="nf-sem-frete"><td colspan="15">ℹ NF <b>${x.numero}</b> (série ${esc(x.serie || '—')}) não entra como frete: ${esc(x.motivo || x.natureza || 'pulada na importação')}.</td></tr>` }))];
+    itens.sort((a, b) => (j.ordem === 'numero' ? a.n - b.n : b.n - a.n));
+    return itens.map((i) => i.html).join('');
   }
   // Coluna Entrega: para onde a transportadora leva (redespacho ou local de entrega) e de onde veio.
   function celulaEntrega(n) {

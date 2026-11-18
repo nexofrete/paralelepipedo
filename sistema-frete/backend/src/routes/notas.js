@@ -26,6 +26,10 @@ router.get('/', autenticar, async (req, res) => {
 router.get('/substituidas', autenticar, async (req, res) => {
   try { res.json(await nf.notasSubstituidas(req)); } catch (err) { erro(res, err, 'Erro ao procurar as notas substituídas.'); }
 });
+// Conferir o faturamento do dia com a lista colada do ERP: { data, numeros }.
+router.post('/conferir-dia', autenticar, async (req, res) => {
+  try { res.json(await nf.conferirDia(req, req.body || {})); } catch (err) { erro(res, err, 'Erro ao conferir o dia.'); }
+});
 router.get('/faturamento-dia', autenticar, async (req, res) => {
   try { res.json(await nf.faturamentoDia(req, req.query)); } catch (err) { erro(res, err, 'Erro ao calcular o faturamento do dia.'); }
 });

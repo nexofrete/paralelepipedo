@@ -1999,3 +1999,30 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-img-prev { background: color-mix(in srgb, var(--texto) 6%, transparent); border-radius: var(--raio); padding: 10px; text-align: center; }
 .vg-fat-img-prev img { max-width: 100%; max-height: 62vh; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
 .vg-fat-img-card a.btn { text-decoration: none; }
+
+#nfTabela tr.nf-sem-frete td { background: color-mix(in srgb, var(--texto) 4%, transparent); color: var(--texto-fraco); font-size: 12px; padding: 5px 10px; border-left: 3px solid var(--borda); }
+
+/* Conferir o faturamento do dia com o ERP */
+.vg-conf-card { max-width: 920px; width: 100%; max-height: 94vh; overflow-y: auto; padding: 18px 20px; }
+.vg-conf-card textarea { width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; }
+.vg-conf-aviso { font-size: 13px; color: var(--texto-fraco); margin: 10px 0 0; }
+.vg-conf-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 10px; }
+.vg-conf-resumo div { border: 1px solid var(--borda); border-radius: var(--raio); padding: 9px 12px; }
+.vg-conf-resumo span { display: block; font-size: 11.5px; color: var(--texto-fraco); }
+.vg-conf-resumo b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.vg-conf-resumo small { font-size: 11.5px; color: var(--texto-fraco); }
+.vg-conf-resumo .ok b { color: var(--verde); } .vg-conf-resumo .dif b { color: #b45309; }
+.vg-conf-tab { width: 100%; font-size: 12.5px; border-collapse: collapse; }
+.vg-conf-tab th { text-align: left; font-size: 11px; color: var(--texto-fraco); padding: 6px 8px; border-bottom: 1px solid var(--borda); }
+.vg-conf-tab td { padding: 6px 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+.vg-conf-tab td:nth-child(3), .vg-conf-tab td:nth-child(4) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vg-conf-tab tr.t-falta td, .vg-conf-tab tr.t-fora td { background: rgba(217,119,6,.07); }
+.vg-conf-tab tr.t-valor td, .vg-conf-tab tr.t-data td, .vg-conf-tab tr.t-so_sistema td { background: color-mix(in srgb, var(--azul) 6%, transparent); }
+.vg-conf-tab td small { color: var(--texto-fraco); }
+.vg-conf-ok { color: var(--verde); }
+.vg-conf-tab .nf-faltando-enviar { margin-left: 6px; padding: 2px 8px; font-size: 11.5px; border-radius: 6px; border: 1px solid #d97706; background: transparent; color: #b45309; cursor: pointer; font-weight: 600; }
+@media (max-width: 700px) { .vg-conf-resumo { grid-template-columns: 1fr; } }
+.vg-conf-tab { table-layout: fixed; }
+.vg-conf-tab th:nth-child(1) { width: 30px; } .vg-conf-tab th:nth-child(2) { width: 24%; } .vg-conf-tab th:nth-child(3), .vg-conf-tab th:nth-child(4) { width: 120px; text-align: right; }
+.vg-conf-tab td { white-space: normal; overflow-wrap: anywhere; }
+.vg-conf-tab td:nth-child(3), .vg-conf-tab td:nth-child(4) { white-space: nowrap; }

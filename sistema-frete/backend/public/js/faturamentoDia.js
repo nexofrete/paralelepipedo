@@ -361,6 +361,118 @@
     });
   }
 
+
+  // ---------- Conferir com o ERP ----------
+  // Cola as linhas da lista do ERP (selecionar e Ctrl+C): em cada linha, o nº da NF (número de 4 a 9 dígitos fora de
+  // parênteses, de preferência com 5 ou mais) e o 1º valor em reais. Compara nota a nota com o sistema no dia escolhido.
+  const valorBr = (t) => Number(String(t).replace(/\./g, '').replace(',', '.'));
+  function lerListaErp(texto) {
+    const itens = new Map();
+    for (const linha of String(texto || '').split(/\r?\n/)) {
+      const limpa = linha.replace(/\([^)]*\)/g, ' ');
+      const valores = [...limpa.matchAll(/(-?\d{1,3}(?:\.\d{3})*,\d{2})(?!\d)/g)].map((m) => m[1]);
+      const resto = limpa.replace(/-?\d{1,3}(?:\.\d{3})*,\d{2}/g, ' ');
+      const nums = [...resto.matchAll(/(?<![\d.\/-])(\d{4,9})(?![\d.,\/-])/g)].map((m) => m[1]);
+      if (!nums.length || !valores.length) continue;
+      const numero = String(Number(nums.find((n) => n.length >= 5) || nums[0]));
+      itens.set(numero, { numero, valor: valorBr(valores[0]), linha: linha.trim() });
+    }
+    return [...itens.values()];
+  }
+  const motivoFora = (s) => (s.frete_principal_id ? `guardada dentro do registro #${s.frete_principal_id} (reinicie o servidor ou envie o XML de novo)`
+    : s.nf_denegada ? 'denegada' : s.nf_cancelada ? 'cancelada no sistema (o cancelamento foi importado)'
+    : s.sem_xml && !s.nf_operacao ? 'sem XML (entrou pela planilha do ERP): envie o XML'
+    : !s.nf_operacao ? 'operação ainda sendo lida (reinicie o servidor)'
+    : s.nf_operacao === 'outra' ? `operação "${s.nf_natureza || 'outra'}" não é venda nem bonificação pelo CFOP` : '');
+  const conta = (s) => !s.frete_principal_id && !s.nf_cancelada && !s.nf_denegada && ['venda', 'bonificacao'].includes(s.nf_operacao);
+  const semZeros = (n) => String(n || '').replace(/\D/g, '').replace(/^0+/, '');
+
+  function compararComErp(erp, r) {
+    const sis = new Map(r.sistema.map((s) => [semZeros(s.numero_nf), s]));
+    const outra = new Map(r.outras_datas.map((s) => [semZeros(s.numero_nf), s]));
+    const pulada = new Map(r.sem_frete.map((s) => [semZeros(s.numero_nf), s]));
+    const linhas = [];
+    for (const e of erp) {
+      const s = sis.get(e.numero);
+      if (s && conta(s)) {
+        const dif = Math.round((s.valor - e.valor) * 100) / 100;
+        linhas.push(Math.abs(dif) < 0.01 ? { tipo: 'ok', e, s } : { tipo: 'valor', e, s, texto: `valor diferente: no sistema ${moeda(s.valor)} (${dif > 0 ? '+' : ''}${moeda(dif)})` });
+      } else if (s) linhas.push({ tipo: 'fora', e, s, texto: `no sistema, mas fora da soma: ${motivoFora(s)}` });
+      else if (outra.get(e.numero)) { const o = outra.get(e.numero); linhas.push({ tipo: 'data', e, s: o, texto: `no sistema com emissão em ${ddmm(o.data)}/${o.data.slice(0, 4)} (conta naquele dia)` }); }
+      else if (pulada.get(e.numero)) linhas.push({ tipo: 'fora', e, texto: `não gera frete: ${pulada.get(e.numero).motivo}` });
+      else linhas.push({ tipo: 'falta', e, texto: 'não está no sistema' });
+    }
+    const noErp = new Set(erp.map((e) => e.numero));
+    for (const s of r.sistema) {
+      if (conta(s) && !noErp.has(semZeros(s.numero_nf))) linhas.push({ tipo: 'so_sistema', s, texto: 'conta no sistema, mas não está na lista colada' });
+    }
+    return linhas;
+  }
+
+  function abrirConferencia() {
+    if (!dados) return;
+    const fundo = document.createElement('div');
+    fundo.className = 'modal-overlay';
+    fundo.innerHTML = `<div class="painel modal-card vg-conf-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">🔎 Conferir o dia ${ddmm(dados.data)}/${dados.data.slice(0, 4)} com o ERP</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
+      <p class="vg-fat-img-dica">No ERP, abra a lista das notas do dia, selecione as linhas (Ctrl+A) e copie (Ctrl+C). Cole aqui (Ctrl+V). Em cada linha o sistema pega o nº da nota e o valor.</p>
+      <textarea id="vgConfTexto" class="cte-entrada" rows="6" placeholder="A3E WEB LTDA (031085)	195799	R$ 19.043,86	VENDA DE MERCADORIA	105"></textarea>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;"><button type="button" class="btn btn-primario" data-conferir style="width:auto;">Conferir</button></div>
+      <div id="vgConfRes"></div></div>`;
+    document.body.appendChild(fundo);
+    const res = fundo.querySelector('#vgConfRes');
+    let ultimo = null;
+    const conferir = async () => {
+      const erp = lerListaErp(fundo.querySelector('#vgConfTexto').value);
+      if (!erp.length) { res.innerHTML = '<p class="vg-conf-aviso">Não achei nenhuma linha com número de nota e valor. Copie as linhas da lista do ERP (com as colunas do número da nota e do valor).</p>'; return; }
+      ultimo = erp;
+      res.innerHTML = '<p class="vg-conf-aviso">Conferindo…</p>';
+      const r = await apiFetch('/api/notas/conferir-dia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: dados.data, numeros: erp.map((e) => e.numero) }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { res.innerHTML = `<p class="vg-conf-aviso">${esc(j.erro || 'Erro ao conferir.')}</p>`; return; }
+      const linhas = compararComErp(erp, j);
+      const totErp = erp.reduce((s, e) => s + e.valor, 0);
+      const contadas = j.sistema.filter(conta);
+      const totSis = contadas.reduce((s, x) => s + x.valor, 0);
+      const probl = linhas.filter((l) => l.tipo !== 'ok');
+      const ROT = { falta: ['⚠', 'Falta no sistema'], fora: ['⚠', 'Fora da soma'], valor: ['≠', 'Valor diferente'], data: ['📅', 'Outra data'], so_sistema: ['＋', 'Só no sistema'], ok: ['✓', 'Confere'] };
+      const ORDEM = { falta: 1, fora: 2, data: 3, valor: 4, so_sistema: 5, ok: 9 };
+      linhas.sort((a, b) => ORDEM[a.tipo] - ORDEM[b.tipo] || Number((a.e || a.s).numero || semZeros(a.s?.numero_nf)) - Number((b.e || b.s).numero || semZeros(b.s?.numero_nf)));
+      const dif = Math.round((totSis - totErp) * 100) / 100;
+      res.innerHTML = `<div class="vg-conf-resumo">
+          <div><span>ERP (colado)</span><b>${moeda(totErp)}</b><small>${erp.length} nota(s)</small></div>
+          <div><span>Sistema</span><b>${moeda(totSis)}</b><small>${contadas.length} nota(s)</small></div>
+          <div class="${Math.abs(dif) < 0.01 ? 'ok' : 'dif'}"><span>Diferença</span><b>${Math.abs(dif) < 0.01 ? 'Bateu ✓' : moeda(dif)}</b><small>${probl.length ? `${probl.length} nota(s) para ver` : 'nota por nota igual'}</small></div></div>
+        <table class="vg-conf-tab"><thead><tr><th></th><th>NF</th><th>ERP</th><th>Sistema</th><th>O que é</th></tr></thead><tbody>
+        ${linhas.map((l) => `<tr class="t-${l.tipo}"><td title="${ROT[l.tipo][1]}">${ROT[l.tipo][0]}</td><td><b>${esc(l.e?.numero || semZeros(l.s?.numero_nf))}</b>${l.s?.cliente ? `<br><small>${esc(l.s.cliente)}</small>` : ''}</td>
+          <td>${l.e ? moeda(l.e.valor) : '—'}</td><td>${l.s ? moeda(l.s.valor) : '—'}</td>
+          <td>${l.tipo === 'ok' ? '<span class="vg-conf-ok">confere</span>' : esc(l.texto || '')}${l.tipo === 'falta' || (l.tipo === 'fora' && l.s?.sem_xml) || l.s?.frete_principal_id ? ' <button type="button" class="nf-faltando-enviar" data-conf-xml>⬆ Enviar o XML</button>' : ''}</td></tr>`).join('')}
+        </tbody></table>`;
+    };
+    fundo.addEventListener('click', async (e) => {
+      if (e.target === fundo || e.target.closest('[data-fechar]')) { fundo.remove(); return; }
+      if (e.target.closest('[data-conferir]')) { conferir().catch((err) => { res.innerHTML = `<p class="vg-conf-aviso">${esc(err.message)}</p>`; }); return; }
+      if (e.target.closest('[data-conf-xml]')) {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.xml,.zip'; inp.multiple = true;
+        inp.addEventListener('change', async () => {
+          const msgs = [];
+          for (const arq of inp.files) {
+            const fd = new FormData(); fd.append('arquivo', arq, arq.name);
+            const r = await apiFetch(`/api/upload/${/\.zip$/i.test(arq.name) ? 'zip' : 'nfe'}`, { method: 'POST', body: fd }).catch(() => null);
+            const j = r ? await r.json().catch(() => ({})) : {};
+            msgs.push(`${arq.name}: ${j.mensagem || j.erro || (j.resultados ? `${j.resultados.length} XML no zip` : 'falha')}`);
+          }
+          mostrarAlerta(msgs.join('\n\n'), { tipo: 'aviso', titulo: 'Resposta do sistema' });
+          window.dispatchEvent(new Event('nexofrete:notas-alteradas'));
+          if (ultimo) conferir().catch(() => {});
+        });
+        inp.click();
+      }
+    });
+    setTimeout(() => fundo.querySelector('#vgConfTexto')?.focus(), 50);
+  }
+
+  document.getElementById('vgFatConferir').addEventListener('click', abrirConferencia);
   document.getElementById('vgFatImagem').addEventListener('click', () => abrirImagem().catch((e) => mostrarAlerta(`Não consegui gerar a imagem: ${e.message}`, { tipo: 'erro' })));
   document.getElementById('vgFatAnt').addEventListener('click', () => carregar(somarDias(dados?.data || campoData.value, -1)));
   document.getElementById('vgFatProx').addEventListener('click', () => { if (dados && dados.data < dados.hoje) carregar(somarDias(dados.data, 1)); });

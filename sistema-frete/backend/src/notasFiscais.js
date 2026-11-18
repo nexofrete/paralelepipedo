@@ -336,7 +336,32 @@ async function listar(req, q = {}) {
             COUNT(*) FILTER (WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado'))::int AS nao_entregues,
             COUNT(*) FILTER (WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado') AND f.data_entrega_prevista < CURRENT_DATE)::int AS atrasadas
        FROM fretes f WHERE ${where}`, params);
-  return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows) };
+  let semFrete = [];
+  if (ordem !== 'recentes' && rows.length) {
+    const cnpjs = [...new Set(rows.map((r) => dig(r.emitente_cnpj)).filter(Boolean))];
+    if (cnpjs.length) semFrete = (await pool.query('SELECT emitente_cnpj, nf_serie, numero_nf, motivo, natureza FROM notas_sem_frete WHERE emitente_cnpj = ANY($1)', [cnpjs]).catch(() => ({ rows: [] }))).rows;
+  }
+  return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows, semFrete) };
+}
+
+// ---------- Conferir o faturamento do dia com a lista do ERP ----------
+// b: { data, numeros: ['195799', ...] } (os números colados do ERP). Devolve as notas do sistema naquele dia (todas,
+// também as que não entram na soma, com o motivo), as dos números colados que estão no sistema com OUTRA data de
+// emissão e as notas sem frete (puladas de propósito) desses números ou desse dia. A comparação é feita na tela.
+async function conferirDia(req, b = {}) {
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(String(b.data || '')) ? String(b.data) : hojeSaoPaulo();
+  const numeros = [...new Set((Array.isArray(b.numeros) ? b.numeros : []).map((n) => String(n).replace(/\D/g, '').replace(/^0+/, '')).filter(Boolean))].slice(0, 3000);
+  const COL = `f.id, f.numero_nf, f.cliente, COALESCE(f.valor_faturado, f.valor_produtos)::float AS valor, f.nf_operacao, f.nf_natureza,
+    f.nf_cancelada, f.nf_denegada, f.frete_principal_id, (f.xml_nfe_original IS NULL) AS sem_xml, to_char(f.data_emissao_nf, 'YYYY-MM-DD') AS data`;
+  const LINHA_DA_NOTA = "f.numero_nf IS NOT NULL AND f.numero_nf <> '' AND (f.frete_principal_id IS NULL OR f.chave_nfe IS NOT NULL)";
+  const [{ rows: doDia }, { rows: outrasDatas }, { rows: semFrete }] = await Promise.all([
+    consultaCliente(req, `SELECT ${COL} FROM fretes f WHERE ${LINHA_DA_NOTA} AND f.data_emissao_nf = $1::date ORDER BY f.numero_nf`, [data]),
+    numeros.length ? consultaCliente(req, `SELECT ${COL} FROM fretes f WHERE ${LINHA_DA_NOTA} AND LTRIM(f.numero_nf, '0') = ANY($1)
+        AND f.data_emissao_nf IS DISTINCT FROM $2::date`, [numeros, data]) : { rows: [] },
+    pool.query(`SELECT numero_nf, motivo, natureza, to_char(data_emissao_nf, 'YYYY-MM-DD') AS data FROM notas_sem_frete
+       WHERE LTRIM(COALESCE(numero_nf, ''), '0') = ANY($1) OR data_emissao_nf = $2::date`, [numeros, data]).catch(() => ({ rows: [] })),
+  ]);
+  return { data, sistema: doDia, outras_datas: outrasDatas, sem_frete: semFrete };
 }
 
 // ---------- NF-e guardada dentro de outro registro ----------
@@ -451,28 +476,46 @@ async function faturamentoDia(req, q = {}) {
 
 // Números pulados na sequência (mesmo emitente e série), entre a menor e a maior nota do filtro:
 // notas que não entraram no sistema (ou foram inutilizadas). Saltos de mais de 500 números não contam (outra faixa).
-function faltandoNaSequencia(rows) {
+function faltandoNaSequencia(rows, semFrete = []) {
+  const serieDe = (v) => String(v || '').replace(/^0+(?=\d)/, '');
   const grupos = new Map();
   for (const r of rows) {
     const n = Number(String(r.numero_nf || '').replace(/\D/g, ''));
     if (!n) continue;
     // Série "001" é a mesma que "1" (planilha do ERP x XML).
-    const serie = String(r.nf_serie || '').replace(/^0+(?=\d)/, '');
+    const serie = serieDe(r.nf_serie);
     const k = `${dig(r.emitente_cnpj)}|${serie}`;
     if (!grupos.has(k)) grupos.set(k, { emitente: r.emitente_nome, emitente_cnpj: r.emitente_cnpj, serie: serie || null, numeros: new Set() });
     grupos.get(k).numeros.add(n);
   }
-  const faixas = []; let total = 0;
-  for (const g of grupos.values()) {
+  // Notas puladas de propósito (sem frete): contam na sequência, com o motivo.
+  const pulos = new Map();
+  for (const x of semFrete) {
+    const k = `${dig(x.emitente_cnpj)}|${serieDe(x.nf_serie)}`;
+    const n = Number(String(x.numero_nf || '').replace(/\D/g, ''));
+    if (!n) continue;
+    if (!pulos.has(k)) pulos.set(k, new Map());
+    pulos.get(k).set(n, x);
+  }
+  const faixas = []; const semFreteNaSeq = []; let total = 0;
+  for (const [k, g] of grupos) {
     const nums = [...g.numeros].sort((a, b) => a - b);
+    const pg = pulos.get(k) || new Map();
     for (let i = 1; i < nums.length; i += 1) {
-      const qtd = nums[i] - nums[i - 1] - 1;
-      if (qtd < 1 || qtd > 500) continue;
-      total += qtd;
-      faixas.push({ emitente: g.emitente, emitente_cnpj: g.emitente_cnpj, serie: g.serie, de: nums[i - 1] + 1, ate: nums[i] - 1, qtd, depois_de: nums[i - 1] });
+      const anterior = nums[i - 1]; const proxima = nums[i];
+      const qtdGap = proxima - anterior - 1;
+      if (qtdGap < 1 || qtdGap > 500) continue;
+      const base = { emitente: g.emitente, emitente_cnpj: g.emitente_cnpj, serie: g.serie, anterior, proxima, depois_de: anterior };
+      let de = null;
+      const fechar = (ate) => { if (de != null) { faixas.push({ ...base, de, ate, qtd: ate - de + 1 }); total += ate - de + 1; de = null; } };
+      for (let n = anterior + 1; n < proxima; n += 1) {
+        const pulo = pg.get(n);
+        if (pulo) { fechar(n - 1); semFreteNaSeq.push({ ...base, numero: n, motivo: pulo.motivo, natureza: pulo.natureza }); } else if (de == null) de = n;
+      }
+      fechar(proxima - 1);
     }
   }
-  return { total, faixas: faixas.slice(0, 200) };
+  return { total, faixas: faixas.slice(0, 200), sem_frete: semFreteNaSeq.slice(0, 300) };
 }
 
 async function xmlDaNota(req, id) {
@@ -528,4 +571,4 @@ async function xmlDoEvento(req, id, eventoId) {
   return { nome: `${e.chave}-evento-${e.tp_evento || 'x'}-${eventoId}.xml`, xml: e.xml };
 }
 
-module.exports = { soltarNotasDentroDeOutroRegistro, notasSubstituidas, classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };
+module.exports = { conferirDia, soltarNotasDentroDeOutroRegistro, notasSubstituidas, classificarOperacao, faturamentoDia, completarCidadePeloCep, completarRedespachoPeloCadastro, corrigirEndereco, danfesEmLote, eventosDaNota, xmlDoEvento, dadosDaNota, completar, completarTodos, marcarDenegada, listar, xmlDaNota, zipDasNotas, lerXml, CSTAT_DENEGADA };

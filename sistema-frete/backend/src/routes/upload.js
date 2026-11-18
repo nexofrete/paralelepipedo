@@ -17,6 +17,21 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
  * POST /api/upload/nfe
  * Form-data: arquivo (o .xml), numero_pedido (opcional, para já vincular a um pedido existente)
  */
+// NF-e que não gera frete (pulada de propósito): fica guardada com o motivo, para a sequência das notas não
+// acusar "Falta a nota" (src/notasFiscais.js faltandoNaSequencia).
+async function registrarSemFrete(xmlString, dados, motivo) {
+  try {
+    if (!dados?.chave_nfe) return;
+    let serie = null; let emitente = null;
+    try { const d = require('../notasFiscais').dadosDaNota(xmlString); serie = d.nf_serie; emitente = d.emitente_cnpj; } catch { /* sem série/emitente */ }
+    await pool.query(`INSERT INTO notas_sem_frete (chave_nfe, numero_nf, nf_serie, emitente_cnpj, data_emissao_nf, natureza, motivo)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (chave_nfe) DO UPDATE SET motivo = EXCLUDED.motivo, natureza = EXCLUDED.natureza, criado_em = NOW()`,
+    [dados.chave_nfe, dados.numero_nf || null, serie, emitente, dados.data_emissao_nf || null,
+      dados.natureza_operacao ? String(dados.natureza_operacao).slice(0, 120) : null, String(motivo || '').slice(0, 300)]);
+  } catch (e) { console.error('[nota sem frete]', e.message); }
+}
+
 // NF-e enviada de novo (a chave já está no sistema): completa a linha com o XML (o XML é a fonte da nota) e diz onde
 // ela está e por que pode não aparecer na Consulta de notas / no Faturamento do dia.
 async function notaJaImportada(dados, xmlString) {
@@ -82,6 +97,7 @@ const tratar_nfe = async (req, res) => {
     // NF-e SEM CIRCULAÇÃO de mercadoria (baixa de estoque, destinatário é a própria
     // empresa...): não há transporte, não gera frete e não se junta a outro registro.
     if (dados.sem_circulacao && !dados.nf_complementar) {
+      await registrarSemFrete(xmlString, dados, `${dados.natureza_operacao ? `${dados.natureza_operacao}: ` : ''}${dados.motivo_sem_circulacao || 'sem transporte de mercadoria'}`);
       return res.json({ pulado: true,
         mensagem: `NF-e ${dados.numero_nf || ''}${dados.natureza_operacao ? ` (${dados.natureza_operacao})` : ''} não tem transporte de mercadoria — ${dados.motivo_sem_circulacao}. Não gera frete a acompanhar, não foi importada.` });
     }
@@ -105,6 +121,7 @@ const tratar_nfe = async (req, res) => {
           `UPDATE fretes SET observacoes = CASE WHEN POSITION($2 IN COALESCE(observacoes, '')) > 0 THEN observacoes
                                                ELSE CONCAT_WS(E'\n', NULLIF(observacoes, ''), $2::text) END WHERE id = $1`, [original.id, texto]);
       }
+      await registrarSemFrete(xmlString, dados, `NF-e complementar, sem mercadoria${nfRef ? ` (complementa a NF ${nfRef})` : ''}`);
       return res.json({ pulado: true, mensagem: `${texto}${nfRef ? ` Complementa a NF ${nfRef}${original ? ' (anotado nela)' : ' (que ainda não está no sistema)'}.` : ''}` });
     }
 
@@ -149,6 +166,9 @@ const tratar_nfe = async (req, res) => {
         devolucaoRegistrada = await registrarDevolucaoDoXml(dados, ehRetornoRemessa ? 'retorno' : 'devolucao').catch((e) => { console.error('[devolução xml]', e.message); return null; });
       }
       const ehRetorno = await require('../trocasNota').marcarRetornoRecebido(dados.numero_nf).catch(() => null);
+      await registrarSemFrete(xmlString, dados, devolucaoRegistrada
+        ? `${devolucaoRegistrada.tipo === 'retorno' ? 'retorno da remessa' : 'devolução'} da NF ${devolucaoRegistrada.nfOriginal}`
+        : `nota de ${dados.nf_entrada ? 'entrada' : 'devolução'}`);
       return res.json({ pulado: !devolucaoRegistrada, alerta: !!devolucaoRegistrada,
         mensagem: devolucaoRegistrada
           ? (devolucaoRegistrada.tipo === 'retorno'
@@ -158,6 +178,7 @@ const tratar_nfe = async (req, res) => {
             + (ehRetorno ? ` É a nota de retorno da devolução da NF ${ehRetorno} (registrada).` : '') });
     }
     if (!idExistente && (dados.cidade || '').trim().toUpperCase() === 'EXTERIOR') {
+      await registrarSemFrete(xmlString, dados, 'exportação (cidade EXTERIOR): o sistema acompanha só fretes nacionais');
       return res.json({ mensagem: 'NF-e de exportação (Cidade: EXTERIOR) — não importada, o sistema acompanha só fretes nacionais.', pulado: true });
     }
 

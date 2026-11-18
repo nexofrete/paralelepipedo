@@ -324,9 +324,11 @@ async function listar(req, q = {}) {
   const ordem = ORDENS[q.ordem] ? q.ordem : 'recentes';
   // Consulta rápida (campo da Visão geral): só as primeiras notas, sem os totais.
   const rapida = q.rapida === '1' || q.rapida === true;
-  const lim = rapida ? Math.min(Math.max(parseInt(q.limite, 10) || 8, 1), 30) : 2000;
-  const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY ${ORDENS[ordem]} LIMIT ${lim}`, params);
-  if (rapida) return { notas: rows, mais: rows.length >= lim };
+  if (rapida) {
+    const lim = Math.min(Math.max(parseInt(q.limite, 10) || 8, 1), 30);
+    const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY ${ORDENS[ordem]} LIMIT ${lim}`, params);
+    return { notas: rows, mais: rows.length >= lim };
+  }
   const { rows: [t] } = await consultaCliente(req,
     `SELECT COUNT(*)::int AS notas, COALESCE(SUM(f.valor_faturado), 0)::float AS valor, COALESCE(SUM(f.valor_produtos), 0)::float AS produtos,
             COALESCE(SUM(COALESCE(f.peso_bruto, f.peso_kg)), 0)::float AS peso, COALESCE(SUM(f.qtd_volumes), 0)::int AS volumes,
@@ -336,12 +338,19 @@ async function listar(req, q = {}) {
             COUNT(*) FILTER (WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado'))::int AS nao_entregues,
             COUNT(*) FILTER (WHERE f.data_entrega IS NULL AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND COALESCE(f.status, '') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado') AND f.data_entrega_prevista < CURRENT_DATE)::int AS atrasadas
        FROM fretes f WHERE ${where}`, params);
+  // Páginas de 1000 notas. Sem página pedida: na sequência (número crescente) abre na ÚLTIMA (as notas mais novas);
+  // nas outras ordens, na primeira.
+  const porPagina = 1000;
+  const paginas = Math.max(1, Math.ceil(t.notas / porPagina));
+  const pedida = parseInt(q.pagina, 10);
+  const pagina = Number.isInteger(pedida) && pedida >= 1 ? Math.min(pedida, paginas) : (ordem === 'numero' ? paginas : 1);
+  const { rows } = await consultaCliente(req, `SELECT ${COLUNAS} FROM fretes f WHERE ${where} ORDER BY ${ORDENS[ordem]} LIMIT ${porPagina} OFFSET ${(pagina - 1) * porPagina}`, params);
   let semFrete = [];
   if (ordem !== 'recentes' && rows.length) {
     const cnpjs = [...new Set(rows.map((r) => dig(r.emitente_cnpj)).filter(Boolean))];
     if (cnpjs.length) semFrete = (await pool.query('SELECT emitente_cnpj, nf_serie, numero_nf, motivo, natureza FROM notas_sem_frete WHERE emitente_cnpj = ANY($1)', [cnpjs]).catch(() => ({ rows: [] }))).rows;
   }
-  return { totais: t, notas: rows, limite: rows.length >= 2000, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows, semFrete) };
+  return { totais: t, notas: rows, pagina, paginas, por_pagina: porPagina, limite: paginas > 1, ordem, faltando: ordem === 'recentes' ? null : faltandoNaSequencia(rows, semFrete) };
 }
 
 // ---------- Conferir o faturamento do dia com a lista do ERP ----------

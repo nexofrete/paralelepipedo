@@ -61,7 +61,11 @@ window.Periodo = (() => {
       if (select.value === 'custom') { gravar(chave, { p: 'custom', de: de.value, ate: ate.value }); de.focus(); return; }
       const c = calcular(select.value); de.value = c.de; ate.value = c.ate; avisar();
     });
+    // Enquanto o ano é digitado, o campo passa por datas como 0002-11-01, 0020-11-01...: só uma data com ano de
+    // verdade (1990 em diante) conta. Antes, o "até" com ano 0003 trocava o "de" para o ano 3 e o filtro pegava tudo.
+    const dataOk = (v) => !v || (/^\d{4}-\d{2}-\d{2}$/.test(v) && Number(v.slice(0, 4)) >= 1990);
     [de, ate].forEach((el) => el.addEventListener('change', () => {
+      if (!dataOk(de.value) || !dataOk(ate.value)) return;   // ainda digitando o ano
       if (de.value && ate.value && de.value > ate.value) { (el === de ? ate : de).value = el.value; }
       select.value = 'custom'; select.closest('.periodo')?.classList.remove('periodo-tudo'); avisar();
     }));

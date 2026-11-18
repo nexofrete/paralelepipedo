@@ -2045,3 +2045,11 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-col.sel .vg-fat-col-val { color: #fff; font-weight: 700; }
 .vg-fat-col-val.fora { bottom: calc(100% + 4px); color: var(--texto); }
 .vg-fat-col.sel .vg-fat-col-val.fora { color: var(--azul); }
+
+/* Consulta de notas: páginas de 1000 notas */
+.nf-paginas { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 8px; font-size: 13px; }
+.nf-paginas small { color: var(--texto-fraco); }
+.nf-pag-bt { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.nf-pag-bt .btn { width: auto; padding: 5px 10px; font-size: 12.5px; }
+.nf-pag-bt .btn:disabled { opacity: .45; cursor: default; }
+.nf-pag-n { font-size: 12.5px; color: var(--texto-fraco); padding: 0 4px; }

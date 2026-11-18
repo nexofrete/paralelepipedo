@@ -449,6 +449,9 @@ def parte_uso(g):
         'Zebra</b>, que imprime direto. Os dados saem do XML da NF-e. A coluna <b>Transportadora</b> da janela vem preenchida '
         'com a da nota (XML), ou a do CT-e, ou o redespacho escrito na nota ("REDESP. ..."); se estiver vazia ou errada, digite '
         'antes de imprimir: vale para todas as etiquetas daquela nota.',
+        '<b>Páginas</b>: a lista mostra 1000 notas por vez, com "Notas 2.001 a 2.500 de 2.500" e os botões Primeira, Anterior, '
+        'Próxima e Última. Na ordem da sequência, a lista abre na última página (as notas mais novas). O Excel leva todas as '
+        'notas do filtro, de todas as páginas. Ao digitar uma data no período, a lista espera a data completa.',
         'A lista rola dentro da tela: as barras de rolagem (para baixo e para o lado) ficam sempre visíveis, sem precisar ir até o '
         'fim da lista, e o cabeçalho das colunas fica fixo no alto.',
         '<b>Entrega</b> (coluna): <b>Entregue</b> com a data, a origem (SSW, portal, comprovante, lançada à mão) e quem recebeu; '

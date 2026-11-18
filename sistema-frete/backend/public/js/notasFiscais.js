@@ -46,7 +46,7 @@
     mostrarAlerta(linhas.join('\n\n'), { tipo: erros ? 'erro' : novas ? 'sucesso' : 'aviso', titulo });
     avisoSubstituidas(true).catch(() => {});
     window.dispatchEvent(new Event('nexofrete:notas-alteradas'));
-    carregar().catch(() => {});
+    carregar(paginaAtual).catch(() => {});
   }
   const podeCorrigir = () => usuario?.perfil === 'admin' || !!usuario?.pode_editar_registros;
   let dados = null; let montado = false;
@@ -85,8 +85,10 @@
       </div>
       <div id="nfSubstituidas" class="nf-substituidas oculto"></div>
       <div id="nfResumo" class="nf-resumo"></div>
+      <div id="nfPaginas" class="nf-paginas oculto"></div>
       <div class="painel nf-rolagem-painel"><div id="nfTabela" class="nf-rolagem"></div></div>`;
-    Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => carregar() });
+    let tPer = null;   // a data muda a cada número digitado: espera terminar
+    Periodo.ligar({ select: $('nfPer'), de: $('nfDe'), ate: $('nfAte'), chave: 'notas-fiscais', padrao: '30d', opcoes: ['7d', '30d', 'mes', 'mes_passado', '3m', 'ano', '12m', 'tudo', 'custom'], aoMudar: () => { clearTimeout(tPer); tPer = setTimeout(() => carregar(), 600); } });
     let t = null;
     ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfUf', 'nfTransp'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 400); }));
     try { const o = localStorage.getItem('notas.ordem'); if (o && [...$('nfOrdem').options].some((x) => x.value === o)) $('nfOrdem').value = o; } catch { /* sem armazenamento */ }
@@ -97,6 +99,10 @@
     $('nfExcluir')?.addEventListener('click', excluirMarcadas);
     $('nfTelaCheia')?.addEventListener('click', () => { const ativo = document.querySelector('.app-shell').classList.toggle('tela-cheia'); $('nfTelaCheia').textContent = ativo ? '✕ Sair da tela cheia' : '⛶ Tela cheia'; });
     // Dois cliques na linha: abre o documento.
+    $('nfPaginas').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-nf-pag]'); if (!b || b.disabled) return;
+      carregar(Number(b.dataset.nfPag)).then(() => { const t = $('nfTabela'); if (t) t.scrollTop = 0; }).catch((err) => mostrarAlerta(err.message, { tipo: 'erro' }));
+    });
     $('nfTabela').addEventListener('dblclick', (e) => {
       if (e.target.closest('input, button, a')) return;
       const tr = e.target.closest('tr[data-nf-id]'); if (tr) detalhe(Number(tr.dataset.nfId));
@@ -148,14 +154,32 @@
     el.classList.remove('oculto');
   }
 
-  async function carregar() {
+  // Página da lista (1000 notas por página). Mudou o filtro: volta para a página padrão (na sequência, a última = as
+  // mais novas). Só a resposta do pedido mais recente vale (uma resposta antiga não sobrescreve a lista).
+  let paginaAtual = null; let pedidoLista = 0;
+  async function carregar(pagina) {
+    paginaAtual = Number.isInteger(pagina) ? pagina : null;
     avisoSubstituidas().catch(() => {});
-    const r = await apiFetch(`/api/notas?${filtros()}`);
+    const meu = ++pedidoLista;
+    const q = filtros(); if (paginaAtual) q.set('pagina', String(paginaAtual));
+    const r = await apiFetch(`/api/notas?${q}`);
     const j = await r.json().catch(() => ({}));
+    if (meu !== pedidoLista) return;
     if (!r.ok) { $('nfTabela').innerHTML = `<div style="color:var(--vermelho);">${esc(j.erro || 'Erro.')}</div>`; return; }
     dados = j;
+    paginaAtual = j.pagina || null;
+    const pg = $('nfPaginas');
+    if (pg) {
+      pg.classList.toggle('oculto', !(j.paginas > 1));
+      if (j.paginas > 1) {
+        const de = (j.pagina - 1) * j.por_pagina + 1; const ate = Math.min(j.pagina * j.por_pagina, j.totais.notas);
+        const b = (rot, p, tit) => `<button type="button" class="btn btn-secundario" data-nf-pag="${p}" ${p < 1 || p > j.paginas || p === j.pagina ? 'disabled' : ''} title="${tit}">${rot}</button>`;
+        pg.innerHTML = `<span>Notas <b>${de.toLocaleString('pt-BR')}</b> a <b>${ate.toLocaleString('pt-BR')}</b> de <b>${j.totais.notas.toLocaleString('pt-BR')}</b>${j.ordem === 'numero' ? ' <small>(na sequência, a lista abre nas mais novas)</small>' : ''}</span>
+          <span class="nf-pag-bt">${b('« Primeira', 1, 'Primeira página')}${b('‹ Anterior', j.pagina - 1, 'Página anterior')}<span class="nf-pag-n">Página ${j.pagina} de ${j.paginas}</span>${b('Próxima ›', j.pagina + 1, 'Próxima página')}${b('Última »', j.paginas, 'Última página')}</span>`;
+      }
+    }
     const t = j.totais;
-    $('nfResumo').innerHTML = `<div>Notas<b>${Number(t.notas).toLocaleString('pt-BR')}</b><span>${j.limite ? 'mostrando as 2000 mais recentes' : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
+    $('nfResumo').innerHTML = `<div>Notas<b>${Number(t.notas).toLocaleString('pt-BR')}</b><span>${j.paginas > 1 ? `nesta página: ${((j.pagina - 1) * j.por_pagina + 1).toLocaleString('pt-BR')} a ${Math.min(j.pagina * j.por_pagina, t.notas).toLocaleString('pt-BR')}` : 'no filtro'}</span></div><div>Valor das notas<b>${moeda(t.valor)}</b><span>produtos ${moeda(t.produtos)}</span></div>
       <div>Peso<b>${Number(t.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg</b><span>${Number(t.volumes || 0).toLocaleString('pt-BR')} volume(s)</span></div><div>Canceladas<b style="color:${t.canceladas ? 'var(--vermelho)' : 'inherit'};">${t.canceladas}</b><span>denegadas: ${t.denegadas}</span></div>
       <div style="cursor:pointer;" id="nfResumoConferir" title="Mostrar só as notas com endereço a conferir">Endereço a conferir<b style="color:${t.conferir_endereco ? '#d97706' : 'inherit'};">${t.conferir_endereco || 0}</b><span>lido do texto sem certeza</span></div>`;
     $('nfResumo').insertAdjacentHTML('afterbegin', `<div style="cursor:pointer;" data-nf-filtro-entrega="entregue" title="Mostrar só as entregues">Entregues<b style="color:var(--verde);">${t.entregues || 0}</b><span>com data de entrega</span></div>
@@ -225,7 +249,7 @@
     const r = await apiFetch('/api/fretes/excluir-lote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...marcadas] }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { mostrarAlerta(j.erro || 'Não foi possível excluir.', { tipo: 'erro' }); return; }
-    marcadas.clear(); mostrarAlerta(`${j.excluidos ?? 'As'} nota(s) excluída(s).`, { tipo: 'sucesso' }); carregar();
+    marcadas.clear(); mostrarAlerta(`${j.excluidos ?? 'As'} nota(s) excluída(s).`, { tipo: 'sucesso' }); carregar(paginaAtual);
   }
   function botaoDanfes() {
     const b = $('nfDanfes'); if (!b) return;
@@ -234,7 +258,7 @@
   nav.addEventListener('click', () => { if (!montado) montar(); carregar().catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })); });
   // Fechou a janela do registro do frete (editado a partir daqui): atualiza a lista.
   const formReg = document.getElementById('painelFormRegistro');
-  if (formReg) new MutationObserver(() => { if (formReg.classList.contains('oculto') && montado && !document.getElementById('pagina-notas-fiscais')?.classList.contains('oculto')) carregar().catch(() => {}); })
+  if (formReg) new MutationObserver(() => { if (formReg.classList.contains('oculto') && montado && !document.getElementById('pagina-notas-fiscais')?.classList.contains('oculto')) carregar(paginaAtual).catch(() => {}); })
     .observe(formReg, { attributes: true, attributeFilter: ['class'] });
   // Abrir a consulta já filtrada (ex.: "Aguardando CT-e" da Visão geral).
   window.abrirConsultaNotas = (f = {}) => {
@@ -349,7 +373,7 @@
       if (ev.target.closest('[data-nf-rastreio]')) { if (typeof epVerOcorrencias === 'function') epVerOcorrencias(id); return; }
       if (ev.target.closest('[data-nf-registro]')) { fundo.remove(); if (typeof epAbrirRegistro === 'function') epAbrirRegistro(id); return; }
       const c = ev.target.closest('[data-nf-corrigir]');
-      if (c) corrigir(n, c.dataset.nfCorrigir, c.dataset.nfCorrigir === 'redespacho' ? (r || { nome: n.redespacho, cidade: n.cidade_redespacho }) : e, () => { fundo.remove(); carregar().then(() => detalhe(id)); });
+      if (c) corrigir(n, c.dataset.nfCorrigir, c.dataset.nfCorrigir === 'redespacho' ? (r || { nome: n.redespacho, cidade: n.cidade_redespacho }) : e, () => { fundo.remove(); carregar(paginaAtual).then(() => detalhe(id)); });
     });
     // Eventos da nota (cancelamento, Carta de Correção, Comprovante de Entrega...), com o XML de cada um.
     apiFetch(`/api/notas/${id}/eventos`).then((r) => (r.ok ? r.json() : [])).then((evs) => {
@@ -398,12 +422,23 @@
     });
   }
 
-  $('nfExcel')?.addEventListener('click', () => {
+  $('nfExcel')?.addEventListener('click', async () => {
     if (!dados) return;
+    // Todas as páginas do filtro (não só a aberta), na ordem da tela.
+    let notas = dados.notas;
+    if (dados.paginas > 1) {
+      notas = [];
+      for (let p = 1; p <= dados.paginas; p += 1) {
+        const q = filtros(); q.set('pagina', String(p));
+        const r = await apiFetch(`/api/notas?${q}`); const j = await r.json().catch(() => ({}));
+        if (!r.ok) { mostrarAlerta(j.erro || 'Erro ao buscar as notas para o Excel.', { tipo: 'erro' }); return; }
+        notas.push(...(j.notas || []));
+      }
+    }
     window.exportarExcel(`notas-fiscais-${new Date().toISOString().slice(0, 10)}`, [{ nome: 'Notas fiscais',
       colunas: ['NF', 'Série', 'Chave', 'Emissão', 'Saída', 'Emitente', 'CNPJ emitente', 'Destinatário', 'CNPJ/CPF destinatário', 'Cidade', 'UF', 'Endereço de entrega', 'Origem do endereço', 'Redespacho', 'Endereço do redespacho', 'Conferir endereço',
         'Valor produtos', 'Valor total', 'Peso bruto', 'Peso líquido', 'Volumes', 'Pedido', 'CT-e', 'Situação'],
-      linhas: dados.notas.map((n) => { const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco); return [n.numero_nf, n.nf_serie || '', n.chave_nfe || '', dia(n.data_emissao_nf), n.data_saida ? dataHora(n.data_saida) : '', n.emitente_nome || '', doc(n.emitente_cnpj), n.cliente || '', doc(n.cliente_documento),
+      linhas: notas.map((n) => { const e = json(n.entrega_endereco); const r = json(n.redespacho_endereco); return [n.numero_nf, n.nf_serie || '', n.chave_nfe || '', dia(n.data_emissao_nf), n.data_saida ? dataHora(n.data_saida) : '', n.emitente_nome || '', doc(n.emitente_cnpj), n.cliente || '', doc(n.cliente_documento),
         n.cidade || '', n.uf || '', endTexto(e), ORIGEM[n.endereco_origem] || '', r?.nome || n.redespacho || '', endTexto(r), n.endereco_conferir ? `Sim: ${n.endereco_conferir_motivo || ''}` : 'Não',
         n.valor_produtos, n.valor_faturado, n.peso_bruto ?? n.peso_kg, n.peso_liquido, n.qtd_volumes, n.numero_pedido || '', n.numero_cte || '', SIT[n.situacao][1]]; }) }]).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' }));
   });

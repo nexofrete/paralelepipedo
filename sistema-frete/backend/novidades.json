@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Visão geral", "texto": "Faturamento do dia: o gráfico dos últimos 14 dias virou uma linha por dia (o mais recente em cima), com barra deitada e o valor exato na horizontal, fácil de ler; dias sem nota numa linha fina e a média como linha tracejada. Também na imagem para o WhatsApp."},
         {"area": "Visão geral", "texto": "Faturamento do dia: os 3 maiores clientes do dia, com medalha de ouro, prata e bronze (só venda; filiais do mesmo CNPJ juntas). Também na imagem e no texto para o WhatsApp; clique para ver as notas do cliente."},
         {"area": "Notas fiscais", "texto": "Endereço de entrega e redespacho: endereço sem separadores depois do número (\"..., 30 PARI SAO PAULO CNPJ: ... TEL. ...\") agora é lido certo: bairro PARI, cidade São Paulo/SP. As notas marcadas \"conferir\" são lidas de novo ao reiniciar o servidor."},
         {"area": "Visão geral", "texto": "Faturamento do dia: o número principal passa a ser só o total das notas de venda, com \"Venda + bonificação\" logo abaixo; comparação, média por pedido, estados e o gráfico dos 14 dias também usam só a venda (painel, imagem e texto do WhatsApp)."},

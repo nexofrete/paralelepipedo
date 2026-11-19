@@ -122,38 +122,31 @@
         ${d.outros ? `<div class="vg-fat-outros">+ ${d.outros.estados} outro${d.outros.estados > 1 ? 's' : ''} estado${d.outros.estados > 1 ? 's' : ''}: ${moeda(d.outros.valor)} (${pct(d.valor ? d.outros.valor / d.valor : 0)}) em ${d.outros.notas} nota${d.outros.notas === 1 ? '' : 's'}</div>` : ''}
       </div>` : '<div class="vg-fat-vazio">Nenhuma nota emitida neste dia.</div>';
 
-    // 3) Últimos 14 dias (colunas; o dia escolhido em destaque, média como linha de referência).
+    // 3) Últimos 14 dias: uma linha por dia (o mais recente em cima), barra deitada e o valor exato na horizontal;
+    //    o dia escolhido em destaque; dia sem nota numa linha fina; a média como linha tracejada vertical.
     const maxDia = Math.max(...d.dias.map((x) => x.valor), 1);
     const comValor = d.dias.filter((x) => x.valor > 0);
     const media = comValor.length ? comValor.reduce((s, x) => s + x.valor, 0) / comValor.length : 0;
     const rotDia = (x) => `${SEMANA[diaSemana(x.dia)]} ${ddmm(x.dia)}: ${moeda(x.valor)}, ${x.notas} notas`;
-    const colunas = `<div class="vg-fat-dias">
-        <div class="vg-fat-plot">
-          ${media ? `<div class="vg-fat-media" style="bottom:${(media / maxDia) * 100}%"><span>média ${moeda(media)}</span></div>` : ''}
-          ${d.dias.map((x, i) => `<div class="vg-fat-col${x.dia === d.data ? ' sel' : ''}" data-fat-dia="${x.dia}" data-i="${i}" role="button" tabindex="0" aria-label="${rotDia(x)}">
-            <div class="vg-fat-col-barra" style="height:${x.valor ? Math.max(2, (x.valor / maxDia) * 100) : 0}%">${x.valor ? `<span class="vg-fat-col-val">${moeda(x.valor)}</span>` : ''}</div></div>`).join('')}
-        </div>
-        <div class="vg-fat-eixo">${d.dias.map((x, i) => `<div class="${x.dia === d.data ? 'sel' : ''}${[0, 6].includes(diaSemana(x.dia)) ? ' fds' : ''}" data-fat-dia="${x.dia}" data-i="${i}">
-          <b>${x.dia.slice(8, 10)}</b><span>${SEMANA_CURTA[diaSemana(x.dia)]}</span></div>`).join('')}</div>
-      </div>`;
+    const linhasDias = d.dias.map((x, i) => ({ x, i })).reverse().map(({ x, i }) => {
+      const sel = x.dia === d.data; const fds = [0, 6].includes(diaSemana(x.dia));
+      const dia = `<span class="vg-fat-lin-dia"><b>${SEMANA_CURTA[diaSemana(x.dia)]}</b> ${ddmm(x.dia)}</span>`;
+      if (!x.valor) return `<div class="vg-fat-lin vazio${sel ? ' sel' : ''}${fds ? ' fds' : ''}" data-fat-dia="${x.dia}" data-i="${i}" role="button" tabindex="0" aria-label="${rotDia(x)}">${dia}<span class="vg-fat-lin-sem">sem notas</span><span></span></div>`;
+      return `<div class="vg-fat-lin${sel ? ' sel' : ''}${fds ? ' fds' : ''}" data-fat-dia="${x.dia}" data-i="${i}" role="button" tabindex="0" aria-label="${rotDia(x)}">${dia}
+        <span class="vg-fat-lin-trilho"><span class="vg-fat-lin-barra" style="width:${Math.max(1.5, (x.valor / maxDia) * 100)}%"></span></span>
+        <span class="vg-fat-lin-val"><b>${moeda(x.valor)}</b><small>${x.notas} nota${x.notas === 1 ? '' : 's'}</small></span></div>`;
+    }).join('');
+    const colunas = `<div class="vg-fat-lins" style="--m:${media ? (media / maxDia).toFixed(4) : 0}">
+        ${media ? `<div class="vg-fat-lin-media-rot">média ${moeda(media)}</div><div class="vg-fat-lin-media" aria-hidden="true"></div>` : ''}
+        ${linhasDias}</div>`;
 
     corpo.innerHTML = `<div class="vg-fat-grade">
       ${resumo}
       <div class="vg-fat-bloco"><div class="vg-fat-sub">Os 5 estados que mais compraram <small>(UF do destinatário)</small></div>${estados}${clientesHtml(d)}</div>
       <div class="vg-fat-bloco"><div class="vg-fat-sub">Últimos 14 dias <small>(clique num dia para ver)</small></div>${colunas}</div>
     </div>`;
-    posicionarValores();
   }
 
-  // Valor de cada dia dentro da coluna (na vertical); coluna baixa demais para o texto: o valor vai logo acima dela.
-  function posicionarValores() {
-    corpo.querySelectorAll('.vg-fat-col-barra').forEach((b) => {
-      const v = b.querySelector('.vg-fat-col-val'); if (!v) return;
-      v.classList.remove('fora');
-      if (v.offsetHeight + 10 > b.clientHeight) v.classList.add('fora');
-    });
-  }
-  window.addEventListener('resize', () => { if (dados) posicionarValores(); });
 
   // Os 3 maiores clientes do dia: ouro, prata e bronze (só venda; filiais do mesmo CNPJ juntas).
   const MEDALHAS = [['ouro', '🥇', 'Ouro'], ['prata', '🥈', 'Prata'], ['bronze', '🥉', 'Bronze']];
@@ -236,7 +229,8 @@
     const W = 1080; const P = 64;
     const nEst = d.estados.length;
     const nCli = (d.clientes_top || []).length;
-    const H = 744 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + (nCli ? 64 + nCli * 66 : 0) + 392 + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
+    const nDiasVal = d.dias.filter((x) => x.valor > 0).length;
+    const H = 744 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + (nCli ? 64 + nCli * 66 : 0) + (52 + 44 + nDiasVal * 48 + (d.dias.length - nDiasVal) * 30 + 60) + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
     const esc2 = 2;
     const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
     const c = cv.getContext('2d'); c.scale(esc2, esc2);
@@ -342,38 +336,34 @@
       });
     }
 
-    // Últimos 14 dias
+    // Últimos 14 dias: uma linha por dia (o mais recente em cima), barra deitada e o valor exato.
     y += 52; txt('Últimos 14 dias', P, y, { tam: 28, peso: 700 });
-    const ALT = 210; const topo = y + 46; const base = topo + ALT;   // altura das colunas (cabe o valor exato dentro)
     const maxDia = Math.max(...d.dias.map((x) => x.valor), 1);
-    const cw = (W - 2 * P) / 14;
     const comValor = d.dias.filter((x) => x.valor > 0);
     const media = comValor.length ? comValor.reduce((s, x) => s + x.valor, 0) / comValor.length : 0;
-    d.dias.forEach((x, i) => {
-      const sel = x.dia === d.data; const bx = P + i * cw + 7; const bw = cw - 14;
-      const h = x.valor ? Math.max(4, (x.valor / maxDia) * ALT) : 0;
-      if (h) { c.beginPath(); c.roundRect(bx, base - h, bw, h, [6, 6, 0, 0]); c.fillStyle = sel ? COR.azul : COR.azulClaro; c.fill(); }
-      if (x.valor) {
-        // Valor na vertical, dentro da coluna (ou acima dela, se a coluna for baixa).
-        c.save(); c.font = f(15, sel ? 700 : 600);
-        const rotulo = moeda(x.valor);
-        const tw = c.measureText(rotulo).width;
-        const dentro = h >= tw + 14;
-        c.translate(bx + bw / 2 + 5, dentro ? base - 8 : base - h - 6);
-        c.rotate(-Math.PI / 2); c.textAlign = 'left'; c.fillStyle = dentro && sel ? '#ffffff' : COR.texto;
-        if (dentro || base - h - 6 - tw > topo - 30) c.fillText(rotulo, 0, 0);
-        c.restore();
-      }
-      const fds = [0, 6].includes(diaSemana(x.dia));
-      txt(x.dia.slice(8, 10), bx + bw / 2, base + 30, { tam: 19, peso: sel ? 700 : 600, cor: sel ? COR.azul : (fds ? '#9aa1ac' : COR.texto), alinhar: 'center' });
-      txt(SEMANA_CURTA[diaSemana(x.dia)], bx + bw / 2, base + 54, { tam: 16, cor: sel ? COR.azul : COR.fraco, alinhar: 'center' });
+    const xT = P + 130; const wT = W - P - 250 - xT;   // trilho das barras
+    const yIni = y + 44;
+    if (media) txt(`média ${moeda(media)}`, xT + (media / maxDia) * wT, y + 30, { tam: 16, cor: COR.fraco, alinhar: 'center' });
+    y = yIni;
+    [...d.dias].reverse().forEach((x) => {
+      const sel = x.dia === d.data; const fds = [0, 6].includes(diaSemana(x.dia));
+      const alt = x.valor ? 48 : 30;
+      if (sel) ret(P - 10, y, W - 2 * P + 20, alt, 10, '#eef3ff');
+      const yb = y + alt / 2;
+      const w0 = txt(SEMANA_CURTA[diaSemana(x.dia)], P, yb + 7, { tam: 19, peso: 700, cor: sel ? COR.azul : (fds ? '#9aa1ac' : COR.texto) });
+      txt(` ${ddmm(x.dia)}`, P + w0, yb + 7, { tam: 19, cor: sel ? COR.azul : COR.fraco });
+      if (!x.valor) { txt('sem notas', xT, yb + 6, { tam: 16, cor: '#9aa1ac' }); y += alt; return; }
+      ret(xT, yb - 10, wT, 20, 5, COR.caixa);
+      ret(xT, yb - 10, Math.max(6, (x.valor / maxDia) * wT), 20, 5, sel ? COR.azul : COR.azulClaro);
+      txt(moeda(x.valor), W - P, yb + 2, { tam: 21, peso: 700, cor: sel ? COR.azul : COR.texto, alinhar: 'right' });
+      txt(`${x.notas} nota${x.notas === 1 ? '' : 's'}`, W - P, yb + 22, { tam: 15, cor: COR.fraco, alinhar: 'right' });
+      y += alt;
     });
-    c.fillStyle = COR.borda; c.fillRect(P, base, W - 2 * P, 1.5);
     if (media) {
-      const ym = base - (media / maxDia) * ALT;
-      c.setLineDash([6, 5]); c.strokeStyle = '#9aa1ac'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(P, ym); c.lineTo(W - P, ym); c.stroke(); c.setLineDash([]);
+      const xm = xT + (media / maxDia) * wT;
+      c.setLineDash([6, 5]); c.strokeStyle = '#9aa1ac'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(xm, yIni - 6); c.lineTo(xm, y + 4); c.stroke(); c.setLineDash([]);
     }
-    txt(media ? `linha tracejada: média dos dias com nota, ${moeda(media)}` : '', P, base + 84, { tam: 17, cor: COR.fraco });
+    txt(media ? `linha tracejada: média dos dias com nota, ${moeda(media)}` : '', P, y + 36, { tam: 17, cor: COR.fraco });
 
     // Rodapé: o que foi somado e quando (à esquerda); "gerado pelo" e a marca Nexofrete (à direita).
     const agora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });

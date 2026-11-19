@@ -129,9 +129,10 @@ def parte_uso(g):
         'dos 14 dias, notas, clientes, média por pedido, peso, os 5 estados e os destaques do dia), com os negritos do '
         'WhatsApp; o texto aparece em "Texto da mensagem" e dá para ajustar antes de copiar. No dia de hoje, o texto avisa '
         '"parcial até as HHhMM". Em Compartilhar, a imagem vai com o texto como legenda.',
-        '<b>Últimos 14 dias</b>: o valor exato de cada dia (ex.: R$ 707.776,00) aparece escrito dentro da coluna (na vertical; '
-        'em coluna baixa, logo acima dela). Uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
-        'nota. Passe o mouse para ver o valor, as notas e a média por pedido do dia; clique numa coluna para ver aquele dia.',
+        '<b>Últimos 14 dias</b>: uma linha por dia, com o mais recente em cima: o dia, uma barra deitada e o valor exato das '
+        'vendas (ex.: R$ 707.776,00) com o número de notas. O dia escolhido fica em destaque; dia sem nota aparece numa linha '
+        'fina "sem notas"; a linha tracejada vertical é a média dos dias com nota. Passe o mouse para ver a média por pedido do '
+        'dia; clique numa linha para ver aquele dia. A imagem para o WhatsApp usa o mesmo formato.',
     ])
     s += h2('Fluxo do frete')
     s.append(P('Cinco quadros com a quantidade (e o valor) em cada etapa: Aguardando CT-e, Em conferência, Frete Retido, '

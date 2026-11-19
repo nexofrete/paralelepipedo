@@ -2074,3 +2074,24 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-cli-nome { min-width: 0; } .vg-fat-cli-nome b { display: block; font-size: 13px; color: var(--texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vg-fat-cli-nome small, .vg-fat-cli-val small { font-size: 11px; color: var(--texto-fraco); }
 .vg-fat-cli-val { text-align: right; font-variant-numeric: tabular-nums; } .vg-fat-cli-val b { display: block; font-size: 13px; color: var(--texto); }
+
+/* Últimos 14 dias: uma linha por dia, barra deitada e o valor exato na horizontal */
+.vg-fat-lins { position: relative; display: flex; flex-direction: column; gap: 2px; padding-top: 18px; }
+.vg-fat-lin { display: grid; grid-template-columns: 62px minmax(0, 1fr) 150px; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 6px; cursor: pointer; min-height: 30px; }
+.vg-fat-lin:hover, .vg-fat-lin:focus-visible { background: color-mix(in srgb, var(--texto) 5%, transparent); outline: none; }
+.vg-fat-lin.sel { background: color-mix(in srgb, var(--azul) 12%, transparent); }
+.vg-fat-lin.vazio { min-height: 18px; padding-top: 0; padding-bottom: 0; }
+.vg-fat-lin-dia { font-size: 12px; color: var(--texto-fraco); white-space: nowrap; } .vg-fat-lin-dia b { color: var(--texto); font-weight: 600; }
+.vg-fat-lin.fds .vg-fat-lin-dia, .vg-fat-lin.fds .vg-fat-lin-dia b { color: var(--texto-fraco); }
+.vg-fat-lin.sel .vg-fat-lin-dia, .vg-fat-lin.sel .vg-fat-lin-dia b { color: var(--azul); font-weight: 700; }
+.vg-fat-lin-trilho { height: 12px; border-radius: 4px; background: color-mix(in srgb, var(--texto) 6%, transparent); overflow: hidden; }
+.vg-fat-lin-barra { display: block; height: 100%; border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--azul) 45%, transparent); transition: width .5s ease; }
+.vg-fat-lin.sel .vg-fat-lin-barra { background: var(--azul); }
+.vg-fat-lin-val { text-align: right; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+.vg-fat-lin-val b { font-size: 12.5px; color: var(--texto); } .vg-fat-lin.sel .vg-fat-lin-val b { color: var(--azul); }
+.vg-fat-lin-val small { display: block; font-size: 10.5px; color: var(--texto-fraco); }
+.vg-fat-lin-sem { font-size: 11px; color: var(--texto-fraco); opacity: .75; }
+/* média: linha tracejada vertical na coluna das barras (62 px do dia + 8 de espaço + 6 de margem; 150 px do valor) */
+.vg-fat-lin-media { position: absolute; top: 18px; bottom: 0; width: 0; border-left: 1px dashed var(--texto-fraco); opacity: .7; pointer-events: none;
+  left: calc(76px + (100% - 240px) * var(--m)); }
+.vg-fat-lin-media-rot { position: absolute; top: 0; left: calc(76px + (100% - 240px) * var(--m)); transform: translateX(-50%); font-size: 10.5px; color: var(--texto-fraco); white-space: nowrap; }

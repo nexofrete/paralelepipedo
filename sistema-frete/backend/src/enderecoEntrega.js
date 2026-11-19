@@ -55,8 +55,10 @@ function acharCidade(texto, ufDada) {
       if (r) return r;
     }
   }
-  // Sem UF: um pedaço separado por " - " ou "," (ou o fim dele) que só exista num estado.
-  for (const s of T.split(/\s+-\s+|,/).reverse()) {
+  // Sem UF: um pedaço separado por " - " ou "," (ou o fim dele) que só exista num estado. O que vem depois de
+  // CNPJ/CEP/FONE/TEL/IE no pedaço não é cidade ("PARI SAO PAULO CNPJ: ... TEL. ...": testa "SAO PAULO").
+  for (const s0 of T.split(/\s+-\s+|,/).reverse()) {
+    const s = s0.replace(/\b(?:CNPJ|CEP|FONE|TEL|I\.?E)\b.*$/, '');
     const r = tentar(s, uf);
     if (r) return r;
     const palavras = limpo(s).split(' ');
@@ -139,6 +141,17 @@ function lerEndereco(texto) {
       && !/^(?:SALA|GALP|LOJA|BLOCO|APTO|CONJ|LOTE|KM|ANDAR)\b/.test(s));
     if (cand) end.bairro = cand.slice(0, 80);
   }
+  // Sem separadores ("..., 30 PARI SAO PAULO CNPJ: ..."): o bairro é o que fica entre o número (e o complemento)
+  // e a cidade.
+  if (!end.bairro && fimLog > 0 && end.cidade) {
+    let seg = T.slice(fimLog).replace(/\b(?:CNPJ|CEP|FONE|TEL|I\.?E)\b.*$/, '');
+    if (end.complemento) seg = seg.replace(end.complemento, ' ');
+    const k = seg.lastIndexOf(semAcentoMaiusc(end.cidade));
+    if (k > 0) {
+      const b = limpo(seg.slice(0, k).replace(/^[\s,-]*(?:N[º°O]?\.?\s*)?\d+[A-Z]?\b/, ''));
+      if (b && b.length > 2 && !/\d{3}/.test(b) && !UFS.has(b)) end.bairro = b.slice(0, 80);
+    }
+  }
   // "Bairro Cocota" (sem dois-pontos): a palavra BAIRRO não faz parte do nome.
   if (end.bairro) end.bairro = end.bairro.replace(/^BAIRRO\s*[:.\-]?\s*/, '').trim() || null;
   // Sem cidade no texto, mas com CEP de capital: a cidade sai da faixa do CEP (Correios).
@@ -219,6 +232,6 @@ function textoEndereco(e) {
 
 // Versão das regras de leitura: ao subir, as notas com "conferir" lidas por uma versão anterior são lidas de novo
 // sozinhas ao ligar o sistema (notasFiscais.completarTodos). Suba sempre que melhorar a leitura.
-const VERSAO_LEITURA = 9;
+const VERSAO_LEITURA = 10;
 
 module.exports = { VERSAO_LEITURA, ORIGENS, lerEndereco, conferir, blocoRedespacho, blocoLocalEntrega, daNfe, textoEndereco, acharCidade };

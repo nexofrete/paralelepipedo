@@ -404,7 +404,10 @@ def parte_uso(g):
         'que o sistema busca sozinho pelo CNPJ (rua, número, bairro, cidade, UF e CEP). No detalhe aparece "endereço completado pelo '
         'cadastro do CNPJ". Se o cadastro ainda não existir, o endereço entra assim que a consulta do CNPJ terminar.',
         'Quebras de linha nos dados adicionais (inclusive as gravadas como o texto "\\n" por alguns ERPs) separam as partes do endereço.',
-        'Separadores "pela metade" ("1013-JARDIM PRESIDENTE DUTRA -GUARULHOS ,SP") também são entendidos. Quando a nota não traz o CEP, '
+        'Separadores "pela metade" ("1013-JARDIM PRESIDENTE DUTRA -GUARULHOS ,SP") também são entendidos, e também o endereço '
+        'sem separador nenhum depois do número ("RUA DR. MIGUEL PAULO CAPALBO, 30 PARI SAO PAULO CNPJ: ... TEL. ..."): a cidade '
+        'é achada antes do CNPJ e do telefone, e o bairro é o que fica entre o número e a cidade. CNPJ com dígito errado na nota '
+        'não é usado. Quando a nota não traz o CEP, '
         'ele vem do cadastro da transportadora do redespacho, se a cidade do cadastro for a mesma.',
         '<b>Sem a cidade no texto</b> ("Rua X, 174, Bairro Cocota - CEP 21921025"): a cidade sai do <b>CEP</b>, na hora para as '
         'capitais (pela faixa de CEP dos Correios) e, para as outras cidades, por uma consulta do CEP na BrasilAPI (guardada para não '

@@ -113,3 +113,14 @@ test('endereço: "Bairro Cocota", cidade pela faixa de CEP da capital e aviso de
   const { capitalDoCep } = require('../src/cepCidade');
   assert.deepStrictEqual(capitalDoCep('01310-100'), { cidade: 'São Paulo', uf: 'SP' }); assert.strictEqual(capitalDoCep('13045000'), null);
 });
+
+test('sem separadores depois do número: bairro e cidade antes do CNPJ e do telefone', () => {
+  const r = ler('//REDESPACHO: TRANSRUAS TRANSPORTE LTDA EPP RUA DR. MIGUEL PAULO CAPALBO, 30 PARI SAO PAULO CNPJ: 07208405000257 TEL. 011-2698-6509');
+  assert.strictEqual(r.logradouro, 'RUA DR. MIGUEL PAULO CAPALBO');
+  assert.strictEqual(r.numero, '30');
+  assert.strictEqual(r.bairro, 'PARI');
+  assert.strictEqual(r.cidade, 'São Paulo');
+  assert.strictEqual(r.uf, 'SP');
+  assert.strictEqual(r.conferir, false);
+  assert.strictEqual(r.cnpj, null);   // CNPJ da nota com dígito errado não é usado
+});

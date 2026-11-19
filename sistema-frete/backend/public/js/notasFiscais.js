@@ -269,8 +269,8 @@
     if (f.de) {
       ['nfBusca', 'nfEmit', 'nfDest', 'nfSerie', 'nfCidade', 'nfTransp'].forEach((id) => { $(id).value = ''; });
       $('nfEntrega').value = ''; $('nfEnd').value = ''; $('nfSit').value = 'autorizada'; $('nfData').value = 'emissao';
-      $('nfUf').value = f.uf || ''; $('nfOper').value = f.operacao || '';
-      if (f.uf || f.operacao) $('nfMaisFiltros').open = true;
+      $('nfUf').value = f.uf || ''; $('nfOper').value = f.operacao || ''; $('nfDest').value = f.destinatario || '';
+      if (f.uf || f.operacao || f.destinatario) $('nfMaisFiltros').open = true;
       $('nfPer').value = 'custom'; $('nfPer').closest('.periodo')?.classList.remove('periodo-tudo');
       $('nfDe').value = f.de; $('nfAte').value = f.ate || f.de;
     }

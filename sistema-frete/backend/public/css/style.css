@@ -2062,3 +2062,15 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-rot span { text-transform: none; }
 .vg-fat-total2 { font-size: 13px; color: var(--texto-fraco); margin: 0 0 4px; }
 .vg-fat-total2 b { color: var(--texto); font-variant-numeric: tabular-nums; }
+
+/* Os 3 maiores clientes do dia (ouro, prata, bronze) */
+.vg-fat-cli-tit { margin-top: 14px; }
+.vg-fat-clis { display: flex; flex-direction: column; gap: 6px; }
+.vg-fat-cli { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--borda); border-left-width: 4px; }
+.vg-fat-cli:hover, .vg-fat-cli:focus-visible { background: color-mix(in srgb, var(--texto) 5%, transparent); outline: none; }
+.vg-fat-cli.ouro { border-left-color: #D4A017; } .vg-fat-cli.prata { border-left-color: #A7ABB3; } .vg-fat-cli.bronze { border-left-color: #C27A3E; }
+.vg-fat-med { font-size: 24px; line-height: 1; text-align: center; }
+.vg-fat-cli-nome { min-width: 0; } .vg-fat-cli-nome b { display: block; font-size: 13px; color: var(--texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vg-fat-cli-nome small, .vg-fat-cli-val small { font-size: 11px; color: var(--texto-fraco); }
+.vg-fat-cli-val { text-align: right; font-variant-numeric: tabular-nums; } .vg-fat-cli-val b { display: block; font-size: 13px; color: var(--texto); }

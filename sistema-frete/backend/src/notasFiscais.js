@@ -448,12 +448,13 @@ async function faturamentoDia(req, q = {}) {
   const data = /^\d{4}-\d{2}-\d{2}$/.test(String(q.data || '')) && !Number.isNaN(Date.parse(q.data)) ? String(q.data) : hojeSaoPaulo();
   const NOTAS = `n AS (SELECT DISTINCT ON (COALESCE(NULLIF(f.chave_nfe, ''), COALESCE(f.emitente_cnpj, '') || '-' || COALESCE(f.nf_serie, '') || '-' || f.numero_nf))
         f.data_emissao_nf AS dia, COALESCE(f.valor_faturado, f.valor_produtos, 0)::float AS valor, COALESCE(f.peso_bruto, f.peso_kg, 0)::float AS peso,
-        COALESCE(f.qtd_volumes, 0)::int AS volumes, f.nf_operacao AS operacao, UPPER(NULLIF(TRIM(f.uf), '')) AS uf, COALESCE(NULLIF(regexp_replace(COALESCE(f.cliente_documento, ''), '\\D', '', 'g'), ''), f.cliente) AS cliente
+        COALESCE(f.qtd_volumes, 0)::int AS volumes, f.nf_operacao AS operacao, UPPER(NULLIF(TRIM(f.uf), '')) AS uf, COALESCE(NULLIF(regexp_replace(COALESCE(f.cliente_documento, ''), '\\D', '', 'g'), ''), f.cliente) AS cliente,
+        f.cliente AS cliente_nome, f.cidade AS cidade
       FROM fretes f
      WHERE f.frete_principal_id IS NULL AND f.numero_nf IS NOT NULL AND f.numero_nf <> '' AND f.nf_cancelada IS NOT TRUE AND f.nf_denegada IS NOT TRUE
        AND f.nf_operacao IN ('venda', 'bonificacao') AND f.data_emissao_nf BETWEEN $1::date - 13 AND $1::date
      ORDER BY COALESCE(NULLIF(f.chave_nfe, ''), COALESCE(f.emitente_cnpj, '') || '-' || COALESCE(f.nf_serie, '') || '-' || f.numero_nf), f.id)`;
-  const [{ rows: [dia] }, { rows: ufs }, { rows: dias }, { rows: [fora] }] = await Promise.all([
+  const [{ rows: [dia] }, { rows: ufs }, { rows: dias }, { rows: [fora] }, { rows: topClientes }] = await Promise.all([
     consultaCliente(req, `WITH ${NOTAS} SELECT COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor, COALESCE(SUM(peso), 0)::float AS peso,
         COALESCE(SUM(valor) FILTER (WHERE operacao = 'venda'), 0)::float AS valor_venda, COUNT(*) FILTER (WHERE operacao = 'venda')::int AS notas_venda,
         COALESCE(SUM(valor) FILTER (WHERE operacao = 'bonificacao'), 0)::float AS valor_bonificacao, COUNT(*) FILTER (WHERE operacao = 'bonificacao')::int AS notas_bonificacao,
@@ -471,6 +472,12 @@ async function faturamentoDia(req, q = {}) {
         COUNT(*) FILTER (WHERE f.xml_nfe_original IS NOT NULL AND f.nf_operacao IS NULL)::int AS lendo
       FROM fretes f WHERE f.frete_principal_id IS NULL AND f.numero_nf IS NOT NULL AND f.numero_nf <> '' AND f.nf_cancelada IS NOT TRUE AND f.nf_denegada IS NOT TRUE
         AND f.data_emissao_nf = $1::date`, [data]),
+    // Os 3 maiores clientes do dia (só venda). Filiais do mesmo cliente (CNPJ com a mesma raiz de 8 dígitos) contam juntas.
+    consultaCliente(req, `WITH ${NOTAS} SELECT CASE WHEN cliente ~ '^\\d{14}$' THEN LEFT(cliente, 8) ELSE cliente END AS chave,
+        MAX(cliente_nome) AS nome, COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor, COUNT(DISTINCT cliente)::int AS filiais,
+        CASE WHEN COUNT(DISTINCT COALESCE(cidade, '') || '/' || COALESCE(uf, '')) = 1 THEN MAX(cidade) END AS cidade,
+        CASE WHEN COUNT(DISTINCT COALESCE(uf, '')) = 1 THEN MAX(uf) END AS uf
+      FROM n WHERE dia = $1::date AND operacao = 'venda' GROUP BY 1 ORDER BY 4 DESC, 3 DESC LIMIT 3`, [data]),
   ]);
   const semanaPassada = dias[dias.length - 8] || null;   // o mesmo dia da semana anterior
   const top = ufs.slice(0, 5);
@@ -481,6 +488,7 @@ async function faturamentoDia(req, q = {}) {
     valor: dia.valor_venda, valor_total: dia.valor, notas_total: dia.notas,
     ticket_medio: dia.notas_venda ? dia.valor_venda / dia.notas_venda : 0,
     estados: top.map((u) => ({ ...u, pct: dia.valor_venda ? u.valor / dia.valor_venda : 0 })),
+    clientes_top: topClientes.map((c) => ({ ...c, pct: dia.valor_venda ? c.valor / dia.valor_venda : 0 })),
     outros: resto.length ? { estados: resto.length, notas: resto.reduce((s, u) => s + u.notas, 0), valor: resto.reduce((s, u) => s + u.valor, 0) } : null,
     dias,
     semana_passada: semanaPassada,

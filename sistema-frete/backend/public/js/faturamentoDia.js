@@ -139,7 +139,7 @@
 
     corpo.innerHTML = `<div class="vg-fat-grade">
       ${resumo}
-      <div class="vg-fat-bloco"><div class="vg-fat-sub">Os 5 estados que mais compraram <small>(UF do destinatário)</small></div>${estados}</div>
+      <div class="vg-fat-bloco"><div class="vg-fat-sub">Os 5 estados que mais compraram <small>(UF do destinatário)</small></div>${estados}${clientesHtml(d)}</div>
       <div class="vg-fat-bloco"><div class="vg-fat-sub">Últimos 14 dias <small>(clique num dia para ver)</small></div>${colunas}</div>
     </div>`;
     posicionarValores();
@@ -155,14 +155,30 @@
   }
   window.addEventListener('resize', () => { if (dados) posicionarValores(); });
 
+  // Os 3 maiores clientes do dia: ouro, prata e bronze (só venda; filiais do mesmo CNPJ juntas).
+  const MEDALHAS = [['ouro', '🥇', 'Ouro'], ['prata', '🥈', 'Prata'], ['bronze', '🥉', 'Bronze']];
+  const lugarCli = (c) => [c.cidade, c.uf].filter(Boolean).join('/') || (c.filiais > 1 ? `${c.filiais} filiais` : '');
+  function clientesHtml(d) {
+    const l = d.clientes_top || [];
+    if (!l.length) return '';
+    return `<div class="vg-fat-sub vg-fat-cli-tit">Os 3 maiores clientes do dia <small>(só venda)</small></div><div class="vg-fat-clis">${l.map((c, i) => `
+      <div class="vg-fat-cli ${MEDALHAS[i][0]}" data-fat-cli="${esc(c.chave)}" tabindex="0" role="button" title="${esc(MEDALHAS[i][2])}: clique para ver as notas deste cliente no dia">
+        <span class="vg-fat-med" aria-label="${MEDALHAS[i][2]}">${MEDALHAS[i][1]}</span>
+        <div class="vg-fat-cli-nome"><b>${esc(c.nome || c.chave)}</b><small>${esc(lugarCli(c))}${c.filiais > 1 && (c.cidade || c.uf) ? ` · ${c.filiais} filiais` : ''}</small></div>
+        <div class="vg-fat-cli-val"><b>${moeda(c.valor)}</b><small>${pct(c.pct)} · ${c.notas} nota${c.notas === 1 ? '' : 's'}</small></div>
+      </div>`).join('')}</div>`;
+  }
+
   // Abre a Consulta de notas com as notas do dia (e do estado, se escolhido).
-  function abrirNotas(uf, operacao) {
+  function abrirNotas(uf, operacao, destinatario) {
     if (typeof window.abrirConsultaNotas !== 'function') return;
-    window.abrirConsultaNotas({ de: dados.data, ate: dados.data, uf: uf || '', operacao: operacao || 'faturamento', abrir: true });
+    window.abrirConsultaNotas({ de: dados.data, ate: dados.data, uf: uf || '', operacao: operacao || 'faturamento', destinatario: destinatario || '', abrir: true });
   }
 
   corpo.addEventListener('click', (e) => {
     if (e.target.closest('[data-fat-notas]')) { e.preventDefault(); abrirNotas(); return; }
+    const cli = e.target.closest('[data-fat-cli]');
+    if (cli) { esconderDica(); abrirNotas('', 'venda', cli.dataset.fatCli); return; }
     const fora = e.target.closest('[data-fat-fora]');
     if (fora) { e.preventDefault(); abrirNotas('', fora.dataset.fatFora); return; }
     const uf = e.target.closest('[data-fat-uf]');
@@ -172,7 +188,7 @@
   });
   corpo.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const alvo = e.target.closest('[data-fat-uf], [data-fat-dia]');
+    const alvo = e.target.closest('[data-fat-uf], [data-fat-dia], [data-fat-cli]');
     if (alvo) { e.preventDefault(); alvo.click(); }
   });
   corpo.addEventListener('mousemove', (e) => {
@@ -219,7 +235,8 @@
     const nomeEmp = emp.nome_fantasia || emp.razao_social || '';
     const W = 1080; const P = 64;
     const nEst = d.estados.length;
-    const H = 744 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 392 + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
+    const nCli = (d.clientes_top || []).length;
+    const H = 744 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + (nCli ? 64 + nCli * 66 : 0) + 392 + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
     const esc2 = 2;
     const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
     const c = cv.getContext('2d'); c.scale(esc2, esc2);
@@ -305,6 +322,24 @@
     if (d.outros) {
       txt(`+ ${d.outros.estados} outro${d.outros.estados > 1 ? 's' : ''} estado${d.outros.estados > 1 ? 's' : ''}: ${moeda(d.outros.valor)} (${pct(d.valor ? d.outros.valor / d.valor : 0)}) em ${d.outros.notas} nota${d.outros.notas === 1 ? '' : 's'}`, P, y + 26, { tam: 19, cor: COR.fraco });
       y += 40;
+    }
+
+    // Os 3 maiores clientes (ouro, prata, bronze)
+    if (nCli) {
+      y += 56; txt('Os 3 maiores clientes do dia', P, y, { tam: 28, peso: 700 });
+      y += 18;
+      const CORES = [['#F4C430', '#8a6d00'], ['#C9CDD3', '#5b6170'], ['#D9935B', '#7a4517']];
+      d.clientes_top.forEach((cl, i) => {
+        const yc = y + 33;
+        c.beginPath(); c.arc(P + 22, yc, 22, 0, Math.PI * 2); c.fillStyle = CORES[i][0]; c.fill();
+        txt(String(i + 1), P + 22, yc + 8, { tam: 22, peso: 800, cor: CORES[i][1], alinhar: 'center' });
+        txt(cl.nome || cl.chave, P + 60, yc - 2, { tam: 23, peso: 600, max: 560 });
+        const lugar = [lugarCli(cl), cl.filiais > 1 && (cl.cidade || cl.uf) ? `${cl.filiais} filiais` : ''].filter(Boolean).join(' · ');
+        if (lugar) txt(lugar, P + 60, yc + 24, { tam: 17, cor: COR.fraco, max: 560 });
+        txt(moeda(cl.valor), W - P, yc - 2, { tam: 24, peso: 700, alinhar: 'right' });
+        txt(`${pct(cl.pct)} · ${cl.notas} nota${cl.notas === 1 ? '' : 's'}`, W - P, yc + 24, { tam: 18, cor: COR.fraco, alinhar: 'right' });
+        y += 66;
+      });
     }
 
     // Últimos 14 dias
@@ -393,6 +428,14 @@
       L.push(`🗺️ *Estados que mais compraram*`);
       d.estados.forEach((u, i) => L.push(`${i + 1}. ${UF[u.uf] || u.uf}: ${moeda(u.valor)} (${pct(u.pct)}, ${notas(u.notas)})`));
       if (d.outros) L.push(`Os outros ${d.outros.estados} estado${d.outros.estados > 1 ? 's' : ''} somaram ${moeda(d.outros.valor)} (${pct(d.valor ? d.outros.valor / d.valor : 0)}, ${notas(d.outros.notas)}).`);
+    }
+    if ((d.clientes_top || []).length) {
+      L.push('');
+      L.push('🏆 *Maiores clientes do dia*');
+      d.clientes_top.forEach((c, i) => {
+        const lugar = lugarCli(c);
+        L.push(`${MEDALHAS[i][1]} ${c.nome || c.chave}${lugar ? ` (${lugar})` : ''}: ${moeda(c.valor)} (${pct(c.pct)}, ${notas(c.notas)})`);
+      });
     }
     // Destaques: estado com mais de 30% do dia; estado com pedidos bem acima do valor médio.
     const dest = [];

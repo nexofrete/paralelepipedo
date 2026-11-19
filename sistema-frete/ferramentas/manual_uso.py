@@ -110,6 +110,9 @@ def parte_uso(g):
         'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
+        '<b>Os 3 maiores clientes do dia</b> (só venda), com medalha de ouro, prata e bronze: nome, cidade/UF, valor, a parte do '
+        'dia (%) e o número de notas. As filiais do mesmo cliente (CNPJ com a mesma raiz de 8 dígitos) contam juntas. Clique '
+        'num cliente para ver as notas dele no dia. Os 3 aparecem também na imagem e no texto para o WhatsApp.',
         '<b>Conferir com o ERP</b>: no ERP, abra a lista das notas do dia, selecione as linhas e copie (Ctrl+C); no '
         'quadro, clique em <b>Conferir com o ERP</b>, cole (Ctrl+V) e clique em Conferir. Em cada linha o sistema pega o '
         'número da nota e o valor, e mostra o total do ERP, o do sistema e a diferença, e nota por nota: confere; falta no '

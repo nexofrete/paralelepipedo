@@ -1,6 +1,6 @@
 // =====================================================================
 // Visão geral » 🧾 Faturamento do dia: as NF-e de venda e bonificação (pelo CFOP) emitidas na data (soma do valor total das notas, quantidade,
-// clientes, ticket médio, peso), comparação com o mesmo dia da semana anterior, os 5 estados que mais
+// clientes, média por pedido, peso), comparação com o mesmo dia da semana anterior, os 5 estados que mais
 // compraram e os últimos 14 dias (clique num dia para ver aquele dia). Dados: GET /api/notas/faturamento-dia.
 // Usa do dashboard.js: apiFetch; do notasFiscais.js: window.abrirConsultaNotas.
 // =====================================================================
@@ -101,7 +101,7 @@
       <div class="vg-fat-kpis">
         <div><span>Notas emitidas</span><b>${num(d.notas)}</b></div>
         <div><span>Clientes</span><b>${num(d.clientes)}</b></div>
-        <div><span>Ticket médio</span><b>${d.notas ? moeda(d.ticket_medio) : '—'}</b></div>
+        <div><span title="Total do dia dividido pelo número de notas">Média por pedido</span><b>${d.notas ? moeda(d.ticket_medio) : '—'}</b></div>
         <div><span>Peso / volumes</span><b>${num(d.peso)} kg</b><small>${num(d.volumes)} vol.</small></div>
       </div>
       ${d.notas ? `<div class="vg-fat-split">
@@ -181,7 +181,7 @@
       const x = dados.dias[Number(col.dataset.i)];
       const media = x.notas ? x.valor / x.notas : 0;
       mostrarDica(`<b>${SEMANA[diaSemana(x.dia)]}, ${ddmm(x.dia)}</b><div class="vg-fat-dica-val">${moeda(x.valor)}</div>
-        <div>${x.notas} nota${x.notas === 1 ? '' : 's'}${x.notas ? ` · ticket médio ${moeda(media)}` : ''}</div>
+        <div>${x.notas} nota${x.notas === 1 ? '' : 's'}${x.notas ? ` · média por pedido ${moeda(media)}` : ''}</div>
         ${x.dia !== dados.data ? '<small>Clique para ver este dia</small>' : ''}`, e);
       return;
     }
@@ -267,7 +267,7 @@
 
     // Números do dia
     y = 392; const gap = 16; const wK = (W - 2 * P - 3 * gap) / 4;
-    [['Notas', num(d.notas)], ['Clientes', num(d.clientes)], ['Ticket médio', d.notas ? moeda(d.ticket_medio) : '—'], ['Peso', `${num(d.peso)} kg`]].forEach(([r, v], i) => {
+    [['Notas', num(d.notas)], ['Clientes', num(d.clientes)], ['Média por pedido', d.notas ? moeda(d.ticket_medio) : '—'], ['Peso', `${num(d.peso)} kg`]].forEach(([r, v], i) => {
       const x = P + i * (wK + gap);
       ret(x, y, wK, 108, 14, COR.caixa);
       txt(r, x + 20, y + 40, { tam: 20, cor: COR.fraco });
@@ -351,6 +351,66 @@
     return cv;
   }
 
+  // Texto da mensagem para o WhatsApp (negrito no formato do WhatsApp: *assim*), com os números do dia na tela.
+  function textoMensagem(d) {
+    const h = new Date().getHours();
+    const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    const sem = SEMANA[diaSemana(d.data)];
+    const semExt = `${sem}${['sábado', 'domingo'].includes(sem) ? '' : '-feira'}`;
+    const ehHoje = d.data === d.hoje;
+    const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+    const masc = sem === 'sábado' || sem === 'domingo';
+    const notas = (q) => `${num(q)} nota${q === 1 ? '' : 's'}`;
+    const L = [];
+    L.push(`${saud}! Segue o resumo do faturamento ${ehHoje ? `de hoje${h < 23 ? ` (parcial até as ${agora})` : ''}, ` : 'de '}*${semExt}, ${ddmm(d.data)}/${d.data.slice(0, 4)}*:`);
+    L.push('');
+    L.push(`💰 *Total faturado: ${moeda(d.valor)}*`);
+    if (d.notas_bonificacao) {
+      L.push(`• Venda: ${moeda(d.valor_venda)} (${notas(d.notas_venda)})`);
+      L.push(`• Bonificação: ${moeda(d.valor_bonificacao)} (${notas(d.notas_bonificacao)})`);
+    }
+    // Comparação: o mesmo dia da semana anterior e a média dos 14 dias (dias com nota).
+    const comp = [];
+    const sp = d.semana_passada;
+    if (sp && sp.valor) {
+      const v = (d.valor - sp.valor) / sp.valor;
+      comp.push(`• *${v >= 0 ? '+' : '−'}${pct(Math.abs(v))}* em relação ${masc ? 'ao' : 'à'} ${sem} passad${masc ? 'o' : 'a'} (${ddmm(sp.dia)}: ${moeda(sp.valor)})`);
+    }
+    const comValor = (d.dias || []).filter((x) => x.valor > 0);
+    const media = comValor.length ? comValor.reduce((t, x) => t + x.valor, 0) / comValor.length : 0;
+    if (media && d.valor) comp.push(`• ${d.valor >= media ? 'Acima' : 'Abaixo'} da média dos últimos 14 dias (${moeda(media)})`);
+    if (comp.length) { L.push(''); L.push('📈 *Comparação*'); L.push(...comp); }
+    L.push('');
+    L.push('📦 *Números do dia*');
+    L.push(`• ${notas(d.notas)} emitida${d.notas === 1 ? '' : 's'} para ${num(d.clientes)} cliente${d.clientes === 1 ? '' : 's'}`);
+    if (d.notas) L.push(`• Valor médio por pedido: ${moeda(d.ticket_medio)}`);
+    if (d.peso) L.push(`• Peso total: ${num(d.peso)} kg`);
+    if (d.estados.length) {
+      L.push('');
+      L.push(`🗺️ *Estados que mais compraram*`);
+      d.estados.forEach((u, i) => L.push(`${i + 1}. ${UF[u.uf] || u.uf}: ${moeda(u.valor)} (${pct(u.pct)}, ${notas(u.notas)})`));
+      if (d.outros) L.push(`Os outros ${d.outros.estados} estado${d.outros.estados > 1 ? 's' : ''} somaram ${moeda(d.outros.valor)} (${pct(d.valor ? d.outros.valor / d.valor : 0)}, ${notas(d.outros.notas)}).`);
+    }
+    // Destaques: estado com mais de 30% do dia; estado com pedidos bem acima do valor médio.
+    const dest = [];
+    const top = d.estados[0];
+    if (top && top.pct >= 0.3) dest.push(`• ${UF[top.uf] || top.uf} respondeu por ${top.pct >= 0.5 ? 'mais da metade' : top.pct >= 1 / 3 ? 'mais de um terço' : pct(top.pct)} do faturamento do dia.`);
+    const grande = d.estados.filter((u) => u.notas && d.ticket_medio && u.valor / u.notas >= d.ticket_medio * 2).sort((a, b) => b.valor / b.notas - a.valor / a.notas)[0];
+    if (grande) dest.push(`• ${UF[grande.uf] || grande.uf}: pedidos grandes, com média de ${moeda(grande.valor / grande.notas)} por nota (${notas(grande.notas)}).`);
+    if (dest.length) { L.push(''); L.push('📌 *Destaques*'); L.push(...dest); }
+    L.push('');
+    L.push('Os valores consideram só as notas de venda e bonificação, sem as canceladas.');
+    return L.join('\n');
+  }
+  // Copia texto (também onde o navegador não deixa usar a área de transferência moderna, como em http).
+  async function copiarTexto(t) {
+    try { if (window.isSecureContext && navigator.clipboard?.writeText) { await navigator.clipboard.writeText(t); return true; } } catch { /* tenta o outro jeito */ }
+    const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove(); return ok;
+  }
+
   async function abrirImagem() {
     if (!dados) return;
     const cv = await desenharImagem();
@@ -368,9 +428,12 @@
       <div style="display:flex; justify-content:space-between; align-items:center;"><h3 style="margin:0;">📷 Imagem do faturamento do dia</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
       <p class="vg-fat-img-dica">${podeCopiar ? '<b>Copiar</b> e colar (Ctrl+V) na conversa do WhatsApp Web ou do WhatsApp do computador' : '<b>Baixar</b> e anexar na conversa do WhatsApp (clipe » Fotos e vídeos)'}${podeCompartilhar ? ', ou <b>Compartilhar</b> e escolher o WhatsApp' : ''}.</p>
       <div class="vg-fat-img-prev"><img src="${url}" alt="Faturamento do dia ${ddmm(dados.data)}" /></div>
+      <details class="vg-fat-msg"><summary>📝 Texto da mensagem <small>(dá para ajustar antes de copiar)</small></summary>
+        <textarea id="vgFatMsg" class="cte-entrada" rows="14" spellcheck="false">${esc(textoMensagem(dados))}</textarea></details>
       <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:12px;">
         ${podeCompartilhar ? '<button type="button" class="btn btn-secundario" data-compartilhar style="width:auto;">📤 Compartilhar</button>' : ''}
         <a class="btn btn-secundario" style="width:auto;" href="${url}" download="${nome}">⬇ Baixar PNG</a>
+        <button type="button" class="btn btn-secundario" data-copiar-texto style="width:auto;" title="Copia a mensagem com os números do dia, para colar no WhatsApp junto com a imagem">📝 Copiar texto</button>
         ${podeCopiar ? '<button type="button" class="btn btn-primario" data-copiar style="width:auto;">📋 Copiar imagem</button>' : ''}
       </div></div>`;
     document.body.appendChild(fundo);
@@ -382,8 +445,17 @@
         catch { mostrarAlerta('O navegador não deixou copiar a imagem. Use "Baixar PNG" e anexe na conversa.', { tipo: 'aviso' }); }
         return;
       }
+      if (e.target.closest('[data-copiar-texto]')) {
+        const ok = await copiarTexto(fundo.querySelector('#vgFatMsg').value);
+        if (ok) mostrarAlerta('Texto copiado. Cole (Ctrl+V) na conversa do WhatsApp, junto com a imagem.', { tipo: 'sucesso' });
+        else { fundo.querySelector('.vg-fat-msg').open = true; fundo.querySelector('#vgFatMsg').select(); mostrarAlerta('O navegador não deixou copiar. O texto está selecionado: use Ctrl+C.', { tipo: 'aviso' }); }
+        return;
+      }
       if (e.target.closest('[data-compartilhar]')) {
-        try { await navigator.share({ files: [arquivo], title: `Faturamento do dia ${ddmm(dados.data)}` }); } catch { /* cancelou */ }
+        // Compartilhar manda a imagem com o texto como legenda (WhatsApp no celular e no Windows).
+        const texto = fundo.querySelector('#vgFatMsg').value;
+        try { await navigator.share({ files: [arquivo], title: `Faturamento do dia ${ddmm(dados.data)}`, text: texto }); }
+        catch (err) { if (err?.name !== 'AbortError') { try { await navigator.share({ files: [arquivo], title: `Faturamento do dia ${ddmm(dados.data)}` }); } catch { /* cancelou */ } } }
       }
     });
   }

@@ -103,8 +103,8 @@ def parte_uso(g):
                'sistema, a natureza e o CFOP são lidos do XML guardado quando o sistema liga.'))
     s += lista([
         '<b>Total das notas</b> do dia (soma do valor total das NF-e), com a comparação com o mesmo dia da semana anterior '
-        '(por exemplo, "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, ticket médio '
-        '(total dividido pelo número de notas), peso e volumes, e a divisão entre <b>Venda</b> e <b>Bonificação</b> (valor e '
+        '(por exemplo, "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, média por '
+        'pedido (total dividido pelo número de notas), peso e volumes, e a divisão entre <b>Venda</b> e <b>Bonificação</b> (valor e '
         'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
@@ -116,13 +116,17 @@ def parte_uso(g):
         'sistema mas não está na lista colada.',
         '<b>Imagem para o WhatsApp</b>: o botão <b>Imagem</b> (ao lado das datas) gera um PNG em pé, com fundo claro e letras '
         'grandes para ler no celular: logo e nome da empresa, dia, total, comparação com a semana anterior, notas, clientes, '
-        'ticket médio, peso, venda e bonificação, os 5 estados e os últimos 14 dias; no rodapé, "gerado pelo" e a marca Nexofrete. Na janela: <b>Copiar imagem</b> e colar '
+        'média por pedido, peso, venda e bonificação, os 5 estados e os últimos 14 dias; no rodapé, "gerado pelo" e a marca Nexofrete. Na janela: <b>Copiar imagem</b> e colar '
         '(Ctrl+V) na conversa do WhatsApp Web ou do computador; <b>Compartilhar</b> (no celular e no Windows) e escolher o '
         'WhatsApp; ou <b>Baixar PNG</b> e anexar na conversa. Copiar só aparece quando o sistema é aberto por https ou no '
-        'próprio computador do servidor (regra do navegador); senão use Baixar.',
+        'próprio computador do servidor (regra do navegador); senão use Baixar. <b>Copiar texto</b> copia a mensagem pronta '
+        'para mandar junto com a imagem (saudação, total, venda e bonificação, comparação com a semana anterior e com a média '
+        'dos 14 dias, notas, clientes, média por pedido, peso, os 5 estados e os destaques do dia), com os negritos do '
+        'WhatsApp; o texto aparece em "Texto da mensagem" e dá para ajustar antes de copiar. No dia de hoje, o texto avisa '
+        '"parcial até as HHhMM". Em Compartilhar, a imagem vai com o texto como legenda.',
         '<b>Últimos 14 dias</b>: o valor exato de cada dia (ex.: R$ 707.776,00) aparece escrito dentro da coluna (na vertical; '
         'em coluna baixa, logo acima dela). Uma coluna por dia, com o dia escolhido em destaque e a linha tracejada da média dos dias com '
-        'nota. Passe o mouse para ver o valor, as notas e o ticket médio do dia; clique numa coluna para ver aquele dia.',
+        'nota. Passe o mouse para ver o valor, as notas e a média por pedido do dia; clique numa coluna para ver aquele dia.',
     ])
     s += h2('Fluxo do frete')
     s.append(P('Cinco quadros com a quantidade (e o valor) em cada etapa: Aguardando CT-e, Em conferência, Frete Retido, '

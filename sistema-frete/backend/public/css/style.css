@@ -2053,3 +2053,8 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .nf-pag-bt .btn { width: auto; padding: 5px 10px; font-size: 12.5px; }
 .nf-pag-bt .btn:disabled { opacity: .45; cursor: default; }
 .nf-pag-n { font-size: 12.5px; color: var(--texto-fraco); padding: 0 4px; }
+
+.vg-fat-msg { margin-top: 10px; font-size: 13px; }
+.vg-fat-msg summary { cursor: pointer; font-weight: 600; }
+.vg-fat-msg summary small { font-weight: normal; color: var(--texto-fraco); }
+.vg-fat-msg textarea { width: 100%; margin-top: 6px; font: 12.5px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; resize: vertical; }

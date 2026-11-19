@@ -103,11 +103,11 @@ def parte_uso(g):
                '"Não entraram na soma" diz quantas ficaram de fora no dia; clique para ver quais. Nas notas que já estavam no '
                'sistema, a natureza e o CFOP são lidos do XML guardado quando o sistema liga.'))
     s += lista([
-        '<b>Total das notas de venda</b> do dia (soma do valor total das NF-e de venda) e, logo abaixo, <b>Venda + '
-        'bonificação</b> (o total com as notas de bonificação); a comparação com o mesmo dia da semana anterior (vendas com '
-        'vendas, por exemplo "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, média por '
-        'pedido (vendas divididas pelo número de notas de venda), peso e volumes, e os quadros <b>Venda</b> e <b>Bonificação</b> (valor e '
-        'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
+        'O quadro tem três cartões: o resumo do dia, os estados e clientes, e os últimos 14 dias. No resumo, em destaque, o '
+        '<b>Total das notas de venda</b> do dia (soma do valor total das NF-e de venda), com a comparação com o mesmo dia da '
+        'semana anterior numa etiqueta verde (subiu) ou vermelha (caiu), vendas com vendas; os números de notas emitidas, '
+        'clientes, <b>média por pedido</b> (vendas divididas pelo número de notas de venda) e peso; e a barra <b>Venda + '
+        'bonificação</b>, com o total e a parte de cada uma (valor e notas). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',
         '<b>Os 3 maiores clientes do dia</b> (só venda), com medalha de ouro, prata e bronze: nome, cidade/UF, valor, a parte do '

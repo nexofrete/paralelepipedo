@@ -72,7 +72,7 @@
     if (!sp || !sp.valor) return `<div class="vg-fat-comp neutro">Sem notas ${masc ? 'no' : 'na'} ${nome} passad${masc ? 'o' : 'a'} (${ddmm(sp?.dia || somarDias(d.data, -7))}) para comparar</div>`;
     const v = (d.valor - sp.valor) / sp.valor;
     const sobe = v >= 0;
-    return `<div class="vg-fat-comp ${sobe ? 'sobe' : 'desce'}"><span aria-hidden="true">${sobe ? '▲' : '▼'}</span> ${sobe ? '+' : '−'}${pct(Math.abs(v))}
+    return `<div class="vg-fat-comp ${sobe ? 'sobe' : 'desce'}"><span class="vg-fat-pill"><span aria-hidden="true">${sobe ? '▲' : '▼'}</span> ${sobe ? '+' : '−'}${pct(Math.abs(v))}</span>
       <span class="vg-fat-comp-ref">em relação ${ref} (${ddmm(sp.dia)}: ${moeda(sp.valor)})</span></div>`;
   }
 
@@ -93,29 +93,37 @@
     const sem = SEMANA[diaSemana(d.data)];
     const titDia = `${ehHoje ? `Hoje, ${sem}` : sem.charAt(0).toUpperCase() + sem.slice(1)}, ${ddmm(d.data)}/${d.data.slice(0, 4)}`;
 
-    // 1) Resumo do dia (número principal).
-    const resumo = `<div class="vg-fat-resumo">
-      <div class="vg-fat-rot">${esc(titDia)} · <span>total das notas de venda</span></div>
-      <div class="vg-fat-total">${moeda(d.valor)}</div>
-      <div class="vg-fat-total2">Venda + bonificação: <b>${moeda(d.valor_total)}</b> <small>(${num(d.notas_total)} nota${d.notas_total === 1 ? '' : 's'})</small></div>
-      ${comparacao(d)}
-      <div class="vg-fat-kpis">
-        <div><span>Notas emitidas</span><b>${num(d.notas)}</b></div>
-        <div><span>Clientes</span><b>${num(d.clientes)}</b></div>
-        <div><span title="Total do dia dividido pelo número de notas">Média por pedido</span><b>${d.notas ? moeda(d.ticket_medio) : '—'}</b></div>
-        <div><span>Peso / volumes</span><b>${num(d.peso)} kg</b><small>${num(d.volumes)} vol.</small></div>
+    // 1) Resumo do dia: destaque com o valor das vendas, os 4 números do dia e a divisão venda x bonificação.
+    const pVenda = d.valor_total ? (d.valor_venda / d.valor_total) * 100 : 100;
+    const kpi = (ic, rot, val, sub = '', tit = '') => `<div class="vg-fat-kpi"${tit ? ` title="${esc(tit)}"` : ''}><span class="vg-fat-kpi-ic" aria-hidden="true">${ic}</span>
+      <div><span class="vg-fat-kpi-rot">${rot}</span><b>${val}</b><small>${sub || '&nbsp;'}</small></div></div>`;
+    const resumo = `<div class="vg-fat-card vg-fat-resumo">
+      <div class="vg-fat-hero">
+        <div class="vg-fat-rot">${esc(titDia)}</div>
+        <div class="vg-fat-hero-rot">Total das notas de venda</div>
+        <div class="vg-fat-total">${moeda(d.valor)}</div>
+        ${comparacao(d)}
       </div>
-      ${d.notas ? `<div class="vg-fat-split">
-        <div><span class="vg-fat-split-rot">Venda</span><b>${moeda(d.valor_venda)}</b><small>${num(d.notas_venda)} nota${d.notas_venda === 1 ? '' : 's'}</small></div>
-        <div><span class="vg-fat-split-rot">Bonificação</span><b>${moeda(d.valor_bonificacao)}</b><small>${num(d.notas_bonificacao)} nota${d.notas_bonificacao === 1 ? '' : 's'}</small></div></div>` : ''}
-      ${d.notas ? '<a href="#" class="vg-fat-link" data-fat-notas>Ver as notas do dia »</a>' : ''}
-      ${foraTexto(d.fora)}</div>`;
+      <div class="vg-fat-kpis">
+        ${kpi('🧾', 'Notas emitidas', num(d.notas), `${num(d.notas_venda)} de venda`)}
+        ${kpi('👥', 'Clientes', num(d.clientes))}
+        ${kpi('💵', 'Média por pedido', d.notas_venda ? moeda(d.ticket_medio) : '—', 'por nota', 'Total das vendas dividido pelo número de notas de venda')}
+        ${kpi('⚖️', 'Peso', `${num(d.peso)} kg`, `${num(d.volumes)} volumes`)}
+      </div>
+      ${d.notas ? `<div class="vg-fat-mix">
+        <div class="vg-fat-mix-tit"><span>Venda + bonificação</span><b>${moeda(d.valor_total)}</b></div>
+        <div class="vg-fat-mix-barra" title="Venda ${pct(pVenda / 100)} · Bonificação ${pct(1 - pVenda / 100)}"><span class="v" style="width:${pVenda}%"></span><span class="b" style="width:${100 - pVenda}%"></span></div>
+        <div class="vg-fat-mix-leg">
+          <div><i class="v"></i>Venda <b>${moeda(d.valor_venda)}</b><small>${num(d.notas_venda)} nota${d.notas_venda === 1 ? '' : 's'}</small></div>
+          <div><i class="b"></i>Bonificação <b>${moeda(d.valor_bonificacao)}</b><small>${num(d.notas_bonificacao)} nota${d.notas_bonificacao === 1 ? '' : 's'}</small></div>
+        </div></div>` : ''}
+      <div class="vg-fat-rodape-card">${d.notas ? '<a href="#" class="vg-fat-link" data-fat-notas>Ver as notas do dia »</a>' : ''}${foraTexto(d.fora)}</div></div>`;
 
     // 2) Os 5 estados que mais compraram (barras horizontais, escala pelo 1º).
     const maxUf = d.estados[0]?.valor || 1;
     const estados = d.estados.length ? `<div class="vg-fat-ufs">${d.estados.map((u, i) => `
         <div class="vg-fat-uf" data-fat-uf="${esc(u.uf)}" data-i="${i}" tabindex="0" role="button" aria-label="${esc(UF[u.uf] || u.uf)}: ${moeda(u.valor)}, ${pct(u.pct)} do dia, ${u.notas} notas">
-          <div class="vg-fat-uf-nome"><span class="vg-fat-uf-sigla">${esc(u.uf === '?' ? '—' : u.uf)}</span><span class="vg-fat-uf-ext">${esc(UF[u.uf] || u.uf)}</span></div>
+          <div class="vg-fat-uf-nome"><span class="vg-fat-uf-pos">${i + 1}º</span><span class="vg-fat-uf-sigla">${esc(u.uf === '?' ? '—' : u.uf)}</span><span class="vg-fat-uf-ext">${esc(UF[u.uf] || u.uf)}</span></div>
           <div class="vg-fat-uf-trilho"><div class="vg-fat-uf-barra" style="width:${Math.max(2, (u.valor / maxUf) * 100)}%"></div></div>
           <div class="vg-fat-uf-val"><b>${moeda(u.valor)}</b><small>${pct(u.pct)} · ${u.notas} nota${u.notas === 1 ? '' : 's'}</small></div>
         </div>`).join('')}
@@ -142,8 +150,8 @@
 
     corpo.innerHTML = `<div class="vg-fat-grade">
       ${resumo}
-      <div class="vg-fat-bloco"><div class="vg-fat-sub">Os 5 estados que mais compraram <small>(UF do destinatário)</small></div>${estados}${clientesHtml(d)}</div>
-      <div class="vg-fat-bloco"><div class="vg-fat-sub">Últimos 14 dias <small>(clique num dia para ver)</small></div>${colunas}</div>
+      <div class="vg-fat-card vg-fat-bloco"><div class="vg-fat-sub">🗺️ Os 5 estados que mais compraram <small>(UF do destinatário)</small></div>${estados}${clientesHtml(d)}</div>
+      <div class="vg-fat-card vg-fat-bloco"><div class="vg-fat-sub">📅 Últimos 14 dias <small>(clique num dia para ver)</small></div>${colunas}</div>
     </div>`;
   }
 
@@ -154,7 +162,7 @@
   function clientesHtml(d) {
     const l = d.clientes_top || [];
     if (!l.length) return '';
-    return `<div class="vg-fat-sub vg-fat-cli-tit">Os 3 maiores clientes do dia <small>(só venda)</small></div><div class="vg-fat-clis">${l.map((c, i) => `
+    return `<div class="vg-fat-sub vg-fat-cli-tit">🏆 Os 3 maiores clientes do dia <small>(só venda)</small></div><div class="vg-fat-clis">${l.map((c, i) => `
       <div class="vg-fat-cli ${MEDALHAS[i][0]}" data-fat-cli="${esc(c.chave)}" tabindex="0" role="button" title="${esc(MEDALHAS[i][2])}: clique para ver as notas deste cliente no dia">
         <span class="vg-fat-med" aria-label="${MEDALHAS[i][2]}">${MEDALHAS[i][1]}</span>
         <div class="vg-fat-cli-nome"><b>${esc(c.nome || c.chave)}</b><small>${esc(lugarCli(c))}${c.filiais > 1 && (c.cidade || c.uf) ? ` · ${c.filiais} filiais` : ''}</small></div>

@@ -2095,3 +2095,61 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-lin-media { position: absolute; top: 18px; bottom: 0; width: 0; border-left: 1px dashed var(--texto-fraco); opacity: .7; pointer-events: none;
   left: calc(76px + (100% - 240px) * var(--m)); }
 .vg-fat-lin-media-rot { position: absolute; top: 0; left: calc(76px + (100% - 240px) * var(--m)); transform: translateX(-50%); font-size: 10.5px; color: var(--texto-fraco); white-space: nowrap; }
+
+/* ===== Faturamento do dia: visual em cartões ===== */
+.vg-fat-topo { align-items: flex-start; }
+.vg-fat-topo .vg-titulo { font-size: 16px; }
+.vg-fat-topo .vg-titulo-nota { display: block; margin-top: 3px; font-size: 11.5px; }
+.vg-fat-grade { gap: 14px; align-items: stretch; }
+.vg-fat-card { background: var(--bg-card); border: 1px solid var(--borda); border-radius: 14px; padding: 14px 16px; min-width: 0; display: flex; flex-direction: column; }
+.vg-fat-card > .vg-fat-sub { font-size: 13px; margin-bottom: 10px; }
+/* destaque */
+.vg-fat-hero { border-radius: 12px; padding: 12px 14px 13px; margin: -2px -4px 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--azul) 14%, transparent), color-mix(in srgb, var(--azul) 4%, transparent));
+  border: 1px solid color-mix(in srgb, var(--azul) 22%, transparent); }
+.vg-fat-hero .vg-fat-rot { font-size: 12px; text-transform: none; }
+.vg-fat-hero-rot { font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--azul); margin-top: 6px; }
+.vg-fat-hero .vg-fat-total { font-size: 34px; margin: 1px 0 6px; line-height: 1.1; }
+.vg-fat-comp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: normal; }
+.vg-fat-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
+.vg-fat-comp.sobe .vg-fat-pill { background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--verde); }
+.vg-fat-comp.desce .vg-fat-pill { background: color-mix(in srgb, var(--vermelho) 14%, transparent); color: var(--vermelho); }
+.vg-fat-comp .vg-fat-comp-ref { font-size: 11.5px; }
+/* os 4 números */
+.vg-fat-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
+.vg-fat-kpis .vg-fat-kpi { display: flex; gap: 9px; align-items: flex-start; background: color-mix(in srgb, var(--texto) 4%, transparent); border-radius: 10px; padding: 9px 10px; }
+.vg-fat-kpi-ic { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; background: var(--bg-card); border: 1px solid var(--borda); }
+.vg-fat-kpi > div { min-width: 0; }
+.vg-fat-kpis .vg-fat-kpi-rot { display: block; font-size: 11px; color: var(--texto-fraco); }
+.vg-fat-kpis .vg-fat-kpi b { display: block; font-size: 15px; margin-top: 1px; color: var(--texto); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.vg-fat-kpis .vg-fat-kpi small { display: block; font-size: 10.5px; color: var(--texto-fraco); }
+/* venda x bonificação */
+.vg-fat-mix { margin-top: 12px; }
+.vg-fat-mix-tit { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--texto-fraco); margin-bottom: 5px; }
+.vg-fat-mix-tit b { font-size: 13.5px; color: var(--texto); font-variant-numeric: tabular-nums; }
+.vg-fat-mix-barra { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--texto) 7%, transparent); gap: 2px; }
+.vg-fat-mix-barra .v { background: var(--azul); } .vg-fat-mix-barra .b { background: #e0a23a; }
+.vg-fat-mix-leg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 7px; font-size: 11.5px; color: var(--texto-fraco); }
+.vg-fat-mix-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.vg-fat-mix-leg i.v { background: var(--azul); } .vg-fat-mix-leg i.b { background: #e0a23a; }
+.vg-fat-mix-leg b { display: block; font-size: 13px; color: var(--texto); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.vg-fat-mix-leg small { font-size: 10.5px; }
+.vg-fat-rodape-card { margin-top: auto; padding-top: 10px; }
+/* estados */
+.vg-fat-ufs { gap: 2px; }
+.vg-fat-uf { padding: 5px 6px; }
+.vg-fat-uf-pos { flex: 0 0 auto; width: 20px; font-size: 11px; font-weight: 700; color: var(--texto-fraco); }
+.vg-fat-uf-trilho { height: 10px; }
+.vg-fat-uf-barra { background: linear-gradient(90deg, color-mix(in srgb, var(--azul) 70%, transparent), var(--azul)); }
+.vg-fat-uf-val { display: flex; flex-direction: column; align-items: flex-end; }
+.vg-fat-outros { padding-top: 4px; }
+.vg-fat-cli-tit { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--borda); }
+@media (max-width: 760px) { .vg-fat-hero .vg-fat-total { font-size: 28px; } }
+.vg-fat-kpis .vg-fat-kpi > div { background: none; padding: 0; border-radius: 0; flex: 1; }
+.vg-fat-kpis .vg-fat-kpi b { white-space: nowrap; overflow-wrap: normal; }
+.vg-fat-kpis .vg-fat-kpi-ic { margin-top: 1px; }
+.vg-fat-uf { grid-template-columns: minmax(150px, 180px) minmax(40px, 1fr) auto; }
+.vg-fat-kpis .vg-fat-kpi-rot { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vg-fat-grade { grid-template-columns: minmax(300px, 1.05fr) minmax(0, 1.15fr) minmax(0, 1.2fr); }
+@media (max-width: 1500px) { .vg-fat-grade { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 760px) { .vg-fat-grade { grid-template-columns: 1fr; } }

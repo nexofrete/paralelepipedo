@@ -88,8 +88,9 @@ def parte_uso(g):
                'o histórico de rastreamento e o registro do frete. <b>Enter</b> (ou "Abrir na Consulta de notas") leva para a '
                'Consulta de notas (403) já com a busca, em todas as datas. Esc fecha a lista.'))
     s += h2('Faturamento do dia')
-    s.append(P('Logo abaixo do fluxo do frete, o quadro <b>Faturamento do dia</b> mostra as NF-e de <b>venda</b> e de '
-               '<b>bonificação</b> emitidas na data (pela data de emissão; notas canceladas e denegadas não contam). Abre no dia '
+    s.append(P('Logo abaixo do fluxo do frete, o quadro <b>Faturamento do dia</b> mostra as NF-e de <b>venda</b> emitidas na '
+               'data, com a <b>bonificação</b> à parte (pela data de emissão; notas canceladas e denegadas não contam). O número '
+               'grande, a comparação, a média por pedido, os 5 estados e o gráfico dos 14 dias usam só as notas de venda. Abre no dia '
                'de hoje; as setas e o campo de data mudam o dia. O dia que está na tela é recalculado sozinho: logo depois de '
                'importar XML (Enviar XML ou os botões da Consulta de notas), sempre que você volta para a Visão geral e a cada '
                '2 minutos com a tela aberta (para as notas que entram pela pasta, NF-Stock ou e-mail).'))
@@ -102,9 +103,10 @@ def parte_uso(g):
                '"Não entraram na soma" diz quantas ficaram de fora no dia; clique para ver quais. Nas notas que já estavam no '
                'sistema, a natureza e o CFOP são lidos do XML guardado quando o sistema liga.'))
     s += lista([
-        '<b>Total das notas</b> do dia (soma do valor total das NF-e), com a comparação com o mesmo dia da semana anterior '
-        '(por exemplo, "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, média por '
-        'pedido (total dividido pelo número de notas), peso e volumes, e a divisão entre <b>Venda</b> e <b>Bonificação</b> (valor e '
+        '<b>Total das notas de venda</b> do dia (soma do valor total das NF-e de venda) e, logo abaixo, <b>Venda + '
+        'bonificação</b> (o total com as notas de bonificação); a comparação com o mesmo dia da semana anterior (vendas com '
+        'vendas, por exemplo "+7,2% em relação à quarta passada"), e os números de notas emitidas, clientes, média por '
+        'pedido (vendas divididas pelo número de notas de venda), peso e volumes, e os quadros <b>Venda</b> e <b>Bonificação</b> (valor e '
         'notas de cada uma). "Ver as notas do dia" abre a Consulta de notas com essas notas.',
         '<b>Os 5 estados que mais compraram</b>: pela UF do destinatário, com o valor, a parte do dia (%) e o número de notas; '
         'os demais estados aparecem somados numa linha. Clique num estado para ver as notas dele naquele dia.',

@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Visão geral", "texto": "Faturamento do dia: o número principal passa a ser só o total das notas de venda, com \"Venda + bonificação\" logo abaixo; comparação, média por pedido, estados e o gráfico dos 14 dias também usam só a venda (painel, imagem e texto do WhatsApp)."},
         {"area": "Visão geral", "texto": "Imagem do faturamento do dia: botão \"Copiar texto\" com a mensagem pronta para o WhatsApp (total, comparação, números, estados e destaques), editável antes de copiar; em Compartilhar, a imagem vai com o texto como legenda. \"Ticket médio\" passou a se chamar \"Média por pedido\"."},
         {"area": "Notas fiscais", "texto": "Correção no período \"Escolher datas\": ao digitar o ano na data final, o sistema trocava a data inicial para o ano 3 e o filtro trazia notas de outros meses. Agora só conta a data completa. Vale para todas as telas com período."},
         {"area": "Notas fiscais", "texto": "Consulta de notas em páginas de 1000 notas (Primeira, Anterior, Próxima, Última); na sequência, abre nas mais novas. Antes mostrava só as 2000 primeiras e as mais novas ficavam de fora. O Excel leva todas as páginas."},

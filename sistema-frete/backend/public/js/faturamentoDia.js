@@ -95,8 +95,9 @@
 
     // 1) Resumo do dia (número principal).
     const resumo = `<div class="vg-fat-resumo">
-      <div class="vg-fat-rot">${esc(titDia)}</div>
+      <div class="vg-fat-rot">${esc(titDia)} · <span>total das notas de venda</span></div>
       <div class="vg-fat-total">${moeda(d.valor)}</div>
+      <div class="vg-fat-total2">Venda + bonificação: <b>${moeda(d.valor_total)}</b> <small>(${num(d.notas_total)} nota${d.notas_total === 1 ? '' : 's'})</small></div>
       ${comparacao(d)}
       <div class="vg-fat-kpis">
         <div><span>Notas emitidas</span><b>${num(d.notas)}</b></div>
@@ -218,7 +219,7 @@
     const nomeEmp = emp.nome_fantasia || emp.razao_social || '';
     const W = 1080; const P = 64;
     const nEst = d.estados.length;
-    const H = 704 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 392 + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
+    const H = 744 + Math.max(nEst, 1) * 64 + (d.outros ? 40 : 0) + 392 + 132;   // estados + 14 dias (colunas de 210) + rodapé   // estados + 14 dias + rodapé
     const esc2 = 2;
     const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
     const c = cv.getContext('2d'); c.scale(esc2, esc2);
@@ -252,9 +253,11 @@
     y = 160; c.fillStyle = COR.borda; c.fillRect(P, y, W - 2 * P, 1.5);
 
     // Total e comparação
-    y = 212; txt('Total das notas de venda e bonificação', P, y, { tam: 22, cor: COR.fraco });
+    y = 212; txt('Total das notas de venda', P, y, { tam: 22, cor: COR.fraco });
     y = 300; txt(moeda(d.valor), P, y, { tam: 82, peso: 700 });
-    y = 348;
+    { const w0 = txt('Venda + bonificação: ', P, 346, { tam: 22, cor: COR.fraco }); const w1 = txt(moeda(d.valor_total), P + w0, 346, { tam: 22, peso: 700 });
+      txt(` (${num(d.notas_total)} nota${d.notas_total === 1 ? '' : 's'})`, P + w0 + w1, 346, { tam: 22, cor: COR.fraco }); }
+    y = 388;
     const sp = d.semana_passada;
     const masc = sem === 'sábado' || sem === 'domingo';
     if (sp && sp.valor) {
@@ -266,14 +269,14 @@
     }
 
     // Números do dia
-    y = 392; const gap = 16; const wK = (W - 2 * P - 3 * gap) / 4;
+    y = 432; const gap = 16; const wK = (W - 2 * P - 3 * gap) / 4;
     [['Notas', num(d.notas)], ['Clientes', num(d.clientes)], ['Média por pedido', d.notas ? moeda(d.ticket_medio) : '—'], ['Peso', `${num(d.peso)} kg`]].forEach(([r, v], i) => {
       const x = P + i * (wK + gap);
       ret(x, y, wK, 108, 14, COR.caixa);
       txt(r, x + 20, y + 40, { tam: 20, cor: COR.fraco });
       txt(v, x + 20, y + 84, { tam: 30, peso: 700, max: wK - 36 });
     });
-    y = 516; const wV = (W - 2 * P - gap) / 2;
+    y = 556; const wV = (W - 2 * P - gap) / 2;
     [['Venda', d.valor_venda, d.notas_venda], ['Bonificação', d.valor_bonificacao, d.notas_bonificacao]].forEach(([r, v, n], i) => {
       const x = P + i * (wV + gap);
       ret(x, y, wV, 96, 14, null, COR.borda);
@@ -283,7 +286,7 @@
     });
 
     // Os 5 estados
-    y = 682; txt('Os 5 estados que mais compraram', P, y, { tam: 28, peso: 700 });
+    y = 722; txt('Os 5 estados que mais compraram', P, y, { tam: 28, peso: 700 });
     y += 22;
     const maxUf = d.estados[0]?.valor || 1;
     if (!nEst) { txt('Nenhuma nota emitida neste dia.', P, y + 40, { tam: 22, cor: COR.fraco }); y += 64; }
@@ -343,7 +346,7 @@
     const marca = await carregarImg('img/nexofrete-horizontal-fundo-claro.svg');
     const hM = 40; const wM = marca ? (marca.width / marca.height) * hM : 0;
     const xM = W - P - (marca ? wM : 130);
-    txt('NF-e de venda e bonificação emitidas no dia (pelo CFOP),', P, H - 52, { tam: 16, cor: COR.fraco, max: xM - P - 130 });
+    txt('NF-e de venda emitidas no dia (pelo CFOP); bonificação à parte;', P, H - 52, { tam: 16, cor: COR.fraco, max: xM - P - 130 });
     txt(`sem canceladas e denegadas · gerado em ${agora}`, P, H - 28, { tam: 16, cor: COR.fraco, max: xM - P - 130 });
     txt('gerado pelo', xM - 12, H - 36, { tam: 16, cor: COR.fraco, alinhar: 'right' });
     if (marca) c.drawImage(marca, xM, H - 70, wM, hM);
@@ -364,10 +367,10 @@
     const L = [];
     L.push(`${saud}! Segue o resumo do faturamento ${ehHoje ? `de hoje${h < 23 ? ` (parcial até as ${agora})` : ''}, ` : 'de '}*${semExt}, ${ddmm(d.data)}/${d.data.slice(0, 4)}*:`);
     L.push('');
-    L.push(`💰 *Total faturado: ${moeda(d.valor)}*`);
+    L.push(`💰 *Vendas: ${moeda(d.valor)}* (${notas(d.notas_venda)})`);
     if (d.notas_bonificacao) {
-      L.push(`• Venda: ${moeda(d.valor_venda)} (${notas(d.notas_venda)})`);
       L.push(`• Bonificação: ${moeda(d.valor_bonificacao)} (${notas(d.notas_bonificacao)})`);
+      L.push(`• Venda + bonificação: ${moeda(d.valor_total)} (${notas(d.notas_total)})`);
     }
     // Comparação: o mesmo dia da semana anterior e a média dos 14 dias (dias com nota).
     const comp = [];
@@ -399,7 +402,7 @@
     if (grande) dest.push(`• ${UF[grande.uf] || grande.uf}: pedidos grandes, com média de ${moeda(grande.valor / grande.notas)} por nota (${notas(grande.notas)}).`);
     if (dest.length) { L.push(''); L.push('📌 *Destaques*'); L.push(...dest); }
     L.push('');
-    L.push('Os valores consideram só as notas de venda e bonificação, sem as canceladas.');
+    L.push('Os valores de vendas, estados e comparações consideram só as notas de venda (pelo CFOP), sem as canceladas; a bonificação aparece à parte.');
     return L.join('\n');
   }
   // Copia texto (também onde o navegador não deixa usar a área de transferência moderna, como em http).

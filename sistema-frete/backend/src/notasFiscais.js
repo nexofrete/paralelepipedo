@@ -458,9 +458,12 @@ async function faturamentoDia(req, q = {}) {
         COALESCE(SUM(valor) FILTER (WHERE operacao = 'venda'), 0)::float AS valor_venda, COUNT(*) FILTER (WHERE operacao = 'venda')::int AS notas_venda,
         COALESCE(SUM(valor) FILTER (WHERE operacao = 'bonificacao'), 0)::float AS valor_bonificacao, COUNT(*) FILTER (WHERE operacao = 'bonificacao')::int AS notas_bonificacao,
         COALESCE(SUM(volumes), 0)::int AS volumes, COUNT(DISTINCT cliente)::int AS clientes, COUNT(DISTINCT uf)::int AS estados FROM n WHERE dia = $1::date`, [data]),
+    // Estados e 14 dias: pelo valor das notas de VENDA (a bonificação fica à parte, em valor_total).
     consultaCliente(req, `WITH ${NOTAS} SELECT COALESCE(uf, '?') AS uf, COUNT(*)::int AS notas, COALESCE(SUM(valor), 0)::float AS valor
-        FROM n WHERE dia = $1::date GROUP BY 1 ORDER BY 3 DESC, 2 DESC`, [data]),
-    consultaCliente(req, `WITH ${NOTAS} SELECT to_char(d, 'YYYY-MM-DD') AS dia, COALESCE(COUNT(n.dia), 0)::int AS notas, COALESCE(SUM(n.valor), 0)::float AS valor
+        FROM n WHERE dia = $1::date AND operacao = 'venda' GROUP BY 1 ORDER BY 3 DESC, 2 DESC`, [data]),
+    consultaCliente(req, `WITH ${NOTAS} SELECT to_char(d, 'YYYY-MM-DD') AS dia,
+        COUNT(n.dia) FILTER (WHERE n.operacao = 'venda')::int AS notas, COALESCE(SUM(n.valor) FILTER (WHERE n.operacao = 'venda'), 0)::float AS valor,
+        COALESCE(SUM(n.valor), 0)::float AS valor_total
         FROM generate_series($1::date - 13, $1::date, INTERVAL '1 day') d LEFT JOIN n ON n.dia = d::date GROUP BY d ORDER BY d`, [data]),
     // As notas do dia que ficaram fora: outras operações e sem XML (sem CFOP para saber a operação).
     consultaCliente(req, `SELECT COUNT(*) FILTER (WHERE f.nf_operacao = 'outra')::int AS outras,
@@ -472,10 +475,12 @@ async function faturamentoDia(req, q = {}) {
   const semanaPassada = dias[dias.length - 8] || null;   // o mesmo dia da semana anterior
   const top = ufs.slice(0, 5);
   const resto = ufs.slice(5);
+  // "valor" = só as notas de VENDA (o faturamento); "valor_total" = venda + bonificação.
   return {
     data, hoje: hojeSaoPaulo(), ...dia,
-    ticket_medio: dia.notas ? dia.valor / dia.notas : 0,
-    estados: top.map((u) => ({ ...u, pct: dia.valor ? u.valor / dia.valor : 0 })),
+    valor: dia.valor_venda, valor_total: dia.valor, notas_total: dia.notas,
+    ticket_medio: dia.notas_venda ? dia.valor_venda / dia.notas_venda : 0,
+    estados: top.map((u) => ({ ...u, pct: dia.valor_venda ? u.valor / dia.valor_venda : 0 })),
     outros: resto.length ? { estados: resto.length, notas: resto.reduce((s, u) => s + u.notas, 0), valor: resto.reduce((s, u) => s + u.valor, 0) } : null,
     dias,
     semana_passada: semanaPassada,

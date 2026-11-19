@@ -2058,3 +2058,7 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-msg summary { cursor: pointer; font-weight: 600; }
 .vg-fat-msg summary small { font-weight: normal; color: var(--texto-fraco); }
 .vg-fat-msg textarea { width: 100%; margin-top: 6px; font: 12.5px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; resize: vertical; }
+
+.vg-fat-rot span { text-transform: none; }
+.vg-fat-total2 { font-size: 13px; color: var(--texto-fraco); margin: 0 0 4px; }
+.vg-fat-total2 b { color: var(--texto); font-variant-numeric: tabular-nums; }

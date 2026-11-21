@@ -295,6 +295,7 @@ function filtros(q, params) {
   if (q.entrega === 'pendente') cond.push(aberta);
   if (q.entrega === 'atrasada') cond.push(`${aberta} AND f.data_entrega_prevista < CURRENT_DATE`);
   if (String(q.transportadora || '').trim()) add("COALESCE(f.transportadora_cte, f.transportadora) ILIKE '%' || ? || '%'", String(q.transportadora).trim());
+  if (/^\d+$/.test(String(q.id || ''))) add('f.id = ?', Number(q.id));
   if (q.operacao === 'faturamento') cond.push("f.nf_operacao IN ('venda', 'bonificacao')");
   if (['venda', 'bonificacao', 'outra'].includes(q.operacao)) add('f.nf_operacao = ?', q.operacao);
   if (q.operacao === 'sem_xml') cond.push('f.xml_nfe_original IS NULL AND f.nf_operacao IS NULL');

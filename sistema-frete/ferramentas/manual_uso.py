@@ -1134,6 +1134,27 @@ def parte_uso(g):
         ['Reentregas e devoluções', 'Custo por transportadora e por cliente.'],
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
+    s += h2('Relatórios de entregas (tela 324)')
+    s.append(P('Em Gestão e relatórios, <b>Relatórios de entregas</b> (Ctrl+K e 324) reúne 16 relatórios de entregas e '
+               'rastreamento. Escolha o relatório na lista da esquerda; o período vem nos últimos 30 dias e pode ser trocado. '
+               'Filtros: transportadora, cliente (nome ou CNPJ), cidade e UF. Cada relatório mostra os totais em cartões, '
+               'a tabela pode ser ordenada clicando no título da coluna, e há os botões <b>Excel</b> e <b>Imprimir</b>. '
+               'Dois cliques numa linha abrem o detalhe da nota. Precisa da permissão de ver relatórios.'))
+    s += tabela(['Nr.', 'Relatório', 'O que mostra (o período vale para)'], [
+        ['35', 'Entregas previstas', 'Notas com previsão de entrega no período, com a situação (entregue no prazo, com atraso, atrasada, no prazo).'],
+        ['36', 'Entregas realizadas', 'Notas entregues no período (data da entrega), com os dias de atraso e a origem da data.'],
+        ['37', 'Entregas atrasadas', 'Notas sem entrega com a previsão já vencida, e os dias de atraso.'],
+        ['38', 'Entregas de hoje', 'Previsão para hoje (não usa o período).'],
+        ['39', 'Próximos 7 dias', 'Previsão de amanhã até 7 dias (não usa o período).'],
+        ['40', 'Entregas pendentes', 'Todas as notas ainda não entregues emitidas no período (inclusive sem CT-e).'],
+        ['41', 'Entregas em trânsito', 'Notas com CT-e, sem entrega e dentro do prazo, com a última ocorrência do rastreio.'],
+        ['42 a 45', 'Por transportadora, cliente, cidade e estado', 'Notas emitidas no período agrupadas: entregues, no prazo, atrasadas, pendentes, % no prazo e prazo médio.'],
+        ['46', 'Ocorrências de entrega', 'Eventos do rastreamento no período, separados por tipo (recusa, avaria, ausente, reentrega...). "Só problemas" tira entregas e informativos.'],
+        ['47', 'Reentregas', 'CT-e de reentrega emitidos e ocorrências de reentrega no período.'],
+        ['48', 'Comprovantes de entrega', 'Notas entregues no período, com recebedor, assinatura e foto do canhoto (link para abrir a foto).'],
+        ['49', 'Rastreamento por transportadora', 'Quantas notas cada transportadora atualizou, quando foi a última atualização, notas sem rastreio e com problema.'],
+        ['50', 'SLA de entrega', 'Notas entregues no período: no prazo, fora do prazo, % SLA, atraso médio e prazo médio por transportadora.'],
+    ], [0.1, 0.28, 0.62])
     s += h2('Rastreamento automático pela SSW')
     s.append(P('Muitas transportadoras (a FAST-X, por exemplo) usam o sistema SSW. Para elas, o Nexofrete consulta a '
                'própria SSW pela chave da NF-e — sem senha — e preenche sozinho a <b>data da entrega</b> e quem recebeu. '

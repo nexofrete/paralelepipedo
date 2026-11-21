@@ -155,6 +155,7 @@
         <div class="nav-tsub" data-familia="indicadores">📊 Painel de indicadores</div>
         <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
         <div class="nav-tsub" data-ir="centros" data-aba="resultado">🎯 Centros de custo</div>
+        <div class="nav-tsub" data-ir="relatorios-entregas">📦 Relatórios de entregas</div>
         <div class="nav-tsub" data-subaba="entregas">🚚 Entregas previstas (contratadas)</div>
         <div class="nav-tsub" data-subaba="semMapa">🗺️ Notas sem mapa <span class="nav-badge oculto" id="navBadgeSemMapa"></span></div>
         <div class="nav-tsub" data-subaba="consolidacao">🚚 Consolidar rotas</div>
@@ -200,6 +201,7 @@
       <div class="nav-item nav-no-grupo" data-pagina="upload" id="navUpload" data-modulo="embarcador">📤 Enviar XML</div>
       <div class="nav-item nav-no-grupo nav-escondido" data-pagina="registros" data-modulo="embarcador">🗂 Todos os registros (antiga)</div>
       <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
+      <div class="nav-item nav-no-grupo" data-pagina="relatorios-entregas" id="navRelEntregas">📦 Relatórios de entregas</div>
       <div class="nav-item nav-no-grupo" data-pagina="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
       <div class="nav-item nav-no-grupo" data-pagina="auditoria-frete" data-modulo="embarcador">⚖️ Auditoria de Frete</div>
       <div class="nav-item nav-no-grupo" data-pagina="financeiro" data-modulo="embarcador">💰 Pagamento de fretes</div>
@@ -355,6 +357,16 @@
       <div class="modal-overlay oculto" id="modalSac">
         <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="sacModal"></div>
       </div>
+
+      <section id="pagina-relatorios-entregas" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>📦 Relatórios de entregas</h2>
+            <p>Entregas previstas, realizadas e atrasadas, desempenho por transportadora, cliente, cidade e estado, ocorrências, reentregas, comprovantes, rastreamento e SLA.</p>
+          </div>
+        </div>
+        <div id="reConteudo"></div>
+      </section>
 
       <section id="pagina-notas-fiscais" class="oculto">
         <div class="cabecalho-pagina">
@@ -4071,6 +4083,7 @@
   <script src="js/responsaveisAuditoria.js"></script>
   <script src="js/notasFiscais.js"></script>
   <script src="js/faturamentoDia.js"></script>
+  <script src="js/relatoriosEntregas.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>

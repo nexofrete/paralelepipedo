@@ -2153,3 +2153,35 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .vg-fat-grade { grid-template-columns: minmax(300px, 1.05fr) minmax(0, 1.15fr) minmax(0, 1.2fr); }
 @media (max-width: 1500px) { .vg-fat-grade { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (max-width: 760px) { .vg-fat-grade { grid-template-columns: 1fr; } }
+
+/* ===== Relatórios de entregas (324) ===== */
+.re-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 14px; align-items: start; }
+.re-lista { padding: 10px; position: sticky; top: 10px; display: flex; flex-direction: column; gap: 2px; margin-bottom: 0; }
+.re-grupo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-fraco); margin: 10px 6px 4px; }
+.re-grupo:first-child { margin-top: 2px; }
+.re-item { display: flex; align-items: center; gap: 8px; text-align: left; background: transparent; border: 0; border-radius: 8px; padding: 7px 8px; font-size: 13px; color: var(--texto); cursor: pointer; }
+.re-item:hover { background: color-mix(in srgb, var(--texto) 6%, transparent); }
+.re-item.ativo { background: color-mix(in srgb, var(--azul) 14%, transparent); color: var(--azul); font-weight: 600; }
+.re-num { flex: 0 0 auto; min-width: 24px; font-size: 11px; font-weight: 700; color: var(--texto-fraco); font-variant-numeric: tabular-nums; }
+.re-item.ativo .re-num { color: var(--azul); }
+.re-corpo { min-width: 0; }
+.re-topo { padding: 14px 16px; margin-bottom: 12px; }
+.re-tit h3 { margin: 0; font-size: 17px; } .re-tit p { margin: 3px 0 10px; font-size: 12.5px; color: var(--texto-fraco); }
+.re-filtros { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.re-filtros .nf-f { flex: 1 1 150px; min-width: 130px; } .re-filtros .re-per { flex: 2 1 330px; } .re-filtros .re-uf { flex: 0 0 64px; min-width: 64px; }
+.re-sem-periodo { opacity: .45; pointer-events: none; }
+.re-check { display: flex; align-items: center; gap: 6px; font-size: 13px; padding-bottom: 8px; } .re-check input { width: auto; }
+.re-acoes { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12.5px; color: var(--texto-fraco); flex-wrap: wrap; }
+.re-tab-painel { padding: 0; overflow: hidden; }
+.re-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.re-tab th { position: sticky; top: 0; background: var(--bg-card); text-align: left; font-size: 11px; text-transform: uppercase; color: var(--texto-fraco); padding: 8px 10px; border-bottom: 1px solid var(--borda); cursor: pointer; white-space: nowrap; z-index: 1; }
+.re-tab td { padding: 7px 10px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+.re-tab th.n, .re-tab td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.re-tab tbody tr:hover { background: color-mix(in srgb, var(--texto) 4%, transparent); }
+.re-tab tr[data-id] { cursor: default; }
+.re-sla { font-weight: 700; padding: 1px 8px; border-radius: 999px; } .re-sla.bom { color: var(--verde); background: color-mix(in srgb, var(--verde) 14%, transparent); }
+.re-sla.medio { color: #b45309; background: rgba(217,119,6,.14); } .re-sla.ruim { color: var(--vermelho); background: color-mix(in srgb, var(--vermelho) 12%, transparent); }
+.re-cat { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: #b45309; background: rgba(217,119,6,.13); white-space: nowrap; }
+.re-cat.neutra { color: var(--texto-fraco); background: color-mix(in srgb, var(--texto) 7%, transparent); font-weight: 500; }
+.re-comp { font-size: 12px; } .re-comp.sem { color: var(--vermelho); font-weight: 600; }
+@media (max-width: 1000px) { .re-layout { grid-template-columns: 1fr; } .re-lista { position: static; flex-direction: row; flex-wrap: wrap; } .re-grupo { width: 100%; } }

@@ -5,6 +5,7 @@
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [
+        {"area": "Relatórios", "texto": "Relatórios de entregas (Ctrl+K 324, em Gestão e relatórios): 16 relatórios numa tela só, de 35 a 50: entregas previstas, realizadas, atrasadas, de hoje, próximos 7 dias, pendentes e em trânsito; por transportadora, cliente, cidade e estado; ocorrências, reentregas, comprovantes, rastreamento por transportadora e SLA de entrega. Filtros por período, transportadora, cliente, cidade e UF, totais em cartões, Excel, impressão e dois cliques para abrir a nota."},
         {"area": "Visão geral", "texto": "Faturamento do dia com visual novo: três cartões (resumo, estados e clientes, 14 dias), valor do dia em destaque com a comparação numa etiqueta verde ou vermelha, os números do dia com ícones e a barra venda x bonificação; também no tema escuro."},
         {"area": "Visão geral", "texto": "Faturamento do dia: o gráfico dos últimos 14 dias virou uma linha por dia (o mais recente em cima), com barra deitada e o valor exato na horizontal, fácil de ler; dias sem nota numa linha fina e a média como linha tracejada. Também na imagem para o WhatsApp."},
         {"area": "Visão geral", "texto": "Faturamento do dia: os 3 maiores clientes do dia, com medalha de ouro, prata e bronze (só venda; filiais do mesmo CNPJ juntas). Também na imagem e no texto para o WhatsApp; clique para ver as notas do cliente."},

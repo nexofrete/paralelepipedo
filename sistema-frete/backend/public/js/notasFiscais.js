@@ -530,6 +530,15 @@
     });
   }
   window.abrirEtiquetasNotas = abrirEtiquetas;
+  // Detalhe de uma nota pelo id (relatórios de entregas e outras telas).
+  window.abrirNotaDetalhe = async (id) => {
+    const r = await apiFetch(`/api/notas?${new URLSearchParams({ id: String(id), rapida: '1', limite: '1' })}`).catch(() => null);
+    const j = r && r.ok ? await r.json().catch(() => ({})) : {};
+    const n = (j.notas || [])[0];
+    if (!n) { mostrarAlerta('Nota não encontrada.', { tipo: 'aviso' }); return; }
+    if (!montado) montar();
+    detalhe(n.id, n);
+  };
 
   $('nfEtiquetas')?.addEventListener('click', () => {
     if (!montado || !dados) return;

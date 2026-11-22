@@ -3662,3 +3662,55 @@ CREATE INDEX IF NOT EXISTS idx_notas_sem_frete_emitente ON notas_sem_frete (emit
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS zebra_ip VARCHAR(60);
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS zebra_porta INTEGER DEFAULT 9100;
 ALTER TABLE empresa ADD COLUMN IF NOT EXISTS zebra_dpi INTEGER DEFAULT 203;
+
+-- Pátio e portaria (embarcador, src/patio.js): docas, visitas (agendamento → portaria → pátio → doca → saída) e o histórico.
+CREATE TABLE IF NOT EXISTS patio_docas (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(40) NOT NULL,
+  operacao VARCHAR(12) NOT NULL DEFAULT 'ambas',           -- carga, descarga ou ambas
+  veiculos VARCHAR(20)[] NOT NULL DEFAULT '{}',            -- tipos aceitos (vazio = todos)
+  minutos_padrao INTEGER NOT NULL DEFAULT 60,               -- tempo de operação quando ainda não há histórico
+  ordem INTEGER NOT NULL DEFAULT 0,
+  ativa BOOLEAN NOT NULL DEFAULT TRUE,
+  observacao VARCHAR(300),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS patio_visitas (
+  id SERIAL PRIMARY KEY,
+  codigo VARCHAR(12) NOT NULL UNIQUE,                       -- vai no QR Code e no link do motorista
+  operacao VARCHAR(12) NOT NULL DEFAULT 'carga',            -- carga (coleta das notas), descarga (recebimento) ou outro
+  status VARCHAR(16) NOT NULL DEFAULT 'agendado',           -- agendado, aguardando, chamado, em_doca, liberado, saiu, cancelado, nao_compareceu
+  sem_agendamento BOOLEAN NOT NULL DEFAULT FALSE,
+  previsto_em TIMESTAMPTZ,
+  janela_min INTEGER NOT NULL DEFAULT 60,
+  transportadora VARCHAR(160), fornecedor VARCHAR(160),
+  placa VARCHAR(10), placa_carreta VARCHAR(10), tipo_veiculo VARCHAR(20),
+  motorista_nome VARCHAR(120), motorista_documento VARCHAR(20), motorista_telefone VARCHAR(20),
+  notas VARCHAR(20)[] NOT NULL DEFAULT '{}', frete_ids INTEGER[] NOT NULL DEFAULT '{}',
+  pedido VARCHAR(60), volumes INTEGER, peso_kg NUMERIC(12,2),
+  doca_id INTEGER REFERENCES patio_docas(id) ON DELETE SET NULL,
+  minutos_previstos INTEGER,
+  chegada_em TIMESTAMPTZ, chamado_em TIMESTAMPTZ, inicio_doca_em TIMESTAMPTZ, fim_doca_em TIMESTAMPTZ, saida_em TIMESTAMPTZ,
+  lacre VARCHAR(60), observacao TEXT, motivo_cancelamento VARCHAR(300),
+  criado_por_nome VARCHAR(120),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_patio_visitas_previsto ON patio_visitas (previsto_em);
+CREATE INDEX IF NOT EXISTS idx_patio_visitas_status ON patio_visitas (status) WHERE status IN ('agendado', 'aguardando', 'chamado', 'em_doca', 'liberado');
+CREATE INDEX IF NOT EXISTS idx_patio_visitas_placa ON patio_visitas (placa);
+CREATE TABLE IF NOT EXISTS patio_eventos (
+  id SERIAL PRIMARY KEY,
+  visita_id INTEGER NOT NULL REFERENCES patio_visitas(id) ON DELETE CASCADE,
+  tipo VARCHAR(30) NOT NULL, detalhe TEXT, usuario_nome VARCHAR(120),
+  em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_patio_eventos_visita ON patio_eventos (visita_id, em);
+CREATE TABLE IF NOT EXISTS patio_config (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  alocacao_automatica BOOLEAN NOT NULL DEFAULT TRUE,        -- chama sozinho o próximo da fila quando uma doca fica livre
+  tolerancia_min INTEGER NOT NULL DEFAULT 15,               -- atraso tolerado sobre a janela antes de perder a prioridade
+  nao_compareceu_min INTEGER NOT NULL DEFAULT 240,          -- depois disso sem chegar, aparece como não compareceu
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO patio_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;

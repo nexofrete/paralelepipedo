@@ -2,6 +2,13 @@
   "proposta": "O Nexofrete acompanha cada frete da empresa, da emissão da nota fiscal até o pagamento da transportadora. Ele lê os XML de NF-e e CT-e, liga cada CT-e à nota que ele transporta, calcula pela tabela de preço negociada quanto aquele frete deveria custar e compara com o que a transportadora cobrou: o que bate é liberado para pagamento sozinho; o que diverge fica retido até alguém decidir. Também acompanha as entregas (inclusive buscando sozinho nas transportadoras), as notas paradas no estoque, as faturas, os sinistros e os custos de frete por cliente e por transportadora.",
   "versoes": [
     {
+      "versao": "1.74.0",
+      "titulo": "Pátio e portaria",
+      "itens": [
+        {"area": "Pátio e portaria", "texto": "Novo módulo Pátio e portaria (menu próprio, Ctrl+K 420 a 423): agendamento de janelas de carregamento e descarga com as notas fiscais, QR Code e link para o motorista (com envio pelo WhatsApp); check-in na portaria pelo QR Code (leitor USB ou câmera), pela placa ou sem agendamento; alocação inteligente das docas (operação, tipo de veículo, prioridade de quem chega na janela e o tempo médio real de cada doca), com chamada automática quando uma doca fica livre; painel em tempo real (docas, fila com a previsão de cada caminhão, próximas chegadas, espera, tempo na doca e pontualidade), com tela cheia para TV; e a página do motorista com a posição na fila e a doca chamada. Na saída do carregamento, as notas ganham a data de saída."}
+      ]
+    },
+    {
       "versao": "1.73.0",
       "titulo": "Transportadora completa, integração com ERP e CNPJ automático",
       "itens": [

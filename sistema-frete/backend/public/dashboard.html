@@ -111,6 +111,14 @@
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
       </div>
 
+      <div class="nav-grupo oculto" data-grupo="patio" data-modulo="embarcador">🚧 Pátio e portaria <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="patio" data-modulo="embarcador">
+        <div class="nav-tsub" data-ir="patio" data-aba="painel">📺 Painel do pátio</div>
+        <div class="nav-tsub" data-ir="patio" data-aba="portaria">🚪 Portaria (check-in)</div>
+        <div class="nav-tsub" data-ir="patio" data-aba="agenda">📅 Agendamentos</div>
+        <div class="nav-tsub" data-ir="patio" data-aba="docas">🏗 Docas e regras</div>
+      </div>
+
       <div class="nav-grupo oculto" data-grupo="auditoria" data-modulo="embarcador">⚖️ Auditoria de fretes <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="auditoria" data-modulo="embarcador">
         <div class="nav-tsub" data-familia="auditoria">⚖️ Auditoria de frete</div>
@@ -204,6 +212,7 @@
       <div class="nav-item nav-no-grupo" data-pagina="upload" id="navUpload" data-modulo="embarcador">📤 Enviar XML</div>
       <div class="nav-item nav-no-grupo nav-escondido" data-pagina="registros" data-modulo="embarcador">🗂 Todos os registros (antiga)</div>
       <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="patio" id="navPatio" data-modulo="embarcador">🚧 Pátio e portaria</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-entregas" id="navRelEntregas">📦 Relatórios de entregas</div>
       <div class="nav-item nav-no-grupo" data-pagina="desempenho-transportadoras" id="navDesempTransp">🏆 Desempenho das transportadoras</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-nfe-cte" id="navRelNfeCte">🔗 Relatórios NF-e × CT-e</div>
@@ -374,6 +383,26 @@
         </div>
         <div id="opConteudo"></div>
       </section>
+
+      <section id="pagina-patio" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>🚧 Pátio e portaria</h2>
+            <p>Agendamento de janelas, check-in por QR Code na portaria, alocação inteligente das docas e o painel do pátio em tempo real</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-secundario" id="paSemAgendamento" style="width:auto;">🚪 Entrada sem agendamento</button><button class="btn btn-primario" id="paAgendar" style="width:auto;">＋ Agendar</button></div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-pa-aba="painel">📺 Painel</div>
+          <div class="cte-aba" data-pa-aba="portaria">🚪 Portaria</div>
+          <div class="cte-aba" data-pa-aba="agenda">📅 Agendamentos</div>
+          <div class="cte-aba" data-pa-aba="docas">🏗 Docas e regras</div>
+        </div>
+        <div id="paConteudo"></div>
+      </section>
+      <div class="modal-overlay oculto" id="modalPatio">
+        <div class="painel modal-card" style="max-width:920px; width:100%; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="paModal"></div>
+      </div>
 
       <section id="pagina-relatorios-financeiros" class="oculto">
         <div class="cabecalho-pagina">
@@ -4141,6 +4170,7 @@
   <script src="js/notasFiscais.js"></script>
   <script src="js/faturamentoDia.js"></script>
   <script src="js/relatoriosEntregas.js"></script>
+  <script src="js/patio.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>
   <script src="js/emissaoCte.js"></script>

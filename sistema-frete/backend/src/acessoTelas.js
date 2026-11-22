@@ -48,6 +48,7 @@ const TELAS = [
   { id: 'financeiro_emb', area: 'Fretes contratados', nome: 'Financeiro (fretes contratados)', desc: 'Fretes liberados, vencimentos e meta de gasto', menu: ['p:financeiro', 'p:relatorios-financeiros'], prefixos: ['/api/relatorios-financeiros'], chave: 'pode_ver_financeiro', legado: ['pode_ver_financeiro'] },
   { id: 'notas', area: 'Fretes contratados', nome: 'Notas fiscais', desc: 'NF-e, DANFE e eventos', menu: ['p:notas-fiscais'], prefixos: ['/api/notas'], chave: null, legado: ['*'] },
   { id: 'ctes_recebidos', area: 'Fretes contratados', nome: 'CT-e recebidos', desc: 'CT-e das transportadoras, DACTE e XML', menu: ['p:ctes-recebidos'], prefixos: ['/api/ctes-recebidos'], chave: null, legado: ['*'] },
+  { id: 'patio', area: 'Fretes contratados', nome: 'Pátio e portaria', desc: 'Agendamento de janelas, check-in por QR Code, docas, fila e painel do pátio', menu: ['t:patio:painel', 't:patio:portaria', 't:patio:agenda', 't:patio:docas'], abas: [['data-pa-aba', 'painel']], prefixos: ['/api/patio'], chave: null, legado: ['*'] },
   { id: 'sinistros', area: 'Fretes contratados', nome: 'Sinistros', desc: 'Avarias e extravios', menu: ['p:sinistros'], prefixos: ['/api/sinistros'], chave: 'pode_ver_sinistros', legado: ['pode_ver_sinistros'] },
   // ---------------- Cadastros (a leitura é livre: as outras telas usam as listas)
   { id: 'clientes', area: 'Cadastros', nome: 'Clientes', desc: 'Cadastro de clientes, IE e condição de pagamento (alterar também precisa de "Gerenciar transportadoras" ou "Editar / lançar registros")', menu: ['t:cadastros:clientes'], abas: [['data-subpagina', 'clientes']], prefixos: ['/api/clientes'], leituraLivre: true, chave: null, legado: ['*'] },
@@ -163,6 +164,8 @@ const todas = (nivel, exceto = {}) => ({ ...Object.fromEntries(TELAS.map((t) => 
 const MODELOS = [
   { id: 'comercial', nome: 'Comercial', descricao: 'Cotações e coletas, cadastro de clientes e acompanhamento das entregas',
     telas: { cotacoes: O, coletas: O, clientes: O, cadastros_basicos: C, ocorrencias: C, monitoramento: C, sac: O }, acoes: [], permissoes: { pode_editar_registros: true } },
+  { id: 'portaria', nome: 'Portaria e pátio', descricao: 'Agendamentos, check-in na portaria, chamada para as docas e o painel do pátio',
+    telas: { patio: O, notas: C }, acoes: [], permissoes: {} },
   { id: 'emissor_cte', nome: 'Emissor de CT-e', descricao: 'CT-e, MDF-e e NFS-e, com a carga, a coleta e o EDI',
     telas: { cte: O, mdfe: O, nfse: O, veiculos: O, coletas: O, cotacoes: C, romaneios: O, ocorrencias: O, conferencia: O, edi: O, monitoramento: C, clientes: C, cadastros_basicos: O }, acoes: ['cancelar_documento'], permissoes: {} },
   { id: 'expedicao', nome: 'Expedição e entregas', descricao: 'Romaneios, ocorrências, conferência, monitoramento e MDF-e da viagem',

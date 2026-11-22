@@ -22,6 +22,7 @@ const MODULOS = {
   bancos: { nome: 'Caixa e bancos', prefixos: ['/api/bancos'], livres: ['/api/bancos/contas/opcoes'], paginas: ['bancos'] },
   fiscal: { nome: 'Fiscal e contabilidade', prefixos: ['/api/contabil', '/api/gnre'], paginas: ['contabil'] },
   sac: { nome: 'SAC (chamados)', prefixos: ['/api/sac'], paginas: ['sac'] },
+  patio: { nome: 'Pátio e portaria (agendamento, docas e check-in)', prefixos: ['/api/patio'], paginas: ['patio'] },
   gerencial: { nome: 'Painel gerencial, margem e centros de custo', prefixos: ['/api/painel-transporte', '/api/centros-custo'], paginas: ['painel-transporte', 'centros'] },
 };
 function moduloDaRota(url) {

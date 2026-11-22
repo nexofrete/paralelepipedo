@@ -257,6 +257,8 @@ app.use('/api/ocorrencias', ocorrenciasRoutes);
 app.use('/api/rastreio', rastreioRoutes);
 app.use('/api/romaneios', romaneiosRoutes);
 app.use('/api/motorista', motoristaRoutes);
+app.use('/api/patio-publico', rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false }), require('./src/routes/patio').publico);
+app.use('/api/patio', require('./src/routes/patio'));
 app.use('/api/coletas', coletasRoutes);
 app.use('/api/cotacoes', cotacoesRoutes);
 app.use('/api/etiquetas', conferenciasRoutes.etiquetas);

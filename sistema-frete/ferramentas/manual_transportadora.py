@@ -48,6 +48,7 @@ def parte_operacao(g):
         ['Documentos', 'EDI', '070', '38'],
         ['Auditoria de fretes', 'Auditoria de frete: Fretes auditados, Conferência de CT-e, Cobranças indevidas', '330, 321, 323', '16, 19'],
         ['Auditoria de fretes', 'Sinistros', '410', '20'],
+        ['Pátio e portaria', 'Painel do pátio, Portaria (check-in), Agendamentos, Docas e regras', '420 a 423', '20-A'],
         ['Financeiro', 'Faturamento, Contas a receber, Boletos, Régua, Serviços extras', '100 a 104', '41 a 43'],
         ['Financeiro', 'Contas a pagar, Acerto de viagem, Comissões', '110, 120, 125', '45, 46'],
         ['Financeiro', 'Pagamento de fretes contratados (e as faturas das transportadoras)', '130', '18, 17'],

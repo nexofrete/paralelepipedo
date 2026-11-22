@@ -1499,6 +1499,69 @@ def parte_uso(g):
                        'lançar registros".')
 
     # 21
+    s += h1('20-A. Pátio e portaria')
+    s.append(P('Controle de quem vem <b>carregar</b> (a transportadora que coleta as notas) ou <b>descarregar</b> (recebimento de '
+               'fornecedor): agendamento da janela, check-in na portaria pelo <b>QR Code</b>, fila do pátio, chamada para a doca, '
+               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423). '
+               'Para quem só trabalha na portaria, use o modelo de acesso <b>Portaria e pátio</b> (Cadastros, Usuários).'))
+    s += h2('Docas e regras (423)')
+    s += lista([
+        'Cadastre cada doca com a <b>operação</b> (só carregamento, só descarga ou as duas), os <b>veículos aceitos</b> (utilitário, '
+        'toco, truck, carreta, bitrem, contêiner; nenhum marcado = todos) e o <b>tempo padrão</b> de uma operação.',
+        '<b>Alocação automática</b> (ligada no início): quando uma doca fica livre, o próximo da fila que serve para ela é chamado sozinho.',
+        '<b>Tolerância de atraso</b>: quem chega até o fim da janela agendada mais a tolerância mantém a prioridade. '
+        '<b>"Não compareceu" depois de</b>: o agendamento que passou desse tempo sem chegar aparece como "Não veio" nas próximas chegadas.',
+        'Doca que já foi usada não é apagada: fica inativa e o histórico continua.',
+    ])
+    s += h2('Agendamentos (422)')
+    s += lista([
+        '<b>＋ Agendar</b>: operação, data e hora, janela (minutos), transportadora ou fornecedor, placa e carreta, tipo de veículo, '
+        'motorista (nome, CPF/CNH, celular), as <b>notas fiscais</b> (números), pedido, volumes, peso e o tempo previsto na doca. '
+        'Ao digitar as notas, o sistema confere: mostra o cliente e os volumes, avisa as que não estão no sistema e completa a '
+        'transportadora, os volumes e o peso que faltarem.',
+        'Ao salvar, abre a visita com o <b>QR Code</b> e o código de 8 letras. <b>Copiar link</b> copia a mensagem pronta para o '
+        'motorista; <b>Enviar no WhatsApp</b> (com o celular informado) abre a conversa com a mensagem; <b>Página do motorista</b> '
+        'abre o que ele vê.',
+        'A lista do dia mostra a ocupação por hora (barras) e cada visita com a situação e a próxima ação.',
+    ])
+    s += h2('Portaria (421)')
+    s += lista([
+        'Leia o QR Code do motorista com um <b>leitor USB</b> (ele digita no campo e confirma) ou com o botão <b>Câmera</b> '
+        '(Chrome/Edge, inclusive no celular). Também vale digitar o código de 8 letras ou a <b>placa</b> (agendamento de ontem a amanhã).',
+        'Quem chegou sem horário: <b>Entrada sem agendamento</b> (operação, placa, transportadora...). Entra direto na fila.',
+        'O "Movimento de hoje" tem a ação de cada situação: Chegou, Chamar, Iniciar, Terminou e Saída.',
+    ])
+    s += h2('Painel do pátio (420)')
+    s += lista([
+        'Atualiza sozinho a cada 20 segundos; <b>Tela cheia</b> serve para deixar numa TV da portaria ou da expedição.',
+        'Cartões do dia: no pátio, aguardando doca, em operação, docas livres, <b>espera média</b> (da chegada até a doca), '
+        '<b>tempo médio na doca</b>, permanência média (da chegada até a saída), <b>pontualidade</b> (chegaram dentro da janela) e '
+        'agendados, chegaram, saíram, sem agendamento e faltaram.',
+        '<b>Docas</b>: livre (verde), chamado (laranja), em operação (azul) ou passou do tempo previsto (vermelho), com o veículo, o '
+        'tempo na doca, o fim previsto e o próximo da fila. Botões: Encostou/iniciar, Voltar à fila, Terminou a operação (com o lacre) '
+        'e Chamar.',
+        '<b>Fila</b>: na ordem de prioridade, com a <b>previsão</b> de cada caminhão: a doca, a hora em que entra, quanto vai esperar e '
+        'quando sai da doca. Abaixo, os liberados indo para a saída (Registrar saída).',
+        '<b>Próximas chegadas</b> (24 horas): previsto, chegando, atrasado ou não veio, com Chegou e Não veio.',
+    ])
+    s += h2('Como a alocação e a previsão funcionam')
+    s += lista([
+        '<b>Prioridade</b>: primeiro quem chegou dentro da janela agendada mais a tolerância, pela hora agendada; depois quem atrasou '
+        'ou veio sem agendamento, pela hora de chegada.',
+        '<b>Doca</b>: cada caminhão da fila vai para a doca compatível (operação e tipo de veículo) que fica livre primeiro; no empate, '
+        'a de menor ordem.',
+        '<b>Tempo de cada operação</b>: o informado no agendamento; senão a média real daquela doca naquela operação nos últimos 60 dias '
+        '(com pelo menos 3 operações); senão o tempo padrão da doca. Do chamado até encostar contam 5 minutos.',
+        'A mesma conta dá a previsão do painel e da página do motorista. Sem doca compatível, a fila avisa "nenhuma doca aceita".',
+    ])
+    s += h2('Página do motorista')
+    s.append(P('O link (patio.html?c=CÓDIGO) abre no celular sem login: mostra o QR Code para a portaria, a situação, a posição na fila e '
+               'a previsão. Quando ele é chamado, aparece em destaque "<b>É a sua vez! Dirija-se à Doca X</b>" e o celular vibra. Atualiza '
+               'sozinha a cada 15 segundos. Para o link sair com o endereço certo, preencha o endereço público em Cadastros, Empresa.'))
+    s += h2('Saída e as notas')
+    s.append(P('Na <b>saída</b> de um carregamento, as notas da visita ganham a <b>data de saída</b> (expedição), que aparece na Consulta de '
+               'notas e no relatório 32 (NF-e por período: expedidas). Cada passo da visita fica no histórico, com a hora e quem fez.'))
+
     s += h1('21. Agenda e Mensagens')
     s += h2('Agenda')
     s += lista([

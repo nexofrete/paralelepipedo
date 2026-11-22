@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Pátio — acompanhe sua vez</title>
+  <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
+  <link rel="stylesheet" href="css/rastreio.css" />
+  <style>
+    .pm-doca { text-align: center; padding: 22px 12px; border-radius: 14px; background: rgba(22,163,74,.14); color: var(--verde); }
+    .pm-doca small { display: block; font-size: 15px; color: var(--texto); }
+    .pm-doca b { display: block; font-size: 46px; line-height: 1.1; letter-spacing: 1px; }
+    .pm-qr { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .pm-qr img { width: 240px; height: 240px; background: #fff; border-radius: 10px; padding: 6px; }
+    .pm-codigo { font-size: 26px; font-weight: 800; letter-spacing: 3px; }
+    .pm-fila { text-align: center; font-size: 15px; } .pm-fila b { display: block; font-size: 40px; }
+  </style>
+</head>
+<body>
+  <main class="rt">
+    <div class="rt-topo"><div><h1>🚧 Pátio e portaria</h1><p id="pmEmpresa">Acompanhe a sua vez</p></div></div>
+    <div class="rt-cartao" id="pmCartao"><p>Carregando…</p></div>
+    <div class="rt-cartao pm-qr" id="pmQr"></div>
+    <p class="rt-rodape">A página atualiza sozinha. Deixe-a aberta enquanto estiver no pátio.</p>
+  </main>
+  <script src="js/patioMotorista.js"></script>
+</body>
+</html>

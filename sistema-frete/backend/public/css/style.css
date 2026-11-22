@@ -2218,3 +2218,40 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 @media (max-width: 760px) { .re-gbar { grid-template-columns: 110px 1fr 80px; } }
 .re-filtros .re-sit { flex: 0 1 280px; }
 .re-item.re-atalho { color: var(--texto-fraco); font-style: italic; } .re-item .re-seta { margin-left: auto; color: var(--azul); font-style: normal; }
+
+/* Pátio e portaria */
+.pa-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12.5px; color: var(--texto-fraco); }
+.pa-docas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 12px 0; }
+.pa-doca { border-radius: 12px; padding: 12px; border: 2px solid var(--borda); background: var(--bg-card); display: flex; flex-direction: column; gap: 6px; }
+.pa-doca.livre { border-color: color-mix(in srgb, var(--verde) 55%, transparent); }
+.pa-doca.ocupada { border-color: color-mix(in srgb, var(--azul) 55%, transparent); background: color-mix(in srgb, var(--azul) 5%, var(--bg-card)); }
+.pa-doca.chamado { border-color: #d97706; background: color-mix(in srgb, #d97706 7%, var(--bg-card)); }
+.pa-doca.atrasada { border-color: var(--vermelho); background: color-mix(in srgb, var(--vermelho) 6%, var(--bg-card)); }
+.pa-doca-tit { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; } .pa-doca-tit b { font-size: 16px; } .pa-doca-tit small { color: var(--texto-fraco); }
+.pa-doca-vis { font-size: 13px; } .pa-doca-vis.livre-txt { font-weight: 700; color: var(--verde); }
+.pa-doca-info { font-size: 12px; color: var(--texto-fraco); }
+.pa-doca-acoes { display: flex; gap: 6px; flex-wrap: wrap; } .pa-doca-acoes .btn { width: auto; padding: 5px 10px; font-size: 12.5px; }
+.pa-colunas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.pa-colunas h4 { margin: 0 0 8px; font-size: 14px; }
+.pa-mini { width: auto !important; padding: 3px 9px !important; font-size: 12px !important; }
+.pa-alerta { color: var(--vermelho); font-weight: 700; font-size: 12px; }
+.pa-prio, .pa-cheg { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.pa-prio.na_janela, .pa-cheg.chegando { color: var(--verde); background: color-mix(in srgb, var(--verde) 14%, transparent); }
+.pa-prio.atrasado, .pa-cheg.atrasado { color: #b45309; background: rgba(217,119,6,.14); }
+.pa-prio.sem_agendamento, .pa-cheg.previsto { color: var(--texto-fraco); background: color-mix(in srgb, var(--texto) 7%, transparent); }
+.pa-cheg.nao_compareceu { color: var(--vermelho); background: color-mix(in srgb, var(--vermelho) 12%, transparent); }
+.pa-portaria input#paLeitor { font-weight: 700; }
+.pa-ok { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--verde) 12%, transparent); font-size: 14px; }
+.pa-erro { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--vermelho) 10%, transparent); color: var(--vermelho); font-size: 13px; }
+.pa-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; } .pa-form .pa-largo { grid-column: 1 / -1; }
+.pa-veics { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; } .pa-veics input { width: auto; }
+.pa-detalhe { display: grid; grid-template-columns: 220px 1fr; gap: 18px; }
+.pa-qr { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border: 1px solid var(--borda); border-radius: 12px; background: #fff; color: #111; }
+.pa-qr b { font-size: 18px; letter-spacing: 2px; } .pa-qr small { color: #555; }
+.pa-eventos { font-size: 12.5px; border-left: 2px solid var(--borda); padding-left: 10px; display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; }
+.pa-horas { display: flex; gap: 4px; align-items: flex-end; height: 70px; margin-bottom: 10px; }
+.pa-horas div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 2px; }
+.pa-horas span { width: 100%; background: var(--azul); border-radius: 4px 4px 0 0; min-height: 2px; opacity: .8; } .pa-horas small { font-size: 10px; color: var(--texto-fraco); }
+#pagina-patio:fullscreen { background: var(--bg); padding: 16px; overflow: auto; }
+@media (max-width: 1000px) { .pa-colunas { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .pa-detalhe { grid-template-columns: 1fr; } }

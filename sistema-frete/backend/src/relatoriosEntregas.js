@@ -246,8 +246,10 @@ Object.assign(RELATORIOS, require('./relatoriosDesempenho')({ consulta, filtros,
 Object.assign(RELATORIOS, require('./relatoriosNfeCte')({ consulta, filtros, TRANSP, BASE, ABERTA, hojeSP }));
 // 11 a 24: auditoria de frete (tela 327).
 Object.assign(RELATORIOS, require('./relatoriosAuditoria')({ consulta, filtros, TRANSP, BASE, hojeSP }));
+// 71 a 80: roteirização e operação da transportadora (tela 328, pelos romaneios; rota /api/relatorios-operacao).
+Object.assign(RELATORIOS, require('./relatoriosOperacao')());
 
-// tela: 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24).
+// tela: 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24) ou 'operacao' (328, relatórios 71 a 80).
 function catalogo(tela = 'entregas') {
   return Object.entries(RELATORIOS).filter(([, r]) => (r.tela || 'entregas') === tela)
     .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo }));

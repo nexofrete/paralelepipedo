@@ -1,15 +1,18 @@
 // =====================================================================
-// Gestão e relatórios » 📦 Relatórios de entregas (tela 324) 🏆 Desempenho das transportadoras (tela 325, relatórios 61 a 70) , 🔗 Relatórios NF-e × CT-e (tela 326, 25 a 34) e 🔎 Relatórios de auditoria (tela 327, 11 a 24): os relatórios 35 a 50 da lista da empresa (entregas
+// Gestão e relatórios » 📦 Relatórios de entregas (tela 324) 🏆 Desempenho das transportadoras (tela 325, relatórios 61 a 70) , 🔗 Relatórios NF-e × CT-e (tela 326, 25 a 34) , 🔎 Relatórios de auditoria (tela 327, 11 a 24) e 🗺 Relatórios de rotas e operação (tela 328, 71 a 80, romaneios da transportadora): os relatórios 35 a 50 da lista da empresa (entregas
 // previstas, realizadas, atrasadas, de hoje, próximos 7 dias, pendentes, em trânsito; por transportadora, cliente,
 // cidade e estado; ocorrências, reentregas, comprovantes, rastreamento e SLA). Regras em src/relatoriosEntregas.js.
 // Usa do dashboard.js: apiFetch, mostrarAlerta, token; do indicadores.js: exportarExcel; do periodo.js: Periodo;
 // do notasFiscais.js: abrirNotaDetalhe.
 // =====================================================================
 // A mesma tela serve aos relatórios de desempenho das transportadoras (tela 325, relatórios 61 a 70).
-function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoPadrao }) {
+// campos: rótulo e parâmetro dos dois primeiros filtros; pode: quem vê a tela (o item do menu começa escondido).
+const CAMPOS_PADRAO = { Transp: ['transportadora', 'Transportadora', 'Todas'], Cli: ['cliente', 'Cliente (nome ou CNPJ)', 'Todos'] };
+function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoPadrao, api = '/api/relatorios-entregas', campos = CAMPOS_PADRAO, pode = null }) {
   const nav = document.querySelector(`.nav-item[data-pagina="${pagina}"]`);
   const cont = document.getElementById(conteudo);
   if (!nav || !cont) return;
+  if (pode) { if (!pode()) return; nav.classList.remove('oculto'); }
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const moeda = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
@@ -32,6 +35,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     if (tipo === 'dec') return v == null ? '—' : num(v, 1);
     if (tipo === 'moeda') return moeda(v);
     if (tipo === 'pct') return pct(v);
+    if (tipo === 'ocupacao') return v == null ? '—' : `<span class="re-sla ${v > 1 ? 'ruim' : v < 0.5 ? 'medio' : 'bom'}">${pct(v)}</span>`;
     if (tipo === 'difcusto') return v == null ? '—' : `<span class="re-var ${v > 0.004 ? 'ruim' : v < -0.004 ? 'bom' : ''}">${v > 0 ? '+' : ''}${moeda(v)}</span>`;
     if (tipo === 'auditoria') return v ? `<span class="re-sla ${v === 'Confere' ? 'bom' : /Acima|Não prevista/.test(v) ? 'ruim' : /Abaixo/.test(v) ? 'azul' : 'medio'}">${esc(v)}</span>` : '—';
     if (tipo === 'chave') return v ? `<span class="re-chave">${esc(v)}</span>` : '—';
@@ -53,7 +57,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     }
     return v == null || v === '' ? '—' : esc(v);
   }
-  const ehNumero = (tipo) => ['num', 'dec', 'moeda', 'moeda4', 'difcusto', 'pct', 'sla', 'atraso', 'nota', 'posicao', 'varcusto', 'varpp'].includes(tipo);
+  const ehNumero = (tipo) => ['num', 'dec', 'moeda', 'moeda4', 'difcusto', 'ocupacao', 'pct', 'sla', 'atraso', 'nota', 'posicao', 'varcusto', 'varpp'].includes(tipo);
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
   function montar() {
@@ -67,8 +71,8 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
           <div class="re-tit"><h3 id="${P}Titulo"></h3><p id="${P}Desc"></p></div>
           <div class="re-filtros">
             <div class="nf-f re-per" id="${P}PerCaixa"><span>Período</span>${Periodo.html(P)}</div>
-            <label class="nf-f"><span>Transportadora</span><input id="${P}Transp" class="cte-entrada" placeholder="Todas" /></label>
-            <label class="nf-f"><span>Cliente (nome ou CNPJ)</span><input id="${P}Cli" class="cte-entrada" placeholder="Todos" /></label>
+            <label class="nf-f"><span>${esc(campos.Transp[1])}</span><input id="${P}Transp" class="cte-entrada" placeholder="${esc(campos.Transp[2])}" /></label>
+            <label class="nf-f"><span>${esc(campos.Cli[1])}</span><input id="${P}Cli" class="cte-entrada" placeholder="${esc(campos.Cli[2])}" /></label>
             <label class="nf-f"><span>Cidade</span><input id="${P}Cidade" class="cte-entrada" placeholder="Todas" /></label>
             <label class="nf-f re-uf"><span>UF</span><input id="${P}Uf" class="cte-entrada" maxlength="2" placeholder="—" /></label>
             <label class="re-check oculto" id="${P}ProbCaixa"><input type="checkbox" id="${P}Prob" checked /> Só problemas</label>
@@ -125,7 +129,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   }
 
   const filtros = () => {
-    const q = new URLSearchParams({ de: $(P + 'De').value, ate: $(P + 'Ate').value, transportadora: $(P + 'Transp').value.trim(), cliente: $(P + 'Cli').value.trim(), cidade: $(P + 'Cidade').value.trim(), uf: $(P + 'Uf').value.trim() });
+    const q = new URLSearchParams({ de: $(P + 'De').value, ate: $(P + 'Ate').value, [campos.Transp[0]]: $(P + 'Transp').value.trim(), [campos.Cli[0]]: $(P + 'Cli').value.trim(), cidade: $(P + 'Cidade').value.trim(), uf: $(P + 'Uf').value.trim() });
     if (atual === 46 && $(P + 'Prob').checked) q.set('so_problemas', '1');
     return q;
   };
@@ -137,7 +141,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     $(P + 'PerCaixa').classList.toggle('re-sem-periodo', !!info.semPeriodo);
     $(P + 'ProbCaixa').classList.toggle('oculto', atual !== 46);
     $(P + 'Tabela').innerHTML = '<div class="kanban-vazio">Montando o relatório…</div>';
-    const r = await apiFetch(`/api/relatorios-entregas/${atual}?${filtros()}`).catch(() => null);
+    const r = await apiFetch(`${api}/${atual}?${filtros()}`).catch(() => null);
     if (meu !== pedido) return;
     const j = r ? await r.json().catch(() => ({})) : {};
     if (!r || !r.ok) { $(P + 'Tabela').innerHTML = `<div class="kanban-vazio">${esc(j.erro || 'Erro ao montar o relatório.')}</div>`; return; }
@@ -183,7 +187,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   // Imprimir: uma página só com o relatório (título, filtros, resumo e tabela).
   function imprimir() {
     if (!dados) return;
-    const filtrosTxt = [['Transportadora', $(P + 'Transp').value], ['Cliente', $(P + 'Cli').value], ['Cidade', $(P + 'Cidade').value], ['UF', $(P + 'Uf').value]]
+    const filtrosTxt = [[campos.Transp[1], $(P + 'Transp').value], [campos.Cli[1], $(P + 'Cli').value], ['Cidade', $(P + 'Cidade').value], ['UF', $(P + 'Uf').value]]
       .filter(([, v]) => String(v).trim()).map(([k, v]) => `${k}: ${esc(v)}`).join(' · ');
     const w = window.open('', '_blank');
     if (!w) { mostrarAlerta('O navegador bloqueou a janela de impressão. Libere as janelas deste site.', { tipo: 'aviso' }); return; }
@@ -200,7 +204,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
 
   nav.addEventListener('click', async () => {
     try {
-      if (!catalogo.length) { const r = await apiFetch(`/api/relatorios-entregas?tela=${tela}`); catalogo = r.ok ? await r.json() : []; }
+      if (!catalogo.length) { const r = await apiFetch(`${api}?tela=${tela}`); catalogo = r.ok ? await r.json() : []; }
       if (!catalogo.some((r) => r.numero === atual)) atual = primeiro;
       if (!montado) montar();
       await carregar();
@@ -208,6 +212,9 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   });
 }
 telaRelatorios({ pagina: 'relatorios-entregas', conteudo: 'reConteudo', P: 're', tela: 'entregas', primeiro: 35, chaveLs: 'nexofreteRelEntregas', periodoPadrao: '30d' });
+telaRelatorios({ pagina: 'relatorios-operacao', conteudo: 'opConteudo', P: 'op', tela: 'operacao', primeiro: 71, chaveLs: 'nexofreteRelOperacao', periodoPadrao: '30d', api: '/api/relatorios-operacao',
+  campos: { Transp: ['placa', 'Veículo (placa)', 'Todos'], Cli: ['motorista', 'Motorista', 'Todos'] },
+  pode: () => usuario?.perfil === 'admin' || !!(usuario?.pode_emitir_cte || usuario?.pode_ver_relatorios || usuario?.pode_ver_financeiro) });
 telaRelatorios({ pagina: 'relatorios-auditoria', conteudo: 'auConteudo', P: 'au', tela: 'auditoria', primeiro: 11, chaveLs: 'nexofreteRelAuditoria', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

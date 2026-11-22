@@ -37,7 +37,7 @@ def parte_operacao(g):
         ['Fretes contratados', 'Visão geral (início do embarcador)', '400', '11'],
         ['Operação', 'Coletas, Cotações', '001, 010', '31, 30'],
         ['Operação', 'CT-e, MDF-e, NFS-e', '020, 025, 030', '32, 33, 34'],
-        ['Operação', 'Romaneios, Ocorrências de entrega, Monitoramento', '040, 041, 045', '35'],
+        ['Operação', 'Romaneios, Ocorrências de entrega, Monitoramento, Relatórios de rotas e operação', '040, 041, 045, 328', '35'],
         ['Operação', 'Conferência, Etiquetas, Armazém', '050, 051, 055', '37'],
         ['Operação', 'Onde está a mercadoria, Transferências, Paletes', '060, 061, 066', '36, 35'],
         ['Transportadoras e parceiros', 'Parceiros, ranking e escolha: Parceiros e redespacho, Scorecard, Melhor transportadora', '065, 319, 313', '36, 19'],
@@ -379,6 +379,34 @@ def parte_operacao(g):
         'Apagar a ocorrência de entrega desfaz a troca e o vale (se o vale ainda não teve devolução nem cobrança).',
         'O cliente vê o saldo e os vales (com o documento) no portal, na aba <b>Paletes</b>. A tela Hoje avisa os vales vencidos.',
     ])
+
+    s += h2('Relatórios de rotas e operação (328)')
+    s.append(P('Em Operação, <b>Relatórios de rotas e operação</b> (Ctrl+K e 328) traz os relatórios 71 a 80, montados pelos '
+               '<b>romaneios</b>: cada romaneio é uma viagem (rota). Lista à esquerda, período (data do romaneio; vem nos últimos 30 '
+               'dias), filtros de veículo (placa), motorista, cidade e UF das entregas, totais em cartões, tabela ordenável, '
+               '<b>Excel</b> e <b>Imprimir</b>. Vê a tela quem emite CT-e, vê relatórios ou o financeiro; cada um vê os romaneios '
+               'das unidades dele.'))
+    s += lista([
+        '<b>Rota planejada</b>: o traçado que o monitoramento guarda no romaneio; sem ele, a distância é estimada da unidade de '
+        'saída pelas cidades das entregas, na ordem do romaneio (linha reta x 1,3, como a roteirização).',
+        '<b>Rota realizada</b>: as posições do GPS do app do motorista (ficam guardadas pelo prazo configurado no monitoramento; '
+        'romaneio sem app aberto aparece "sem GPS").',
+        '<b>Capacidade</b>: capacidade em kg e m3 do cadastro do veículo (pela placa). Peso e m3 vêm dos CT-e e das coletas.',
+        '<b>Custo realizado</b>: acerto do terceiro (frete e vale-pedágio), diárias dos ajudantes e combustível lançado para a '
+        'placa no dia. <b>Custo estimado</b>: km planejado x custo por km do veículo no painel da frota (últimos 90 dias) + diárias.',
+    ])
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['71', 'Rotas planejadas', 'Romaneios com veículo, motorista, entregas e coletas programadas, cidades na ordem, peso, volumes e km planejado.'],
+        ['72', 'Rotas realizadas', 'Saída, fechamento, duração, entregues, devolvidas, com problema, pendentes e km pelo GPS.'],
+        ['73', 'Entregas por veículo', 'Viagens, entregas, % de sucesso, entregas por viagem, peso, volumes, km e frete por placa.'],
+        ['74', 'Ocupação de veículos', 'Peso e m3 carregados x capacidade; acima de 100% é sobrecarga, abaixo de 50% veículo ocioso.'],
+        ['75', 'Quilometragem por rota', 'Km planejado x realizado, diferença e km por entrega.'],
+        ['76', 'Custo por rota', 'Custo estimado e realizado, frete dos CT-e da rota, frete menos custo e custo por entrega.'],
+        ['77', 'Entregas por motorista', 'Viagens, entregas, devolvidas, com problema, % de sucesso, % no prazo e minutos por entrega.'],
+        ['78', 'Desvio de rota', 'Km a mais, quanto do trajeto passou mais longe da rota que o desvio configurado no monitoramento, o maior afastamento e as entregas fora da ordem do romaneio.'],
+        ['79', 'Entregas por viagem', 'Entregas, coletas, cidades, % de sucesso e paradas feitas por hora em cada viagem.'],
+        ['80', 'Produtividade operacional', 'Dia a dia (ou mês a mês): viagens, veículos, motoristas, entregas, coletas, volumes, peso, km e médias.'],
+    ], [0.1, 0.28, 0.62])
 
     # 36
     s += h1('36. Filiais, transferências e parceiros (redespacho)')

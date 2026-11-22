@@ -27,6 +27,9 @@
     const ic = document.createElement('span'); ic.className = 'nav-ic';
     const tx = document.createElement('span'); tx.className = 'nav-txt';
     if (m) { ic.textContent = m[1]; tx.textContent = m[2]; } else { ic.textContent = no.textContent.trim().slice(0, 1).toUpperCase(); tx.textContent = no.textContent.trim(); ic.classList.add('nav-ic-letra'); }
+    // Ícone de linha (js/icones.js) nos grupos e nos itens do alto; os subitens ficam só com o texto.
+    const chave = el.matches('.nav-grupo') ? el.dataset.grupo : el.matches('.nav-item') ? el.dataset.pagina : el.matches('.ir-botao') ? 'buscar' : null;
+    if (window.Icones?.tem(chave)) { ic.innerHTML = window.Icones.svg(chave); ic.classList.add('nav-ic-svg'); ic.classList.remove('nav-ic-letra'); } else if (el.matches('.nav-tsub')) ic.classList.add('nav-ic-sub');
     no.replaceWith(ic, tx);
     el.dataset.separado = '1';
     // Recolhido, o nome aparece ao parar o mouse em cima do ícone.

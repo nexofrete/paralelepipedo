@@ -46,7 +46,7 @@
     tsubs.forEach((el) => el.classList.toggle('oculto', !N.acessivel(el.dataset.destino) || (!!el.dataset.soAdmin && !ehAdmin)));
     // Com a tela Hoje (transportadora), a visão geral do embarcador vira um item comum, logo abaixo.
     const rot = inicioEmb?.querySelector('.nav-rotulo');
-    if (rot) rot.textContent = temHoje() ? '📥 Fretes contratados (visão geral)' : '🏠 Início';
+    if (rot) { rot.textContent = temHoje() ? 'Fretes contratados (visão geral)' : 'Início'; window.Icones?.decorarInicio(); }
     grupos.forEach((g) => { g.cab.classList.toggle('oculto', !itensDo(g).some(visivel)); });
     // Subtítulo "Relatórios" de um grupo: só com algum item visível embaixo dele.
     document.querySelectorAll('.barra-lateral .nav-subtit').forEach((t) => {

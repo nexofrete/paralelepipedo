@@ -55,7 +55,7 @@
            Os itens de página escondidos (nav-no-grupo) guardam a permissão; os subitens abrem a tela e a aba certa.
            data-modulo: some quando a empresa não usa aquela parte (Cadastros » Empresa » Módulos). -->
       <div class="nav-item oculto" data-pagina="hoje" id="navHoje" data-modulo="transportadora">🏠 Hoje</div>
-      <div class="nav-tsub nav-inicio oculto" id="navInicioEmb" data-ir="visao-geral" data-modulo="embarcador"><span class="nav-rotulo">🏠 Início</span></div>
+      <div class="nav-tsub nav-inicio oculto" id="navInicioEmb" data-ir="visao-geral" data-modulo="embarcador"><span class="nav-rotulo">Início</span></div>
       <div class="nav-item" data-pagina="mensagens" style="display:flex; justify-content:space-between; align-items:center;">
         <span>✉️ Mensagens</span>
         <span id="badgeMensagens" class="oculto" style="background:var(--vermelho); color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
@@ -911,8 +911,8 @@
       <section id="pagina-faturamento" class="oculto">
         <div class="cabecalho-pagina">
           <div>
-            <h2>💰 Faturamento e contas a receber</h2>
-            <p>Junte os CT-e de cada cliente em faturas, cobre por PIX e e-mail e acompanhe o que está a receber e o que venceu</p>
+            <h2><span id="fatTitulo">Faturamento</span></h2>
+            <p id="fatSubtitulo">Junte os CT-e de cada cliente em faturas e lance os serviços extras</p>
           </div>
         </div>
         <div class="cte-abas">
@@ -4233,6 +4233,7 @@
   <script src="js/relatorioBi.js"></script>
   <script src="js/zerarBanco.js"></script>
   <script src="js/familias.js"></script>
+  <script src="js/icones.js"></script>
   <script src="js/menuTransporte.js"></script>
   <script src="js/atalhos.js"></script>
   <script src="js/menuRecolher.js"></script>

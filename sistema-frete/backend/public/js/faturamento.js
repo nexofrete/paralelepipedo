@@ -35,9 +35,17 @@
   document.querySelectorAll('[data-fat-aba]').forEach((a) => a.addEventListener('click', () => abrirAba(a.dataset.fatAba)));
   modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-fat-fechar]')) fechar(); });
 
+  // A tela serve a duas áreas do menu: Faturamento (faturas, a faturar, serviços extras) e Financeiro » Contas a receber
+  // (resumo, boletos, régua e a configuração da cobrança). Cada uma mostra só as suas abas e o seu título.
+  const AREA = { faturas: 'fat', afaturar: 'fat', extras: 'fat', resumo: 'rec', boletos: 'rec', regua: 'rec', config: 'rec' };
+  const TITULO = { fat: ['Faturamento', 'Junte os CT-e de cada cliente em faturas e lance os serviços extras'],
+    rec: ['Contas a receber', 'Acompanhe o que está a receber e o que venceu, gere os boletos e cobre por PIX e e-mail'] };
   function abrirAba(nome) {
     abaAtual = nome;
-    document.querySelectorAll('[data-fat-aba]').forEach((a) => a.classList.toggle('ativo', a.dataset.fatAba === nome));
+    const area = AREA[nome] || 'rec';
+    document.querySelectorAll('[data-fat-aba]').forEach((a) => { a.classList.toggle('ativo', a.dataset.fatAba === nome); a.classList.toggle('fat-outra-area', (AREA[a.dataset.fatAba] || 'rec') !== area); });
+    if ($('fatTitulo')) { $('fatTitulo').textContent = TITULO[area][0]; $('fatSubtitulo').textContent = TITULO[area][1]; }
+    window.Icones?.atualizar();
     ['resumo', 'faturas', 'afaturar', 'boletos', 'regua', 'extras', 'config'].forEach((n) => $(`fat-aba-${n}`).classList.toggle('oculto', n !== nome));
     // Régua de cobrança: tela em js/regua.js.
     const regua = () => (window.telaRegua ? window.telaRegua($('fat-aba-regua'), { abrirFatura }) : Promise.resolve());

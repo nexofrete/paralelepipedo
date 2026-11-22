@@ -2261,3 +2261,26 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .nav-subtit { margin: 8px 12px 2px; font-size: 10px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: color-mix(in srgb, var(--lat-texto) 50%, transparent); }
 html.menu-recolhido .barra-lateral:not(:hover) .nav-bloco { visibility: hidden; height: 1px; margin: 10px 0 4px; border-top: 1px solid var(--lat-borda); }
 body.modo-compacto .nav-bloco { margin-top: 10px; }
+
+/* Visual: ícones de linha no menu e nos títulos, trilha no topo */
+.nav-ic-svg { display: inline-flex; align-items: center; justify-content: center; width: 20px; flex: 0 0 20px; opacity: .85; }
+.nav-ic-svg .ic { display: block; }
+.nav-grupo.contem-ativo .nav-ic-svg, .nav-item.ativo .nav-ic-svg, .nav-grupo:hover .nav-ic-svg { opacity: 1; }
+.nav-tsub .nav-ic-sub { display: none; }
+.nav-grupo, .nav-item { gap: 10px; }
+.nav-sub { margin-left: 21px; }
+.nav-tsub { padding: 6px 12px 6px 14px; }
+.nav-inicio { display: flex; align-items: center; gap: 10px; }
+.trilha-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--texto-fraco); margin: -6px 0 10px; min-height: 16px; }
+.trilha-topo .sep { opacity: .5; }
+.trilha-topo .atual { color: var(--texto); font-weight: 600; }
+.cabecalho-pagina h2 { display: flex; align-items: center; gap: 10px; letter-spacing: -.2px; }
+.titulo-ic { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; flex: 0 0 34px;
+  color: var(--azul); background: color-mix(in srgb, var(--azul) 12%, transparent); }
+.cte-aba { white-space: nowrap; }
+html.menu-recolhido .barra-lateral:not(:hover) .nav-ic-svg { width: 100%; flex-basis: 100%; }
+.fat-outra-area { display: none !important; }
+.barra-lateral .nav-item:not(.nav-no-grupo) { display: flex; align-items: center; }
+.btn-ic { display: inline-flex; vertical-align: -3px; margin-right: 6px; }
+.btn-ic .ic { display: block; }
+.kpi-ic { color: var(--texto-fraco); display: inline-flex; }

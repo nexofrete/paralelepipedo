@@ -28,6 +28,9 @@ def parte_operacao(g):
                '<b>Relatórios</b>, os relatórios daquela área. O grupo da tela aberta abre sozinho; os que você abrir à mão ficam abertos '
                'e o navegador lembra. No celular, o botão <b>Menu</b> abre o menu como uma gaveta. Cada usuário só vê as telas que tem '
                'permissão de abrir; grupo, subtítulo ou bloco sem nenhuma tela para ele não aparece.'))
+    s.append(P('No alto de cada tela, a <b>trilha</b> mostra onde você está (por exemplo, Finanças » Financeiro » Contas a receber). '
+               'Os grupos do menu, os itens do alto e os títulos das telas usam <b>ícones de linha</b>, e os botões mais comuns '
+               '(Excel, PDF, Imprimir, Editar, Excluir, Atualizar...) também; os subitens do menu ficam só com o nome.'))
     s += aviso('nota', 'Até a versão 1.72 havia uma chave <b>TMS | Embarcador</b> no alto do menu, que mostrava uma parte de cada '
                        'vez. Ela saiu: agora as duas partes ficam no mesmo menu, cada tela no grupo do seu assunto. Os códigos '
                        'de tela (Ctrl+K) continuam os mesmos.')
@@ -723,6 +726,9 @@ def parte_financeiro(g):
 
     # 41
     s += h1('41. Faturamento e contas a receber')
+    s.append(P('A mesma tela atende a duas áreas do menu: <b>Faturamento</b> (Faturas, A faturar e Serviços extras) e '
+               '<b>Financeiro » Contas a receber</b> (Contas a receber, Boletos, Régua de cobrança e a configuração da cobrança por PIX e banco). '
+               'Aberta por uma delas, mostra só as abas e o título daquela área.'))
     s += passos([
         '<b>Cobrança (PIX e banco)</b>: chave PIX, dados bancários, prazo de vencimento e instruções.',
         '<b>A faturar</b>: os CT-e e NFS-e autorizados sem fatura, por cliente. Gere a fatura dos marcados ou "Faturar tudo".',

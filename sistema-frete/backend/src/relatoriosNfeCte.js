@@ -8,7 +8,7 @@ const { conferir, lerCte, numerosDasChaves } = require('./nfeCte');
 const dup = require('./duplicidade');
 
 module.exports = function criar(h) {
-  const { consulta, filtros, BASE } = h;
+  const { consulta, filtros, BASE, notasDoGrupo, notasDoPeriodo, EMITIDAS } = h;
   const TRANSP_NF = 'COALESCE(f.transportadora_cte, f.transportadora, f.transportadora_nfe)';
   const CTE_OK = 'f.chave_cte IS NOT NULL AND f.cte_cancelado IS NOT TRUE';
   const FRETE_NOTA = `COALESCE(f.frete_rateado, CASE WHEN ${CTE_OK} THEN COALESCE(f.valor_total_cte, f.valor_frete_negociado) END, 0)`;
@@ -167,13 +167,13 @@ module.exports = function criar(h) {
             ['Frete acima da tabela', conta('Frete acima da tabela')], ['Cobrado a mais', linhas.reduce((t, l) => t + Math.max(0, l.dif_frete || 0), 0), 'moeda']],
         };
       } },
-    29: { titulo: 'NF-e por transportadora', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por transportadora (a do CT-e; sem CT-e, a da nota): quantidade, valor, peso, volumes, com e sem CT-e e o frete.',
+    29: { detalhe: notasDoGrupo(EMITIDAS, TRANSP_NF), titulo: 'NF-e por transportadora', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por transportadora (a do CT-e; sem CT-e, a da nota): quantidade, valor, peso, volumes, com e sem CT-e e o frete.',
       rodar: (req, q, de, ate) => notasAgrupadas(req, q, de, ate, TRANSP_NF, 'Transportadora') },
-    30: { titulo: 'NF-e por destinatário', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por cliente (destinatário), com o CNPJ, entregues, com e sem CT-e e o frete.',
+    30: { detalhe: notasDoGrupo(EMITIDAS, 'f.cliente'), titulo: 'NF-e por destinatário', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por cliente (destinatário), com o CNPJ, entregues, com e sem CT-e e o frete.',
       rodar: (req, q, de, ate) => notasAgrupadas(req, q, de, ate, 'f.cliente', 'Destinatário', { sql: 'MIN(f.cliente_documento)', rotulo: 'CNPJ/CPF' }) },
-    31: { titulo: 'NF-e por rota', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por região e estado de destino (a rota da entrega), com as cidades atendidas e o frete.',
+    31: { detalhe: notasDoGrupo(EMITIDAS, `${REGIAO_SQL} || ' › ' || COALESCE(UPPER(f.uf), '—')`), titulo: 'NF-e por rota', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por região e estado de destino (a rota da entrega), com as cidades atendidas e o frete.',
       rodar: (req, q, de, ate) => notasAgrupadas(req, q, de, ate, `${REGIAO_SQL} || ' › ' || COALESCE(UPPER(f.uf), '—')`, 'Região › UF') },
-    32: { titulo: 'NF-e por período', grupo: 'Por grupo', tela: 'nfecte', desc: 'Dia a dia (ou mês a mês, em períodos de mais de 62 dias): notas emitidas, expedidas (saída/coleta), com CT-e emitido e entregues.',
+    32: { detalhe: notasDoPeriodo('f.data_emissao_nf'), drill: 'periodo', titulo: 'NF-e por período', grupo: 'Por grupo', tela: 'nfecte', desc: 'Dia a dia (ou mês a mês, em períodos de mais de 62 dias): notas emitidas, expedidas (saída/coleta), com CT-e emitido e entregues.',
       rodar: async (req, q, de, ate) => {
         const mes = (Date.parse(ate) - Date.parse(de)) / 86400000 > 62;
         const fmt = mes ? 'YYYY-MM' : 'YYYY-MM-DD';

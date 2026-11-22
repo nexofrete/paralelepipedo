@@ -1134,6 +1134,27 @@ def parte_uso(g):
         ['Reentregas e devoluções', 'Custo por transportadora e por cliente.'],
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
+    s += h2('Recursos de todas as telas de relatórios (324 a 328)')
+    s.append(P('As telas Relatórios de entregas (324), Desempenho das transportadoras (325), Relatórios NF-e x CT-e (326), '
+               'Relatórios de auditoria (327) e Relatórios de rotas e operação (328) funcionam do mesmo jeito:'))
+    s += lista([
+        '<b>Filtros</b>: período, transportadora, cliente (nome ou CNPJ), cidade e UF; em <b>Mais filtros</b>, a filial (a empresa '
+        'que emitiu a nota, pelo CNPJ), o número da NF-e e do CT-e (um ou vários, separados por vírgula ou espaço) e o status do '
+        'frete. Na 328: veículo, motorista, cidade e UF; em Mais filtros, a unidade, a transportadora (parceiro), o cliente '
+        '(destinatário), a NF-e, o CT-e e a situação do romaneio.',
+        '<b>Situação (no relatório)</b>: quando o relatório tem uma coluna de situação (Atrasada, Acima da tabela, Confere...), '
+        'escolha uma para ver só as linhas com ela; os totais, o gráfico, o Excel e a impressão seguem o filtro.',
+        '<b>Ordenação</b>: clique no título da coluna (de novo inverte).',
+        '<b>Totalizador</b>: a última linha da tabela soma as quantidades e os valores das linhas mostradas (médias, índices e '
+        'percentuais não se somam).',
+        '<b>Gráfico</b> (botão para mostrar ou esconder): nos relatórios agrupados e por período, barras da coluna escolhida (os 15 '
+        'maiores, ou os meses e dias em ordem); nos relatórios em lista, quantas linhas há em cada situação.',
+        '<b>Excel</b>, <b>PDF</b> e <b>Imprimir</b>: o Excel leva as linhas mostradas e o total; o PDF abre o relatório pronto '
+        '(título, filtros, totais, gráfico e tabela) para escolher "Salvar como PDF" no destino da impressão.',
+        '<b>Drill-down</b>: nos relatórios agrupados (por transportadora, cliente, cidade, estado, rota, mês, dia, veículo, '
+        'motorista), clique na linha para ver os documentos daquele grupo (as notas, os CT-e auditados ou os romaneios); '
+        '"Voltar" retorna ao relatório. Nas listas, <b>dois cliques</b> abrem o documento de origem: a nota, ou o romaneio na 328.',
+    ])
     s += h2('Relatórios de auditoria (tela 327)')
     s.append(P('Em Gestão e relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24, na mesma tela dos '
                'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias, pela emissão do CT-e), filtros, totais em '

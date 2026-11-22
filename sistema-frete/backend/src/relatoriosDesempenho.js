@@ -8,7 +8,8 @@
 //  - Nota geral (0 a 10): prazo 35%, custo 30% (frete sobre o valor das notas, comparado entre as transportadoras),
 //    ocorrências 15%, comprovante de entrega 10% e rastreamento 10%; critério sem dado sai da conta.
 module.exports = function criar(h) {
-  const { consulta, filtros, TRANSP, BASE, ABERTA, CAT_OCORRENCIA, hojeSP } = h;
+  const { consulta, filtros, TRANSP, BASE, ABERTA, CAT_OCORRENCIA, hojeSP, notasDoGrupo, notasDoPeriodo, EMITIDAS } = h;
+  const notasDaTransp = notasDoGrupo(EMITIDAS, TRANSP);
   const VALOR = 'COALESCE(f.valor_total_cte, f.valor_frete_negociado, 0)';
   const DATA = 'COALESCE(f.data_emissao_cte, f.data_emissao_nf)';
   const CONTA = `f.chave_cte IS NOT NULL AND f.cte_cancelado IS NOT TRUE AND f.cte_nao_levou IS NOT TRUE AND COALESCE(f.status_aprovacao, '') <> 'Rejeitado'
@@ -139,7 +140,7 @@ module.exports = function criar(h) {
   }
 
   return {
-    61: { titulo: 'Ranking de transportadoras', grupo: 'Classificação', tela: 'desempenho', desc: 'Classificação pela nota geral (0 a 10): prazo 35%, custo 30% (frete sobre o valor das notas, comparado entre elas), ocorrências 15%, comprovante 10% e rastreamento 10%.',
+    61: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Ranking de transportadoras', grupo: 'Classificação', tela: 'desempenho', desc: 'Classificação pela nota geral (0 a 10): prazo 35%, custo 30% (frete sobre o valor das notas, comparado entre elas), ocorrências 15%, comprovante 10% e rastreamento 10%.',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [['posicao', 'Posição', 'posicao'], T, ['nota', 'Nota geral', 'nota'], ['conceito', 'Conceito', 'conceito'], ['pct_prazo', 'No prazo', 'sla'], ['pct_frete', 'Frete / valor das notas', 'pct'],
@@ -147,13 +148,13 @@ module.exports = function criar(h) {
         ...grupo(linhas), resumo: [['Transportadoras', linhas.length], ['1º lugar', linhas[0]?.nota != null ? linhas[0].transportadora : '—', 'texto'], ['Nota do 1º', linhas[0]?.nota ?? null, 'dec'],
           ['No prazo (geral)', geral.pct_prazo, 'pct'], ['Frete / valor das notas', geral.pct_frete, 'pct']] };
       } },
-    62: { titulo: 'Índice de entregas no prazo', grupo: 'Índices', tela: 'desempenho', desc: 'Notas entregues no período: quantas chegaram até a previsão, por transportadora.',
+    62: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Índice de entregas no prazo', grupo: 'Índices', tela: 'desempenho', desc: 'Notas entregues no período: quantas chegaram até a previsão, por transportadora.',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [T, ['entregues', 'Entregues', 'num'], ['com_previsao', 'Com previsão', 'num'], ['no_prazo', 'No prazo', 'num'], ['pct_prazo', 'Índice no prazo', 'sla'], ['prazo_medio', 'Prazo médio (dias)', 'dec']],
           ...grupo(ordenar(linhas.filter((l) => l.entregues), 'pct_prazo')), resumo: [['Entregues', geral.entregues], ['Com previsão', geral.com_previsao], ['No prazo', geral.no_prazo], ['Índice no prazo', geral.pct_prazo, 'pct']] };
       } },
-    63: { titulo: 'Índice de atrasos', grupo: 'Índices', tela: 'desempenho', desc: 'Entregas feitas depois da previsão (notas entregues no período) e notas ainda em aberto já atrasadas (emitidas no período).',
+    63: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Índice de atrasos', grupo: 'Índices', tela: 'desempenho', desc: 'Entregas feitas depois da previsão (notas entregues no período) e notas ainda em aberto já atrasadas (emitidas no período).',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [T, ['entregues', 'Entregues', 'num'], ['fora_prazo', 'Entregues com atraso', 'num'], ['pct_atraso', 'Índice de atraso', 'atraso'], ['atraso_medio', 'Atraso médio (dias)', 'dec'],
@@ -161,7 +162,7 @@ module.exports = function criar(h) {
           ...grupo(ordenar(linhas.filter((l) => l.entregues || l.atrasadas_abertas), 'pct_atraso')),
           resumo: [['Entregues com atraso', geral.fora_prazo], ['Índice de atraso', geral.pct_atraso, 'pct'], ['Em aberto atrasadas', geral.atrasadas_abertas]] };
       } },
-    64: { titulo: 'Índice de ocorrências', grupo: 'Índices', tela: 'desempenho', desc: 'Notas emitidas no período que tiveram problema no transporte (recusa, avaria, extravio, devolução, ausente/endereço/reentrega, retenção, atraso), pelo rastreamento.',
+    64: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Índice de ocorrências', grupo: 'Índices', tela: 'desempenho', desc: 'Notas emitidas no período que tiveram problema no transporte (recusa, avaria, extravio, devolução, ausente/endereço/reentrega, retenção, atraso), pelo rastreamento.',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [T, ['emitidas', 'Notas', 'num'], ['com_problema', 'Notas com problema', 'num'], ['pct_ocorrencia', 'Índice de ocorrências', 'atraso'], ['ocorrencias', 'Ocorrências', 'num'],
@@ -169,25 +170,25 @@ module.exports = function criar(h) {
           ...grupo(ordenar(linhas.filter((l) => l.emitidas), 'pct_ocorrencia')),
           resumo: [['Notas', geral.emitidas], ['Notas com problema', geral.com_problema], ['Índice de ocorrências', geral.pct_ocorrencia, 'pct'], ['Ocorrências', geral.ocorrencias], ['CT-e de reentrega', geral.reentregas]] };
       } },
-    65: { titulo: 'Custo médio por entrega', grupo: 'Custos', tela: 'desempenho', desc: 'Frete dos CT-e do período dividido pelas entregas (CT-e principais). O frete inclui reentregas e complementares.',
+    65: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Custo médio por entrega', grupo: 'Custos', tela: 'desempenho', desc: 'Frete dos CT-e do período dividido pelas entregas (CT-e principais). O frete inclui reentregas e complementares.',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [T, ['entregas_cte', 'Entregas (CT-e)', 'num'], ['frete', 'Frete', 'moeda'], ['frete_extra', 'Reentrega / complementar', 'moeda'], ['custo_entrega', 'Custo médio por entrega', 'moeda'], ['pct_frete', 'Frete / valor das notas', 'pct']],
           ...grupo(ordenar(linhas.filter((l) => l.ctes), 'custo_entrega', true)), resumo: [['Entregas (CT-e)', geral.entregas_cte], ['Frete', geral.frete, 'moeda'], ['Custo médio por entrega', geral.custo_entrega, 'moeda']] };
       } },
-    66: { titulo: 'Custo médio por kg', grupo: 'Custos', tela: 'desempenho', desc: 'Frete dos CT-e do período dividido pelo peso transportado (peso dos CT-e).',
+    66: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Custo médio por kg', grupo: 'Custos', tela: 'desempenho', desc: 'Frete dos CT-e do período dividido pelo peso transportado (peso dos CT-e).',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [T, ['entregas_cte', 'Entregas (CT-e)', 'num'], ['peso', 'Peso (kg)', 'dec'], ['frete', 'Frete', 'moeda'], ['custo_kg', 'Custo por kg', 'moeda4'], ['custo_entrega', 'Custo por entrega', 'moeda']],
           ...grupo(ordenar(linhas.filter((l) => l.ctes), 'custo_kg', true)), resumo: [['Peso (kg)', geral.peso, 'dec'], ['Frete', geral.frete, 'moeda'], ['Custo médio por kg', geral.custo_kg, 'moeda4']] };
       } },
-    67: { titulo: 'Custo médio por NF-e', grupo: 'Custos', tela: 'desempenho', desc: 'Frete dos CT-e do período dividido pelas notas transportadas (CT-e de várias notas conta cada nota).',
+    67: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Custo médio por NF-e', grupo: 'Custos', tela: 'desempenho', desc: 'Frete dos CT-e do período dividido pelas notas transportadas (CT-e de várias notas conta cada nota).',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         return { colunas: [T, ['notas', 'Notas', 'num'], ['valor_nf', 'Valor das notas', 'moeda'], ['frete', 'Frete', 'moeda'], ['custo_nf', 'Custo médio por NF-e', 'moeda'], ['pct_frete', 'Frete / valor das notas', 'pct']],
           ...grupo(ordenar(linhas.filter((l) => l.ctes), 'custo_nf', true)), resumo: [['Notas', geral.notas], ['Frete', geral.frete, 'moeda'], ['Custo médio por NF-e', geral.custo_nf, 'moeda'], ['Frete / valor das notas', geral.pct_frete, 'pct']] };
       } },
-    68: { titulo: 'Comparativo de transportadoras', grupo: 'Análises', tela: 'desempenho', desc: 'Custos e desempenho lado a lado; as colunas "vs média" mostram quanto cada uma fica acima ou abaixo da média geral.',
+    68: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Comparativo de transportadoras', grupo: 'Análises', tela: 'desempenho', desc: 'Custos e desempenho lado a lado; as colunas "vs média" mostram quanto cada uma fica acima ou abaixo da média geral.',
       rodar: async (req, q, de, ate) => {
         const { linhas, geral } = await porTransportadora(req, q, de, ate);
         const vs = (v, m) => (v == null || !m ? null : v / m - 1);
@@ -197,7 +198,7 @@ module.exports = function criar(h) {
           ['pct_ocorrencia', 'Com problema', 'pct'], ['prazo_medio', 'Prazo médio (dias)', 'dec'], ['nota', 'Nota', 'nota']],
           ...grupo(ordenar(ls, 'frete')), resumo: [['Transportadoras', ls.length], ['Frete', geral.frete, 'moeda'], ['Média por entrega', geral.custo_entrega, 'moeda'], ['Média por kg', geral.custo_kg, 'moeda4'], ['No prazo (média)', geral.pct_prazo, 'pct']] };
       } },
-    69: { titulo: 'Avaliação das transportadoras', grupo: 'Análises', tela: 'desempenho', desc: 'Nota de 0 a 10 em cada critério de qualidade e eficiência, a nota geral e o conceito (A 8,5+, B 7+, C 5+, D abaixo de 5).',
+    69: { detalhe: notasDaTransp, drill: 'transportadora', titulo: 'Avaliação das transportadoras', grupo: 'Análises', tela: 'desempenho', desc: 'Nota de 0 a 10 em cada critério de qualidade e eficiência, a nota geral e o conceito (A 8,5+, B 7+, C 5+, D abaixo de 5).',
       rodar: async (req, q, de, ate) => {
         const { linhas } = await porTransportadora(req, q, de, ate);
         const conta = (c) => linhas.filter((l) => l.conceito.startsWith(c)).length;
@@ -205,7 +206,7 @@ module.exports = function criar(h) {
           ['n_rastreio', 'Rastreamento (10%)', 'nota'], ['nota', 'Nota geral', 'nota'], ['conceito', 'Conceito', 'conceito'], ['pct_comprovante', 'Entregas com comprovante', 'pct'], ['pct_rastreio', 'Notas com rastreio', 'pct']],
           ...grupo(linhas), resumo: [['Transportadoras', linhas.length], ['A · Excelente', conta('A')], ['B · Bom', conta('B')], ['C · Regular', conta('C')], ['D · Ruim', conta('D')]] };
       } },
-    70: { titulo: 'Histórico de desempenho', grupo: 'Análises', tela: 'desempenho', desc: 'Evolução mês a mês nos 12 meses até a data final do período (escolha uma transportadora no filtro para ver só ela).',
+    70: { detalhe: notasDoPeriodo('f.data_emissao_nf'), drill: 'mes', titulo: 'Histórico de desempenho', grupo: 'Análises', tela: 'desempenho', desc: 'Evolução mês a mês nos 12 meses até a data final do período (escolha uma transportadora no filtro para ver só ela).',
       rodar: (req, q, de, ate) => historico(req, q, ate) },
   };
 };

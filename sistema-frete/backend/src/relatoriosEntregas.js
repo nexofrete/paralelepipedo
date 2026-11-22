@@ -56,6 +56,14 @@ function filtros(q, params) {
   }
   if (String(q.cidade || '').trim()) add("f.cidade ILIKE '%' || ? || '%'", String(q.cidade).trim());
   if (/^[A-Za-z]{2}$/.test(q.uf || '')) add('UPPER(f.uf) = ?', String(q.uf).toUpperCase());
+  // Filial = a empresa que emitiu a nota (CNPJ do emitente; a raiz de 8 dígitos pega todas as filiais).
+  const filial = String(q.filial || '').replace(/\D/g, '');
+  if (filial.length >= 8) add("regexp_replace(COALESCE(NULLIF(f.emitente_cnpj, ''), SUBSTRING(f.chave_nfe FROM 7 FOR 14), ''), '\\D', '', 'g') LIKE ? || '%'", filial);
+  // Nº da NF-e e do CT-e: um ou vários, separados por vírgula ou espaço (sem os zeros à esquerda).
+  const numeros = (v) => String(v || '').split(/[\s,;]+/).map((x) => x.replace(/\D/g, '').replace(/^0+(?=\d)/, '')).filter(Boolean).slice(0, 500);
+  if (numeros(q.nf).length) add("LTRIM(f.numero_nf, '0') = ANY(?::text[])", numeros(q.nf));
+  if (numeros(q.cte).length) add("LTRIM(f.numero_cte, '0') = ANY(?::text[])", numeros(q.cte));
+  if (String(q.status || '').trim()) add("COALESCE(f.status, 'Pendente') = ?", String(q.status).trim());
   return cond.length ? ` AND ${cond.join(' AND ')}` : '';
 }
 
@@ -73,6 +81,13 @@ async function listaNotas(req, q, onde, params, { ordem = 'f.data_entrega_previs
   ].filter(([, v], i) => i < 2 || v);
   return { colunas: NOTA, linhas, resumo, mais: rows.length > limite };
 }
+
+// Drill-down: as notas de um grupo (transportadora, cliente, cidade, UF, mês...). onde usa $1/$2 (de, ate); o valor vai
+// em $3 e é comparado com a chave do grupo como texto ('' = "(sem informação)").
+const EMITIDAS = 'f.data_emissao_nf BETWEEN $1::date AND $2::date';
+const notasDoGrupo = (onde, chave) => (req, q, de, ate, valor) => listaNotas(req, q, `${onde} AND COALESCE((${chave})::text, '') = $3`, [de, ate, valor]);
+// Notas de um dia (AAAA-MM-DD) ou de um mês (AAAA-MM), pela data dada.
+const notasDoPeriodo = (data) => (req, q, de, ate, valor) => listaNotas(req, q, `to_char(${data}, '${String(valor).length > 7 ? 'YYYY-MM-DD' : 'YYYY-MM'}') = $1`, [valor]);
 
 // Desempenho agrupado (transportadora, cliente, cidade, UF): notas emitidas no período.
 async function agrupado(req, q, chave, rotulo, de, ate) {
@@ -241,11 +256,19 @@ const RELATORIOS = {
 };
 
 // 61 a 70: desempenho das transportadoras (tela 325), com as mesmas bases e filtros.
-Object.assign(RELATORIOS, require('./relatoriosDesempenho')({ consulta, filtros, TRANSP, BASE, ABERTA, CAT_OCORRENCIA, hojeSP }));
+// Detalhe (drill-down) dos agrupados desta tela.
+RELATORIOS[42].detalhe = notasDoGrupo(EMITIDAS, TRANSP);
+RELATORIOS[43].detalhe = notasDoGrupo(EMITIDAS, 'f.cliente');
+RELATORIOS[44].detalhe = notasDoGrupo(EMITIDAS, "COALESCE(f.cidade, '') || CASE WHEN f.uf IS NOT NULL THEN '/' || UPPER(f.uf) ELSE '' END");
+RELATORIOS[45].detalhe = notasDoGrupo(EMITIDAS, 'UPPER(f.uf)');
+RELATORIOS[49].detalhe = notasDoGrupo(`${EMITIDAS} AND ${ABERTA}`, TRANSP);
+RELATORIOS[50].detalhe = notasDoGrupo('f.data_entrega BETWEEN $1::date AND $2::date', TRANSP);
+const ajudas = { consulta, filtros, TRANSP, BASE, ABERTA, CAT_OCORRENCIA, hojeSP, listaNotas, notasDoGrupo, notasDoPeriodo, EMITIDAS };
+Object.assign(RELATORIOS, require('./relatoriosDesempenho')(ajudas));
 // 25 a 34: NF-e × CT-e (tela 326).
-Object.assign(RELATORIOS, require('./relatoriosNfeCte')({ consulta, filtros, TRANSP, BASE, ABERTA, hojeSP }));
+Object.assign(RELATORIOS, require('./relatoriosNfeCte')(ajudas));
 // 11 a 24: auditoria de frete (tela 327).
-Object.assign(RELATORIOS, require('./relatoriosAuditoria')({ consulta, filtros, TRANSP, BASE, hojeSP }));
+Object.assign(RELATORIOS, require('./relatoriosAuditoria')(ajudas));
 // 71 a 80: roteirização e operação da transportadora (tela 328, pelos romaneios; rota /api/relatorios-operacao).
 Object.assign(RELATORIOS, require('./relatoriosOperacao')());
 
@@ -262,8 +285,34 @@ async function rodar(req, numero, q = {}) {
   const de = dataOk(q.de) ? q.de : somarDias(hoje, -30);
   const ate = dataOk(q.ate) ? q.ate : hoje;
   if (de > ate) throw Object.assign(new Error('A data inicial é depois da final.'), { status: 400 });
+  // Drill-down: com ?detalhe=<valor do grupo>, o relatório devolve os documentos daquele grupo.
+  if (q.detalhe !== undefined && r.detalhe) {
+    const res = await r.detalhe(req, q, de, ate, String(q.detalhe));
+    return { numero: Number(numero), titulo: r.titulo, descricao: r.desc, de, ate, hoje, abrir: 'nota', ...res, detalhe: String(q.detalhe) };
+  }
   const res = await r.rodar(req, q, de, ate);
-  return { numero: Number(numero), titulo: r.titulo, descricao: r.desc, de: r.semPeriodo ? null : de, ate: r.semPeriodo ? null : ate, hoje, ...res };
+  return { numero: Number(numero), titulo: r.titulo, descricao: r.desc, de: r.semPeriodo ? null : de, ate: r.semPeriodo ? null : ate, hoje, abrir: 'nota',
+    ...res, drill: r.detalhe ? (r.drill || 'grupo') : null };
 }
 
-module.exports = { catalogo, rodar, situacaoNota, RELATORIOS };
+// Opções dos filtros de lista: as filiais (emitentes das notas) e os status dos fretes; na tela de operação, as
+// unidades e as situações do romaneio.
+async function opcoesFiltro(req, tela) {
+  if (tela === 'operacao') {
+    const params = [];
+    const { rows } = await require('./db').query(`SELECT u.id, COALESCE(NULLIF(u.sigla, ''), u.nome) AS sigla, u.nome FROM unidades u
+      WHERE u.ativa IS NOT FALSE AND ${require('./permissoes').condicaoUnidades(req, ['u.id'], params)} ORDER BY u.matriz DESC NULLS LAST, u.nome`, params).catch(() => ({ rows: [] }));
+    return { filiais: rows.map((u) => ({ valor: String(u.id), nome: u.sigla === u.nome ? u.nome : `${u.sigla} · ${u.nome}` })),
+      status: [['aberto', 'Montando'], ['em_rota', 'Em rota'], ['fechado', 'Fechado']].map(([valor, nome]) => ({ valor, nome })) };
+  }
+  const [{ rows: fil }, { rows: st }] = await Promise.all([
+    consulta(req, `SELECT regexp_replace(COALESCE(NULLIF(f.emitente_cnpj, ''), SUBSTRING(f.chave_nfe FROM 7 FOR 14)), '\\D', '', 'g') AS cnpj, MAX(f.emitente_nome) AS nome, COUNT(*)::int AS n
+      FROM fretes f WHERE f.frete_principal_id IS NULL AND COALESCE(f.emitente_cnpj, f.chave_nfe) IS NOT NULL AND f.data_emissao_nf >= CURRENT_DATE - 400 GROUP BY 1 ORDER BY 3 DESC LIMIT 60`, []),
+    consulta(req, "SELECT COALESCE(f.status, 'Pendente') AS status, COUNT(*)::int AS n FROM fretes f WHERE f.data_emissao_nf >= CURRENT_DATE - 400 GROUP BY 1 ORDER BY 2 DESC LIMIT 30", []),
+  ]);
+  const cnpj = (c) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  return { filiais: fil.filter((f) => /^\d{14}$/.test(f.cnpj || '')).map((f) => ({ valor: f.cnpj, nome: `${f.nome ? `${f.nome} · ` : ''}${cnpj(f.cnpj)}` })),
+    status: st.map((s) => ({ valor: s.status, nome: s.status })) };
+}
+
+module.exports = { catalogo, rodar, opcoesFiltro, situacaoNota, RELATORIOS };

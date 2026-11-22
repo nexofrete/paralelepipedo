@@ -12,6 +12,9 @@ const TELAS = ['entregas', 'desempenho', 'nfecte', 'auditoria'];
 function montar(telas, pode) {
   const router = express.Router();
   router.get('/', autenticar, pode, (req, res) => res.json(rel.catalogo(telas.includes(req.query.tela) ? req.query.tela : telas[0])));
+  router.get('/filtros', autenticar, pode, async (req, res) => {
+    try { res.json(await rel.opcoesFiltro(req, telas.includes(req.query.tela) ? req.query.tela : telas[0])); } catch (err) { erro(res, err, 'Erro ao carregar os filtros.'); }
+  });
   router.get('/:numero(\\d+)', autenticar, pode, async (req, res) => {
     const r = rel.RELATORIOS[Number(req.params.numero)];
     if (!r || !telas.includes(r.tela || 'entregas')) return res.status(404).json({ erro: 'Relatório não encontrado.' });

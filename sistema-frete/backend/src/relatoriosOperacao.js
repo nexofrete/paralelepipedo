@@ -37,6 +37,9 @@ module.exports = function criar() {
     const cond = [];
     if (String(q.placa || '').trim()) { params.push(`%${String(q.placa).replace(/[^A-Za-z0-9]/g, '')}%`); cond.push(`regexp_replace(COALESCE(r.placa, ''), '[^A-Za-z0-9]', '', 'g') ILIKE $${params.length}`); }
     if (String(q.motorista || '').trim()) { params.push(`%${String(q.motorista).trim()}%`); cond.push(`r.motorista_nome ILIKE $${params.length}`); }
+    if (/^\d+$/.test(String(q.filial || ''))) { params.push(Number(q.filial)); cond.push(`r.unidade_id = $${params.length}`); }
+    if (['aberto', 'em_rota', 'fechado'].includes(q.status)) { params.push(q.status); cond.push(`r.status = $${params.length}`); }
+    if (String(q.transportadora || '').trim()) { params.push(`%${String(q.transportadora).trim()}%`); cond.push(`EXISTS (SELECT 1 FROM parceiros px WHERE px.id = r.parceiro_id AND px.nome ILIKE $${params.length})`); }
     const unid = condicaoUnidades(req, ['r.unidade_id'], params);
     const { rows: rs } = await pool.query(`SELECT r.id, to_char(r.data, 'YYYY-MM-DD') AS data, r.status, r.placa, r.veiculo, r.motorista_nome, r.saiu_em, r.fechado_em, r.parceiro_id,
         r.rota_planejada, r.ajudante_ids, u.sigla AS unidade, u.cidade AS unidade_cidade, u.uf AS unidade_uf, pa.nome AS parceiro,
@@ -88,6 +91,8 @@ module.exports = function criar() {
       pontos = porRom(pts);
     }
     const cidadeF = String(q.cidade || '').trim().toUpperCase(); const ufF = /^[A-Za-z]{2}$/.test(q.uf || '') ? q.uf.toUpperCase() : '';
+    const numeros = (v) => String(v || '').split(/[\s,;]+/).map((x) => x.replace(/\D/g, '').replace(/^0+(?=\d)/, '')).filter(Boolean);
+    const nfF = numeros(q.nf); const cteF = numeros(q.cte); const cliF = String(q.cliente || '').trim();
     const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
     const out = [];
     for (const r of lista) {
@@ -98,6 +103,9 @@ module.exports = function criar() {
       });
       if (cidadeF && !its.some((i) => plano(i.cidade).includes(plano(cidadeF)))) continue;
       if (ufF && !its.some((i) => String(i.uf).toUpperCase() === ufF)) continue;
+      if (nfF.length && !its.some((i) => (i.nfs || []).some((n) => nfF.includes(String(n))))) continue;
+      if (cteF.length && !its.some((i) => cteF.includes(String(i.numero).replace(/^0+(?=\d)/, '')))) continue;
+      if (cliF && !its.some((i) => plano(i.destinatario).includes(plano(cliF)) || String(i.documento || '').startsWith(cliF.replace(/\D/g, '') || '-'))) continue;
       const col = colPor.get(r.id) || { coletas: 0, coletadas: 0, peso: 0, volumes: 0, m3: 0 };
       const g = gpsPor.get(r.id);
       const rp = r.rota_planejada || {};
@@ -142,7 +150,19 @@ module.exports = function criar() {
 
   const soma = (ls, k) => ls.reduce((t, l) => t + (Number(l[k]) || 0), 0);
   const COL = [['data', 'Data', 'data'], ['romaneio', 'Romaneio'], ['placa', 'Veículo'], ['motorista', 'Motorista']];
-  const base = (v) => ({ data: v.data, romaneio: String(v.id), placa: v.placa || '—', motorista: v.motorista, status: v.status_txt });
+  const base = (v) => ({ id: v.id, data: v.data, romaneio: String(v.id), placa: v.placa || '—', motorista: v.motorista, status: v.status_txt });
+  // Detalhe dos agrupados: as viagens (romaneios) do grupo; dois cliques abrem o romaneio.
+  const viagensDe = (filtro) => async (req, q, de, ate, valor) => {
+    const { lista, mais } = await viagens(req, q, de, ate);
+    const linhas = lista.filter((v) => filtro(v, valor)).map((v) => ({ ...base(v), entregas: v.entregas, entregues: v.entregues, devolvidas: v.devolvidas, pendentes: v.pendentes,
+      coletas: v.coletas, peso: v.peso, km: v.km, frete: v.frete }));
+    return {
+      colunas: [...COL, ['status', 'Situação'], ['entregas', 'Entregas', 'num'], ['entregues', 'Entregues', 'num'], ['devolvidas', 'Devolvidas', 'num'], ['pendentes', 'Pendentes', 'num'],
+        ['coletas', 'Coletas', 'num'], ['peso', 'Peso (kg)', 'dec'], ['km', 'Km', 'dec'], ['frete', 'Frete dos CT-e', 'moeda']],
+      linhas, mais, abrir: 'romaneio',
+      resumo: [['Viagens', linhas.length], ['Entregas', soma(linhas, 'entregas')], ['Entregues', soma(linhas, 'entregues')], ['Km', soma(linhas, 'km'), 'dec']],
+    };
+  };
   // Agrupa viagens (veículo, motorista, dia).
   function agrupar(lista, chave, rotulo) {
     const m = new Map();
@@ -170,7 +190,7 @@ module.exports = function criar() {
         return {
           colunas: [...COL, ['status', 'Situação'], ['entregas', 'Entregas', 'num'], ['coletas', 'Coletas', 'num'], ['cidades', 'Cidades (na ordem)'], ['peso', 'Peso (kg)', 'dec'], ['volumes', 'Volumes', 'num'],
             ['km_plan', 'Km planejado', 'dec'], ['fonte_plan', 'Como foi medido'], ['valor_carga', 'Valor da carga', 'moeda']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Rotas', linhas.length], ['Entregas programadas', soma(linhas, 'entregas')], ['Coletas', soma(linhas, 'coletas')], ['Km planejado', soma(linhas, 'km_plan'), 'dec'], ['Peso (kg)', soma(linhas, 'peso'), 'dec']],
         };
       } },
@@ -183,12 +203,12 @@ module.exports = function criar() {
           colunas: [...COL, ['status', 'Situação'], ['saida', 'Saída', 'datahora'], ['fechamento', 'Fechamento', 'datahora'], ['duracao', 'Duração (h)', 'dec'], ['entregas', 'Entregas', 'num'],
             ['entregues', 'Entregues', 'num'], ['devolvidas', 'Devolvidas', 'num'], ['com_problema', 'Com problema', 'num'], ['pendentes', 'Pendentes', 'num'], ['pct_sucesso', 'Entregue', 'sla'],
             ['km_real', 'Km (GPS)', 'dec'], ['pontos_gps', 'Posições GPS', 'num']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Rotas realizadas', linhas.length], ['Entregues', soma(linhas, 'entregues')], ['Devolvidas', soma(linhas, 'devolvidas')], ['Pendentes', soma(linhas, 'pendentes')],
             ['Entregue', div(soma(linhas, 'entregues'), soma(linhas, 'entregas')), 'pct'], ['Km pelo GPS', soma(linhas, 'km_real'), 'dec'], ['Sem GPS', linhas.filter((l) => !l.km_real).length]],
         };
       } },
-    73: { titulo: 'Entregas por veículo', grupo: 'Veículos e motoristas', tela: 'operacao', desc: 'Por veículo (placa): viagens, entregas, entregues, % de sucesso, peso, volumes, km e frete dos CT-e no período.',
+    73: { detalhe: viagensDe((v, x) => (v.placa || '') === x), titulo: 'Entregas por veículo', grupo: 'Veículos e motoristas', tela: 'operacao', desc: 'Por veículo (placa): viagens, entregas, entregues, % de sucesso, peso, volumes, km e frete dos CT-e no período.',
       rodar: async (req, q, de, ate) => {
         const { lista } = await viagens(req, q, de, ate);
         const tipo = new Map(lista.map((v) => [v.placa || '(sem placa)', v.veiculo_desc || v.veiculo || v.veiculo_tipo || '']));
@@ -213,7 +233,7 @@ module.exports = function criar() {
         return {
           colunas: [...COL, ['veiculo', 'Tipo'], ['peso', 'Peso (kg)', 'dec'], ['cap_kg', 'Capacidade (kg)', 'dec'], ['pct_kg', 'Ocupação peso', 'ocupacao'], ['m3', 'm³', 'dec'], ['cap_m3', 'Capacidade (m³)', 'dec'],
             ['pct_m3', 'Ocupação m³', 'ocupacao'], ['situacao', 'Situação', 'confere']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Viagens', linhas.length], ['Ocupação média', com.length ? com.reduce((t, l) => t + Math.min(l.ocupacao, 2), 0) / com.length : null, 'pct'], ['Sobrecarga', linhas.filter((l) => l.situacao === 'Sobrecarga').length],
             ['Ociosas (abaixo de 50%)', linhas.filter((l) => l.situacao === 'Ociosa').length], ['Sem capacidade no cadastro', linhas.filter((l) => l.situacao.startsWith('Sem')).length]],
         };
@@ -226,7 +246,7 @@ module.exports = function criar() {
         return {
           colunas: [...COL, ['entregas', 'Entregas', 'num'], ['km_plan', 'Km planejado', 'dec'], ['fonte_plan', 'Planejado por'], ['km_real', 'Km realizado (GPS)', 'dec'], ['dif', 'Diferença (km)', 'dec'],
             ['pct', '%', 'varcusto'], ['km_entrega', 'Km por entrega', 'dec']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Rotas', linhas.length], ['Km planejado', soma(linhas, 'km_plan'), 'dec'], ['Km realizado', soma(linhas, 'km_real'), 'dec'],
             ['Diferença (com os dois)', soma(linhas, 'dif'), 'dec'], ['Sem GPS', linhas.filter((l) => l.km_real == null).length]],
         };
@@ -241,12 +261,12 @@ module.exports = function criar() {
           colunas: [...COL, ['entregas', 'Entregas', 'num'], ['km', 'Km', 'dec'], ['custo_km_veic', 'Custo/km do veículo', 'moeda4'], ['custo_estimado', 'Custo estimado', 'moeda'], ['terceiro', 'Terceiro + pedágio', 'moeda'],
             ['diarias', 'Diárias', 'moeda'], ['combustivel', 'Combustível do dia', 'moeda'], ['custo_real', 'Custo realizado', 'moeda'], ['frete', 'Frete dos CT-e', 'moeda'], ['resultado', 'Frete − custo', 'difcusto'],
             ['por_entrega', 'Custo por entrega', 'moeda'], ['pct', 'Custo / frete', 'pct']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Custo estimado', soma(linhas, 'custo_estimado'), 'moeda'], ['Custo realizado', soma(linhas, 'custo_real'), 'moeda'], ['Frete dos CT-e', soma(linhas, 'frete'), 'moeda'],
             ['Custo por entrega', div(linhas.reduce((t, l) => t + (Number(l.custo_real ?? l.custo_estimado) || 0), 0), soma(linhas, 'entregas')), 'moeda'], ['Sem custo', linhas.filter((l) => l.custo_real == null && l.custo_estimado == null).length]],
         };
       } },
-    77: { titulo: 'Entregas por motorista', grupo: 'Veículos e motoristas', tela: 'operacao', desc: 'Por motorista: viagens, entregas, entregues, devolvidas, com problema, % de sucesso, % no prazo, minutos por entrega (duração da viagem ÷ entregas) e km.',
+    77: { detalhe: viagensDe((v, x) => (v.motorista || '') === x), titulo: 'Entregas por motorista', grupo: 'Veículos e motoristas', tela: 'operacao', desc: 'Por motorista: viagens, entregas, entregues, devolvidas, com problema, % de sucesso, % no prazo, minutos por entrega (duração da viagem ÷ entregas) e km.',
       rodar: async (req, q, de, ate) => {
         const { lista } = await viagens(req, q, de, ate);
         const linhas = agrupar(lista, (v) => v.motorista);
@@ -284,7 +304,7 @@ module.exports = function criar() {
         return {
           colunas: [...COL, ['km_plan', 'Km planejado', 'dec'], ['km_real', 'Km realizado', 'dec'], ['km_mais', 'Km a mais', 'dec'], ['pct_fora', `Trajeto a mais de ${limite} km da rota`, 'atraso'],
             ['maior_km', 'Maior afastamento (km)', 'dec'], ['entregues', 'Entregues', 'num'], ['fora_ordem', 'Entregas fora da ordem', 'num'], ['situacao', 'Situação', 'confere']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Rotas', linhas.length], ['Conferem', conta('Confere')], ['Com desvio', conta('Desvio')], ['Fora da ordem', conta('Fora da ordem')], ['Km a mais', soma(linhas.filter((l) => l.km_mais > 0), 'km_mais'), 'dec'],
             ['Sem GPS ou sem rota', conta('Sem GPS') + conta('Sem rota planejada')]],
         };
@@ -298,12 +318,12 @@ module.exports = function criar() {
         return {
           colunas: [...COL, ['status', 'Situação'], ['entregas', 'Entregas', 'num'], ['entregues', 'Entregues', 'num'], ['devolvidas', 'Devolvidas', 'num'], ['pendentes', 'Pendentes', 'num'], ['coletas', 'Coletas', 'num'],
             ['paradas', 'Paradas', 'num'], ['cidades', 'Cidades', 'num'], ['pct_sucesso', 'Sucesso', 'sla'], ['duracao', 'Duração (h)', 'dec'], ['por_hora', 'Paradas feitas por hora', 'dec']],
-          linhas, mais, agrupado: true,
+          linhas, mais, abrir: 'romaneio',
           resumo: [['Viagens', linhas.length], ['Entregas por viagem (média)', div(soma(linhas, 'entregas'), linhas.length), 'dec'], ['Maior', ent.length ? Math.max(...ent) : null], ['Menor', ent.length ? Math.min(...ent) : null],
             ['Coletas', soma(linhas, 'coletas')]],
         };
       } },
-    80: { titulo: 'Produtividade operacional', grupo: 'Produtividade', tela: 'operacao', desc: 'Dia a dia (mês a mês em períodos de mais de 62 dias): viagens, veículos e motoristas usados, entregas, coletas, volumes, peso, km e as médias por viagem e por veículo.',
+    80: { detalhe: viagensDe((v, x) => String(v.data || '').startsWith(x)), drill: 'periodo', titulo: 'Produtividade operacional', grupo: 'Produtividade', tela: 'operacao', desc: 'Dia a dia (mês a mês em períodos de mais de 62 dias): viagens, veículos e motoristas usados, entregas, coletas, volumes, peso, km e as médias por viagem e por veículo.',
       rodar: async (req, q, de, ate) => {
         const { lista } = await viagens(req, q, de, ate);
         const mes = (Date.parse(ate) - Date.parse(de)) / 86400000 > 62;

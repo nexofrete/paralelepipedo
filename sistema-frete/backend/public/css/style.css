@@ -2195,3 +2195,24 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .re-conceito.c-D { color: var(--vermelho); background: color-mix(in srgb, var(--vermelho) 12%, transparent); }
 .re-var { font-weight: 700; white-space: nowrap; } .re-var.bom { color: var(--verde); } .re-var.ruim { color: var(--vermelho); }
 .re-chave { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: .2px; white-space: nowrap; }
+
+/* Relatórios: mais filtros, totalizador, gráfico e drill-down */
+.re-filtros:not(.re-mais-aberto) .re-mais { display: none; }
+.re-acoes .re-info { flex: 1 1 260px; min-width: 0; } .re-acoes .re-botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.re-link { background: none; border: 0; padding: 0; color: var(--azul); cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.re-link:hover { text-decoration: underline; }
+.re-tab tfoot td { font-weight: 700; background: color-mix(in srgb, var(--texto) 5%, var(--bg-card)); border-top: 2px solid var(--borda); position: sticky; bottom: 0; }
+.re-tab tr.re-drill { cursor: pointer; } .re-tab tr.re-drill:hover td { background: color-mix(in srgb, var(--azul) 9%, transparent); }
+.re-tab tr.re-drill td:first-child { color: var(--azul); font-weight: 600; }
+.re-trilha { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px;
+  background: color-mix(in srgb, var(--azul) 8%, var(--bg-card)); border: 1px solid color-mix(in srgb, var(--azul) 25%, transparent); }
+.re-graf { padding: 12px 14px; margin-bottom: 12px; }
+.re-graf-tit { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--texto); } .re-graf-tit select { width: auto; display: inline-block; padding: 3px 8px; font-size: 12.5px; }
+.re-graf-barras { display: flex; flex-direction: column; gap: 5px; }
+.re-gbar { display: grid; grid-template-columns: minmax(120px, 260px) 1fr minmax(80px, auto); gap: 10px; align-items: center; font-size: 12px; }
+.re-gbar-rot { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--texto); }
+.re-gbar-trilho { height: 12px; background: color-mix(in srgb, var(--texto) 7%, transparent); border-radius: 6px; overflow: hidden; }
+.re-gbar-barra { display: block; height: 100%; background: var(--azul); border-radius: 6px; } .re-gbar-barra.neg { background: var(--verde); }
+.re-gbar-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--texto-fraco); white-space: nowrap; }
+.re-acoes .btn.ativo { border-color: var(--azul); color: var(--azul); }
+@media (max-width: 760px) { .re-gbar { grid-template-columns: 110px 1fr 80px; } }

@@ -36,7 +36,7 @@ module.exports = function criar(h) {
   async function auditar(req, q, de, ate, { comComplementar = false, onde = '' } = {}) {
     const params = [de, ate]; const extra = filtros(q, params);
     const { rows } = await consulta(req, `SELECT ${det.CAMPOS}, f.valor_total_calculado, f.glosa_valor, f.status_aprovacao, f.aprovado_por_nome, f.cte_nao_levou, f.fatura_id,
-        f.cliente, f.cidade, f.uf, f.cte_cidade_inicio, f.cte_cidade_fim, f.cubagem_m3, f.valor_faturado, f.redespacho, f.cidade_redespacho, f.tabela_preco_id_usada,
+        f.cliente, f.cidade, f.uf, f.transportadora, f.cte_cidade_inicio, f.cte_cidade_fim, f.cubagem_m3, f.valor_faturado, f.redespacho, f.cidade_redespacho, f.tabela_preco_id_usada,
         COALESCE(f.transportadora_cte, f.transportadora) AS transp, to_char(f.data_emissao_cte, 'YYYY-MM-DD') AS data_cte,
         (SELECT p.numero_nf FROM fretes p WHERE p.id = f.frete_principal_id) AS nf_principal
       FROM fretes f
@@ -69,10 +69,10 @@ module.exports = function criar(h) {
     ['em_apuracao', 'Em apuração (retidos)', 'moeda']];
   const linhaRes = (x) => ({ ...x, pct_rec: x.pct_recuperado == null ? null : x.pct_recuperado / 100 });
 
-  return {
-    11: { titulo: 'Auditoria de CT-e', grupo: 'Conferência', tela: 'auditoria', desc: 'Cada CT-e emitido no período: valor cobrado × frete pela tabela (dentro ou fora da tolerância), os apontamentos da conferência (componentes, taxas, peso, ICMS) e a decisão da auditoria.',
-      rodar: async (req, q, de, ate) => {
-        const { lista, mais } = await auditar(req, q, de, ate);
+  // Lista do relatório 11 (também o detalhe dos agrupados): cada CT-e com cobrado × tabela, apontamentos e decisão.
+  async function listaAuditoria(req, q, de, ate, filtro = null) {
+        const { lista: todos, mais } = await auditar(req, q, de, ate);
+        const lista = filtro ? todos.filter(filtro) : todos;
         const linhas = lista.map((l) => ({ ...base(l), cobrado: l.cobrado, tabela: l.tabela, dif: l.dif, situacao: l.situacao, apont: l.a?.apontamentos.length || 0,
           apontamentos: (l.a?.apontamentos || []).map((p) => p.texto).join(' · '), decisao: l.decisao }));
         const conta = (s) => linhas.filter((l) => l.situacao === s).length;
@@ -83,7 +83,12 @@ module.exports = function criar(h) {
           resumo: [['CT-e auditados', linhas.length], ['Conferem', conta('Confere')], ['Acima da tabela', conta('Acima da tabela')], ['Abaixo da tabela', conta('Abaixo da tabela')],
             ['Sem tabela', conta('Sem tabela')], ['Com apontamento', linhas.filter((l) => l.apont).length], ['Cobrado', soma(linhas, 'cobrado'), 'moeda']],
         };
-      } },
+  }
+  const daTransp = (req, q, de, ate, valor) => listaAuditoria(req, q, de, ate, (l) => (l.transp || '') === valor || (l.transportadora || '') === valor);
+
+  return {
+    11: { titulo: 'Auditoria de CT-e', grupo: 'Conferência', tela: 'auditoria', desc: 'Cada CT-e emitido no período: valor cobrado × frete pela tabela (dentro ou fora da tolerância), os apontamentos da conferência (componentes, taxas, peso, ICMS) e a decisão da auditoria.',
+      rodar: (req, q, de, ate) => listaAuditoria(req, q, de, ate) },
     12: { titulo: 'Divergência de frete', grupo: 'Conferência', tela: 'auditoria', desc: 'CT-e do período cujo valor cobrado difere do frete calculado pela tabela além da tolerância (para mais ou para menos), com os componentes que explicam a diferença.',
       rodar: async (req, q, de, ate) => {
         const { lista, mais } = await auditar(req, q, de, ate);
@@ -98,7 +103,7 @@ module.exports = function criar(h) {
           resumo: [['Divergentes', linhas.length], ['Acima', acima.length], ['Cobrado a mais', soma(acima, 'dif'), 'moeda'], ['Abaixo', abaixo.length], ['Cobrado a menos', -soma(abaixo, 'dif'), 'moeda']],
         };
       } },
-    13: { titulo: 'Frete contratado x cobrado', grupo: 'Conferência', tela: 'auditoria', desc: 'Por transportadora: o frete contratado (pela tabela negociada) × o que foi cobrado nos CT-e do período, e quantos CT-e conferem, vieram acima, abaixo ou sem tabela.',
+    13: { detalhe: daTransp, titulo: 'Frete contratado x cobrado', grupo: 'Conferência', tela: 'auditoria', desc: 'Por transportadora: o frete contratado (pela tabela negociada) × o que foi cobrado nos CT-e do período, e quantos CT-e conferem, vieram acima, abaixo ou sem tabela.',
       rodar: async (req, q, de, ate) => {
         const { lista } = await auditar(req, q, de, ate);
         const m = new Map();
@@ -119,7 +124,7 @@ module.exports = function criar(h) {
             ['Cobrado sem tabela', soma(linhas, 'sem_tabela_valor'), 'moeda']],
         };
       } },
-    14: { titulo: 'Auditoria por transportadora', grupo: 'Resultado', tela: 'auditoria', desc: 'Erros, divergências e cobranças de cada transportadora no período (o mesmo cálculo da tela Resultado da auditoria), com os apontamentos da conferência em detalhe. Só o filtro de transportadora vale aqui.',
+    14: { detalhe: daTransp, titulo: 'Auditoria por transportadora', grupo: 'Resultado', tela: 'auditoria', desc: 'Erros, divergências e cobranças de cada transportadora no período (o mesmo cálculo da tela Resultado da auditoria), com os apontamentos da conferência em detalhe. Só o filtro de transportadora vale aqui.',
       rodar: async (req, q, de, ate) => {
         const [res, { lista }] = await Promise.all([resultado(req, q, de, ate), auditar(req, { transportadora: q.transportadora }, de, ate)]);
         const ap = new Map();
@@ -138,7 +143,7 @@ module.exports = function criar(h) {
             ['Aprovado divergente', res.total.aprovado_divergente, 'moeda']],
         };
       } },
-    15: { titulo: 'Auditoria por período', grupo: 'Resultado', tela: 'auditoria', desc: 'Total de divergências mês a mês no período (pela emissão do CT-e): CT-e, divergentes, cobrado a mais, recuperado e o que ficou em apuração. Só o filtro de transportadora vale aqui.',
+    15: { detalhe: (req, q, de, ate, valor) => listaAuditoria(req, q, de, ate, (l) => String(l.data_cte || '').startsWith(valor)), drill: 'mes', titulo: 'Auditoria por período', grupo: 'Resultado', tela: 'auditoria', desc: 'Total de divergências mês a mês no período (pela emissão do CT-e): CT-e, divergentes, cobrado a mais, recuperado e o que ficou em apuração. Só o filtro de transportadora vale aqui.',
       rodar: async (req, q, de, ate) => {
         const res = await resultado(req, q, de, ate);
         const linhas = res.por_mes.map((m) => ({ mes: m.chave, ...linhaRes(m), pct_div: div(m.divergentes, m.ctes) })).reverse();
@@ -323,7 +328,7 @@ module.exports = function criar(h) {
             ['Com valor acima da tabela', linhas.filter((l) => l.situacao.includes('Acima')).length], ['Frete / valor das notas', div(soma(linhas, 'total'), soma(rows, 'valor_nf')), 'pct']],
         };
       } },
-    24: { titulo: 'Economia gerada pela auditoria', grupo: 'Resultado', tela: 'auditoria', desc: 'Valores recuperados (glosas manuais, por regra e por contestação, créditos abatidos em fatura e CT-e barrados) e evitados (o que os CT-e ainda retidos cobram a mais), por transportadora. Só o filtro de transportadora vale aqui.',
+    24: { detalhe: daTransp, titulo: 'Economia gerada pela auditoria', grupo: 'Resultado', tela: 'auditoria', desc: 'Valores recuperados (glosas manuais, por regra e por contestação, créditos abatidos em fatura e CT-e barrados) e evitados (o que os CT-e ainda retidos cobram a mais), por transportadora. Só o filtro de transportadora vale aqui.',
       rodar: async (req, q, de, ate) => {
         const res = await resultado(req, q, de, ate);
         const linhas = res.por_transportadora.map((t) => ({ grupo: t.chave, glosas_manual: t.glosas_manual, glosas_regra: t.glosas_regra, glosas_contestacao: t.glosas_contestacao, creditos: t.creditos,

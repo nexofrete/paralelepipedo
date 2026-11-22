@@ -407,6 +407,10 @@ def parte_operacao(g):
         ['79', 'Entregas por viagem', 'Entregas, coletas, cidades, % de sucesso e paradas feitas por hora em cada viagem.'],
         ['80', 'Produtividade operacional', 'Dia a dia (ou mês a mês): viagens, veículos, motoristas, entregas, coletas, volumes, peso, km e médias.'],
     ], [0.1, 0.28, 0.62])
+    s.append(P('A tela tem os mesmos recursos das outras telas de relatórios (Parte 2, "Recursos de todas as telas de relatórios"): '
+               '<b>Mais filtros</b> (unidade, transportadora parceira, cliente, NF-e, CT-e e situação do romaneio), situação no relatório, '
+               'totalizador, gráfico, Excel, PDF e impressão. Clique numa linha de 73 (veículo), 77 (motorista) ou 80 (dia) para ver os '
+               'romaneios dela; dois cliques num romaneio abrem o romaneio com os CT-e.'))
 
     # 36
     s += h1('36. Filiais, transferências e parceiros (redespacho)')

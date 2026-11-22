@@ -48,6 +48,26 @@
     trend: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
     expand: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+    cloud: '<path d="M12 13v8l-4-4M12 21l4-4"/><path d="M4.39 15.39A5 5 0 0 1 7 6.1 7 7 0 0 1 20 10a4.5 4.5 0 0 1 .5 8.97"/>',
+    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+    save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/>',
+    eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
+    user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    pin: '<path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    phone: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',
+    map: '<path d="M14.11 5.53a2 2 0 0 0 1.78 0l3.66-1.83A1 1 0 0 1 21 4.6v12.78a1 1 0 0 1-.55.9l-4.56 2.27a2 2 0 0 1-1.78 0l-4.22-2.11a2 2 0 0 0-1.78 0l-3.66 1.83A1 1 0 0 1 3 19.38V6.62a1 1 0 0 1 .55-.9l4.56-2.27a2 2 0 0 1 1.78 0z"/><path d="M15 5.76v15M9 3.24v15"/>',
+    zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>',
+    key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
+    plug: '<path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+    target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    rows: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/>',
     archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
   };
   // Grupos do menu e itens do alto → ícone.
@@ -115,21 +135,60 @@
   // Emojis dos botões e dos cartões que têm um ícone de linha equivalente (os outros ficam como estão).
   const POR_EMOJI = { '⬇': 'download', '📥': 'download', '📤': 'upload', '🖨': 'printer', '📄': 'file', '🧾': 'receipt', '📊': 'chart', '📈': 'trend', '🔎': 'search', '🔍': 'search',
     '✏': 'pencil', '🗑': 'trash', '📋': 'clipboard', '⚙': 'sliders', '⟳': 'refresh', '🔄': 'refresh', '📷': 'camera', '📺': 'monitor', '✅': 'check', '✔': 'check', '✖': 'x',
-    '↗': 'external', '🔗': 'link', '💬': 'message', '🏷': 'tag', '📅': 'calendar', '📦': 'package', '💵': 'wallet', '🚨': 'alert', '⏰': 'clock', '➕': 'plus', '⛶': 'expand', '📧': 'mail', '✉': 'mail', '📨': 'send', '🗜': 'archive', '🗂': 'archive' };
+    '↗': 'external', '🔗': 'link', '💬': 'message', '🏷': 'tag', '📅': 'calendar', '📦': 'package', '💵': 'wallet', '🚨': 'alert', '⏰': 'clock', '➕': 'plus', '⛶': 'expand', '📧': 'mail', '✉': 'mail', '📨': 'send', '🗜': 'archive', '🗂': 'archive',
+    '📡': 'cloud', '🛡': 'shield', '🕘': 'clock', '🕒': 'clock', '⏱': 'clock', '💾': 'save', '👁': 'eye', '👤': 'user', '👥': 'users', '📌': 'pin', '📍': 'pin',
+    '🔒': 'lock', '🔐': 'lock', '📱': 'phone', '🗺': 'map', '⚡': 'zap', '📁': 'folder', '📂': 'folder', '🌐': 'globe', '🔑': 'key', '🔌': 'plug', '🧮': 'calculator',
+    '⚖': 'scale', '💸': 'wallet', '💰': 'wallet', '🚚': 'truck', '🚛': 'truck', '🔶': 'alert', '⚠': 'alert', '⬆': 'upload', '🎫': 'tag', '🎯': 'target', '🏆': 'trophy',
+    '🏠': 'home', '🔁': 'refresh', '🤝': 'users', '🧩': 'idcard', '🧾': 'receipt', '📑': 'file' };
   const INICIO = new RegExp(`^\\s*(${Object.keys(POR_EMOJI).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\uFE0F?\\s*`, 'u');
   function iconizar(el, tam) {
     // Vale toda vez que o texto do botão muda (as telas trocam o texto de alguns botões depois).
-    if (el.firstElementChild?.classList.contains('btn-ic') && el.firstChild === el.firstElementChild) return;
-    const no = [...el.childNodes].find((x) => x.nodeType === 3 && x.textContent.trim());
-    const m = no && INICIO.exec(no.textContent);
-    if (!m) return;
-    no.textContent = no.textContent.slice(m[0].length);
-    const s = document.createElement('span'); s.className = 'btn-ic'; s.innerHTML = svg(POR_EMOJI[m[1]], tam);
-    el.insertBefore(s, no);
+    if (el.querySelector('.btn-ic')) return;
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let no = w.nextNode(); while (no && !no.textContent.trim()) no = w.nextNode();
+    if (!no) return;
+    const m = INICIO.exec(no.textContent);
+    if (m) {
+      no.textContent = no.textContent.slice(m[0].length);
+      const s = document.createElement('span'); s.className = 'btn-ic'; s.innerHTML = svg(POR_EMOJI[m[1]], tam);
+      no.parentNode.insertBefore(s, no);
+      return;
+    }
+    // Emoji sem ícone equivalente: sai, se o botão tiver texto além dele.
+    const e = EMOJI.exec(no.textContent);
+    if (e && no.textContent.slice(e[0].length).trim()) no.textContent = no.textContent.slice(e[0].length);
   }
   function iconizarTudo(raiz = document) {
     raiz.querySelectorAll?.('main .btn, main button.btn-secundario, .modal-overlay .btn').forEach((b) => iconizar(b, 15));
-    raiz.querySelectorAll?.('.kpi-header > span:last-child').forEach((s) => { if (!s.dataset.icOk && POR_EMOJI[s.textContent.trim().replace(/\uFE0F/g, '')]) { s.innerHTML = svg(POR_EMOJI[s.textContent.trim().replace(/\uFE0F/g, '')], 18); s.classList.add('kpi-ic'); } s.dataset.icOk = '1'; });
+    // Ícones dos cartões de resumo: emoji → ícone de linha num quadradinho.
+    raiz.querySelectorAll?.('.kpi-header > span:last-child, .vg-fat-kpi-ic, .vg-etapa-topo > span, .dropzone .icone, .search-box > span').forEach((s) => {
+      if (s.querySelector('.ic')) return;
+      const k = s.textContent.trim().replace(/\uFE0F/g, '');
+      if (POR_EMOJI[k]) { s.innerHTML = svg(POR_EMOJI[k], 18); s.classList.add('kpi-ic'); }
+    });
+    // Títulos de seção, colunas e barras: só o texto.
+    raiz.querySelectorAll?.('main h2, main h3, main h4, main .vg-titulo, main .vg-fat-sub, main .kanban-coluna-titulo, main summary, main .cr-titulo, main .campo > label, .familia-titulo, .familia-aba, .modal-overlay h3, .modal-overlay h4')
+      .forEach(tirarEmoji);
+    rodape();
+  }
+  // Rodapé do menu: Tema, Modo compacto, Minha segurança, Sobre e Sair numa barra de ícones (o nome aparece ao parar o mouse).
+  function rodape() {
+    const sair = document.getElementById('btnSair'); if (!sair) return;
+    const caixa = sair.parentElement; caixa.classList.add('rodape-menu');
+    const botoes = [['btnAlternarTema', null], ['irCompacto', 'rows'], ['btnMinhaSeguranca', 'lock'], ['btnSobre', 'info'], ['btnSair', 'logout']];
+    for (const [id, ic] of botoes) {
+      const b = document.getElementById(id); if (!b) continue;
+      b.classList.add('rodape-btn');
+      if (!b.title) b.title = b.textContent.trim();
+      let s = b.querySelector(':scope > .rodape-ic');
+      if (!s) { s = document.createElement('span'); s.className = 'rodape-ic'; b.prepend(s); }
+      const nome = id === 'btnAlternarTema' ? (/claro/i.test(document.getElementById('textoTema')?.textContent || '') ? 'sun' : 'moon') : ic;
+      if (s.dataset.ic !== nome) { s.innerHTML = svg(nome, 18); s.dataset.ic = nome; }
+      const rot = id === 'btnAlternarTema' ? document.getElementById('textoTema')?.textContent : b.querySelector('span:not(.rodape-ic):not(.nav-badge):not(#iconeTema):last-of-type')?.textContent || b.textContent;
+      if (rot && rot.trim()) b.setAttribute('aria-label', rot.trim());
+      if (id !== 'btnSair' && rot) b.title = rot.trim();
+    }
+    if (sair.parentElement.lastElementChild !== document.getElementById('versaoSistema')) { /* ordem original mantida */ }
   }
   let agenda = null;
   new MutationObserver(() => { clearTimeout(agenda); agenda = setTimeout(() => iconizarTudo(), 60); }).observe(document.body, { childList: true, subtree: true });

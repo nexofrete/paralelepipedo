@@ -31,6 +31,8 @@ def parte_operacao(g):
     s.append(P('No alto de cada tela, a <b>trilha</b> mostra onde você está (por exemplo, Finanças » Financeiro » Contas a receber). '
                'Os grupos do menu, os itens do alto e os títulos das telas usam <b>ícones de linha</b>, e os botões mais comuns '
                '(Excel, PDF, Imprimir, Editar, Excluir, Atualizar...) também; os subitens do menu ficam só com o nome.'))
+    s.append(P('No pé do menu, embaixo do seu nome, fica uma barra de ícones: tema claro/escuro, modo compacto, Minha segurança, '
+               'Sobre o sistema e, à direita, Sair. Pare o mouse em cima de um ícone para ver o nome.'))
     s += aviso('nota', 'Até a versão 1.72 havia uma chave <b>TMS | Embarcador</b> no alto do menu, que mostrava uma parte de cada '
                        'vez. Ela saiu: agora as duas partes ficam no mesmo menu, cada tela no grupo do seu assunto. Os códigos '
                        'de tela (Ctrl+K) continuam os mesmos.')

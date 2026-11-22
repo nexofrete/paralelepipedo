@@ -1134,6 +1134,29 @@ def parte_uso(g):
         ['Reentregas e devoluções', 'Custo por transportadora e por cliente.'],
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
+    s += h2('Relatórios de auditoria (tela 327)')
+    s.append(P('Em Gestão e relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24, na mesma tela dos '
+               'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias, pela emissão do CT-e), filtros, totais em '
+               'cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>; dois cliques numa linha abrem a nota. Os números são os '
+               'mesmos das telas de auditoria: o frete pela tabela gravado no cálculo, a tolerância configurada (geral, por '
+               'transportadora e por componente), a conferência componente a componente e o Resultado da auditoria.'))
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['11', 'Auditoria de CT-e', 'Cada CT-e: cobrado x pela tabela, a situação (confere, acima, abaixo, sem tabela), os apontamentos da conferência e a decisão (retido, aprovado, glosado, reprovado, faturado).'],
+        ['12', 'Divergência de frete', 'Só os CT-e fora da tolerância, para mais ou para menos, com o componente que explica a diferença e a tabela usada.'],
+        ['13', 'Frete contratado x cobrado', 'Por transportadora: contratado pela tabela, cobrado, diferença e quantos CT-e conferem, vieram acima, abaixo ou sem tabela.'],
+        ['14', 'Auditoria por transportadora', 'Cobrado a mais, glosas, créditos, CT-e barrados, recuperado, aprovado divergente e em apuração, mais os apontamentos (taxas não previstas, peso, ICMS/CFOP).'],
+        ['15', 'Auditoria por período', 'O mesmo, mês a mês, com o % de CT-e divergentes.'],
+        ['16', 'Cobranças indevidas', 'Componente acima da tabela ou taxa não prevista, CT-e por CT-e, com quanto já foi glosado. Parcelas só trocadas, com o total certo, não contam.'],
+        ['17', 'Fretes acima da tabela', 'CT-e cobrados acima do contratado, do maior excesso para o menor, e quanto ainda está retido.'],
+        ['18', 'Fretes abaixo da tabela', 'CT-e cobrados abaixo do calculado. Muitos da mesma transportadora costumam indicar tabela desatualizada no sistema.'],
+        ['19', 'Auditoria de ICMS', 'CST, base, alíquota cobrada x esperada pela rota (7% ou 12%; no redespacho, o trecho até o redespacho), valor x base x alíquota e CFOP.'],
+        ['20', 'Auditoria de adicionais', 'Pedágio, GRIS, TDE, TDA, TRT, despacho, descarga e outras taxas, cobrado x tabela (taxa que a tabela não prevê aparece como "Não prevista"), e os CT-e de reentrega.'],
+        ['21', 'Auditoria de peso', 'Peso real das notas, cubagem, peso cubado, peso considerado no cálculo e o peso do CT-e; aponta o CT-e que cobrou peso maior que o real e o cubado.'],
+        ['22', 'Auditoria de distância', 'Km estimado entre as cidades de início e fim do CT-e (linha reta x 1,2; o CT-e e as tabelas não trazem km), a cidade pela qual a tabela foi calculada e o frete por km. Aponta tarifa de outra cidade e frete por km 50% acima do padrão (mediana) da transportadora.'],
+        ['23', 'Auditoria de redespacho', 'Notas com redespacho: o CT-e até a cidade do redespacho e o do redespacho, cada um x a tabela, o custo total e as notas sem o CT-e do redespacho.'],
+        ['24', 'Economia gerada pela auditoria', 'Recuperado (glosas manuais, por regra e por contestação, créditos em fatura e CT-e barrados) e evitado (o que os CT-e retidos cobram a mais), por transportadora.'],
+    ], [0.1, 0.28, 0.62])
+    s.append(P('Nos relatórios 14, 15 e 24 (os do Resultado da auditoria) só o filtro de transportadora vale.'))
     s += h2('Relatórios NF-e x CT-e (tela 326)')
     s.append(P('Em Gestão e relatórios, <b>Relatórios NF-e x CT-e</b> (Ctrl+K e 326) traz os relatórios 25 a 34, na mesma tela dos '
                'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias), filtros de transportadora, cliente, cidade '

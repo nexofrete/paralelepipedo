@@ -1,5 +1,5 @@
 // =====================================================================
-// Gestão e relatórios » 📦 Relatórios de entregas (tela 324) 🏆 Desempenho das transportadoras (tela 325, relatórios 61 a 70) e 🔗 Relatórios NF-e × CT-e (tela 326, 25 a 34): os relatórios 35 a 50 da lista da empresa (entregas
+// Gestão e relatórios » 📦 Relatórios de entregas (tela 324) 🏆 Desempenho das transportadoras (tela 325, relatórios 61 a 70) , 🔗 Relatórios NF-e × CT-e (tela 326, 25 a 34) e 🔎 Relatórios de auditoria (tela 327, 11 a 24): os relatórios 35 a 50 da lista da empresa (entregas
 // previstas, realizadas, atrasadas, de hoje, próximos 7 dias, pendentes, em trânsito; por transportadora, cliente,
 // cidade e estado; ocorrências, reentregas, comprovantes, rastreamento e SLA). Regras em src/relatoriosEntregas.js.
 // Usa do dashboard.js: apiFetch, mostrarAlerta, token; do indicadores.js: exportarExcel; do periodo.js: Periodo;
@@ -32,6 +32,8 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     if (tipo === 'dec') return v == null ? '—' : num(v, 1);
     if (tipo === 'moeda') return moeda(v);
     if (tipo === 'pct') return pct(v);
+    if (tipo === 'difcusto') return v == null ? '—' : `<span class="re-var ${v > 0.004 ? 'ruim' : v < -0.004 ? 'bom' : ''}">${v > 0 ? '+' : ''}${moeda(v)}</span>`;
+    if (tipo === 'auditoria') return v ? `<span class="re-sla ${v === 'Confere' ? 'bom' : /Acima|Não prevista/.test(v) ? 'ruim' : /Abaixo/.test(v) ? 'azul' : 'medio'}">${esc(v)}</span>` : '—';
     if (tipo === 'chave') return v ? `<span class="re-chave">${esc(v)}</span>` : '—';
     if (tipo === 'confere') return v ? `<span class="re-sla ${['Confere', 'Válida'].includes(v) ? 'bom' : /^Sem /.test(v) ? 'medio' : 'ruim'}">${esc(v)}</span>` : '—';
     if (tipo === 'moeda4') return v == null ? '—' : `R$ ${num(v, 4)}`;
@@ -51,7 +53,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     }
     return v == null || v === '' ? '—' : esc(v);
   }
-  const ehNumero = (tipo) => ['num', 'dec', 'moeda', 'moeda4', 'pct', 'sla', 'atraso', 'nota', 'posicao', 'varcusto', 'varpp'].includes(tipo);
+  const ehNumero = (tipo) => ['num', 'dec', 'moeda', 'moeda4', 'difcusto', 'pct', 'sla', 'atraso', 'nota', 'posicao', 'varcusto', 'varpp'].includes(tipo);
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
   function montar() {
@@ -206,5 +208,6 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   });
 }
 telaRelatorios({ pagina: 'relatorios-entregas', conteudo: 'reConteudo', P: 're', tela: 'entregas', primeiro: 35, chaveLs: 'nexofreteRelEntregas', periodoPadrao: '30d' });
+telaRelatorios({ pagina: 'relatorios-auditoria', conteudo: 'auConteudo', P: 'au', tela: 'auditoria', primeiro: 11, chaveLs: 'nexofreteRelAuditoria', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

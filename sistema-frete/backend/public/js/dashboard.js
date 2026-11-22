@@ -107,7 +107,7 @@ const podeVerFaturas = usuario.perfil === 'admin' || (!!usuario.pode_ver_todos &
   !!(usuario.pode_conferir_fatura || usuario.pode_aprovar_pagamento || usuario.pode_ver_financeiro || usuario.pode_ver_auditoria));
 
 // Telas que dependem de permissão própria.
-[['auditoria-frete', podeVerAuditoria], ['financeiro', podeVerFinanceiro], ['relatorios', podeVerRelatorios], ['relatorios-entregas', podeVerRelatorios], ['desempenho-transportadoras', podeVerRelatorios], ['relatorios-nfe-cte', podeVerRelatorios], ['sinistros', podeVerSinistros]]
+[['auditoria-frete', podeVerAuditoria], ['financeiro', podeVerFinanceiro], ['relatorios', podeVerRelatorios], ['relatorios-entregas', podeVerRelatorios], ['desempenho-transportadoras', podeVerRelatorios], ['relatorios-nfe-cte', podeVerRelatorios], ['relatorios-auditoria', podeVerRelatorios], ['sinistros', podeVerSinistros]]
   .forEach(([pagina, pode]) => {
     if (!pode) document.querySelector(`.nav-item[data-pagina="${pagina}"]`)?.classList.add('oculto');
   });

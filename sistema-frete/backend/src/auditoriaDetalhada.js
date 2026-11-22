@@ -153,7 +153,7 @@ const CAMPOS = `f.id, f.numero_cte, f.numero_nf, f.cliente, f.data_emissao_cte, 
            (SELECT tr.id FROM transportadoras tr WHERE UPPER(TRIM(tr.razao_social)) = UPPER(TRIM(COALESCE(f.transportadora_cte, f.transportadora))) LIMIT 1)) AS transportadora_id_tol`;
 async function somasCobertas(ids) {
   if (!ids.length) return new Map();
-  const { rows } = await pool.query('SELECT cte_coberto_por AS id, SUM(peso_kg)::float AS peso, SUM(qtd_volumes)::int AS volumes FROM fretes WHERE cte_coberto_por = ANY($1::int[]) GROUP BY 1', [ids]);
+  const { rows } = await pool.query('SELECT cte_coberto_por AS id, SUM(peso_kg)::float AS peso, SUM(qtd_volumes)::int AS volumes, SUM(cubagem_m3)::float AS cubagem FROM fretes WHERE cte_coberto_por = ANY($1::int[]) GROUP BY 1', [ids]);
   return new Map(rows.map((r) => [r.id, r]));
 }
 

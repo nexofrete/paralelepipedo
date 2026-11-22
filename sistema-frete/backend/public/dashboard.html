@@ -56,7 +56,16 @@
            data-modulo: some quando a empresa não usa aquela parte (Cadastros » Empresa » Módulos). -->
       <div class="nav-item oculto" data-pagina="hoje" id="navHoje" data-modulo="transportadora">🏠 Hoje</div>
       <div class="nav-tsub nav-inicio oculto" id="navInicioEmb" data-ir="visao-geral" data-modulo="embarcador"><span class="nav-rotulo">🏠 Início</span></div>
+      <div class="nav-item" data-pagina="mensagens" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>✉️ Mensagens</span>
+        <span id="badgeMensagens" class="oculto" style="background:var(--vermelho); color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
+      </div>
+      <div class="nav-item" data-pagina="agenda" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>📅 Agenda</span>
+        <span id="badgeAgenda" class="oculto" style="background:#f97316; color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
+      </div>
 
+      <div class="nav-bloco">Operar</div>
       <div class="nav-grupo oculto" data-grupo="operacao" data-modulo="transportadora">🚚 Operação <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="operacao" data-modulo="transportadora">
         <div class="nav-tsub" data-ir="coletas">📦 Coletas</div>
@@ -67,50 +76,34 @@
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="romaneios">🚚 Romaneios</div>
         <div class="nav-tsub" data-ir="ocorrencias" data-aba="entregas">📍 Ocorrências de entrega</div>
         <div class="nav-tsub" data-ir="monitoramento">🛰 Monitoramento (mapa)</div>
-        <div class="nav-tsub" data-ir="relatorios-operacao">🗺 Relatórios de rotas e operação</div>
         <div class="nav-tsub" data-ir="conferencia" data-aba="conferir">🔎 Conferência (bipagem)</div>
         <div class="nav-tsub" data-ir="conferencia" data-aba="etiquetas">🏷 Etiquetas de volume</div>
         <div class="nav-tsub" data-ir="armazem">🏬 Armazém (armazenagem)</div>
         <div class="nav-tsub" data-ir="filiais" data-aba="estoque">🏢 Onde está a mercadoria</div>
         <div class="nav-tsub" data-ir="filiais" data-aba="transferencias">🔀 Transferências entre filiais</div>
         <div class="nav-tsub" data-ir="paletes">🟫 Paletes (vale-palete)</div>
-      </div>
-
-      <div class="nav-grupo oculto" data-grupo="cadastros">📇 Cadastros <span class="nav-seta">▸</span></div>
-      <div class="nav-sub oculto" data-grupo="cadastros">
-        <div class="nav-tsub" data-ir="cadastros" data-aba="clientes">👥 Clientes</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="fornecedores">🏭 Fornecedores</div>
-        <div class="nav-tsub" data-ir="cadastros" data-aba="transportadoras">🚛 Transportadoras</div>
-        <div class="nav-tsub" data-ir="emissao-cte" data-aba="frota" data-modulo="transportadora">🚚 Veículos e motoristas</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="conjuntos_veiculo" data-modulo="transportadora">🔗 Conjuntos (cavalo + carretas)</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="ajudantes" data-modulo="transportadora">🧑‍🔧 Ajudantes</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="produtos">📦 Produtos</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="tipos_mercadoria">🏷 Tipos de mercadoria</div>
-        <div class="nav-tsub" data-ir="cadastros" data-aba="tabelas-preco">💲 Tabelas de preço</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="regioes_atendimento">🗺 Regiões de atendimento</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="tipos_operacao" data-modulo="transportadora">🧾 Tipos de operação (CT-e)</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="condicoes_pagamento">📅 Condições de pagamento</div>
-        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="departamentos">🏢 Departamentos</div>
-        <div class="nav-tsub" data-ir="cadastros" data-aba="usuarios">🔑 Usuários</div>
-        <div class="nav-tsub" data-ir="cadastros" data-aba="empresa">🏛 Empresa</div>
-      </div>
-
-      <div class="nav-grupo oculto" data-grupo="transportadoras">🤝 Transportadoras e parceiros <span class="nav-seta">▸</span></div>
-      <div class="nav-sub oculto" data-grupo="transportadoras">
-        <div class="nav-tsub" data-familia="transportadoras">🏆 Parceiros, ranking e escolha</div>
-      </div>
-
-      <div class="nav-grupo oculto" data-grupo="documentos">📄 Documentos <span class="nav-seta">▸</span></div>
-      <div class="nav-sub oculto" data-grupo="documentos">
-        <div class="nav-tsub" data-ir="upload" data-modulo="embarcador">📤 Enviar XML</div>
-        <div class="nav-tsub" data-ir="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
-        <div class="nav-tsub" data-ir="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
-        <!-- "Fretes (todos os registros)" (402) saiu do menu: substituída pela Consulta de notas (403). Fica escondida e ainda abre pelo Ctrl+K 402. -->
-        <div class="nav-tsub nav-escondido" data-ir="registros" data-modulo="embarcador">🗂 Fretes (todos os registros) — antiga</div>
-        <div class="nav-tsub" data-familia="nfecte" data-modulo="embarcador">🔗 NF-e × CT-e</div>
+        <div class="nav-tsub" data-ir="parceiros">🤝 Parceiros e redespacho</div>
         <div class="nav-tsub" data-ir="edi">🔁 EDI</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="relatorios-operacao">🗺 Rotas e operação</div>
       </div>
-
+      <div class="nav-grupo oculto" data-grupo="fretes" data-modulo="embarcador">📦 Fretes contratados <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="fretes" data-modulo="embarcador">
+        <div class="nav-tsub" data-ir="upload">📤 Enviar XML</div>
+        <div class="nav-tsub" data-ir="notas-fiscais">🧾 Consulta de notas</div>
+        <div class="nav-tsub" data-ir="ctes-recebidos">🚛 CT-e recebidos</div>
+        <!-- "Fretes (todos os registros)" (402) saiu do menu: substituída pela Consulta de notas (403). Fica escondida e ainda abre pelo Ctrl+K 402. -->
+        <div class="nav-tsub nav-escondido" data-ir="registros">🗂 Fretes (todos os registros) — antiga</div>
+        <div class="nav-tsub" data-subaba="nfeCteInc">🔗 Inconsistências NF-e × CT-e</div>
+        <div class="nav-tsub" data-subaba="nfeCte">📑 Notas e seus CT-e</div>
+        <div class="nav-tsub" data-subaba="entregas">🚚 Entregas previstas</div>
+        <div class="nav-tsub" data-subaba="semMapa">🗺️ Notas sem mapa <span class="nav-badge oculto" id="navBadgeSemMapa"></span></div>
+        <div class="nav-tsub" data-subaba="consolidacao">🚚 Consolidar rotas</div>
+        <div class="nav-tsub" data-subaba="roteirizar">🗺️ Roteirizar entregas</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="relatorios-entregas">📦 Entregas e rastreamento</div>
+        <div class="nav-tsub" data-ir="relatorios-nfe-cte">🔗 NF-e × CT-e</div>
+      </div>
       <div class="nav-grupo oculto" data-grupo="patio" data-modulo="embarcador">🚧 Pátio e portaria <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="patio" data-modulo="embarcador">
         <div class="nav-tsub" data-ir="patio" data-aba="painel">📺 Painel do pátio</div>
@@ -118,20 +111,28 @@
         <div class="nav-tsub" data-ir="patio" data-aba="agenda">📅 Agendamentos</div>
         <div class="nav-tsub" data-ir="patio" data-aba="docas">🏗 Docas e regras</div>
       </div>
-
       <div class="nav-grupo oculto" data-grupo="auditoria" data-modulo="embarcador">⚖️ Auditoria de fretes <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="auditoria" data-modulo="embarcador">
-        <div class="nav-tsub" data-familia="auditoria">⚖️ Auditoria de frete</div>
+        <div class="nav-tsub" data-ir="auditoria-frete">⚖️ Fretes auditados</div>
+        <div class="nav-tsub" data-subaba="auditoriaFrete">🔎 Conferência de CT-e</div>
+        <div class="nav-tsub" data-subaba="cobIndevidas">💸 Cobranças indevidas</div>
+        <div class="nav-tsub" data-subaba="anomalias">🔍 Anomalias e duplicidades</div>
         <div class="nav-tsub" data-ir="sinistros">📦 Sinistros</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="relatorios-auditoria">🔎 Relatórios de auditoria</div>
+      </div>
+      <div class="nav-grupo oculto" data-grupo="clientes" data-modulo="transportadora">🌐 Clientes <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="clientes" data-modulo="transportadora">
+        <div class="nav-tsub" data-ir="sac">🎧 SAC (chamados)</div>
+        <div class="nav-tsub" data-ir="portal-cliente" data-so-admin="1">🌐 Portal do cliente</div>
       </div>
 
+      <div class="nav-bloco">Finanças</div>
       <div class="nav-grupo oculto" data-grupo="financeiro">💰 Financeiro <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="financeiro">
-        <div class="nav-tsub" data-ir="faturamento" data-aba="faturas">🧾 Faturamento</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="resumo">📈 Contas a receber</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="boletos">🏦 Boletos (CNAB)</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="regua">📣 Régua de cobrança</div>
-        <div class="nav-tsub" data-ir="faturamento" data-aba="extras">➕ Serviços extras</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="contas">💸 Contas a pagar</div>
         <div class="nav-tsub" data-ir="financeiro" data-modulo="embarcador">🚛 Pagamento de fretes contratados</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="acertos">🧾 Acerto de viagem</div>
@@ -139,46 +140,53 @@
         <div class="nav-tsub" data-ir="bancos" data-aba="contas">🏦 Caixa e bancos</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="conciliacao">🔗 Conciliação bancária</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="fluxo">📅 Fluxo de caixa</div>
-        <div class="nav-tsub" data-ir="contabil" data-aba="livro">🧮 Fiscal e contabilidade</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="relatorios-financeiros">💵 Fretes a pagar e pagos</div>
+        <div class="nav-tsub" data-ir="centros" data-aba="resultado">🎯 Centros de custo</div>
+      </div>
+      <div class="nav-grupo oculto" data-grupo="faturamento" data-modulo="transportadora">🧾 Faturamento <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="faturamento" data-modulo="transportadora">
+        <div class="nav-tsub" data-ir="faturamento" data-aba="faturas">🧾 Faturas</div>
+        <div class="nav-tsub" data-ir="faturamento" data-aba="afaturar">➕ A faturar (CT-e sem fatura)</div>
+        <div class="nav-tsub" data-ir="faturamento" data-aba="extras">➕ Serviços extras</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
+      </div>
+      <div class="nav-grupo oculto" data-grupo="fiscal" data-modulo="transportadora">🧮 Fiscal e contábil <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="fiscal" data-modulo="transportadora">
+        <div class="nav-tsub" data-ir="contabil" data-aba="livro">🧮 Livros fiscais e contabilidade</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="entradas">📥 Notas de entrada</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="dfe">📡 NF-e contra o CNPJ</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="gnre">🧾 GNRE (ICMS de outra UF)</div>
         <div class="nav-tsub" data-ir="contabil" data-aba="pacote">📦 Pacote do contador</div>
       </div>
 
+      <div class="nav-bloco">Gestão</div>
       <div class="nav-grupo oculto" data-grupo="frota" data-modulo="transportadora">🔧 Frota <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="frota" data-modulo="transportadora">
-        <div class="nav-tsub" data-ir="frota" data-aba="painel">📊 Custos e alertas</div>
         <div class="nav-tsub" data-ir="frota" data-aba="abastecimentos">⛽ Abastecimentos</div>
         <div class="nav-tsub" data-ir="frota" data-aba="manutencoes">🛠 Manutenções</div>
         <div class="nav-tsub" data-ir="frota" data-aba="documentos">📄 Documentos</div>
         <div class="nav-tsub" data-ir="frota" data-aba="pneus">🛞 Pneus</div>
         <div class="nav-tsub" data-ir="frota" data-aba="jornada">⏱ Jornada</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="frota" data-aba="painel">📊 Custos e alertas</div>
       </div>
-
-      <div class="nav-grupo oculto" data-grupo="gestao">📊 Gestão e relatórios <span class="nav-seta">▸</span></div>
-      <div class="nav-sub oculto" data-grupo="gestao">
-        <div class="nav-tsub" data-familia="indicadores">📊 Painel de indicadores</div>
-        <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado">💹 Margem por CT-e e cliente</div>
-        <div class="nav-tsub" data-ir="centros" data-aba="resultado">🎯 Centros de custo</div>
-        <div class="nav-tsub" data-ir="relatorios-entregas">📦 Relatórios de entregas</div>
-        <div class="nav-tsub" data-ir="desempenho-transportadoras">🏆 Desempenho das transportadoras</div>
-        <div class="nav-tsub" data-ir="relatorios-nfe-cte">🔗 Relatórios NF-e × CT-e</div>
-        <div class="nav-tsub" data-ir="relatorios-auditoria">🔎 Relatórios de auditoria</div>
-        <div class="nav-tsub" data-ir="relatorios-financeiros">💵 Relatórios financeiros (fretes)</div>
-        <div class="nav-tsub" data-subaba="entregas">🚚 Entregas previstas (contratadas)</div>
-        <div class="nav-tsub" data-subaba="semMapa">🗺️ Notas sem mapa <span class="nav-badge oculto" id="navBadgeSemMapa"></span></div>
-        <div class="nav-tsub" data-subaba="consolidacao">🚚 Consolidar rotas</div>
-        <div class="nav-tsub" data-subaba="roteirizar">🗺️ Roteirizar entregas</div>
-        <div class="nav-tsub" data-subaba="bi">🛠️ Montar relatório (BI)</div>
+      <div class="nav-grupo oculto" data-grupo="transportadoras">🏆 Transportadoras <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="transportadoras">
+        <div class="nav-tsub" data-subaba="melhorTransp">🏷️ Melhor transportadora por destino</div>
         <div class="nav-tsub" data-subaba="comparador">💰 Comparar cotações</div>
-        <div class="nav-tsub" data-subaba="anomalias">🔍 Anomalias e duplicidades</div>
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="desempenho-transportadoras">🏆 Desempenho e ranking</div>
+        <div class="nav-tsub" data-subaba="scorecard">📋 Scorecard</div>
       </div>
-
-      <div class="nav-grupo oculto" data-grupo="clientes" data-modulo="transportadora">🌐 Clientes <span class="nav-seta">▸</span></div>
-      <div class="nav-sub oculto" data-grupo="clientes" data-modulo="transportadora">
-        <div class="nav-tsub" data-ir="sac">🎧 SAC (chamados)</div>
-        <div class="nav-tsub" data-ir="portal-cliente" data-so-admin="1">🌐 Portal do cliente</div>
+      <div class="nav-grupo oculto" data-grupo="paineis">📊 Painéis e BI <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="paineis">
+        <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="painel-transporte" data-aba="geral">🚛 Painel da operação (CT-e emitidos)</div>
+        <div class="nav-tsub" data-subaba="indicadores">🎯 Indicadores dos fretes contratados</div>
+        <div class="nav-tsub" data-subaba="graficos">📈 Gráficos</div>
+        <div class="nav-tsub" data-subaba="bi">🛠️ Montar relatório (BI)</div>
       </div>
 
       <!-- Cadastros: as páginas ficam escondidas aqui (guardam a permissão); o grupo "Cadastros" abre cada aba. -->
@@ -224,14 +232,26 @@
       <div class="nav-item nav-no-grupo" data-pagina="sinistros" data-modulo="embarcador">📦 Sinistros</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios" data-modulo="embarcador">📊 Relatórios <span id="navRelSeta">▸</span></div>
       <div class="nav-sub nav-no-grupo oculto" id="navSubRelatorios"></div>
-      <div class="nav-item" data-pagina="mensagens" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>✉️ Mensagens</span>
-        <span id="badgeMensagens" class="oculto" style="background:var(--vermelho); color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
+      <div class="nav-bloco">Administração</div>
+      <div class="nav-grupo oculto" data-grupo="cadastros">📇 Cadastros <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="cadastros">
+        <div class="nav-tsub" data-ir="cadastros" data-aba="clientes">👥 Clientes</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="fornecedores">🏭 Fornecedores</div>
+        <div class="nav-tsub" data-ir="cadastros" data-aba="transportadoras">🚛 Transportadoras</div>
+        <div class="nav-tsub" data-ir="emissao-cte" data-aba="frota" data-modulo="transportadora">🚚 Veículos e motoristas</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="conjuntos_veiculo" data-modulo="transportadora">🔗 Conjuntos (cavalo + carretas)</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="ajudantes" data-modulo="transportadora">🧑‍🔧 Ajudantes</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="produtos">📦 Produtos</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="tipos_mercadoria">🏷 Tipos de mercadoria</div>
+        <div class="nav-tsub" data-ir="cadastros" data-aba="tabelas-preco">💲 Tabelas de preço</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="regioes_atendimento">🗺 Regiões de atendimento</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="tipos_operacao" data-modulo="transportadora">🧾 Tipos de operação (CT-e)</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="condicoes_pagamento">📅 Condições de pagamento</div>
+        <div class="nav-tsub" data-ir="cadastros-basicos" data-aba="departamentos">🏢 Departamentos</div>
+        <div class="nav-tsub" data-ir="cadastros" data-aba="usuarios">🔑 Usuários</div>
+        <div class="nav-tsub" data-ir="cadastros" data-aba="empresa">🏛 Empresa</div>
       </div>
-      <div class="nav-item" data-pagina="agenda" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>📅 Agenda</span>
-        <span id="badgeAgenda" class="oculto" style="background:#f97316; color:#fff; border-radius:999px; font-size:10.5px; padding:1px 7px; font-weight:700;">0</span>
-      </div>
+
       <div class="nav-grupo" data-grupo="config">⚙️ Configuração <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="config">
         <div class="nav-tsub" data-ir="filiais" data-aba="unidades" data-so-admin="1" data-modulo="transportadora">🏢 Filiais (unidades)</div>

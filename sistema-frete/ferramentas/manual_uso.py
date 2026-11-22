@@ -345,7 +345,7 @@ def parte_uso(g):
     s.append(P('Quando o CT-e leva várias notas (cita várias chaves de NF-e), ele é ligado a <b>todas</b>: fica no registro '
                'de uma delas e as outras ficam "cobertas" por ele, com o número do CT-e. Nenhuma dessas notas fica como '
                '"aguardando CT-e". O frete é <b>dividido entre as notas</b> pelo peso (sem peso, pelo valor da nota; sem os '
-               'dois, em partes iguais) e a parte de cada nota aparece em Documentos » NF-e × CT-e e na pesquisa. A '
+               'dois, em partes iguais) e a parte de cada nota aparece em Fretes contratados » Notas e seus CT-e e na pesquisa. A '
                'conferência pela tabela usa a soma do peso, dos volumes, da cubagem e do valor de todas as notas do CT-e. '
                'A data de entrega lançada no CT-e vale para todas as notas dele. Se a nota chegar depois do CT-e, ela é '
                'ligada sozinha na importação seguinte.'))
@@ -995,12 +995,13 @@ def parte_uso(g):
 
     # 19
     s += h1('19. Relatórios')
-    s.append(P('Os relatórios ficam no grupo do assunto deles no menu (capítulo 29, Mapa do menu): <b>Gestão e relatórios</b> '
-               '(Painel de indicadores com Indicadores e Gráficos, Entregas previstas, Notas sem mapa, Consolidar rotas, Roteirizar, '
-               'Montar relatório (BI), Comparar cotações, Anomalias e duplicidades), <b>Transportadoras e parceiros</b> (Scorecard e '
-               'Melhor transportadora), <b>Documentos</b> (NF-e × CT-e) e <b>Auditoria de fretes</b> (Conferência de CT-e e '
-               'Cobranças indevidas). Os códigos 309 a 323 continuam valendo no Ctrl+K. Os gráficos podem ser maximizados ou '
-               'minimizados, e a tela pode ser impressa.'))
+    s.append(P('Os relatórios ficam no grupo da área deles no menu, sob o subtítulo <b>Relatórios</b> (capítulo 29, Mapa do menu): '
+               '<b>Fretes contratados</b> (Entregas e rastreamento, NF-e x CT-e; e as telas Entregas previstas, Notas sem mapa, Consolidar '
+               'rotas, Roteirizar, Inconsistências NF-e x CT-e e Notas e seus CT-e), <b>Auditoria de fretes</b> (Relatórios de auditoria; e '
+               'Conferência de CT-e, Cobranças indevidas, Anomalias e duplicidades), <b>Financeiro</b> (Fretes a pagar e pagos), '
+               '<b>Transportadoras</b> (Desempenho e ranking, Scorecard; e Melhor transportadora, Comparar cotações) e <b>Painéis e BI</b> '
+               '(Indicadores, Gráficos, Montar relatório). Os códigos 309 a 329 continuam valendo no Ctrl+K. Os gráficos podem ser '
+               'maximizados ou minimizados, e a tela pode ser impressa.'))
     s.append(P('<b>Excel e PDF em todos os relatórios</b>: o botão <b>Excel</b> no alto de Relatórios baixa uma planilha (.xlsx) com '
                'as tabelas e os gráficos da aba aberta, uma planilha para cada um, com os números como números (o Excel soma). '
                '<b>Imprimir/PDF</b> imprime a tela ou salva em PDF.'))
@@ -1135,7 +1136,7 @@ def parte_uso(g):
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
     s += h2('Relatórios financeiros (tela 329)')
-    s.append(P('Em Gestão e relatórios, <b>Relatórios financeiros (fretes)</b> (Ctrl+K e 329) traz os relatórios 51 a 60 '
+    s.append(P('Em Finanças » Financeiro, sob Relatórios, <b>Fretes a pagar e pagos</b> (Ctrl+K e 329) traz os relatórios 51 a 60 '
                'dos fretes contratados, com os mesmos recursos das outras telas de relatórios. Vê a tela quem tem a permissão do financeiro. '
                'O período vem no mês atual.'))
     s += lista([
@@ -1185,7 +1186,7 @@ def parte_uso(g):
         'aparecem na lista em itálico, com a seta.',
     ])
     s += h2('Relatórios de auditoria (tela 327)')
-    s.append(P('Em Gestão e relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24, na mesma tela dos '
+    s.append(P('Em Auditoria de fretes, sob Relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24, na mesma tela dos '
                'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias, pela emissão do CT-e), filtros, totais em '
                'cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>; dois cliques numa linha abrem a nota. Os números são os '
                'mesmos das telas de auditoria: o frete pela tabela gravado no cálculo, a tolerância configurada (geral, por '
@@ -1208,7 +1209,7 @@ def parte_uso(g):
     ], [0.1, 0.28, 0.62])
     s.append(P('Nos relatórios 14, 15 e 24 (os do Resultado da auditoria) só o filtro de transportadora vale.'))
     s += h2('Relatórios NF-e x CT-e (tela 326)')
-    s.append(P('Em Gestão e relatórios, <b>Relatórios NF-e x CT-e</b> (Ctrl+K e 326) traz os relatórios 25 a 34, na mesma tela dos '
+    s.append(P('Em Fretes contratados, sob Relatórios, <b>NF-e x CT-e</b> (Ctrl+K e 326) traz os relatórios 25 a 34, na mesma tela dos '
                'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias), filtros de transportadora, cliente, cidade '
                'e UF, totais em cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>; dois cliques numa linha abrem a nota. '
                'Usa as mesmas regras da tela NF-e x CT-e (322) e da regra única de duplicidade.'))
@@ -1225,7 +1226,7 @@ def parte_uso(g):
         ['34', 'Documentos duplicados', 'NF-e repetida (mesmo número e emitente), CT-e repetido (mesmo número e transportadora), nota com mais de um CT-e sem vínculo explicado e nota devolvida e refaturada com CT-e nas duas.'],
     ], [0.1, 0.28, 0.62])
     s += h2('Relatórios de entregas (tela 324)')
-    s.append(P('Em Gestão e relatórios, <b>Relatórios de entregas</b> (Ctrl+K e 324) reúne 16 relatórios de entregas e '
+    s.append(P('Em Fretes contratados, sob Relatórios, <b>Entregas e rastreamento</b> (Ctrl+K e 324) reúne 16 relatórios de entregas e '
                'rastreamento. Escolha o relatório na lista da esquerda; o período vem nos últimos 30 dias e pode ser trocado. '
                'Filtros: transportadora, cliente (nome ou CNPJ), cidade e UF. Cada relatório mostra os totais em cartões, '
                'a tabela pode ser ordenada clicando no título da coluna, e há os botões <b>Excel</b> e <b>Imprimir</b>. '
@@ -1246,7 +1247,7 @@ def parte_uso(g):
         ['50', 'SLA de entrega', 'Notas entregues no período: no prazo, fora do prazo, % SLA, atraso médio e prazo médio por transportadora.'],
     ], [0.1, 0.28, 0.62])
     s += h2('Desempenho das transportadoras (tela 325)')
-    s.append(P('Em Gestão e relatórios, <b>Desempenho das transportadoras</b> (Ctrl+K e 325) traz os relatórios 61 a 70, na mesma '
+    s.append(P('Em Gestão » Transportadoras, sob Relatórios, <b>Desempenho e ranking</b> (Ctrl+K e 325) traz os relatórios 61 a 70, na mesma '
                'tela dos relatórios de entregas: lista à esquerda, período (vem nos últimos 3 meses), filtros de transportadora, '
                'cliente, cidade e UF, totais em cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>.'))
     s += lista([

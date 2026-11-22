@@ -31,7 +31,7 @@
     't:paletes:': ['066', 'palete pallet vale paletes troca pbr chep devolucao'],
     't:sac:': ['090', 'sac chamado protocolo atendimento reclamacao cliente suporte'],
     't:edi:': ['070', 'edi notfis conemb ocoren doccob'], 't:portal-cliente:': ['080', 'portal cliente embarcador acesso'],
-    't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:resumo': ['101', 'contas receber receber'],
+    't:faturamento:faturas': ['100', 'fatura faturar cobranca'], 't:faturamento:afaturar': ['105', 'a faturar cte sem fatura faturar pendente'], 't:faturamento:resumo': ['101', 'contas receber receber'],
     't:faturamento:boletos': ['102', 'boleto cnab remessa retorno banco'], 't:faturamento:regua': ['103', 'regua cobranca lembrete vencimento atraso inadimplencia'], 't:faturamento:extras': ['104', 'servicos extras reentrega devolucao estadia armazenagem descarga cobranca complementar'], 't:pagar:contas': ['110', 'contas pagar despesa fornecedor'],
     't:pagar:acertos': ['120', 'acerto viagem motorista ciot vale pedagio agregado'], 't:comissoes:apuracao': ['125', 'comissao vendedor representante carteira'], 'p:financeiro': ['130', 'financeiro'],
     't:contabil:livro': ['140', 'fiscal contabilidade contador livro saidas apuracao icms iss cfop sped lancamentos'], 't:contabil:pacote': ['141', 'pacote contador xml zip mensal enviar'], 't:contabil:entradas': ['142', 'notas de entrada compras livro de entradas credito icms apuracao diesel fornecedor xml'], 't:contabil:gnre': ['144', 'gnre guia icms outra uf estado recolhimento difal transporte'], 't:contabil:dfe': ['143', 'nfe contra cnpj sefaz distribuicao dfe manifestacao destinatario ciencia baixar xml compras'],

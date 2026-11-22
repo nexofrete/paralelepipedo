@@ -1,6 +1,7 @@
 // =====================================================================
-// Menu único, por área (Operação, Transportadoras, Documentos, Auditoria,
-// Financeiro, Frota, Gestão, Clientes, Configuração), com os mesmos números do "Ir para".
+// Menu único, por área, em blocos: Operar (Operação, Fretes contratados, Pátio, Auditoria, Clientes),
+// Finanças (Financeiro, Faturamento, Fiscal), Gestão (Frota, Transportadoras, Painéis) e Administração
+// (Cadastros, Configuração); cada grupo traz os seus relatórios no fim. Mesmos números do "Ir para".
 // Cada grupo abre/fecha; o grupo da tela aberta fica sempre aberto e os que a
 // pessoa abriu à mão continuam abertos (lembrado neste navegador).
 // Subitens ".nav-tsub":
@@ -47,6 +48,18 @@
     const rot = inicioEmb?.querySelector('.nav-rotulo');
     if (rot) rot.textContent = temHoje() ? '📥 Fretes contratados (visão geral)' : '🏠 Início';
     grupos.forEach((g) => { g.cab.classList.toggle('oculto', !itensDo(g).some(visivel)); });
+    // Subtítulo "Relatórios" de um grupo: só com algum item visível embaixo dele.
+    document.querySelectorAll('.barra-lateral .nav-subtit').forEach((t) => {
+      let el = t.nextElementSibling; let algum = false;
+      while (el && !el.classList.contains('nav-subtit')) { if (el.matches('.nav-tsub, .nav-item') && visivel(el)) { algum = true; break; } el = el.nextElementSibling; }
+      t.classList.toggle('oculto', !algum);
+    });
+    // Título de bloco (Operar, Finanças, Gestão, Administração): só com algum grupo visível até o próximo bloco.
+    document.querySelectorAll('.barra-lateral .nav-bloco').forEach((b) => {
+      let el = b.nextElementSibling; let algum = false;
+      while (el && !el.classList.contains('nav-bloco')) { if (el.matches('.nav-grupo') && visivel(el)) { algum = true; break; } el = el.nextElementSibling; }
+      b.classList.toggle('oculto', !algum);
+    });
   }
   atualizarVisiveis();
   // As permissões de algumas telas chegam depois (Cadastros, Manutenção, módulos da empresa...).

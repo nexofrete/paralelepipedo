@@ -2255,3 +2255,9 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 #pagina-patio:fullscreen { background: var(--bg); padding: 16px; overflow: auto; }
 @media (max-width: 1000px) { .pa-colunas { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .pa-detalhe { grid-template-columns: 1fr; } }
+
+/* Menu por área: títulos de bloco e o subtítulo "Relatórios" de cada grupo */
+.nav-bloco { margin: 16px 14px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: color-mix(in srgb, var(--lat-texto) 55%, transparent); }
+.nav-subtit { margin: 8px 12px 2px; font-size: 10px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: color-mix(in srgb, var(--lat-texto) 50%, transparent); }
+html.menu-recolhido .barra-lateral:not(:hover) .nav-bloco { visibility: hidden; height: 1px; margin: 10px 0 4px; border-top: 1px solid var(--lat-borda); }
+body.modo-compacto .nav-bloco { margin-top: 10px; }

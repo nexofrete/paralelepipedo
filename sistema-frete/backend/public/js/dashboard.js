@@ -7666,6 +7666,7 @@ document.getElementById('btnEnviarResumoAgora').addEventListener('click', async 
 });
 
 // ---------- Scorecard de Transportadoras ----------
+// A mesma nota (0 a 10) e o mesmo conceito do Ranking (61) e da Avaliação (69), nos últimos 12 meses.
 async function carregarScorecard() {
   const lista = document.getElementById('listaScorecard');
   lista.textContent = 'Carregando...';
@@ -7673,32 +7674,39 @@ async function carregarScorecard() {
     const resposta = await apiFetch('/api/fretes/relatorios/scorecard');
     const dados = await resposta.json();
     if (!resposta.ok) { lista.textContent = dados.erro || 'Erro ao carregar.'; return; }
-
-    const corNota = (n) => n >= 80 ? 'var(--verde)' : n >= 50 ? '#e8890c' : 'var(--vermelho)';
-
-    lista.innerHTML = dados.length
-      ? `<table style="width:100%;">
+    const ts = dados.transportadoras || [];
+    const corNota = (n) => (n >= 8.5 ? 'var(--verde)' : n >= 7 ? '#0369a1' : n >= 5 ? '#e8890c' : 'var(--vermelho)');
+    const pct = (v) => (v == null ? '—' : `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
+    const n1 = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+    const medalha = (p) => (['🥇', '🥈', '🥉'][p - 1] || '');
+    lista.innerHTML = ts.length
+      ? `<p style="margin:0 0 8px; color:var(--texto-fraco);">De ${formatoData(dados.de)} a ${formatoData(dados.ate)}. Nota de 0 a 10: prazo 35%, custo 30%, ocorrências 15%, comprovante 10% e rastreamento 10% —
+          a mesma do <a href="#" data-sc-ranking>Ranking (61) e da Avaliação (69)</a>. % retido e sinistros são só informação.</p>
+        <table style="width:100%;">
           <thead><tr>
-            <th style="text-align:left;">Transportadora</th><th style="text-align:right;">Nota</th>
-            <th style="text-align:right;">Fretes</th><th style="text-align:right;">% No Prazo</th>
-            <th style="text-align:right;">% Retido</th><th style="text-align:right;">Sinistros</th>
-            <th style="text-align:right;">Preço Médio</th>
+            <th style="text-align:left;">#</th><th style="text-align:left;">Transportadora</th><th style="text-align:right;">Nota</th><th style="text-align:left;">Conceito</th>
+            <th style="text-align:right;">No prazo</th><th style="text-align:right;">Frete / notas</th><th style="text-align:right;">Notas com problema</th>
+            <th style="text-align:right;">CT-e</th><th style="text-align:right;">% Retido</th><th style="text-align:right;">Sinistros</th>
           </tr></thead>
           <tbody>
-            ${dados.map((t) => `
+            ${ts.map((t) => `
               <tr>
-                <td>${t.transportadora}</td>
-                <td style="text-align:right;"><span style="background:${corNota(t.nota)}; color:#fff; padding:3px 10px; border-radius:12px; font-weight:700;">${t.nota}</span></td>
-                <td style="text-align:right;">${t.qtd_fretes}</td>
-                <td style="text-align:right;">${t.percentual_no_prazo != null ? `${t.percentual_no_prazo}%` : '—'}</td>
-                <td style="text-align:right; color:${t.percentual_retido > 10 ? 'var(--vermelho)' : 'var(--texto-fraco)'};">${t.percentual_retido}%</td>
-                <td style="text-align:right;">${t.qtd_sinistros}</td>
-                <td style="text-align:right;">${formatoMoeda(t.preco_medio)}</td>
+                <td>${t.posicao ? `${medalha(t.posicao)} ${t.posicao}º` : '—'}</td>
+                <td>${cfEsc(t.transportadora)}</td>
+                <td style="text-align:right;">${t.nota == null ? '—' : `<span style="background:${corNota(t.nota)}; color:#fff; padding:3px 10px; border-radius:12px; font-weight:700;">${n1(t.nota)}</span>`}</td>
+                <td>${cfEsc(t.conceito || '—')}</td>
+                <td style="text-align:right;">${pct(t.pct_prazo)}</td>
+                <td style="text-align:right;">${pct(t.pct_frete)}</td>
+                <td style="text-align:right;">${pct(t.pct_ocorrencia)}</td>
+                <td style="text-align:right;">${t.ctes}</td>
+                <td style="text-align:right; color:${t.percentual_retido > 10 ? 'var(--vermelho)' : 'var(--texto-fraco)'};">${t.percentual_retido == null ? '—' : `${t.percentual_retido}%`}</td>
+                <td style="text-align:right;">${t.qtd_sinistros}${t.prejuizo_total ? ` · ${formatoMoeda(t.prejuizo_total)}` : ''}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>`
-      : '<p style="color:var(--texto-fraco);">Nenhuma transportadora com fretes suficientes ainda (mínimo 3).</p>';
+      : '<p style="color:var(--texto-fraco);">Nenhuma transportadora com fretes nos últimos 12 meses.</p>';
+    lista.querySelector('[data-sc-ranking]')?.addEventListener('click', (e) => { e.preventDefault(); window.abrirRelatorio?.('desempenho-transportadoras', 61); });
   } catch (err) {
     lista.textContent = 'Falha de conexão com o servidor.';
   }

@@ -1915,48 +1915,29 @@ router.get('/relatorios/anomalias', autenticar, permitirAlguma('pode_ver_relator
 });
 
 // GET /api/fretes/relatorios/scorecard
-// Uma nota geral por transportadora, combinando SLA (prazo), % de fretes
-// retidos por divergência, sinistros e preço médio — pra decidir com quem
-// vale a pena continuar trabalhando, baseado em dado e não só impressão.
+// A mesma nota geral (0 a 10) e o mesmo conceito do Ranking (61) e da Avaliação das transportadoras (69), nos últimos
+// 12 meses (src/relatoriosDesempenho.js): prazo 35%, custo 30%, ocorrências 15%, comprovante 10% e rastreamento 10%.
+// Mais duas colunas só de informação: % de CT-e retidos pela auditoria e sinistros (não entram na nota).
 router.get('/relatorios/scorecard', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
   try {
-    const { rows } = await consultaCliente(req, 
-      `WITH base AS (
-         SELECT
-           transportadora_cte AS transportadora,
-           COUNT(*)::int AS qtd_fretes,
-           COUNT(*) FILTER (WHERE sla_status = 'No Prazo')::float AS qtd_no_prazo,
-           COUNT(*) FILTER (WHERE sla_status IS NOT NULL)::float AS qtd_com_sla,
-           COUNT(*) FILTER (WHERE status = 'Frete Retido')::float AS qtd_retidos,
-           AVG(valor_total_frete)::float AS preco_medio
-         FROM fretes
-         WHERE transportadora_cte IS NOT NULL
-         GROUP BY transportadora_cte
-         HAVING COUNT(*) >= 3
-       ),
-       sinistros_agrupados AS (
-         SELECT transportadora, COUNT(*)::int AS qtd_sinistros, COALESCE(SUM(valor_prejuizo), 0)::float AS prejuizo_total
-         FROM sinistros GROUP BY transportadora
-       )
-       SELECT b.transportadora, b.qtd_fretes, b.preco_medio,
-              CASE WHEN b.qtd_com_sla > 0 THEN ROUND(((b.qtd_no_prazo / b.qtd_com_sla) * 100)::numeric, 1)::float ELSE NULL END AS percentual_no_prazo,
-              ROUND(((b.qtd_retidos / b.qtd_fretes) * 100)::numeric, 1)::float AS percentual_retido,
-              COALESCE(s.qtd_sinistros, 0) AS qtd_sinistros,
-              COALESCE(s.prejuizo_total, 0) AS prejuizo_total
-       FROM base b
-       LEFT JOIN sinistros_agrupados s ON s.transportadora = b.transportadora
-       ORDER BY b.qtd_fretes DESC`
-    );
-
-    const comNota = rows.map((t) => {
-      const penalidadeAtraso = t.percentual_no_prazo != null ? (100 - t.percentual_no_prazo) * 0.3 : 0;
-      const penalidadeRetido = t.percentual_retido * 0.4;
-      const penalidadeSinistro = (t.qtd_sinistros / t.qtd_fretes) * 100 * 3;
-      const nota = Math.max(0, Math.min(100, Math.round(100 - penalidadeAtraso - penalidadeRetido - penalidadeSinistro)));
-      return { ...t, nota };
-    });
-    comNota.sort((a, b) => b.nota - a.nota);
-    res.json(comNota);
+    const ate = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    const d = new Date(`${ate}T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 12);
+    const de = d.toISOString().slice(0, 10);
+    const r69 = await require('../relatoriosEntregas').rodar(req, 69, { de, ate });
+    const [{ rows: ret }, { rows: sin }] = await Promise.all([
+      consultaCliente(req, `SELECT COALESCE(transportadora_cte, transportadora) AS t, COUNT(*)::int AS ctes, COUNT(*) FILTER (WHERE status = 'Frete Retido')::int AS retidos
+        FROM fretes WHERE chave_cte IS NOT NULL AND cte_cancelado IS NOT TRUE AND data_emissao_cte BETWEEN $1::date AND $2::date GROUP BY 1`, [de, ate]),
+      pool.query(`SELECT transportadora AS t, COUNT(*)::int AS qtd, COALESCE(SUM(valor_prejuizo), 0)::float AS prejuizo FROM sinistros
+        WHERE COALESCE(data_ocorrencia, criado_em::date) BETWEEN $1::date AND $2::date GROUP BY 1`, [de, ate]).catch(() => ({ rows: [] })),
+    ]);
+    const chave = (t) => String(t || '').trim().toUpperCase();
+    const rm = new Map(ret.map((r) => [chave(r.t), r])); const sm = new Map(sin.map((r) => [chave(r.t), r]));
+    res.json({ de, ate, transportadoras: r69.linhas.map((l) => {
+      const r = rm.get(chave(l.transportadora)); const s = sm.get(chave(l.transportadora));
+      return { transportadora: l.transportadora, posicao: l.posicao, nota: l.nota, conceito: l.conceito, n_prazo: l.n_prazo, n_custo: l.n_custo, n_ocorrencia: l.n_ocorrencia,
+        n_comprovante: l.n_comprovante, n_rastreio: l.n_rastreio, pct_prazo: l.pct_prazo, pct_frete: l.pct_frete, pct_ocorrencia: l.pct_ocorrencia, entregues: l.entregues,
+        ctes: r?.ctes || l.ctes || 0, percentual_retido: r?.ctes ? Math.round((r.retidos / r.ctes) * 1000) / 10 : null, qtd_sinistros: s?.qtd || 0, prejuizo_total: s?.prejuizo || 0 };
+    }) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao gerar o scorecard.' });

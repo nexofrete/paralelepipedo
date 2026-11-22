@@ -32,6 +32,8 @@ def parte_operacao(g):
     s += h2('Mapa do menu')
     s.append(P('Onde fica cada tela, o código para abrir pelo "Ir para" (Ctrl+K) e o capítulo deste manual que explica. '
                'Os capítulos seguem a numeração de antes; use esta tabela para achá-los na ordem do menu.'))
+    s.append(P('Cada tela aparece em um lugar só do menu: <b>Transportadoras</b>, <b>Tabelas de preço</b> e <b>Veículos e motoristas</b> '
+               'ficam em Cadastros (os códigos 905, 906 e 220 continuam abrindo pelo Ctrl+K), e os Relatórios financeiros em Gestão e relatórios.'))
     s += tabela(['Grupo do menu', 'Tela', 'Código', 'Capítulo'], [
         ['Hoje', 'Pendências do dia (transportadora)', '000', '29'],
         ['Fretes contratados', 'Visão geral (início do embarcador)', '400', '11'],
@@ -41,7 +43,6 @@ def parte_operacao(g):
         ['Operação', 'Conferência, Etiquetas, Armazém', '050, 051, 055', '37'],
         ['Operação', 'Onde está a mercadoria, Transferências, Paletes', '060, 061, 066', '36, 35'],
         ['Transportadoras e parceiros', 'Parceiros, ranking e escolha: Parceiros e redespacho, Scorecard, Melhor transportadora', '065, 319, 313', '36, 19'],
-        ['Transportadoras e parceiros', 'Transportadoras contratadas, Tabelas de preço', '905, 906', '23, 15'],
         ['Documentos', 'Enviar XML, Consulta de notas, CT-e recebidos (Todos os registros, 402, só pelo Ctrl+K)', '401, 403, 404', '12, 14'],
         ['Documentos', 'NF-e × CT-e: Inconsistências e vínculos, Notas e seus CT-e', '322, 320', '13, 19'],
         ['Documentos', 'EDI', '070', '38'],
@@ -52,11 +53,12 @@ def parte_operacao(g):
         ['Financeiro', 'Pagamento de fretes contratados (e as faturas das transportadoras)', '130', '18, 17'],
         ['Financeiro', 'Caixa e bancos, Conciliação, Fluxo de caixa', '150 a 152', '44'],
         ['Financeiro', 'Fiscal e contabilidade, Notas de entrada, NF-e contra o CNPJ, GNRE, Pacote do contador', '140 a 144', '49'],
-        ['Frota', 'Custos, Abastecimentos, Manutenções, Documentos, Pneus, Jornada, Veículos', '200 a 250', '40'],
+        ['Frota', 'Custos, Abastecimentos, Manutenções, Documentos, Pneus, Jornada (Veículos e motoristas fica em Cadastros)', '200 a 250', '40'],
         ['Gestão e relatórios', 'Painel de indicadores: Operação própria (CT-e), Fretes contratados (KPIs), Gráficos', '300, 309, 310', '48, 19'],
         ['Gestão e relatórios', 'Margem por CT-e e cliente, Centros de custo', '301, 302', '48, 47'],
         ['Gestão e relatórios', 'Entregas previstas, Notas sem mapa, Consolidar rotas, Roteirizar', '311, 312, 314, 315', '19'],
         ['Gestão e relatórios', 'Montar relatório (BI), Comparar cotações, Anomalias e duplicidades', '316, 317, 318', '19'],
+        ['Gestão e relatórios', 'Relatórios de entregas, Desempenho das transportadoras, NF-e x CT-e, Auditoria, Financeiros', '324 a 327, 329', '19'],
         ['Clientes', 'SAC (chamados), Portal do cliente', '090, 080', '39'],
         ['Mensagens e Agenda', 'Mensagens, Agenda', '500, 501', '21'],
         ['Cadastros', 'Clientes, Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tipos de mercadoria, '

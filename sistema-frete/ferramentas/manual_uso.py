@@ -1135,7 +1135,7 @@ def parte_uso(g):
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
     s += h2('Relatórios financeiros (tela 329)')
-    s.append(P('Em Gestão e relatórios (e em Financeiro), <b>Relatórios financeiros (fretes)</b> (Ctrl+K e 329) traz os relatórios 51 a 60 '
+    s.append(P('Em Gestão e relatórios, <b>Relatórios financeiros (fretes)</b> (Ctrl+K e 329) traz os relatórios 51 a 60 '
                'dos fretes contratados, com os mesmos recursos das outras telas de relatórios. Vê a tela quem tem a permissão do financeiro. '
                'O período vem no mês atual.'))
     s += lista([
@@ -1177,6 +1177,12 @@ def parte_uso(g):
         '<b>Drill-down</b>: nos relatórios agrupados (por transportadora, cliente, cidade, estado, rota, mês, dia, veículo, '
         'motorista), clique na linha para ver os documentos daquele grupo (as notas, os CT-e auditados ou os romaneios); '
         '"Voltar" retorna ao relatório. Nas listas, <b>dois cliques</b> abrem o documento de origem: a nota, ou o romaneio na 328.',
+        '<b>Tela de trabalho</b>: quando o relatório mostra documentos que se tratam em outra tela (aprovar, glosar, religar, aceitar, '
+        'buscar na SSW, pagar), o botão <b>Abrir ...</b> leva até ela: 11 a 18 e 24 para a Auditoria de frete (330), 25 para Notas e seus '
+        'CT-e (320), 26 a 28 para Inconsistências NF-e x CT-e (322), 34 para Anomalias e duplicidades (318), 35 e 37 a 39 para Entregas '
+        'previstas (311) e 51 a 56 para o Pagamento de fretes (130).',
+        '<b>Atalhos</b>: o 16 abre a tela Cobranças indevidas (323) e o 62 abre o relatório 50 (SLA de entrega), que já mostram a mesma coisa; '
+        'aparecem na lista em itálico, com a seta.',
     ])
     s += h2('Relatórios de auditoria (tela 327)')
     s.append(P('Em Gestão e relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24, na mesma tela dos '
@@ -1190,7 +1196,7 @@ def parte_uso(g):
         ['13', 'Frete contratado x cobrado', 'Por transportadora: contratado pela tabela, cobrado, diferença e quantos CT-e conferem, vieram acima, abaixo ou sem tabela.'],
         ['14', 'Auditoria por transportadora', 'Cobrado a mais, glosas, créditos, CT-e barrados, recuperado, aprovado divergente e em apuração, mais os apontamentos (taxas não previstas, peso, ICMS/CFOP).'],
         ['15', 'Auditoria por período', 'O mesmo, mês a mês, com o % de CT-e divergentes.'],
-        ['16', 'Cobranças indevidas', 'Componente acima da tabela ou taxa não prevista, CT-e por CT-e, com quanto já foi glosado. Parcelas só trocadas, com o total certo, não contam.'],
+        ['16', 'Cobranças indevidas', 'Atalho: abre a tela Cobranças indevidas (323), que faz a mesma conferência componente a componente (não há um relatório repetido).'],
         ['17', 'Fretes acima da tabela', 'CT-e cobrados acima do contratado, do maior excesso para o menor, e quanto ainda está retido.'],
         ['18', 'Fretes abaixo da tabela', 'CT-e cobrados abaixo do calculado. Muitos da mesma transportadora costumam indicar tabela desatualizada no sistema.'],
         ['19', 'Auditoria de ICMS', 'CST, base, alíquota cobrada x esperada pela rota (7% ou 12%; no redespacho, o trecho até o redespacho), valor x base x alíquota e CFOP.'],
@@ -1208,9 +1214,9 @@ def parte_uso(g):
                'Usa as mesmas regras da tela NF-e x CT-e (322) e da regra única de duplicidade.'))
     s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
         ['25', 'NF-e vinculadas ao CT-e', 'Cada CT-e emitido no período e as notas que ele leva (CT-e de várias notas mostra todas; CT-e de reentrega, devolução etc. mostra a nota de origem), com o frete sobre o valor das notas.'],
-        ['26', 'NF-e sem CT-e', 'Notas emitidas no período que precisam de CT-e e ainda não têm. Ficam fora devolução, entrada, sem circulação, frete por conta do cliente (FOB) e carga direta; os cartões mostram quantas FOB e carga direta ficaram fora.'],
-        ['27', 'CT-e sem NF-e identificada', 'CT-e cuja nota não está no sistema, que cita nota não encontrada, que não cita chave de NF-e ou com vínculo suspeito (destinatário ou cidade diferente da nota ligada).'],
-        ['28', 'Conferência de valores NF-e', 'Valor da mercadoria e peso do CT-e x soma das notas, e frete cobrado x frete pela tabela. Tolerâncias: valor R$ 1 ou 0,5%, peso 1 kg ou 5%, frete R$ 1 ou 0,5%.'],
+        ['26', 'NF-e sem CT-e', 'Notas emitidas no período, há pelo menos 3 dias, que precisam de CT-e e ainda não têm, sem as aceitas na tela 322 (a mesma regra da 322). Ficam fora devolução, entrada, sem circulação, FOB e carga direta; os cartões mostram quantas ficaram fora.'],
+        ['27', 'CT-e sem NF-e identificada', 'Sem as diferenças aceitas na tela 322: CT-e cuja nota não está no sistema, que cita nota não encontrada, que não cita chave de NF-e ou com vínculo suspeito (destinatário ou cidade diferente da nota ligada).'],
+        ['28', 'Conferência de valores NF-e', 'Sem as diferenças aceitas na tela 322: valor da mercadoria e peso do CT-e x soma das notas, e frete cobrado x frete pela tabela. Tolerâncias: valor R$ 1 ou 0,5%, peso 1 kg ou 5%, frete R$ 1 ou 0,5%.'],
         ['29', 'NF-e por transportadora', 'Notas emitidas no período por transportadora (a do CT-e; sem CT-e, a da nota): valor, peso, volumes, com e sem CT-e, entregues e frete.'],
         ['30', 'NF-e por destinatário', 'As mesmas colunas por cliente, com o CNPJ.'],
         ['31', 'NF-e por rota', 'Por região e estado de destino, com quantas cidades foram atendidas.'],
@@ -1254,7 +1260,7 @@ def parte_uso(g):
     ])
     s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
         ['61', 'Ranking de transportadoras', 'Posição pela nota geral, conceito, % no prazo, frete sobre o valor das notas, notas com problema e custo por entrega.'],
-        ['62', 'Índice de entregas no prazo', 'Entregues, com previsão, no prazo e o índice de cada transportadora.'],
+        ['62', 'Índice de entregas no prazo', 'Atalho: abre o relatório 50 · SLA de entrega (tela 324), que mostra o índice de entregas no prazo por transportadora.'],
         ['63', 'Índice de atrasos', 'Entregues com atraso, índice de atraso, atraso médio, maior atraso e notas em aberto já atrasadas.'],
         ['64', 'Índice de ocorrências', 'Notas com problema no transporte e quantas foram de avaria, recusa, extravio, devolução e ausente/endereço/reentrega.'],
         ['65', 'Custo médio por entrega', 'Frete dividido pelas entregas (CT-e principais), com o valor de reentregas e complementares.'],
@@ -1435,8 +1441,10 @@ def parte_uso(g):
                'notas cobertas por um CT-e de várias notas. É a mesma regra dos avisos "CT-e aparece 2x" / "NF-e aparece 2x" da '
                'Auditoria de frete.'))
     s += h2('Scorecard de transportadoras')
-    s.append(P('Nota de 0 a 100 combinando % de entregas no prazo, % de fretes retidos por divergência e sinistros (só '
-               'transportadoras com pelo menos 3 fretes).'))
+    s.append(P('A nota geral de cada transportadora nos últimos 12 meses, de 0 a 10, com o conceito (A, B, C ou D): a <b>mesma nota</b> do '
+               'Ranking (61) e da Avaliação das transportadoras (69), em Desempenho das transportadoras (prazo 35%, custo 30%, ocorrências 15%, '
+               'comprovante 10% e rastreamento 10%). Mostra também, só como informação, o % de CT-e retidos pela auditoria e os sinistros. '
+               'O link no alto abre o Ranking, onde dá para escolher outro período.'))
     s += h2('NF-e × CT-e')
     s.append(P('Cada nota com todos os CT-e vinculados (principal, reentrega, outra transportadora...), valor da nota, '
                'soma dos fretes e situação. Nota coberta pelo CT-e de outra nota mostra o CT-e e a parte do frete dela.'))

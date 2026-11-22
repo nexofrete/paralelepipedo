@@ -274,10 +274,24 @@ Object.assign(RELATORIOS, require('./relatoriosFinanceiro')(ajudas));
 // 71 a 80: roteirização e operação da transportadora (tela 328, pelos romaneios; rota /api/relatorios-operacao).
 Object.assign(RELATORIOS, require('./relatoriosOperacao')());
 
+// Relatório que repetia outro vira atalho para ele; e cada relatório que tem uma tela de trabalho (com as ações: aprovar,
+// glosar, religar, aceitar, buscar na SSW, pagar) ganha o botão para abri-la.
+RELATORIOS[16].atalho = { destino: 'r:cobIndevidas', rotulo: 'Cobranças indevidas (323)' };
+RELATORIOS[16].desc = 'Abre a tela Cobranças indevidas (323), que faz a mesma conferência componente a componente com a tabela.';
+RELATORIOS[62].atalho = { pagina: 'relatorios-entregas', numero: 50, rotulo: '50 · SLA de entrega (324)' };
+RELATORIOS[62].desc = 'Abre o relatório 50 · SLA de entrega (Relatórios de entregas), que mostra o índice de entregas no prazo por transportadora.';
+const trabalho = (destino, rotulo, numeros) => numeros.forEach((n) => { RELATORIOS[n].trabalho = { destino, rotulo }; });
+trabalho('p:auditoria-frete', 'Auditoria de frete (330)', [11, 12, 14, 15, 17, 18, 24]);
+trabalho('r:nfeCte', 'Notas e seus CT-e (320)', [25]);
+trabalho('r:nfeCteInc', 'Inconsistências NF-e × CT-e (322)', [26, 27, 28]);
+trabalho('r:anomalias', 'Anomalias e duplicidades (318)', [34]);
+trabalho('r:entregas', 'Entregas previstas (311)', [35, 37, 38, 39]);
+trabalho('p:financeiro', 'Pagamento de fretes (130)', [51, 52, 53, 55, 56]);
+
 // tela: 'financeiro' (329, relatórios 51 a 60), 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24) ou 'operacao' (328, relatórios 71 a 80).
 function catalogo(tela = 'entregas') {
   return Object.entries(RELATORIOS).filter(([, r]) => (r.tela || 'entregas') === tela)
-    .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo }));
+    .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo, atalho: r.atalho || null, trabalho: r.trabalho || null }));
 }
 
 async function rodar(req, numero, q = {}) {

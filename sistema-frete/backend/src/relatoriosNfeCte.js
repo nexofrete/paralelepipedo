@@ -24,6 +24,12 @@ module.exports = function criar(h) {
   const div = (a, b) => (b ? a / b : null);
   const r2 = (v) => (v == null ? null : Math.round(v * 100) / 100);
   const destino = (r) => [r.cidade, r.uf].filter(Boolean).join('/');
+  // Diferenças que alguém aceitou na tela Inconsistências NF-e × CT-e (322): ficam fora, como lá.
+  const aceitas = async () => {
+    const { rows } = await require('./db').query('SELECT frete_id, codigo FROM nfe_cte_aceites').catch(() => ({ rows: [] }));
+    const s = new Set(rows.map((a) => `${a.frete_id}|${a.codigo}`));
+    return (id, codigo) => s.has(`${id}|${codigo}`);
+  };
   const rodarSql = async (req, q, de, ate, sql, extraParams = []) => {
     const params = [de, ate, ...extraParams]; const extra = filtros(q, params);
     return (await consulta(req, sql.replace(/\{F\}/g, extra), params)).rows;
@@ -87,30 +93,35 @@ module.exports = function criar(h) {
             ['CT-e sem nota', linhas.filter((l) => !l.qtd_notas).length], ['Frete', linhas.reduce((t, l) => t + (l.frete || 0), 0), 'moeda']],
         };
       } },
-    26: { titulo: 'NF-e sem CT-e', grupo: 'Vínculos', tela: 'nfecte', desc: 'Notas emitidas no período que precisam de CT-e e ainda não têm (nem estão num CT-e de outra nota). Ficam fora: devolução, entrada, sem circulação, frete por conta do cliente (FOB) e carga direta.',
+    26: { titulo: 'NF-e sem CT-e', grupo: 'Vínculos', tela: 'nfecte', desc: 'Notas emitidas no período, há pelo menos 3 dias, que precisam de CT-e e ainda não têm (nem estão num CT-e de outra nota) — a mesma regra da tela Inconsistências NF-e × CT-e (322), sem as aceitas lá. Ficam fora: devolução, entrada, sem circulação, frete por conta do cliente (FOB) e carga direta.',
       rodar: async (req, q, de, ate) => {
         const hoje = h.hojeSP();
-        const [rows, [fora]] = await Promise.all([
+        const dias = Math.max(0, parseInt(q.dias ?? 3, 10) || 0);
+        const aceita = await aceitas();
+        const [todas, [fora]] = await Promise.all([
           rodarSql(req, q, de, ate, `SELECT f.id, f.numero_nf, f.nf_serie, to_char(f.data_emissao_nf, 'YYYY-MM-DD') AS emissao, ($3::date - f.data_emissao_nf)::int AS dias, f.cliente, f.cidade, f.uf,
               COALESCE(f.transportadora, f.transportadora_nfe) AS transportadora, f.valor_faturado::float AS valor, COALESCE(f.peso_bruto, f.peso_kg)::float AS peso, f.qtd_volumes AS volumes,
               f.numero_pedido, to_char(f.data_entrega, 'YYYY-MM-DD') AS entrega, f.numero_mapa
-            FROM fretes f WHERE ${BASE} AND f.data_emissao_nf BETWEEN $1::date AND $2::date AND NOT ${TEM_CTE} AND ${PRECISA_CTE}{F}
-            ORDER BY f.data_emissao_nf, f.numero_nf LIMIT 5001`, [hoje]),
+            FROM fretes f WHERE ${BASE} AND f.data_emissao_nf BETWEEN $1::date AND $2::date AND f.data_emissao_nf <= $3::date - $4::int AND NOT ${TEM_CTE} AND ${PRECISA_CTE}{F}
+            ORDER BY f.data_emissao_nf, f.numero_nf LIMIT 5001`, [hoje, dias]),
           rodarSql(req, q, de, ate, `SELECT COUNT(*) FILTER (WHERE f.frete_por_conta_cliente)::int AS fob, COUNT(*) FILTER (WHERE f.carga_direta)::int AS direta
             FROM fretes f WHERE ${BASE} AND f.data_emissao_nf BETWEEN $1::date AND $2::date AND NOT ${TEM_CTE}{F}`),
         ]);
-        const linhas = rows.slice(0, 5000).map((r) => ({ ...r, destino: destino(r), situacao: r.entrega ? 'Entregue sem CT-e' : r.dias > 3 ? 'Sem CT-e há mais de 3 dias' : 'Aguardando CT-e' }));
+        const rows = todas.filter((r) => !aceita(r.id, 'NF_SEM_CTE'));
+        const linhas = rows.slice(0, 5000).map((r) => ({ ...r, destino: destino(r), situacao: r.entrega ? 'Entregue sem CT-e' : r.dias > 30 ? 'Sem CT-e há mais de 30 dias' : r.dias > 7 ? 'Sem CT-e há mais de 7 dias' : 'Aguardando CT-e' }));
         return {
           colunas: [['numero_nf', 'NF'], ['emissao', 'Emissão', 'data'], ['dias', 'Dias', 'num'], ['cliente', 'Cliente'], ['destino', 'Cidade/UF'], ['transportadora', 'Transportadora (da NF-e)'],
             ['situacao', 'Situação', 'categoria'], ['numero_pedido', 'Pedido'], ['numero_mapa', 'Mapa'], ['volumes', 'Volumes', 'num'], ['peso', 'Peso (kg)', 'dec'], ['valor', 'Valor da nota', 'moeda']],
           linhas, mais: rows.length > 5000,
-          resumo: [['Notas sem CT-e', linhas.length], ['Valor', linhas.reduce((t, l) => t + (l.valor || 0), 0), 'moeda'], ['Há mais de 3 dias', linhas.filter((l) => l.dias > 3).length],
-            ['Entregues sem CT-e', linhas.filter((l) => l.entrega).length], ['Fora da conta: FOB', fora?.fob || 0], ['Fora da conta: carga direta', fora?.direta || 0]],
+          resumo: [['Notas sem CT-e', linhas.length], ['Valor', linhas.reduce((t, l) => t + (l.valor || 0), 0), 'moeda'], ['Há mais de 7 dias', linhas.filter((l) => l.dias > 7).length],
+            ['Entregues sem CT-e', linhas.filter((l) => l.entrega).length], ['Fora da conta: FOB', fora?.fob || 0], ['Fora da conta: carga direta', fora?.direta || 0],
+            ['Aceitas na 322', todas.length - rows.length]].filter(([k, v], i) => i < 5 || v),
         };
       } },
     27: { titulo: 'CT-e sem NF-e identificada', grupo: 'Vínculos', tela: 'nfecte', desc: 'CT-e emitidos no período sem a nota no sistema, que citam nota que não foi achada, que não citam chave de NF-e ou cujo destinatário/cidade não bate com a nota ligada (vínculo suspeito).',
       rodar: async (req, q, de, ate) => {
         const rows = await ctesComNotas(req, q, de, ate, { comXml: true });
+        const aceita = await aceitas(); let aceitasFora = 0;
         const cit = new Map();
         rows.forEach((r) => { const d = lerCte(r); r.d = d; r.chaves = (d?.chaves_nfe_referenciadas || []).map((c) => String(c).replace(/\D/g, '')).filter((c) => c.length === 44); r.chaves.forEach((c) => cit.set(c, false)); });
         if (cit.size) {
@@ -123,12 +134,14 @@ module.exports = function criar(h) {
           const citadas = numerosDasChaves(r.chaves);
           const faltam = numerosDasChaves(r.chaves.filter((c) => !cit.get(c)));
           const base = { id: r.nota_id || undefined, data_cte: r.data_cte, numero_cte: r.numero_cte, transportadora: r.transportadora, frete: r.frete, citadas: citadas.join(', '), ligadas: r.notas || '', cliente: r.cliente || r.d?.destinatario_nome || '', chave_cte: r.chave_cte };
+          if (!r.notas && aceita(r.id, 'CTE_SEM_NF')) { aceitasFora += 1; continue; }
           if (!r.notas) linhas.push({ ...base, situacao: citadas.length ? 'Nota não está no sistema' : 'Sem nota e sem chave citada', detalhe: citadas.length ? `Cita a NF ${citadas.join(', ')}; envie o XML da nota` : 'O CT-e não cita a chave de nenhuma NF-e' });
           else if (faltam.length) linhas.push({ ...base, situacao: 'Nota citada não encontrada', detalhe: `Cita também a NF ${faltam.join(', ')}, que não está no sistema` });
           else if (r.d && !r.chaves.length) linhas.push({ ...base, situacao: 'CT-e não cita chave de NF-e', detalhe: 'Ligado pela NF ou pelo pedido; confira se é a nota certa' });
           else if (r.d) {
             const notas = [{ cliente_documento: (r.docs || '').split(',')[0], cidade: r.cidade_nota, uf: r.uf_nota, cidade_redespacho: r.cidade_red, valor_faturado: 0, peso_kg: 0 }];
-            const susp = conferir(r.d, notas, { vinculo: r.vinculo_cte }).filter((p) => p.suspeito);
+            const todos = conferir(r.d, notas, { vinculo: r.vinculo_cte }).filter((p) => p.suspeito);
+            const susp = todos.filter((p) => !aceita(r.id, p.codigo)); aceitasFora += todos.length && !susp.length ? 1 : 0;
             if (susp.length) linhas.push({ ...base, situacao: 'Vínculo suspeito', detalhe: susp.map((p) => p.texto).join(' · ') });
           }
           if (linhas.length >= 5000) break;
@@ -139,18 +152,22 @@ module.exports = function criar(h) {
             ['ligadas', 'NF ligadas no sistema'], ['cliente', 'Destinatário'], ['detalhe', 'Detalhe'], ['frete', 'Frete', 'moeda'], ['chave_cte', 'Chave do CT-e', 'chave']],
           linhas, mais: rows.length > 5000,
           resumo: [['CT-e com problema', linhas.length], ['Nota não está no sistema', conta('Nota não está no sistema') + conta('Sem nota e sem chave citada')],
-            ['Nota citada não encontrada', conta('Nota citada não encontrada')], ['Não cita chave', conta('CT-e não cita chave de NF-e')], ['Vínculo suspeito', conta('Vínculo suspeito')]],
+            ['Nota citada não encontrada', conta('Nota citada não encontrada')], ['Não cita chave', conta('CT-e não cita chave de NF-e')], ['Vínculo suspeito', conta('Vínculo suspeito')],
+            ['Aceitas na 322', aceitasFora]].filter(([k, v], i) => i < 5 || v),
         };
       } },
-    28: { titulo: 'Conferência de valores NF-e', grupo: 'Conferência', tela: 'nfecte', desc: 'CT-e emitidos no período com nota: valor da mercadoria e peso do CT-e × soma das notas, e frete cobrado × frete pela tabela (mesmas tolerâncias da conferência NF-e × CT-e).',
+    28: { titulo: 'Conferência de valores NF-e', grupo: 'Conferência', tela: 'nfecte', desc: 'CT-e emitidos no período com nota: valor da mercadoria e peso do CT-e × soma das notas, e frete cobrado × frete pela tabela (mesmas tolerâncias da conferência NF-e × CT-e; a diferença aceita na tela 322 não conta).',
       rodar: async (req, q, de, ate) => {
         const rows = await ctesComNotas(req, q, de, ate, { comXml: true, semComplementar: true });
+        const aceita = await aceitas(); let aceitasFora = 0;
         const linhas = rows.filter((r) => r.notas && !r.frete_principal_id).slice(0, 5000).map((r) => {
           const d = lerCte(r);
           const probs = [];
           const fora = (a, b, abs, pct) => a != null && b != null && b > 0 && a > 0 && Math.abs(a - b) > Math.max(abs, (Math.abs(b) * pct) / 100);
-          if (fora(d?.valor_carga, r.valor_notas, 1, 0.5)) probs.push('Valor diferente');
-          if (fora(d?.peso_kg, r.peso_notas, 1, 5)) probs.push('Peso diferente');
+          const valorFora = fora(d?.valor_carga, r.valor_notas, 1, 0.5); const pesoFora = fora(d?.peso_kg, r.peso_notas, 1, 5);
+          if (valorFora && !aceita(r.id, 'VALOR')) probs.push('Valor diferente');
+          if (pesoFora && !aceita(r.id, 'PESO')) probs.push('Peso diferente');
+          if ((valorFora && aceita(r.id, 'VALOR')) || (pesoFora && aceita(r.id, 'PESO'))) aceitasFora += 1;
           if (r.devido != null && r.frete != null && r.frete - r.devido > Math.max(1, r.devido * 0.005)) probs.push('Frete acima da tabela');
           return { id: r.nota_id, data_cte: r.data_cte, numero_cte: r.numero_cte, notas: r.notas, transportadora: r.transportadora, valor_notas: r.valor_notas, valor_cte: d?.valor_carga ?? null,
             dif_valor: d?.valor_carga != null && r.valor_notas != null ? r2(d.valor_carga - r.valor_notas) : null, peso_notas: r.peso_notas, peso_cte: d?.peso_kg ?? null,
@@ -164,7 +181,8 @@ module.exports = function criar(h) {
             ['frete', 'Frete cobrado', 'moeda'], ['devido', 'Frete pela tabela', 'moeda'], ['dif_frete', 'Diferença do frete', 'moeda'], ['pct_frete', 'Frete / valor', 'pct']],
           linhas, mais: rows.length > 5000,
           resumo: [['CT-e conferidos', linhas.length], ['Conferem', conta('Confere')], ['Valor diferente', conta('Valor diferente')], ['Peso diferente', conta('Peso diferente')],
-            ['Frete acima da tabela', conta('Frete acima da tabela')], ['Cobrado a mais', linhas.reduce((t, l) => t + Math.max(0, l.dif_frete || 0), 0), 'moeda']],
+            ['Frete acima da tabela', conta('Frete acima da tabela')], ['Cobrado a mais', linhas.reduce((t, l) => t + Math.max(0, l.dif_frete || 0), 0), 'moeda'],
+            ['Diferença aceita na 322', aceitasFora]].filter(([k, v], i) => i < 6 || v),
         };
       } },
     29: { detalhe: notasDoGrupo(EMITIDAS, TRANSP_NF), titulo: 'NF-e por transportadora', grupo: 'Por grupo', tela: 'nfecte', desc: 'Notas emitidas no período por transportadora (a do CT-e; sem CT-e, a da nota): quantidade, valor, peso, volumes, com e sem CT-e e o frete.',

@@ -105,7 +105,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     };
     cont.innerHTML = `<div class="re-layout">
       <nav class="re-lista painel" aria-label="Relatórios">${grupos.map((g) => `<div class="re-grupo">${esc(g)}</div>${catalogo.filter((r) => r.grupo === g).map((r) => `
-        <button type="button" class="re-item${r.numero === atual ? ' ativo' : ''}" data-re="${r.numero}"><span class="re-num">${r.numero}</span>${esc(r.titulo)}</button>`).join('')}`).join('')}</nav>
+        <button type="button" class="re-item${r.numero === atual ? ' ativo' : ''}${r.atalho ? ' re-atalho' : ''}" data-re="${r.numero}"${r.atalho ? ` title="Abre ${esc(r.atalho.rotulo)}"` : ''}><span class="re-num">${r.numero}</span>${esc(r.titulo)}${r.atalho ? ' <span class="re-seta">↗</span>' : ''}</button>`).join('')}`).join('')}</nav>
       <div class="re-corpo">
         <div class="painel re-topo">
           <div class="re-tit"><h3 id="${P}Titulo"></h3><p id="${P}Desc"></p></div>
@@ -116,6 +116,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
             <label class="re-check oculto" id="${P}ProbCaixa"><input type="checkbox" id="${P}Prob" checked /> Só problemas</label>
           </div>
           <div class="re-acoes"><button type="button" class="re-link" id="${P}Mais"></button><span id="${P}Info" class="re-info"></span><div class="re-botoes">
+            <button type="button" class="btn btn-secundario oculto" id="${P}Trab" style="width:auto;" title="A tela onde se trabalha estes documentos (aprovar, glosar, religar, aceitar, pagar...)"></button>
             <button type="button" class="btn btn-secundario oculto" id="${P}Copiar" style="width:auto;">📋 Copiar</button>
             <button type="button" class="btn btn-secundario" id="${P}Graf" style="width:auto;" title="Mostrar ou esconder o gráfico">📊 Gráfico</button>
             <button type="button" class="btn btn-secundario" id="${P}Excel" style="width:auto;">⬇ Excel</button>
@@ -143,6 +144,13 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     $(P + 'Graf').addEventListener('click', () => { lsGravar('grafico', lsLer('grafico', '1') === '1' ? '0' : '1'); desenharGrafico(); });
     cont.querySelector('.re-lista').addEventListener('click', (e) => {
       const b = e.target.closest('[data-re]'); if (!b) return;
+      const info = catalogo.find((r) => r.numero === Number(b.dataset.re));
+      // Relatório que repetia outro: abre o original.
+      if (info?.atalho) {
+        if (info.atalho.destino) window.Navegar?.ir(info.atalho.destino);
+        else if (info.atalho.pagina) window.abrirRelatorio?.(info.atalho.pagina, info.atalho.numero);
+        return;
+      }
       atual = Number(b.dataset.re); ordem = { col: null, asc: true }; detalhe = null; situacao = ''; grafMetrica = null;
       try { localStorage.setItem(chaveLs, String(atual)); } catch { /* ok */ }
       cont.querySelectorAll('.re-item').forEach((x) => x.classList.toggle('ativo', x === b));
@@ -166,6 +174,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
       abrirDocumento(dados?.abrir, Number(tr.dataset.id));
     });
     $(P + 'Excel').addEventListener('click', exportar);
+    $(P + 'Trab').addEventListener('click', () => { const t = (catalogo.find((r) => r.numero === atual) || {}).trabalho; if (t) window.Navegar?.ir(t.destino); });
     $(P + 'Imprimir').addEventListener('click', () => imprimir(false));
     $(P + 'Pdf').addEventListener('click', () => imprimir(true));
     // Copiar uma coluna inteira (ex.: as chaves de acesso), uma por linha, na ordem da tabela.
@@ -241,6 +250,9 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     $(P + 'Titulo').textContent = `${atual} · ${info.titulo || ''}`; $(P + 'Desc').textContent = info.desc || '';
     $(P + 'PerCaixa').classList.toggle('re-sem-periodo', !!info.semPeriodo);
     $(P + 'ProbCaixa').classList.toggle('oculto', atual !== 46);
+    cont.querySelectorAll('.re-item').forEach((x) => x.classList.toggle('ativo', Number(x.dataset.re) === atual));
+    $(P + 'Trab').classList.toggle('oculto', !info.trabalho || !window.Navegar?.acessivel(info.trabalho.destino));
+    if (info.trabalho) $(P + 'Trab').textContent = `↗ ${info.trabalho.rotulo}`;
     textoMais();
     $(P + 'Tabela').innerHTML = '<div class="kanban-vazio">Montando o relatório…</div>';
     const r = await apiFetch(`${api}/${atual}?${filtros()}`).catch(() => null);
@@ -403,10 +415,18 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
   }
 
+  // Outras telas abrem um relatório desta (atalhos, o Scorecard): window.abrirRelatorio(pagina, numero).
+  window.abrirRelatorio = ((anterior) => (pag, numero) => {
+    if (pag !== pagina) return anterior?.(pag, numero);
+    atual = Number(numero); detalhe = null; situacao = ''; ordem = { col: null, asc: true };
+    try { localStorage.setItem(chaveLs, String(atual)); } catch { /* ok */ }
+    if (typeof irParaPagina === 'function') irParaPagina(pagina); else nav.click();
+    return undefined;
+  })(window.abrirRelatorio);
   nav.addEventListener('click', async () => {
     try {
       if (!catalogo.length) { const r = await apiFetch(`${api}?tela=${tela}`); catalogo = r.ok ? await r.json() : []; }
-      if (!catalogo.some((r) => r.numero === atual)) atual = primeiro;
+      if (!catalogo.some((r) => r.numero === atual && !r.atalho)) atual = (catalogo.find((r) => !r.atalho) || {}).numero || primeiro;
       if (!montado) montar();
       await carregar();
     } catch (e) { mostrarAlerta(e.message, { tipo: 'erro' }); }

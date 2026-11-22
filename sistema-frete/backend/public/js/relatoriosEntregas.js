@@ -1,5 +1,5 @@
 // =====================================================================
-// Gestão e relatórios » 📦 Relatórios de entregas (tela 324) e 🏆 Desempenho das transportadoras (tela 325, relatórios 61 a 70): os relatórios 35 a 50 da lista da empresa (entregas
+// Gestão e relatórios » 📦 Relatórios de entregas (tela 324) 🏆 Desempenho das transportadoras (tela 325, relatórios 61 a 70) e 🔗 Relatórios NF-e × CT-e (tela 326, 25 a 34): os relatórios 35 a 50 da lista da empresa (entregas
 // previstas, realizadas, atrasadas, de hoje, próximos 7 dias, pendentes, em trânsito; por transportadora, cliente,
 // cidade e estado; ocorrências, reentregas, comprovantes, rastreamento e SLA). Regras em src/relatoriosEntregas.js.
 // Usa do dashboard.js: apiFetch, mostrarAlerta, token; do indicadores.js: exportarExcel; do periodo.js: Periodo;
@@ -32,6 +32,8 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     if (tipo === 'dec') return v == null ? '—' : num(v, 1);
     if (tipo === 'moeda') return moeda(v);
     if (tipo === 'pct') return pct(v);
+    if (tipo === 'chave') return v ? `<span class="re-chave">${esc(v)}</span>` : '—';
+    if (tipo === 'confere') return v ? `<span class="re-sla ${['Confere', 'Válida'].includes(v) ? 'bom' : /^Sem /.test(v) ? 'medio' : 'ruim'}">${esc(v)}</span>` : '—';
     if (tipo === 'moeda4') return v == null ? '—' : `R$ ${num(v, 4)}`;
     if (tipo === 'mes') return v ? `${MESES[Number(String(v).slice(5, 7)) - 1]}/${String(v).slice(0, 4)}` : '—';
     if (tipo === 'atraso') return v == null ? '—' : `<span class="re-sla ${v <= 0.05 ? 'bom' : v <= 0.15 ? 'medio' : 'ruim'}">${pct(v)}</span>`;
@@ -70,6 +72,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
             <label class="re-check oculto" id="${P}ProbCaixa"><input type="checkbox" id="${P}Prob" checked /> Só problemas</label>
           </div>
           <div class="re-acoes"><span id="${P}Info"></span><span style="flex:1;"></span>
+            <button type="button" class="btn btn-secundario oculto" id="${P}Copiar" style="width:auto;">📋 Copiar</button>
             <button type="button" class="btn btn-secundario" id="${P}Excel" style="width:auto;">⬇ Excel</button>
             <button type="button" class="btn btn-secundario" id="${P}Imprimir" style="width:auto;">🖨 Imprimir</button></div>
         </div>
@@ -108,6 +111,15 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
       }]).catch((err) => mostrarAlerta(err.message, { tipo: 'erro' }));
     });
     $(P + 'Imprimir').addEventListener('click', imprimir);
+    // Copiar uma coluna inteira (ex.: as chaves de acesso), uma por linha, na ordem da tabela.
+    $(P + 'Copiar').addEventListener('click', async () => {
+      if (!dados?.copiar) return;
+      const texto = linhasOrdenadas().map((l) => l[dados.copiar.coluna]).filter(Boolean).join('\n');
+      try { await navigator.clipboard.writeText(texto); } catch {
+        const t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+      }
+      mostrarAlerta(`${texto ? texto.split('\n').length : 0} copiada(s). Cole onde precisar (uma por linha).`, { tipo: 'sucesso' });
+    });
   }
 
   const filtros = () => {
@@ -128,6 +140,8 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     const j = r ? await r.json().catch(() => ({})) : {};
     if (!r || !r.ok) { $(P + 'Tabela').innerHTML = `<div class="kanban-vazio">${esc(j.erro || 'Erro ao montar o relatório.')}</div>`; return; }
     dados = j;
+    $(P + 'Copiar').classList.toggle('oculto', !j.copiar);
+    if (j.copiar) $(P + 'Copiar').textContent = `📋 ${j.copiar.rotulo}`;
     $(P + 'Info').textContent = `${j.de ? `Período: ${dia(j.de)} a ${dia(j.ate)}` : `Hoje: ${dia(j.hoje)}`} · ${num(j.linhas.length)} linha${j.linhas.length === 1 ? '' : 's'}${j.mais ? ' (as primeiras 5.000)' : ''}`;
     $(P + 'Resumo').innerHTML = (j.resumo || []).map(([rot, v, tipo]) => `<div>${esc(rot)}<b>${resumoValor(v, tipo)}</b><span>&nbsp;</span></div>`).join('');
     desenharTabela();
@@ -192,4 +206,5 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   });
 }
 telaRelatorios({ pagina: 'relatorios-entregas', conteudo: 'reConteudo', P: 're', tela: 'entregas', primeiro: 35, chaveLs: 'nexofreteRelEntregas', periodoPadrao: '30d' });
+telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

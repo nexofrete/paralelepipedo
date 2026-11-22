@@ -1134,6 +1134,23 @@ def parte_uso(g):
         ['Reentregas e devoluções', 'Custo por transportadora e por cliente.'],
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
+    s += h2('Relatórios NF-e x CT-e (tela 326)')
+    s.append(P('Em Gestão e relatórios, <b>Relatórios NF-e x CT-e</b> (Ctrl+K e 326) traz os relatórios 25 a 34, na mesma tela dos '
+               'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias), filtros de transportadora, cliente, cidade '
+               'e UF, totais em cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>; dois cliques numa linha abrem a nota. '
+               'Usa as mesmas regras da tela NF-e x CT-e (322) e da regra única de duplicidade.'))
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['25', 'NF-e vinculadas ao CT-e', 'Cada CT-e emitido no período e as notas que ele leva (CT-e de várias notas mostra todas; CT-e de reentrega, devolução etc. mostra a nota de origem), com o frete sobre o valor das notas.'],
+        ['26', 'NF-e sem CT-e', 'Notas emitidas no período que precisam de CT-e e ainda não têm. Ficam fora devolução, entrada, sem circulação, frete por conta do cliente (FOB) e carga direta; os cartões mostram quantas FOB e carga direta ficaram fora.'],
+        ['27', 'CT-e sem NF-e identificada', 'CT-e cuja nota não está no sistema, que cita nota não encontrada, que não cita chave de NF-e ou com vínculo suspeito (destinatário ou cidade diferente da nota ligada).'],
+        ['28', 'Conferência de valores NF-e', 'Valor da mercadoria e peso do CT-e x soma das notas, e frete cobrado x frete pela tabela. Tolerâncias: valor R$ 1 ou 0,5%, peso 1 kg ou 5%, frete R$ 1 ou 0,5%.'],
+        ['29', 'NF-e por transportadora', 'Notas emitidas no período por transportadora (a do CT-e; sem CT-e, a da nota): valor, peso, volumes, com e sem CT-e, entregues e frete.'],
+        ['30', 'NF-e por destinatário', 'As mesmas colunas por cliente, com o CNPJ.'],
+        ['31', 'NF-e por rota', 'Por região e estado de destino, com quantas cidades foram atendidas.'],
+        ['32', 'NF-e por período', 'Dia a dia (mês a mês em períodos de mais de 62 dias): notas emitidas, expedidas (data de saída ou coleta), com CT-e emitido e entregues.'],
+        ['33', 'Chaves de acesso', 'Chave de cada nota e a do CT-e que a leva, com a conferência do dígito verificador (Válida, Chave inválida, Sem chave). O botão <b>Copiar chaves</b> copia todas, uma por linha.'],
+        ['34', 'Documentos duplicados', 'NF-e repetida (mesmo número e emitente), CT-e repetido (mesmo número e transportadora), nota com mais de um CT-e sem vínculo explicado e nota devolvida e refaturada com CT-e nas duas.'],
+    ], [0.1, 0.28, 0.62])
     s += h2('Relatórios de entregas (tela 324)')
     s.append(P('Em Gestão e relatórios, <b>Relatórios de entregas</b> (Ctrl+K e 324) reúne 16 relatórios de entregas e '
                'rastreamento. Escolha o relatório na lista da esquerda; o período vem nos últimos 30 dias e pode ser trocado. '

@@ -328,4 +328,4 @@ async function pesquisar(req, termo) {
   return { termo: t, grupos, total: porId.size };
 }
 
-module.exports = { cobrirNotas, cobrirTodos, ratear, conferir, inconsistencias, aceitar, desfazerAceite, religar, desligar, candidatas, pesquisar, numerosDasChaves, NOMES };
+module.exports = { lerCte, cobrirNotas, cobrirTodos, ratear, conferir, inconsistencias, aceitar, desfazerAceite, religar, desligar, candidatas, pesquisar, numerosDasChaves, NOMES };

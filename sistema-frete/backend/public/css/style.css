@@ -2194,3 +2194,4 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .re-conceito.c-C { color: #b45309; background: rgba(217,119,6,.14); }
 .re-conceito.c-D { color: var(--vermelho); background: color-mix(in srgb, var(--vermelho) 12%, transparent); }
 .re-var { font-weight: 700; white-space: nowrap; } .re-var.bom { color: var(--verde); } .re-var.ruim { color: var(--vermelho); }
+.re-chave { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: .2px; white-space: nowrap; }

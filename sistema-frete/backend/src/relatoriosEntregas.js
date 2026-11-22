@@ -242,8 +242,10 @@ const RELATORIOS = {
 
 // 61 a 70: desempenho das transportadoras (tela 325), com as mesmas bases e filtros.
 Object.assign(RELATORIOS, require('./relatoriosDesempenho')({ consulta, filtros, TRANSP, BASE, ABERTA, CAT_OCORRENCIA, hojeSP }));
+// 25 a 34: NF-e × CT-e (tela 326).
+Object.assign(RELATORIOS, require('./relatoriosNfeCte')({ consulta, filtros, TRANSP, BASE, ABERTA, hojeSP }));
 
-// tela: 'entregas' (324, relatórios 35 a 50) ou 'desempenho' (325, relatórios 61 a 70).
+// tela: 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) ou 'nfecte' (326, relatórios 25 a 34).
 function catalogo(tela = 'entregas') {
   return Object.entries(RELATORIOS).filter(([, r]) => (r.tela || 'entregas') === tela)
     .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo }));

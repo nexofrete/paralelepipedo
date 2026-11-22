@@ -1155,6 +1155,31 @@ def parte_uso(g):
         ['49', 'Rastreamento por transportadora', 'Quantas notas cada transportadora atualizou, quando foi a última atualização, notas sem rastreio e com problema.'],
         ['50', 'SLA de entrega', 'Notas entregues no período: no prazo, fora do prazo, % SLA, atraso médio e prazo médio por transportadora.'],
     ], [0.1, 0.28, 0.62])
+    s += h2('Desempenho das transportadoras (tela 325)')
+    s.append(P('Em Gestão e relatórios, <b>Desempenho das transportadoras</b> (Ctrl+K e 325) traz os relatórios 61 a 70, na mesma '
+               'tela dos relatórios de entregas: lista à esquerda, período (vem nos últimos 3 meses), filtros de transportadora, '
+               'cliente, cidade e UF, totais em cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>.'))
+    s += lista([
+        '<b>Custo</b>: os CT-e emitidos no período (sem os cancelados, os rejeitados e os de transportadora que não levou a nota). '
+        'Cada CT-e conta uma vez; o CT-e de várias notas conta cada nota no custo por NF-e. O frete inclui reentregas e complementares.',
+        '<b>Prazo</b>: notas entregues no período; no prazo é a entregue até a data prevista.',
+        '<b>Ocorrências, rastreamento e atrasos em aberto</b>: notas emitidas no período.',
+        '<b>Nota geral (0 a 10)</b>: prazo 35%, custo 30% (frete sobre o valor das notas, comparado entre as transportadoras: '
+        'a mais barata tira 10 e a mais cara 0), ocorrências 15% (20% de notas com problema ou mais tira 0), comprovante de '
+        'entrega 10% e rastreamento 10%. Critério sem dado sai da conta. Conceito: A 8,5 ou mais, B 7 ou mais, C 5 ou mais, D abaixo de 5.',
+    ])
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['61', 'Ranking de transportadoras', 'Posição pela nota geral, conceito, % no prazo, frete sobre o valor das notas, notas com problema e custo por entrega.'],
+        ['62', 'Índice de entregas no prazo', 'Entregues, com previsão, no prazo e o índice de cada transportadora.'],
+        ['63', 'Índice de atrasos', 'Entregues com atraso, índice de atraso, atraso médio, maior atraso e notas em aberto já atrasadas.'],
+        ['64', 'Índice de ocorrências', 'Notas com problema no transporte e quantas foram de avaria, recusa, extravio, devolução e ausente/endereço/reentrega.'],
+        ['65', 'Custo médio por entrega', 'Frete dividido pelas entregas (CT-e principais), com o valor de reentregas e complementares.'],
+        ['66', 'Custo médio por kg', 'Frete dividido pelo peso dos CT-e.'],
+        ['67', 'Custo médio por NF-e', 'Frete dividido pelas notas transportadas e o frete sobre o valor das notas.'],
+        ['68', 'Comparativo de transportadoras', 'Custos e prazo lado a lado, com "vs média": verde quando a transportadora está melhor que a média, vermelho quando pior.'],
+        ['69', 'Avaliação das transportadoras', 'A nota de cada critério, a nota geral e o conceito.'],
+        ['70', 'Histórico de desempenho', 'Mês a mês, nos 12 meses até a data final: entregues, % no prazo, atraso e prazo médio, frete, custo por entrega e por kg, notas com problema e reentregas. Escolha uma transportadora no filtro para ver só ela.'],
+    ], [0.1, 0.28, 0.62])
     s += h2('Rastreamento automático pela SSW')
     s.append(P('Muitas transportadoras (a FAST-X, por exemplo) usam o sistema SSW. Para elas, o Nexofrete consulta a '
                'própria SSW pela chave da NF-e — sem senha — e preenche sozinho a <b>data da entrega</b> e quem recebeu. '

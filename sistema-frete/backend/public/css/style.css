@@ -2185,3 +2185,12 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .re-cat.neutra { color: var(--texto-fraco); background: color-mix(in srgb, var(--texto) 7%, transparent); font-weight: 500; }
 .re-comp { font-size: 12px; } .re-comp.sem { color: var(--vermelho); font-weight: 600; }
 @media (max-width: 1000px) { .re-layout { grid-template-columns: 1fr; } .re-lista { position: static; flex-direction: row; flex-wrap: wrap; } .re-grupo { width: 100%; } }
+
+/* Desempenho das transportadoras (325) */
+.re-sla.azul { color: #0369a1; background: rgba(3,105,161,.13); }
+.re-conceito { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.re-conceito.c-A { color: var(--verde); background: color-mix(in srgb, var(--verde) 14%, transparent); }
+.re-conceito.c-B { color: #0369a1; background: rgba(3,105,161,.13); }
+.re-conceito.c-C { color: #b45309; background: rgba(217,119,6,.14); }
+.re-conceito.c-D { color: var(--vermelho); background: color-mix(in srgb, var(--vermelho) 12%, transparent); }
+.re-var { font-weight: 700; white-space: nowrap; } .re-var.bom { color: var(--verde); } .re-var.ruim { color: var(--vermelho); }

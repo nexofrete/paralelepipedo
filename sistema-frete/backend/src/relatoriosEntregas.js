@@ -1,5 +1,5 @@
 // Relatórios de entregas e rastreamento (tela 324, Gestão e relatórios). Os números seguem a lista de relatórios
-// da empresa (35 a 50). Base: as notas (registros principais, sem as canceladas). "Em aberto" = sem data de
+// da empresa (35 a 50; os 61 a 70, de desempenho das transportadoras, ficam em src/relatoriosDesempenho.js). Base: as notas (registros principais, sem as canceladas). "Em aberto" = sem data de
 // entrega, não devolvida e não cancelada/arquivada. Previsão = data_entrega_prevista; no prazo = entregue até a previsão.
 // Filtros: de/ate (o período vale para a data de cada relatório: previsão, entrega, emissão ou ocorrência),
 // transportadora, cliente, cidade e uf. Cada relatório devolve { titulo, descricao, colunas, linhas, resumo }.
@@ -240,8 +240,13 @@ const RELATORIOS = {
     } },
 };
 
-function catalogo() {
-  return Object.entries(RELATORIOS).map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo }));
+// 61 a 70: desempenho das transportadoras (tela 325), com as mesmas bases e filtros.
+Object.assign(RELATORIOS, require('./relatoriosDesempenho')({ consulta, filtros, TRANSP, BASE, ABERTA, CAT_OCORRENCIA, hojeSP }));
+
+// tela: 'entregas' (324, relatórios 35 a 50) ou 'desempenho' (325, relatórios 61 a 70).
+function catalogo(tela = 'entregas') {
+  return Object.entries(RELATORIOS).filter(([, r]) => (r.tela || 'entregas') === tela)
+    .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo }));
 }
 
 async function rodar(req, numero, q = {}) {

@@ -1,5 +1,5 @@
 // Relatórios de entregas e rastreamento (tela 324) e os das telas 325 a 328. Regras em src/relatoriosEntregas.js.
-// Os de operação (tela 328, romaneios da transportadora) ficam em /api/relatorios-operacao, com a permissão de quem
+// Os financeiros (tela 329) ficam em /api/relatorios-financeiros, com a permissão do financeiro. Os de operação (tela 328, romaneios da transportadora) ficam em /api/relatorios-operacao, com a permissão de quem
 // trabalha com romaneios; os demais em /api/relatorios-entregas, com a de ver relatórios.
 const express = require('express');
 const { autenticar } = require('../middlewareAuth');
@@ -24,4 +24,5 @@ function montar(telas, pode) {
 }
 
 module.exports = montar(TELAS, permitirAlguma('pode_ver_relatorios'));
+module.exports.financeiro = montar(['financeiro'], permitirAlguma('pode_ver_financeiro'));
 module.exports.operacao = montar(['operacao'], permitirAlguma('pode_emitir_cte', 'pode_ver_relatorios', 'pode_ver_financeiro'));

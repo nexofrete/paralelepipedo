@@ -128,6 +128,7 @@
         <div class="nav-tsub" data-ir="faturamento" data-aba="extras">➕ Serviços extras</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="contas">💸 Contas a pagar</div>
         <div class="nav-tsub" data-ir="financeiro" data-modulo="embarcador">🚛 Pagamento de fretes contratados</div>
+        <div class="nav-tsub" data-ir="relatorios-financeiros" data-modulo="embarcador">💵 Relatórios financeiros (fretes)</div>
         <div class="nav-tsub" data-ir="pagar" data-aba="acertos">🧾 Acerto de viagem</div>
         <div class="nav-tsub" data-ir="comissoes" data-aba="apuracao">🤝 Comissões</div>
         <div class="nav-tsub" data-ir="bancos" data-aba="contas">🏦 Caixa e bancos</div>
@@ -160,6 +161,7 @@
         <div class="nav-tsub" data-ir="desempenho-transportadoras">🏆 Desempenho das transportadoras</div>
         <div class="nav-tsub" data-ir="relatorios-nfe-cte">🔗 Relatórios NF-e × CT-e</div>
         <div class="nav-tsub" data-ir="relatorios-auditoria">🔎 Relatórios de auditoria</div>
+        <div class="nav-tsub" data-ir="relatorios-financeiros">💵 Relatórios financeiros (fretes)</div>
         <div class="nav-tsub" data-subaba="entregas">🚚 Entregas previstas (contratadas)</div>
         <div class="nav-tsub" data-subaba="semMapa">🗺️ Notas sem mapa <span class="nav-badge oculto" id="navBadgeSemMapa"></span></div>
         <div class="nav-tsub" data-subaba="consolidacao">🚚 Consolidar rotas</div>
@@ -210,6 +212,7 @@
       <div class="nav-item nav-no-grupo" data-pagina="desempenho-transportadoras" id="navDesempTransp">🏆 Desempenho das transportadoras</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-nfe-cte" id="navRelNfeCte">🔗 Relatórios NF-e × CT-e</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-auditoria" id="navRelAuditoria">🔎 Relatórios de auditoria</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="relatorios-financeiros" id="navRelFinanceiros">💵 Relatórios financeiros (fretes)</div>
       <div class="nav-item nav-no-grupo" data-pagina="ctes-recebidos" data-modulo="embarcador">🚛 CT-e recebidos</div>
       <div class="nav-item nav-no-grupo" data-pagina="auditoria-frete" data-modulo="embarcador">⚖️ Auditoria de Frete</div>
       <div class="nav-item nav-no-grupo" data-pagina="financeiro" data-modulo="embarcador">💰 Pagamento de fretes</div>
@@ -374,6 +377,16 @@
           </div>
         </div>
         <div id="opConteudo"></div>
+      </section>
+
+      <section id="pagina-relatorios-financeiros" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>💵 Relatórios financeiros (fretes contratados)</h2>
+            <p>Fretes a pagar, pagos e vencidos, faturas por transportadora e pendentes, previsão e pagamentos por período, despesas de transporte e custo de frete por faturamento e por pedido.</p>
+          </div>
+        </div>
+        <div id="fiConteudo"></div>
       </section>
 
       <section id="pagina-relatorios-auditoria" class="oculto">

@@ -269,10 +269,12 @@ Object.assign(RELATORIOS, require('./relatoriosDesempenho')(ajudas));
 Object.assign(RELATORIOS, require('./relatoriosNfeCte')(ajudas));
 // 11 a 24: auditoria de frete (tela 327).
 Object.assign(RELATORIOS, require('./relatoriosAuditoria')(ajudas));
+// 51 a 60: financeiro dos fretes contratados (tela 329; rota /api/relatorios-financeiros).
+Object.assign(RELATORIOS, require('./relatoriosFinanceiro')(ajudas));
 // 71 a 80: roteirização e operação da transportadora (tela 328, pelos romaneios; rota /api/relatorios-operacao).
 Object.assign(RELATORIOS, require('./relatoriosOperacao')());
 
-// tela: 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24) ou 'operacao' (328, relatórios 71 a 80).
+// tela: 'financeiro' (329, relatórios 51 a 60), 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24) ou 'operacao' (328, relatórios 71 a 80).
 function catalogo(tela = 'entregas') {
   return Object.entries(RELATORIOS).filter(([, r]) => (r.tela || 'entregas') === tela)
     .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo }));
@@ -292,7 +294,7 @@ async function rodar(req, numero, q = {}) {
   }
   const res = await r.rodar(req, q, de, ate);
   return { numero: Number(numero), titulo: r.titulo, descricao: r.desc, de: r.semPeriodo ? null : de, ate: r.semPeriodo ? null : ate, hoje, abrir: 'nota',
-    ...res, drill: r.detalhe ? (r.drill || 'grupo') : null };
+    ...res, drill: r.detalhe ? (r.drill || 'grupo') : null, drillValor: r.drillValor || res.drillValor || null, drillRotulo: r.drillRotulo || res.drillRotulo || null };
 }
 
 // Opções dos filtros de lista: as filiais (emitentes das notas) e os status dos fretes; na tela de operação, as

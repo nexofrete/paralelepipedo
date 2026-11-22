@@ -236,6 +236,7 @@ app.use('/api/nfe-cte', require('./src/routes/nfeCte'));
 app.use('/api/notas', require('./src/routes/notas'));
 app.use('/api/relatorios-entregas', require('./src/routes/relatoriosEntregas'));
 app.use('/api/relatorios-operacao', require('./src/routes/relatoriosEntregas').operacao);
+app.use('/api/relatorios-financeiros', require('./src/routes/relatoriosEntregas').financeiro);
 app.use('/api/ctes-recebidos', require('./src/routes/ctesRecebidos'));
 app.use('/api/perfis-acesso', require('./src/routes/perfisAcesso'));
 app.use('/api/alteracoes', require('./src/routes/alteracoes'));

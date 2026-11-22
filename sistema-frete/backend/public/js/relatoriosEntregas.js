@@ -2,7 +2,7 @@
 // Telas de relatórios (uma tela, cinco catálogos; regras em src/relatoriosEntregas.js e nos módulos que ele monta):
 //   📦 Relatórios de entregas (324, relatórios 35 a 50) · 🏆 Desempenho das transportadoras (325, 61 a 70)
 //   🔗 Relatórios NF-e × CT-e (326, 25 a 34) · 🔎 Relatórios de auditoria (327, 11 a 24)
-//   🗺 Relatórios de rotas e operação (328, 71 a 80, romaneios da transportadora)
+//   🗺 Relatórios de rotas e operação (328, 71 a 80, romaneios da transportadora) · 💵 Relatórios financeiros (329, 51 a 60)
 // Em todas: filtros por período, transportadora, filial, cliente, UF, cidade, nº da NF-e, nº do CT-e e status;
 // situação da linha (filtro na própria tabela); ordenação por coluna; totalizador; gráfico; Excel, PDF e impressão;
 // drill-down (clique na linha agrupada abre os documentos do grupo; dois cliques abrem o documento de origem).
@@ -66,6 +66,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     if (tipo === 'dec') return v == null ? '—' : num(v, 1);
     if (tipo === 'moeda') return moeda(v);
     if (tipo === 'pct') return pct(v);
+    if (tipo === 'financeiro') return v ? `<span class="re-sla ${/^Pag/.test(v) ? 'bom' : /Faturado|Liberad|Aprovad/.test(v) ? 'azul' : /Retido|Bloquead/.test(v) ? 'ruim' : 'medio'}">${esc(v)}</span>` : '—';
     if (tipo === 'ocupacao') return v == null ? '—' : `<span class="re-sla ${v > 1 ? 'ruim' : v < 0.5 ? 'medio' : 'bom'}">${pct(v)}</span>`;
     if (tipo === 'difcusto') return v == null ? '—' : `<span class="re-var ${v > 0.004 ? 'ruim' : v < -0.004 ? 'bom' : ''}">${v > 0 ? '+' : ''}${moeda(v)}</span>`;
     if (tipo === 'auditoria') return v ? `<span class="re-sla ${v === 'Confere' ? 'bom' : /Acima|Não prevista/.test(v) ? 'ruim' : /Abaixo/.test(v) ? 'azul' : 'medio'}">${esc(v)}</span>` : '—';
@@ -90,9 +91,9 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   }
   const ehNumero = (tipo) => ['num', 'dec', 'moeda', 'moeda4', 'difcusto', 'ocupacao', 'pct', 'sla', 'atraso', 'nota', 'posicao', 'varcusto', 'varpp'].includes(tipo);
   // Coluna que se soma no totalizador (médias, índices, capacidades e "por ..." não se somam).
-  const somavel = ([, rot, tipo]) => ['num', 'dec', 'moeda', 'difcusto'].includes(tipo) && !/médi|por |\/|%|capacidade|padrão|esperad|maior|menor|ticket|ocupa|alíquota|posição|dias\b|duração|km por/i.test(rot);
+  const somavel = ([, rot, tipo]) => ['num', 'dec', 'moeda', 'difcusto'].includes(tipo) && !/médi|por |\/|%|capacidade|padrão|esperad|maior|menor|ticket|ocupa|alíquota|posição|dias\b|duração|km por|acumulad|^(transportadoras|veículos|motoristas|cidades)$/i.test(rot);
   // Coluna da situação de cada linha (filtro "Situação" e gráfico dos relatórios em lista).
-  const colunaSituacao = (d) => (d?.colunas || []).find(([k, , tipo]) => ['situacao', 'categoria', 'auditoria', 'confere', 'conceito'].includes(tipo) || ['situacao', 'decisao'].includes(k));
+  const colunaSituacao = (d) => (d?.colunas || []).find(([k, , tipo]) => ['situacao', 'categoria', 'auditoria', 'confere', 'conceito', 'financeiro'].includes(tipo) || ['situacao', 'decisao'].includes(k));
 
   function montar() {
     montado = true;
@@ -111,7 +112,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
           <div class="re-filtros${lsLer('mais', '0') === '1' ? ' re-mais-aberto' : ''}" id="${P}Filtros">
             <div class="nf-f re-per" id="${P}PerCaixa"><span>Período</span>${Periodo.html(P)}</div>
             ${campos.map(campo).join('')}
-            <label class="nf-f oculto" id="${P}SitCaixa"><span>Situação (no relatório)</span><select id="${P}Sit" class="cte-entrada"><option value="">Todas</option></select></label>
+            <label class="nf-f re-sit oculto" id="${P}SitCaixa"><span>Situação (no relatório)</span><select id="${P}Sit" class="cte-entrada"><option value="">Todas</option></select></label>
             <label class="re-check oculto" id="${P}ProbCaixa"><input type="checkbox" id="${P}Prob" checked /> Só problemas</label>
           </div>
           <div class="re-acoes"><button type="button" class="re-link" id="${P}Mais"></button><span id="${P}Info" class="re-info"></span><div class="re-botoes">
@@ -192,7 +193,31 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   function abrirDocumento(tipo, id) {
     if (tipo === 'romaneio') { if (window.nexoRomaneio) window.nexoRomaneio.abrir(id).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })); return; }
     if (tipo === 'cte') { if (window.nexoCte) window.nexoCte.abrir(id); return; }
+    if (tipo === 'fatura') { abrirFatura(id).catch((e) => mostrarAlerta(e.message, { tipo: 'erro' })); return; }
     if (typeof window.abrirNotaDetalhe === 'function') window.abrirNotaDetalhe(id);
+  }
+
+  // Fatura de frete: os CT-e dela (do relatório 55) numa janela, com o atalho para a tela de pagamento.
+  async function abrirFatura(id) {
+    const r = await apiFetch(`${api}/55?detalhe=${id}`);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || 'Não foi possível abrir a fatura.');
+    const fundo = document.createElement('div'); fundo.className = 'modal-overlay';
+    const fat = (dados?.linhas || []).find((l) => String(l.id) === String(id)) || {};
+    fundo.innerHTML = `<div class="painel modal-card" style="max-width:1100px; width:100%; max-height:92vh; overflow:auto; padding:18px 20px;">
+      <div style="display:flex; justify-content:space-between; gap:12px;"><h3 style="margin:0;">🧾 Fatura ${esc(fat.numero || id)}${fat.transportadora ? ` · ${esc(fat.transportadora)}` : ''}</h3><span style="cursor:pointer; font-size:18px;" data-fechar>✕</span></div>
+      <p style="margin:6px 0 10px; color:var(--texto-fraco); font-size:13px;">${(j.resumo || []).map(([k, v, t]) => `${esc(k)}: <b>${resumoValor(v, t)}</b>`).join(' · ')} · dois cliques num CT-e abrem a nota</p>
+      <table class="re-tab"><thead><tr>${j.colunas.map(([, rot, tipo]) => `<th class="${ehNumero(tipo) ? 'n' : ''}">${esc(rot)}</th>`).join('')}</tr></thead>
+      <tbody>${j.linhas.map((l) => `<tr data-id="${l.id}">${j.colunas.map((c) => `<td class="${ehNumero(c[2]) ? 'n' : ''}">${celula(l, c)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;"><button class="btn btn-secundario" style="width:auto;" data-pagamento>🚛 Abrir Pagamento de fretes</button>
+        <button class="btn btn-primario" style="width:auto;" data-fechar>Fechar</button></div></div>`;
+    document.body.appendChild(fundo);
+    const fechar = () => fundo.remove();
+    fundo.addEventListener('click', (e) => {
+      if (e.target === fundo || e.target.closest('[data-fechar]')) fechar();
+      if (e.target.closest('[data-pagamento]')) { fechar(); document.querySelector('.nav-item[data-pagina="financeiro"]')?.click(); }
+    });
+    fundo.addEventListener('dblclick', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) abrirDocumento('nota', Number(tr.dataset.id)); });
   }
 
   const valorFiltro = (f) => $(P + f.id).value.trim();
@@ -287,12 +312,12 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     const tot = totais(ls);
     const linha = (l) => {
       let attrs = '';
-      if (drill) {
-        const bruto = l[drill]; const valor = bruto == null || /^\(sem /i.test(String(bruto)) ? '' : String(bruto);
-        const col = d.colunas.find((c) => c[0] === drill) || [drill, '', ''];
+      if (drill && !(d.drillValor && l[d.drillValor] == null)) {
+        const bruto = l[d.drillValor || drill]; const valor = bruto == null || /^\(sem /i.test(String(bruto)) ? '' : String(bruto);
+        const col = d.colunas.find((c) => c[0] === (d.drillRotulo || drill)) || [drill, '', ''];
         attrs = ` class="re-drill" data-grupo="${esc(valor)}" data-rotulo="${esc(texto(celula(l, col)))}" title="Clique para ver os documentos deste grupo"`;
-      } else if (l.id && (!d.agrupado || d.abrir === 'romaneio')) {
-        attrs = ` data-id="${l.id}" title="Dois cliques para abrir ${d.abrir === 'romaneio' ? 'o romaneio' : d.abrir === 'cte' ? 'o CT-e' : 'a nota'}"`;
+      } else if (l.id && (!d.agrupado || ['romaneio', 'fatura'].includes(d.abrir))) {
+        attrs = ` data-id="${l.id}" title="Dois cliques para abrir ${d.abrir === 'romaneio' ? 'o romaneio' : d.abrir === 'fatura' ? 'a fatura' : d.abrir === 'cte' ? 'o CT-e' : 'a nota'}"`;
       }
       return `<tr${attrs}>${d.colunas.map((c) => `<td class="${ehNumero(c[2]) ? 'n' : ''}">${celula(l, c)}</td>`).join('')}</tr>`;
     };
@@ -309,7 +334,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     if (!d || !ligado) { caixa.classList.add('oculto'); return; }
     const ls = linhasVisiveis();
     const metricas = d.colunas.filter(([, , tipo]) => ['num', 'dec', 'moeda', 'pct', 'sla', 'atraso', 'nota', 'ocupacao', 'moeda4'].includes(tipo));
-    const rotulo = d.colunas.find(([k, , tipo]) => k === (d.drill || 'grupo') || ['mes'].includes(tipo) || (k === 'periodo')) || null;
+    const rotulo = d.colunas.find(([k, , tipo]) => k === (d.drillRotulo || d.drill || 'grupo') || ['mes'].includes(tipo) || (k === 'periodo')) || null;
     let barras = []; let titulo = ''; let tipoValor = 'num';
     if ((d.agrupado || d.drill) && !detalhe && rotulo && metricas.length) {
       if (!metricas.some((m) => m[0] === grafMetrica)) grafMetrica = (metricas.find((m) => m[2] === 'moeda' && somavel(m)) || metricas.find((m) => somavel(m)) || metricas[0])[0];
@@ -317,7 +342,8 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
       tipoValor = m[2];
       const tempo = ['mes', 'data'].includes(rotulo[2]);
       barras = ls.filter((l) => l[m[0]] != null).map((l) => ({ rot: texto(celula(l, rotulo)), v: Number(l[m[0]]) || 0 }));
-      barras = tempo ? barras.reverse().slice(-24) : barras.sort((a, b) => b.v - a.v).slice(0, 15);
+      // Vencimentos (previsão) já vêm na ordem das datas; períodos vêm do mais novo para o mais antigo.
+      barras = d.drill === 'data' ? barras.slice(0, 30) : tempo ? barras.reverse().slice(-24) : barras.sort((a, b) => b.v - a.v).slice(0, 15);
       titulo = `<label>📊 <select id="${P}GrafMet" class="cte-entrada">${metricas.map(([k, rot]) => `<option value="${k}"${k === grafMetrica ? ' selected' : ''}>${esc(rot)}</option>`).join('')}</select>
         por ${esc(rotulo[1].toLowerCase())}${tempo ? '' : ls.length > 15 ? ' · os 15 maiores' : ''}</label>`;
     } else {
@@ -389,6 +415,8 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
 telaRelatorios({ pagina: 'relatorios-entregas', conteudo: 'reConteudo', P: 're', tela: 'entregas', primeiro: 35, chaveLs: 'nexofreteRelEntregas', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'relatorios-operacao', conteudo: 'opConteudo', P: 'op', tela: 'operacao', primeiro: 71, chaveLs: 'nexofreteRelOperacao', periodoPadrao: '30d', api: '/api/relatorios-operacao',
   campos: FILTROS_OPERACAO, pode: () => usuario?.perfil === 'admin' || !!(usuario?.pode_emitir_cte || usuario?.pode_ver_relatorios || usuario?.pode_ver_financeiro) });
+telaRelatorios({ pagina: 'relatorios-financeiros', conteudo: 'fiConteudo', P: 'fi', tela: 'financeiro', primeiro: 51, chaveLs: 'nexofreteRelFinanceiro', periodoPadrao: 'mes',
+  api: '/api/relatorios-financeiros', pode: () => usuario?.perfil === 'admin' || !!usuario?.pode_ver_financeiro });
 telaRelatorios({ pagina: 'relatorios-auditoria', conteudo: 'auConteudo', P: 'au', tela: 'auditoria', primeiro: 11, chaveLs: 'nexofreteRelAuditoria', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

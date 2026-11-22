@@ -1134,9 +1134,32 @@ def parte_uso(g):
         ['Reentregas e devoluções', 'Custo por transportadora e por cliente.'],
         ['SLA e atrasos', 'No prazo × atrasado, e atrasos por transportadora.'],
     ], [0.3, 0.7])
-    s += h2('Recursos de todas as telas de relatórios (324 a 328)')
+    s += h2('Relatórios financeiros (tela 329)')
+    s.append(P('Em Gestão e relatórios (e em Financeiro), <b>Relatórios financeiros (fretes)</b> (Ctrl+K e 329) traz os relatórios 51 a 60 '
+               'dos fretes contratados, com os mesmos recursos das outras telas de relatórios. Vê a tela quem tem a permissão do financeiro. '
+               'O período vem no mês atual.'))
+    s += lista([
+        '<b>Valor a pagar do CT-e</b>: o valor do CT-e (ou o negociado, enquanto ele não chega) menos a glosa. <b>Fatura</b>: a que a '
+        'transportadora mandou (conferida, aprovada, liberada, paga), com o vencimento; a pagar = o valor informado na fatura ou os CT-e menos as glosas.',
+        '<b>Situação do CT-e</b>: Pago, Faturado (a pagar), Liberado (sem fatura), Em conferência ou Retido na auditoria.',
+        'Os relatórios 51, 53, 55 e 56 mostram a situação de hoje (o período não vale); os demais usam o período.',
+        'Dois cliques numa fatura abrem os CT-e dela, com o atalho para a tela Pagamento de fretes; dois cliques num CT-e abrem a nota.',
+    ])
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['51', 'Fretes a pagar', 'Todos os CT-e ainda não pagos, com o valor a pagar, a situação, a fatura e o vencimento; os cartões separam faturado, liberado, em conferência e retido.'],
+        ['52', 'Fretes pagos', 'Faturas pagas no período: a pagar x pago, quem pagou e quantos dias depois do vencimento. Clique na fatura para ver os CT-e.'],
+        ['53', 'Fretes vencidos', 'Faturas não pagas com o vencimento passado e CT-e que a transportadora ainda não faturou há mais de 30 dias.'],
+        ['54', 'Faturas por transportadora', 'Faturas emitidas no período: quantas, CT-e, cobrado, glosas, a pagar, pago, em aberto, vencido e bloqueadas. Clique na transportadora para ver as faturas.'],
+        ['55', 'Faturas pendentes', 'As faturas ainda não pagas (as contas a pagar do frete), com a situação, o vencimento e o motivo do bloqueio.'],
+        ['56', 'Previsão de pagamento', 'O que vence em cada dia, das vencidas aos próximos 60 dias, com o acumulado, e os CT-e liberados ainda sem fatura (a faturar).'],
+        ['57', 'Pagamentos por período', 'Pagamentos dia a dia (mês a mês em períodos longos): faturas pagas, CT-e, valor pago e glosas abatidas.'],
+        ['58', 'Despesas de transporte', 'O gasto do período por tipo: frete de entrega, reentrega, devolução, redespacho, complementar e outros, com as glosas e a participação.'],
+        ['59', 'Custo de frete por faturamento', 'Mês a mês (ou dia a dia): faturamento das notas de venda (o mesmo do Faturamento do dia), o frete dessas notas (com reentregas) e o % de frete sobre as vendas.'],
+        ['60', 'Custo de frete por pedido', 'Cada pedido: as notas, o valor, o frete (com o rateio do CT-e de várias notas e as reentregas), o % e as transportadoras.'],
+    ], [0.1, 0.28, 0.62])
+    s += h2('Recursos de todas as telas de relatórios (324 a 329)')
     s.append(P('As telas Relatórios de entregas (324), Desempenho das transportadoras (325), Relatórios NF-e x CT-e (326), '
-               'Relatórios de auditoria (327) e Relatórios de rotas e operação (328) funcionam do mesmo jeito:'))
+               'Relatórios de auditoria (327), Relatórios de rotas e operação (328) e Relatórios financeiros (329) funcionam do mesmo jeito:'))
     s += lista([
         '<b>Filtros</b>: período, transportadora, cliente (nome ou CNPJ), cidade e UF; em <b>Mais filtros</b>, a filial (a empresa '
         'que emitiu a nota, pelo CNPJ), o número da NF-e e do CT-e (um ou vários, separados por vírgula ou espaço) e o status do '

@@ -2216,3 +2216,4 @@ html[data-modulos="embarcador"] [data-modulo="transportadora"] { display: none !
 .re-gbar-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--texto-fraco); white-space: nowrap; }
 .re-acoes .btn.ativo { border-color: var(--azul); color: var(--azul); }
 @media (max-width: 760px) { .re-gbar { grid-template-columns: 110px 1fr 80px; } }
+.re-filtros .re-sit { flex: 0 1 280px; }

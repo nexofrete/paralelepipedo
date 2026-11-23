@@ -1,4 +1,5 @@
-// Relatórios de auditoria de frete (tela 327, Gestão e relatórios): os números 11 a 24 da lista da empresa. Montado por
+// Relatórios de auditoria de frete (tela 327, Gestão e relatórios): os números 11 a 24 da lista da empresa, mais 100 a 105
+// (frete complementar, espelhos de embarque e de pré-conhecimento, CT-e por valor, fretes por componente e estratificação). Montado por
 // src/relatoriosEntregas.js, com as mesmas bases e filtros. Usa as regras que já existem, para os números baterem com as
 // telas de auditoria:
 //  - Frete pela tabela: valor_total_frete (ou valor_total_calculado) gravado pelo cálculo (src/calculoFrete.js); a
@@ -36,7 +37,7 @@ module.exports = function criar(h) {
   async function auditar(req, q, de, ate, { comComplementar = false, onde = '' } = {}) {
     const params = [de, ate]; const extra = filtros(q, params);
     const { rows } = await consulta(req, `SELECT ${det.CAMPOS}, f.valor_total_calculado, f.glosa_valor, f.status_aprovacao, f.aprovado_por_nome, f.cte_nao_levou, f.fatura_id,
-        f.cliente, f.cidade, f.uf, f.transportadora, f.cte_cidade_inicio, f.cte_cidade_fim, f.cubagem_m3, f.valor_faturado, f.redespacho, f.cidade_redespacho, f.tabela_preco_id_usada,
+        f.cliente, f.cidade, f.uf, f.transportadora, f.cte_cidade_inicio, f.cte_cidade_fim, f.cubagem_m3, f.valor_faturado, f.cte_icms_valor, f.redespacho, f.cidade_redespacho, f.tabela_preco_id_usada,
         COALESCE(f.transportadora_cte, f.transportadora) AS transp, to_char(f.data_emissao_cte, 'YYYY-MM-DD') AS data_cte,
         (SELECT p.numero_nf FROM fretes p WHERE p.id = f.frete_principal_id) AS nf_principal
       FROM fretes f
@@ -85,6 +86,36 @@ module.exports = function criar(h) {
         };
   }
   const daTransp = (req, q, de, ate, valor) => listaAuditoria(req, q, de, ate, (l) => (l.transp || '') === valor || (l.transportadora || '') === valor);
+
+  // 101: embarque = o mapa de carregamento do ERP; sem mapa, a transportadora no dia da saída (ou da coleta, ou da emissão).
+  const EMB_DATA = 'COALESCE(f.mapa_data_referencia, f.data_saida::date, f.data_coleta, f.data_emissao_nf)';
+  const EMB_CHAVE = `CASE WHEN NULLIF(TRIM(f.numero_mapa), '') IS NOT NULL THEN 'Mapa ' || TRIM(f.numero_mapa)
+    ELSE to_char(${EMB_DATA}, 'DD/MM/YYYY') || ' · ' || COALESCE(f.transportadora_cte, f.transportadora, 'sem transportadora') END`;
+  const SIT_COMP = { ok: 'Confere', a_mais: 'Acima da tabela', a_menos: 'Abaixo da tabela', nao_autorizada: 'Não prevista', sem_tabela: 'Sem tabela' };
+  // 103 e 105: faixas [rótulo, de (inclusive), até (exclusive; null = sem limite)].
+  const FAIXAS_VALOR = [['Até R$ 100', 0, 100], ['R$ 100 a 250', 100, 250], ['R$ 250 a 500', 250, 500], ['R$ 500 a 1.000', 500, 1000], ['R$ 1.000 a 2.500', 1000, 2500],
+    ['R$ 2.500 a 5.000', 2500, 5000], ['Acima de R$ 5.000', 5000, null]];
+  const FAIXAS_PESO = [['Sem peso informado', -1, 0.001], ['Até 10 kg', 0.001, 10], ['10 a 30 kg', 10, 30], ['30 a 50 kg', 30, 50], ['50 a 100 kg', 50, 100], ['100 a 300 kg', 100, 300], ['300 a 500 kg', 300, 500],
+    ['500 kg a 1 t', 500, 1000], ['1 a 3 t', 1000, 3000], ['3 a 10 t', 3000, 10000], ['Acima de 10 t', 10000, null]];
+  const faixaDe = (F, v) => (F.find(([, a, b]) => Number(v) >= a && (b == null || Number(v) < b)) || F[0])[0];
+  // CT-e em faixas: quantos, quanto somam, participação, médio, peso médio, frete por kg e transportadoras.
+  function estratos(lista, F, valorDe, rotulo) {
+    const est = {};
+    for (const l of lista) {
+      const k = faixaDe(F, valorDe(l));
+      const e = est[k] || (est[k] = { ctes: 0, valor: 0, peso: 0, transp: new Set() });
+      e.ctes += 1; e.valor += Number(valorDe(l)) || 0; e.peso += Number(l.peso_kg) || 0; if (l.transp) e.transp.add(l.transp);
+    }
+    const tn = lista.length; const tv = lista.reduce((t, l) => t + (Number(valorDe(l)) || 0), 0);
+    const linhas = F.filter(([k]) => est[k]).map(([k]) => { const e = est[k]; return { grupo: k, ctes: e.ctes, pct_ctes: div(e.ctes, tn), valor: r2(e.valor), part: div(e.valor, tv),
+      medio: div(e.valor, e.ctes), peso_medio: div(e.peso, e.ctes), frete_kg: div(e.valor, e.peso), transportadoras: e.transp.size }; });
+    return {
+      colunas: [['grupo', rotulo], ['ctes', 'CT-e', 'num'], ['pct_ctes', '% dos CT-e', 'pct'], ['valor', 'Valor', 'moeda'], ['part', '% do valor', 'pct'], ['medio', 'Valor médio', 'moeda'],
+        ['peso_medio', 'Peso médio (kg)', 'dec'], ['frete_kg', 'Frete / kg', 'moeda4'], ['transportadoras', 'Transportadoras', 'num']],
+      linhas, agrupado: true,
+      resumo: [['CT-e', tn], ['Valor', tv, 'moeda'], ['Valor médio', div(tv, tn), 'moeda'], ['Faixa com mais CT-e', linhas.slice().sort((a, b) => b.ctes - a.ctes)[0]?.grupo || '—', 'texto']],
+    };
+  }
 
   return {
     11: { titulo: 'Auditoria de CT-e', grupo: 'Conferência', tela: 'auditoria', desc: 'Cada CT-e emitido no período: valor cobrado × frete pela tabela (dentro ou fora da tolerância), os apontamentos da conferência (componentes, taxas, peso, ICMS) e a decisão da auditoria.',
@@ -342,6 +373,157 @@ module.exports = function criar(h) {
           linhas, agrupado: true,
           resumo: [['Economia total', r2(T.recuperado + T.em_apuracao), 'moeda'], ['Recuperado', T.recuperado, 'moeda'], ['Glosas', T.glosas, 'moeda'], ['Créditos', T.creditos, 'moeda'],
             ['CT-e barrados', T.barrados, 'moeda'], ['Evitado (retido)', T.em_apuracao, 'moeda']],
+        };
+      } },
+    // 100 a 105 (pedidos depois da lista da empresa): complementares, espelhos, faixas de valor, componentes e estratificação.
+    100: { titulo: 'Frete complementar', grupo: 'Cobranças', tela: 'auditoria',
+      desc: 'Os CT-e complementares do período (data do CT-e): o CT-e original que eles complementam, o valor do original, o complemento, quanto ele soma sobre o original e a decisão da auditoria.',
+      rodar: async (req, q, de, ate) => {
+        const p = [de, ate]; const extra = filtros(q, p);
+        const { rows } = await consulta(req, `SELECT COALESCE(f.frete_principal_id, f.id) AS id, to_char(f.data_emissao_cte, 'YYYY-MM-DD') AS data_cte, f.numero_cte,
+            COALESCE(NULLIF(f.numero_nf, ''), o.numero_nf) AS nf, COALESCE(f.transportadora_cte, f.transportadora) AS transportadora, COALESCE(NULLIF(f.cliente, ''), o.cliente) AS cliente,
+            o.numero_cte AS cte_original, o.valor_total_cte::float AS valor_original, f.valor_total_cte::float AS valor, f.status, f.status_aprovacao, f.aprovado_por_nome,
+            f.glosa_valor, f.cte_nao_levou, f.fatura_id, NULLIF(TRIM(f.observacoes), '') AS observacoes
+          FROM fretes f LEFT JOIN fretes o ON o.id = f.frete_principal_id
+          WHERE f.chave_cte IS NOT NULL AND f.cte_cancelado IS NOT TRUE AND (f.vinculo_cte = 'complementar' OR f.tipo_cte = '1')
+            AND f.data_emissao_cte BETWEEN $1::date AND $2::date${extra} ORDER BY f.data_emissao_cte DESC, f.numero_cte DESC LIMIT ${LIMITE}`, p);
+        const linhas = rows.map((r) => ({ id: r.id, data_cte: r.data_cte, numero_cte: r.numero_cte, nf: r.nf, transportadora: r.transportadora, cliente: r.cliente,
+          cte_original: r.cte_original, valor_original: r.valor_original, valor: r.valor, pct: r.valor_original ? div(r.valor, r.valor_original) : null,
+          decisao: decisao(r), observacoes: r.observacoes }));
+        const comOrig = linhas.filter((l) => l.valor_original);
+        return {
+          colunas: [...COL_BASE, ['cliente', 'Cliente'], ['cte_original', 'CT-e original'], ['valor_original', 'Valor do original', 'moeda'], ['valor', 'Complemento', 'moeda'],
+            ['pct', 'Sobre o original', 'atraso'], ['decisao', 'Decisão'], ['observacoes', 'Observações']],
+          linhas,
+          resumo: [['CT-e complementares', linhas.length], ['Valor complementado', soma(linhas, 'valor'), 'moeda'], ['Sobre os originais', div(soma(comOrig, 'valor'), soma(comOrig, 'valor_original')), 'pct'],
+            ['Sem o CT-e original', linhas.filter((l) => !l.cte_original).length], ['Transportadoras', new Set(linhas.map((l) => l.transportadora)).size]],
+        };
+      } },
+    101: { titulo: 'Espelho de embarque', grupo: 'Embarque', tela: 'auditoria', detalhe: (req, q, de, ate, v) => h.listaNotas(req, q, `${EMB_DATA} BETWEEN $1::date AND $2::date AND (${EMB_CHAVE}) = $3`, [de, ate, v], { ordem: 'f.numero_nf' }),
+      desc: 'Cada embarque do período (o mapa de carregamento do ERP; sem mapa, a transportadora no dia da saída): notas, clientes, destinos, volumes, peso, cubagem, valor, o frete previsto pela tabela, o cobrado nos CT-e e as notas ainda sem CT-e. Dois cliques mostram as notas do embarque.',
+      rodar: async (req, q, de, ate) => {
+        const p = [de, ate]; const extra = filtros(q, p);
+        const { rows } = await consulta(req, `SELECT ${EMB_CHAVE} AS grupo, MAX(f.numero_mapa) AS mapa, MAX(f.mapa_descricao) AS descricao, to_char(MIN(${EMB_DATA}), 'YYYY-MM-DD') AS data,
+            MAX(COALESCE(f.transportadora_cte, f.transportadora)) AS transportadora, COUNT(*)::int AS notas, COUNT(DISTINCT f.cliente)::int AS clientes,
+            COUNT(DISTINCT COALESCE(f.cidade, '') || '/' || COALESCE(f.uf, ''))::int AS destinos, COALESCE(SUM(f.qtd_volumes), 0)::int AS volumes,
+            COALESCE(SUM(COALESCE(f.peso_bruto, f.peso_kg)), 0)::float AS peso, COALESCE(SUM(f.cubagem_m3), 0)::float AS m3, COALESCE(SUM(f.valor_faturado), 0)::float AS valor,
+            COALESCE(SUM(COALESCE(f.valor_total_frete, f.valor_total_calculado)), 0)::float AS previsto,
+            COALESCE(SUM(COALESCE(f.frete_rateado, CASE WHEN f.chave_cte IS NOT NULL AND f.cte_cancelado IS NOT TRUE THEN f.valor_total_cte END)), 0)::float AS cobrado,
+            COUNT(*) FILTER (WHERE f.chave_cte IS NULL AND f.cte_coberto_por IS NULL)::int AS sem_cte
+          FROM fretes f WHERE ${h.BASE} AND ${EMB_DATA} BETWEEN $1::date AND $2::date${extra} GROUP BY 1 ORDER BY 4 DESC, 1 LIMIT 3000`, p);
+        const linhas = rows.map((r) => ({ ...r, m3: r2(r.m3), previsto: r2(r.previsto), cobrado: r2(r.cobrado), dif: r.cobrado && r.previsto ? r2(r.cobrado - r.previsto) : null, pct: div(r.cobrado || r.previsto, r.valor) }));
+        return {
+          colunas: [['grupo', 'Embarque'], ['data', 'Data', 'data'], ['transportadora', 'Transportadora'], ['descricao', 'Descrição do mapa'], ['notas', 'Notas', 'num'], ['clientes', 'Clientes', 'num'],
+            ['destinos', 'Destinos', 'num'], ['volumes', 'Volumes', 'num'], ['peso', 'Peso (kg)', 'dec'], ['m3', 'Cubagem (m³)', 'dec'], ['valor', 'Valor das notas', 'moeda'],
+            ['previsto', 'Frete previsto (tabela)', 'moeda'], ['cobrado', 'Frete cobrado (CT-e)', 'moeda'], ['dif', 'Cobrado − previsto', 'difcusto'], ['pct', 'Frete / valor', 'atraso'], ['sem_cte', 'Notas sem CT-e', 'num']],
+          linhas, agrupado: true,
+          resumo: [['Embarques', linhas.length], ['Com mapa do ERP', linhas.filter((l) => l.mapa).length], ['Notas', soma(linhas, 'notas')], ['Peso (kg)', soma(linhas, 'peso'), 'dec'],
+            ['Frete previsto', soma(linhas, 'previsto'), 'moeda'], ['Frete cobrado', soma(linhas, 'cobrado'), 'moeda']],
+        };
+      } },
+    102: { titulo: 'Espelho de pré-conhecimento', grupo: 'Embarque', tela: 'auditoria',
+      desc: 'As notas CIF emitidas no período que ainda esperam o CT-e, com o frete que a transportadora deve cobrar pela tabela, parcela por parcela (frete peso, ad valorem, GRIS, pedágio, outras taxas), o prazo e a tabela usada. Serve de espelho para conferir com a transportadora antes do CT-e (o PDF sai pelo botão PDF).',
+      rodar: async (req, q, de, ate) => {
+        const p = [de, ate]; const extra = filtros(q, p);
+        const { rows } = await consulta(req, `SELECT f.id, f.numero_nf, to_char(f.data_emissao_nf, 'YYYY-MM-DD') AS emissao, f.cliente, f.cidade, f.uf, f.redespacho,
+            COALESCE(f.transportadora_cte, f.transportadora) AS transportadora, f.tabela_frete, f.qtd_volumes AS volumes, COALESCE(f.peso_bruto, f.peso_kg)::float AS peso, f.cubagem_m3::float AS m3,
+            f.valor_faturado::float AS valor, COALESCE(f.valor_total_frete, f.valor_total_calculado)::float AS previsto, f.auditoria_calculo, f.prazo_dias_tabela AS prazo,
+            to_char(f.data_entrega_prevista, 'YYYY-MM-DD') AS previsao
+          FROM fretes f WHERE ${h.BASE} AND f.data_emissao_nf BETWEEN $1::date AND $2::date AND f.chave_cte IS NULL AND f.cte_coberto_por IS NULL AND f.nf_entrada IS NOT TRUE
+            AND COALESCE(f.frete_cif_fob, '') NOT IN ('FOB', 'Destinatário', 'Destinatario', 'Sem frete', 'Próprio destinatário')
+            AND COALESCE(f.status, 'Pendente') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado')${extra}
+          ORDER BY transportadora NULLS LAST, f.data_emissao_nf, f.numero_nf LIMIT ${LIMITE}`, p);
+        const linhas = rows.map(({ auditoria_calculo: ac, ...r }) => {
+          const c = json(ac) || {}; const k = c.componentes || {};
+          const taxas = ['tde', 'tda', 'trt', 'despacho', 'descarga'].reduce((t, x) => t + (Number(k[x]) || 0), 0);
+          return { ...r, destino: [r.cidade, r.uf].filter(Boolean).join('/') + (r.redespacho ? ` (redesp. ${String(r.redespacho).split(/\s+CNPJ|\s+-\s+/i)[0].slice(0, 40)})` : ''),
+            frete_peso: r2(c.valor_resultado), ad_valorem: r2(k.adValorem), gris: r2(k.gris), pedagio: r2(k.pedagio), taxas: r2(taxas) || null, icms: r2(k.icms),
+            pct: div(r.previsto, r.valor), situacao: r.previsto ? 'Calculado' : 'Sem tabela para o destino' };
+        });
+        return {
+          colunas: [['transportadora', 'Transportadora'], ['numero_nf', 'NF-e'], ['emissao', 'Emissão', 'data'], ['cliente', 'Cliente'], ['destino', 'Destino'], ['volumes', 'Volumes', 'num'],
+            ['peso', 'Peso (kg)', 'dec'], ['m3', 'm³', 'dec'], ['valor', 'Valor da NF-e', 'moeda'], ['frete_peso', 'Frete peso', 'moeda'], ['ad_valorem', 'Ad valorem', 'moeda'], ['gris', 'GRIS', 'moeda'],
+            ['pedagio', 'Pedágio', 'moeda'], ['taxas', 'Outras taxas', 'moeda'], ['icms', 'ICMS', 'moeda'], ['previsto', 'Frete previsto', 'moeda'], ['pct', 'Frete / NF-e', 'atraso'],
+            ['prazo', 'Prazo (dias)', 'num'], ['previsao', 'Previsão de entrega', 'data'], ['tabela_frete', 'Tabela'], ['situacao', 'Situação']],
+          linhas: linhas.map(({ cidade: _c, uf: _u, redespacho: _r, ...l }) => l),
+          resumo: [['Notas esperando o CT-e', linhas.length], ['Frete previsto', soma(linhas, 'previsto'), 'moeda'], ['Valor das notas', soma(linhas, 'valor'), 'moeda'],
+            ['Frete / valor', div(soma(linhas, 'previsto'), soma(linhas.filter((l) => l.previsto), 'valor')), 'pct'], ['Sem tabela para o destino', linhas.filter((l) => !l.previsto).length]],
+        };
+      } },
+    103: { titulo: 'Conhecimentos por valor', grupo: 'Análises', tela: 'auditoria', drill: 'grupo',
+      detalhe: (req, q, de, ate, v) => listaAuditoria(req, q, de, ate, (l) => faixaDe(FAIXAS_VALOR, l.cobrado) === v),
+      desc: 'Os CT-e do período (sem os complementares, que estão no 100) divididos em faixas de valor cobrado: quantos em cada faixa, quanto somam, a participação, o valor médio, o peso médio e o frete por kg. Dois cliques numa faixa mostram os CT-e.',
+      rodar: async (req, q, de, ate) => {
+        const { lista, mais } = await auditar(req, q, de, ate);
+        return { ...estratos(lista.filter((l) => l.cobrado != null), FAIXAS_VALOR, (l) => l.cobrado, 'Faixa de valor do CT-e'), mais };
+      } },
+    104: { titulo: 'Fretes por componente', grupo: 'Impostos e taxas', tela: 'auditoria', drill: 'grupo',
+      detalhe: async (req, q, de, ate, v) => {
+        const { lista } = await auditar(req, q, de, ate);
+        const linhas = [];
+        for (const l of lista) for (const x of l.a?.componentes || []) if (x.nome === v) linhas.push({ ...base(l), cobrado: x.cobrado, tabela: x.tabela, dif: x.diferenca, situacao: SIT_COMP[x.situacao] || x.situacao });
+        return { colunas: [...COL_BASE, ['cobrado', 'Cobrado', 'moeda'], ['tabela', 'Tabela', 'moeda'], ['dif', 'Diferença', 'difcusto'], ['situacao', 'Situação', 'auditoria']], linhas,
+          resumo: [['CT-e', linhas.length], ['Cobrado', soma(linhas, 'cobrado'), 'moeda'], ['Pela tabela', soma(linhas, 'tabela'), 'moeda']] };
+      },
+      desc: 'O frete do período aberto por componente (frete peso, ad valorem, GRIS, pedágio, TDE, TDA, TRT, despacho, descarga, outras taxas; o ICMS destacado vai no cartão): quanto foi cobrado, quanto a tabela previa, a diferença, a parte de cada um no frete e em quantos CT-e veio acima da tabela. Dois cliques mostram os CT-e do componente.',
+      rodar: async (req, q, de, ate) => {
+        const { lista, mais } = await auditar(req, q, de, ate);
+        const por = new Map();
+        let semDetalhe = 0;
+        for (const l of lista) {
+          if (!l.a || l.a.sem_detalhe) { semDetalhe += 1; continue; }
+          for (const x of l.a.componentes) {
+            const g = por.get(x.nome) || { grupo: x.nome, ctes: 0, cobrado: 0, tabela: 0, acima: 0, nao_prevista: 0 };
+            g.ctes += 1; g.cobrado += x.cobrado || 0; g.tabela += x.tabela || 0;
+            if (x.situacao === 'a_mais') g.acima += 1; if (x.situacao === 'nao_autorizada') g.nao_prevista += 1;
+            por.set(x.nome, g);
+          }
+        }
+        const icms = lista.reduce((t, l) => t + (Number(l.cte_icms_valor) || 0), 0);
+        const linhas = [...por.values()].map((g) => ({ ...g, cobrado: r2(g.cobrado), tabela: r2(g.tabela), dif: r2(g.cobrado - g.tabela), medio: div(g.cobrado, g.ctes) }));
+        // O ICMS fica só no cartão: ele já está dentro do frete (somar na tabela contaria duas vezes).
+        const total = linhas.reduce((t, l) => t + l.cobrado, 0);
+        linhas.forEach((l) => { l.part = div(l.cobrado, total); });
+        linhas.sort((a, b) => (b.cobrado || 0) - (a.cobrado || 0));
+        return {
+          colunas: [['grupo', 'Componente'], ['ctes', 'CT-e', 'num'], ['cobrado', 'Cobrado', 'moeda'], ['tabela', 'Pela tabela', 'moeda'], ['dif', 'Diferença', 'difcusto'], ['part', 'Parte do frete', 'pct'],
+            ['medio', 'Médio por CT-e', 'moeda'], ['acima', 'Acima da tabela', 'num'], ['nao_prevista', 'Não prevista na tabela', 'num']],
+          linhas, agrupado: true, mais,
+          resumo: [['CT-e com componentes', lista.length - semDetalhe], ['Sem componentes no XML', semDetalhe], ['Frete cobrado', total, 'moeda'],
+            ['Cobrado a mais', soma(linhas.filter((l) => l.dif > 0), 'dif'), 'moeda'], ['ICMS destacado nos CT-e', icms, 'moeda']],
+        };
+      } },
+    105: { titulo: 'Estratificação de fretes', grupo: 'Análises', tela: 'auditoria', drill: 'grupo',
+      detalhe: (req, q, de, ate, v) => {
+        const f = FAIXAS_PESO.find((x) => x[0] === v);
+        if (!f) return h.listaNotas(req, q, 'FALSE', []);
+        const peso = 'COALESCE(f.peso_bruto, f.peso_kg, 0)';
+        return h.listaNotas(req, q, `${h.EMITIDAS} AND ${peso} >= $3 ${f[2] == null ? '' : `AND ${peso} < $4`}`, f[2] == null ? [de, ate, f[1]] : [de, ate, f[1], f[2]]);
+      },
+      desc: 'As notas emitidas no período divididas em faixas de peso (estratos): quantas notas, peso, valor, frete (com reentregas e o rateio do CT-e de várias notas), frete por kg, frete médio por nota e o frete sobre o valor em cada faixa. Mostra em que faixa o frete pesa mais.',
+      rodar: async (req, q, de, ate) => {
+        const p = [de, ate]; const extra = filtros(q, p);
+        const { rows } = await consulta(req, `SELECT COALESCE(f.peso_bruto, f.peso_kg, 0)::float AS peso, COALESCE(f.valor_faturado, 0)::float AS valor,
+            (COALESCE(f.frete_rateado, CASE WHEN f.chave_cte IS NOT NULL AND f.cte_cancelado IS NOT TRUE THEN COALESCE(f.valor_total_cte, 0) END, 0)
+              + COALESCE((SELECT SUM(c.valor_total_cte) FROM fretes c WHERE c.frete_principal_id = f.id AND c.chave_cte IS NOT NULL AND c.cte_cancelado IS NOT TRUE AND c.cte_nao_levou IS NOT TRUE), 0))::float AS frete
+          FROM fretes f WHERE ${h.BASE} AND ${h.EMITIDAS} AND f.nf_entrada IS NOT TRUE${extra}`, p);
+        const est = {};
+        for (const r of rows) {
+          const k = faixaDe(FAIXAS_PESO, r.peso);
+          const e = est[k] || (est[k] = { notas: 0, peso: 0, valor: 0, frete: 0, com_frete: 0 });
+          e.notas += 1; e.peso += r.peso; e.valor += r.valor; e.frete += r.frete; if (r.frete > 0) e.com_frete += 1;
+        }
+        const tn = rows.length; const tf = rows.reduce((t, r) => t + r.frete, 0);
+        const linhas = FAIXAS_PESO.filter(([k]) => est[k]).map(([k]) => {
+          const e = est[k];
+          return { grupo: k, notas: e.notas, pct_notas: div(e.notas, tn), peso: r2(e.peso), valor: r2(e.valor), frete: r2(e.frete), part: div(e.frete, tf), frete_kg: div(e.frete, e.peso),
+            frete_nota: div(e.frete, e.com_frete), pct_frete: div(e.frete, e.valor) };
+        });
+        return {
+          colunas: [['grupo', 'Faixa de peso'], ['notas', 'Notas', 'num'], ['pct_notas', '% das notas', 'pct'], ['peso', 'Peso (kg)', 'dec'], ['valor', 'Valor das notas', 'moeda'], ['frete', 'Frete', 'moeda'],
+            ['part', '% do frete', 'pct'], ['frete_kg', 'Frete / kg', 'moeda4'], ['frete_nota', 'Frete médio por nota', 'moeda'], ['pct_frete', 'Frete / valor', 'atraso']],
+          linhas, agrupado: true,
+          resumo: [['Notas', tn], ['Frete', tf, 'moeda'], ['Frete / kg', div(tf, rows.reduce((t, r) => t + r.peso, 0)), 'moeda4'], ['Frete / valor', div(tf, rows.reduce((t, r) => t + r.valor, 0)), 'pct']],
         };
       } },
   };

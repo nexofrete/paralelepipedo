@@ -1235,7 +1235,7 @@ def parte_uso(g):
         'aparecem na lista em itálico, com a seta.',
     ])
     s += h2('Relatórios de auditoria (tela 327)')
-    s.append(P('Em Auditoria de fretes, sob Relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24, na mesma tela dos '
+    s.append(P('Em Auditoria de fretes, sob Relatórios, <b>Relatórios de auditoria</b> (Ctrl+K e 327) traz os relatórios 11 a 24 e 100 a 105, na mesma tela dos '
                'relatórios de entregas: lista à esquerda, período (vem nos últimos 30 dias, pela emissão do CT-e), filtros, totais em '
                'cartões, tabela ordenável, <b>Excel</b> e <b>Imprimir</b>; dois cliques numa linha abrem a nota. Os números são os '
                'mesmos das telas de auditoria: o frete pela tabela gravado no cálculo, a tolerância configurada (geral, por '
@@ -1255,6 +1255,12 @@ def parte_uso(g):
         ['22', 'Auditoria de distância', 'Km estimado entre as cidades de início e fim do CT-e (linha reta x 1,2; o CT-e e as tabelas não trazem km), a cidade pela qual a tabela foi calculada e o frete por km. Aponta tarifa de outra cidade e frete por km 50% acima do padrão (mediana) da transportadora.'],
         ['23', 'Auditoria de redespacho', 'Notas com redespacho: o CT-e até a cidade do redespacho e o do redespacho, cada um x a tabela, o custo total e as notas sem o CT-e do redespacho.'],
         ['24', 'Economia gerada pela auditoria', 'Recuperado (glosas manuais, por regra e por contestação, créditos em fatura e CT-e barrados) e evitado (o que os CT-e retidos cobram a mais), por transportadora.'],
+        ['100', 'Frete complementar', 'Os CT-e complementares do período: o CT-e original, o valor dele, o complemento, quanto ele soma sobre o original e a decisão da auditoria.'],
+        ['101', 'Espelho de embarque', 'Cada embarque (o mapa de carregamento do ERP; sem mapa, a transportadora no dia da saída): notas, clientes, destinos, volumes, peso, cubagem, valor, frete previsto pela tabela, frete cobrado nos CT-e e notas ainda sem CT-e. Dois cliques mostram as notas do embarque.'],
+        ['102', 'Espelho de pré-conhecimento', 'As notas CIF que ainda esperam o CT-e, com o frete que a transportadora deve cobrar pela tabela, parcela por parcela (frete peso, ad valorem, GRIS, pedágio, outras taxas, ICMS), o prazo, a previsão e a tabela. O botão PDF imprime o espelho para mandar à transportadora.'],
+        ['103', 'Conhecimentos por valor', 'Os CT-e em faixas de valor (até R$ 100, R$ 100 a 250, ... acima de R$ 5.000): quantos, quanto somam, participação, valor médio, peso médio e frete por kg. Os complementares ficam no 100.'],
+        ['104', 'Fretes por componente', 'O frete aberto por componente (frete peso, ad valorem, GRIS, pedágio, TDE, TDA, TRT, despacho, descarga e outras taxas; o ICMS destacado aparece num cartão à parte): cobrado, pela tabela, diferença, parte no frete e em quantos CT-e veio acima ou não prevista. Só entram os CT-e cujo XML traz a composição do frete.'],
+        ['105', 'Estratificação de fretes', 'As notas em faixas de peso (sem peso, até 10 kg, 10 a 30 kg, ... acima de 10 t): notas, peso, valor, frete (com reentregas e rateio), parte do frete, frete por kg, frete médio por nota e frete sobre o valor.'],
     ], [0.1, 0.28, 0.62])
     s.append(P('Nos relatórios 14, 15 e 24 (os do Resultado da auditoria) só o filtro de transportadora vale.'))
     s += h2('Relatórios NF-e x CT-e (tela 326)')

@@ -454,8 +454,11 @@ def parte_uso(g):
         'se há um CT-e no registro para conferir de qual das duas notas ele é. Saltos de mais de 500 números não contam (outra faixa de numeração). Dá para mudar para "maior número '
         'primeiro" ou "mais recentes primeiro".',
         '<b>Etiquetas de volume</b> (10 x 7 cm, no padrão do ERP): marque as notas e clique em <b>Etiquetas</b> (ou use o '
-        'botão Etiquetas no detalhe da nota). Sai uma etiqueta por volume, com o destinatário, a rua e o número, o bairro, a '
-        'cidade/UF, o CEP, a transportadora da nota, "Volumes: 1 / 68", o pedido e a nota. Na coluna "Imprimir" dá para '
+        'botão Etiquetas no detalhe da nota). Sai uma etiqueta por volume, em quadros: no alto o logo da empresa (o do '
+        'cadastro da Empresa, quando ela é a remetente da nota), o <b>Remetente</b> (nome, endereço e CEP), o <b>Pedido</b>, a '
+        '<b>NF-e</b> e o <b>Volume</b> ("1 de 68"); no meio o <b>Destinatário</b> em letra grande e o <b>Endereço de entrega</b> '
+        '(rua, número, complemento e bairro; cidade - UF | CEP); embaixo a <b>Transportadora</b>, o <b>Peso Líquido</b> e o '
+        '<b>Peso Bruto</b> (somados dos volumes do XML ou, sem XML, os da nota). Na coluna "Imprimir" dá para '
         'escolher só alguns volumes (ex.: 1-5,8). <b>Imprimir</b> abre as etiquetas no navegador (na Zebra, papel 100 x 70 mm, '
         'margens nenhuma e escala 100%); <b>Baixar ZPL</b> gera o arquivo da Zebra; com a Zebra na rede, o administrador '
         'cadastra o IP em <b>Impressora</b> (porta 9100, 203 ou 300 dpi, com etiqueta de teste) e aparece <b>Enviar para a '

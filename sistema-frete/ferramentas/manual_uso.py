@@ -1684,6 +1684,46 @@ def parte_uso(g):
     s.append(P('Na <b>saída</b> de um carregamento, as notas da visita ganham a <b>data de saída</b> (expedição), que aparece na Consulta de '
                'notas e no relatório 32 (NF-e por período: expedidas). Cada passo da visita fica no histórico, com a hora e quem fez.'))
 
+    s += h1('20-B. Cargas')
+    s.append(P('Menu <b>Cargas</b> (Operar): montar os embarques, mandar os pré-conhecimentos, comparar fracionado com lotação e '
+               'acompanhar a capacidade de cada transportadora. Quatro abas: Embarques (430), Pré-conhecimentos (431), Cargas fracionadas '
+               '(432) e Capacidade (433).'))
+    s += h2('Embarques (430)')
+    s += passos([
+        '<b>Montar embarque</b>: escolha a transportadora (filtra as notas), a data, a modalidade (<b>fracionada</b>, frete pela tabela; '
+        'ou <b>lotação</b>, veículo exclusivo com o preço da tabela de lotação), o veículo e marque as notas. Aparecem as notas CIF dos '
+        'últimos 45 dias sem CT-e, sem saída e fora de outro embarque.',
+        'Enquanto marca, o quadro mostra notas, volumes, peso, m³, a <b>ocupação do veículo</b> (o maior entre peso e m³ sobre a capacidade) '
+        'e o <b>frete previsto</b> (na lotação, também quanto seria o fracionado).',
+        'Ao salvar, o sistema avisa se a carga passa da capacidade do veículo ou da capacidade da transportadora no dia.',
+        '<b>Fechar o embarque</b> gera os pré-conhecimentos de cada nota. <b>Pedir a coleta</b> gera a ordem de coleta (Pátio e portaria, '
+        '424) com as notas, o veículo e a data, e pode mandar à transportadora na hora.',
+        '<b>Imprimir o espelho</b> sai com as notas, os totais, a ocupação e o frete previsto. Cancelar o embarque cancela também os '
+        'pré-conhecimentos e a ordem de coleta (enquanto o caminhão não chegou).',
+    ])
+    s += h2('Pré-conhecimentos (431)')
+    s += lista([
+        'É o frete que a transportadora deve cobrar em cada nota, numerado: no fracionado, o calculado pela tabela, parcela por parcela '
+        '(frete peso, ad valorem, GRIS, pedágio, taxas, ICMS); na lotação, a viagem rateada entre as notas pelo peso (ou pelo valor, se faltar peso).',
+        'Saem ao fechar um embarque, ou pelo botão <b>Gerar para notas sem CT-e</b>. Marque e use <b>Imprimir</b> ou <b>Mandar à '
+        'transportadora</b> (e-mail com o documento anexo; uma transportadora por vez).',
+        'Quando o CT-e chega, a linha mostra o cobrado e a diferença: <b>CT-e confere</b> (até 2% ou R$ 2) ou <b>CT-e divergente</b>. A '
+        'auditoria do CT-e continua igual.',
+    ])
+    s += h2('Cargas fracionadas e lotação (432)')
+    s += lista([
+        'As notas esperando embarque, juntas por destino (cidade/UF): notas, peso, m³, o frete fracionado somado pela tabela e a '
+        '<b>melhor tabela de lotação</b> que serve ao destino e comporta a carga, com a ocupação e a economia.',
+        'Sugestão: <b>Virar lotação</b> (a viagem sai mais barata que o fracionado), <b>Manter fracionada</b>, sem tabela de lotação para o '
+        'destino, ou notas sem frete calculado. <b>Montar embarque</b> abre o embarque já com as notas e, quando for o caso, a lotação.',
+        '<b>Tabelas de lotação</b>: transportadora, UF e cidade de destino (vazia = o estado todo), veículo, valor da viagem, capacidade '
+        '(vazia = a do veículo) e prazo.',
+    ])
+    s += h2('Capacidade das transportadoras (433)')
+    s.append(P('Cadastre quantos veículos, kg e m³ cada transportadora atende por dia. A grade mostra os próximos 7 dias: o que está '
+               'programado para cada uma (embarques abertos e ordens de coleta enviadas ou aceitas) e quanto isso ocupa da capacidade; em '
+               'vermelho, o dia que passou. O mesmo cálculo dá o aviso ao salvar um embarque.'))
+
     s += h1('21. Agenda e Mensagens')
     s += h2('Agenda')
     s += lista([

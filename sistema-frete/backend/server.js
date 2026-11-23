@@ -261,6 +261,7 @@ app.use('/api/patio-publico', rateLimit({ windowMs: 60 * 1000, max: 60, standard
 app.use('/api/patio', require('./src/routes/patio'));
 app.use('/api/ordem-coleta-publica', rateLimit({ windowMs: 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false }), require('./src/routes/ordensColeta').publico);
 app.use('/api/ordens-coleta', require('./src/routes/ordensColeta'));
+app.use('/api/cargas', require('./src/routes/cargas'));
 app.use('/api/coletas', coletasRoutes);
 app.use('/api/cotacoes', cotacoesRoutes);
 app.use('/api/etiquetas', conferenciasRoutes.etiquetas);

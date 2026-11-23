@@ -3740,3 +3740,40 @@ CREATE INDEX IF NOT EXISTS idx_ordens_coleta_fretes ON ordens_coleta USING GIN (
 ALTER TABLE ordens_coleta ADD COLUMN IF NOT EXISTS tipo VARCHAR(10) NOT NULL DEFAULT 'coleta';
 ALTER TABLE ordens_coleta ADD COLUMN IF NOT EXISTS dfe_ids INTEGER[] NOT NULL DEFAULT '{}';
 ALTER TABLE ordens_coleta ADD COLUMN IF NOT EXISTS fornecedor VARCHAR(160);
+
+-- ============ Cargas (embarcador; src/cargas.js, tela Cargas 430 a 433) ============
+-- Embarque: a carga montada (notas, transportadora, veículo, data), com a ocupação e o frete previsto; vira ordem de coleta.
+CREATE TABLE IF NOT EXISTS embarques (
+  id SERIAL PRIMARY KEY,
+  status VARCHAR(12) NOT NULL DEFAULT 'montagem',             -- montagem, fechado, cancelado
+  modalidade VARCHAR(12) NOT NULL DEFAULT 'fracionada',      -- fracionada, lotacao
+  transportadora VARCHAR(160), tipo_veiculo VARCHAR(20), data_prevista DATE,
+  frete_ids INTEGER[] NOT NULL DEFAULT '{}', notas VARCHAR(20)[] NOT NULL DEFAULT '{}',
+  volumes INTEGER, peso_kg NUMERIC(14,2), cubagem_m3 NUMERIC(12,3), valor NUMERIC(14,2),
+  cap_kg NUMERIC(12,2), cap_m3 NUMERIC(10,2), lotacao_id INTEGER, frete_previsto NUMERIC(14,2),
+  ordem_id INTEGER REFERENCES ordens_coleta(id) ON DELETE SET NULL, observacao TEXT,
+  criado_por_nome VARCHAR(120), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), fechado_em TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_embarques_fretes ON embarques USING GIN (frete_ids);
+-- Pré-conhecimento: o frete que a transportadora deve cobrar em cada nota (pela tabela ou pelo rateio da lotação), numerado;
+-- vai à transportadora e é conferido com o CT-e quando ele chega.
+CREATE TABLE IF NOT EXISTS pre_conhecimentos (
+  id SERIAL PRIMARY KEY,
+  frete_id INTEGER NOT NULL REFERENCES fretes(id) ON DELETE CASCADE, embarque_id INTEGER REFERENCES embarques(id) ON DELETE SET NULL,
+  transportadora VARCHAR(160), valor_previsto NUMERIC(14,2), componentes JSONB, tabela VARCHAR(160), prazo_dias INTEGER, origem VARCHAR(12),
+  status VARCHAR(12) NOT NULL DEFAULT 'emitido',              -- emitido, enviado, cancelado
+  enviado_em TIMESTAMPTZ, enviado_para VARCHAR(250), criado_por_nome VARCHAR(120), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_pre_conhecimentos_frete ON pre_conhecimentos (frete_id) WHERE status <> 'cancelado';
+-- Capacidade de cada transportadora contratada por dia (veículos, peso e m³).
+CREATE TABLE IF NOT EXISTS transportadora_capacidades (
+  id SERIAL PRIMARY KEY, transportadora VARCHAR(160) NOT NULL, regiao VARCHAR(120),
+  veiculos_dia INTEGER, peso_dia_kg NUMERIC(14,2), m3_dia NUMERIC(12,2), observacao TEXT, ativa BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Tabela de lotação: preço por viagem (veículo fechado) até um destino.
+CREATE TABLE IF NOT EXISTS tabelas_lotacao (
+  id SERIAL PRIMARY KEY, transportadora VARCHAR(160) NOT NULL, uf_destino CHAR(2), cidade_destino VARCHAR(120), tipo_veiculo VARCHAR(20),
+  valor_viagem NUMERIC(14,2) NOT NULL, cap_kg NUMERIC(12,2), cap_m3 NUMERIC(10,2), prazo_dias INTEGER, ativa BOOLEAN NOT NULL DEFAULT TRUE, observacao TEXT,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

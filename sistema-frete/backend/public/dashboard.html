@@ -104,6 +104,13 @@
         <div class="nav-tsub" data-ir="relatorios-entregas">📦 Entregas e rastreamento</div>
         <div class="nav-tsub" data-ir="relatorios-nfe-cte">🔗 NF-e × CT-e</div>
       </div>
+      <div class="nav-grupo oculto" data-grupo="cargas" data-modulo="embarcador">🚛 Cargas <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="cargas" data-modulo="embarcador">
+        <div class="nav-tsub" data-ir="cargas" data-aba="embarques">📦 Embarques</div>
+        <div class="nav-tsub" data-ir="cargas" data-aba="pre">🧾 Pré-conhecimentos</div>
+        <div class="nav-tsub" data-ir="cargas" data-aba="fracionadas">🧩 Cargas fracionadas e lotação</div>
+        <div class="nav-tsub" data-ir="cargas" data-aba="capacidade">📊 Capacidade das transportadoras</div>
+      </div>
       <div class="nav-grupo oculto" data-grupo="patio" data-modulo="embarcador">🚧 Pátio e portaria <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="patio" data-modulo="embarcador">
         <div class="nav-tsub" data-ir="patio" data-aba="painel">📺 Painel do pátio</div>
@@ -250,6 +257,7 @@
       <div class="nav-item nav-no-grupo nav-escondido" data-pagina="registros" data-modulo="embarcador">🗂 Todos os registros (antiga)</div>
       <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="patio" id="navPatio" data-modulo="embarcador">🚧 Pátio e portaria</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="cargas" id="navCargas" data-modulo="embarcador">🚛 Cargas</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-entregas" id="navRelEntregas">📦 Relatórios de entregas</div>
       <div class="nav-item nav-no-grupo" data-pagina="desempenho-transportadoras" id="navDesempTransp">🏆 Desempenho das transportadoras</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-nfe-cte" id="navRelNfeCte">🔗 Relatórios NF-e × CT-e</div>
@@ -433,6 +441,22 @@
           </div>
         </div>
         <div id="opConteudo"></div>
+      </section>
+
+      <section id="pagina-cargas" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>Cargas</h2>
+            <p>Monte os embarques, mande os pré-conhecimentos, compare fracionado com lotação e acompanhe a capacidade de cada transportadora</p>
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-cg-aba="embarques">📦 Embarques</div>
+          <div class="cte-aba" data-cg-aba="pre">🧾 Pré-conhecimentos</div>
+          <div class="cte-aba" data-cg-aba="fracionadas">🧩 Cargas fracionadas</div>
+          <div class="cte-aba" data-cg-aba="capacidade">📊 Capacidade</div>
+        </div>
+        <div id="cgConteudo"></div>
       </section>
 
       <section id="pagina-patio" class="oculto">
@@ -4248,6 +4272,7 @@
   <script src="js/ordensColeta.js"></script>
   <script src="js/expedicao.js"></script>
   <script src="js/kanbanPatio.js"></script>
+  <script src="js/cargas.js"></script>
   <script src="js/patio.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>

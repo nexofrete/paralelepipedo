@@ -86,6 +86,14 @@ router.get('/:id(\\d+)', autenticar, emitir, async (req, res) => {
   } catch (err) { erro(res, err, 'Erro ao abrir a coleta.'); }
 });
 
+// Ordem de coleta (documento para o motorista) e etiquetas da coleta, antes do CT-e (HTML para imprimir).
+router.get('/:id(\\d+)/ordem', autenticar, emitir, async (req, res) => {
+  try { res.type('html').send(await coletas.ordemHtml(Number(req.params.id))); } catch (err) { erro(res, err, 'Erro ao montar a ordem de coleta.'); }
+});
+router.get('/:id(\\d+)/etiquetas', autenticar, emitir, async (req, res) => {
+  try { res.type('html').send(await coletas.etiquetasHtml(Number(req.params.id), { volumes: req.query.volumes })); } catch (err) { erro(res, err, 'Erro ao montar as etiquetas.'); }
+});
+
 router.post('/', autenticar, emitir, async (req, res) => {
   try {
     const c = await coletas.criar(req.body || {}, req.usuario.nome);
@@ -143,6 +151,7 @@ router.post('/programar', autenticar, emitir, async (req, res) => {
     const n = await coletas.programar(cliente, romaneioId, b.coletas);
     await cliente.query('COMMIT');
     log(req, `Programou ${n} coleta(s) no romaneio ${romaneioId}`);
+    setImmediate(() => coletas.avisarProgramadas((b.coletas || []).map(Number)).catch((e) => console.error('[coletas] aviso:', e.message)));
     res.json({ ok: true, romaneio_id: romaneioId, coletas: n });
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); erro(res, err, 'Erro ao programar.'); } finally { cliente.release(); }
 });

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Ordem de coleta</title>
+  <link rel="icon" type="image/svg+xml" href="img/nexofrete-icone.svg" />
+  <link rel="stylesheet" href="css/rastreio.css" />
+  <style>
+    .oc-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; margin-top: 10px; }
+    .oc-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--fraco); }
+    .oc-form input, .oc-form select, .oc-form textarea { font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--borda); border-radius: 8px; background: var(--cartao); color: var(--texto); }
+    .oc-form .largo { grid-column: 1 / -1; }
+    .oc-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .oc-botoes button { font: inherit; font-weight: 700; padding: 11px 18px; border-radius: 8px; border: 1px solid var(--borda); cursor: pointer; background: var(--cartao); color: var(--texto); }
+    .oc-botoes .ok { background: #16a34a; border-color: #16a34a; color: #fff; }
+    .oc-botoes .nao { color: var(--vermelho); }
+    .oc-notas { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+    .oc-notas th, .oc-notas td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--borda); }
+    .oc-notas td.n { text-align: right; }
+    .oc-link { word-break: break-all; font-size: 14px; }
+    .oculto { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="rt">
+    <div class="rt-topo"><div><h1>Ordem de coleta</h1><p id="ocEmpresa">Confirme a coleta</p></div></div>
+    <div class="rt-cartao" id="ocCartao"><p>Carregando…</p></div>
+    <div class="rt-cartao oculto" id="ocResposta"></div>
+    <div class="rt-cartao" id="ocNotas"></div>
+    <p class="rt-rodape">Dúvidas sobre a coleta? Fale com a expedição de quem mandou a ordem.</p>
+  </main>
+  <script src="js/coletaPublica.js"></script>
+</body>
+</html>

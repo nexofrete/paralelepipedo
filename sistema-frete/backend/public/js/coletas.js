@@ -239,6 +239,8 @@
         ${aberta ? '<button class="btn btn-secundario" id="cdCancelar" style="width:auto; color:var(--vermelho);">Cancelar coleta</button>' : ''}
         ${c.status === 'cancelada' ? '<button class="btn btn-secundario" id="cdReabrir" style="width:auto;">Reabrir</button>' : ''}
         <button class="btn btn-secundario" id="cdRepetir" style="width:auto;" title="Nova coleta com os mesmos dados (cliente que pede toda semana)">↻ Repetir</button>
+        ${c.status !== 'cancelada' ? '<button class="btn btn-secundario" id="cdOrdem" style="width:auto;" title="Documento da coleta para o motorista levar e o remetente assinar">Ordem de coleta</button>' : ''}
+        ${c.status !== 'cancelada' && !c.cte_id ? '<button class="btn btn-secundario" id="cdEtiquetas" style="width:auto;" title="Uma etiqueta por volume, antes do CT-e">Etiquetas da coleta</button>' : ''}
         ${aberta ? '<button class="btn btn-secundario" id="cdEditar" style="width:auto;">Editar</button>' : ''}
         ${['programada', 'em_coleta'].includes(c.status) ? '<button class="btn btn-secundario" id="cdTirar" style="width:auto;">Tirar do caminhão</button>' : ''}
         ${['pendente', 'nao_coletada'].includes(c.status) ? '<button class="btn btn-secundario" id="cdProgramar" style="width:auto;">🚚 Programar</button>' : ''}
@@ -263,6 +265,18 @@
     });
     $('cdReabrir')?.addEventListener('click', async () => { try { await api(`/${id}/reabrir`, { method: 'POST' }); await depois(); } catch (err) { erro(err); } });
     $('cdDarBaixa')?.addEventListener('click', () => formBaixa(c, depois));
+    // Documento e etiquetas: HTML com o token da sessão, aberto numa janela nova para imprimir.
+    const abrirHtml = async (caminho) => {
+      const w = window.open('', '_blank');
+      try {
+        const r = await apiFetch(`/api/coletas/${id}/${caminho}`);
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || 'Não foi possível montar o documento.');
+        const html = await r.text();
+        if (w) { w.document.write(html); w.document.close(); }
+      } catch (err) { w?.close(); erro(err); }
+    };
+    $('cdOrdem')?.addEventListener('click', () => abrirHtml('ordem'));
+    $('cdEtiquetas')?.addEventListener('click', () => abrirHtml('etiquetas'));
   }
 
   // Baixa pelo escritório (o motorista avisou por telefone ou voltou sem o app).

@@ -61,6 +61,7 @@
     if (aba === 'portaria') return desenharPortaria();
     if (aba === 'agenda') return desenharAgenda();
     if (aba === 'docas') return desenharDocas();
+    if (aba === 'ordens') return window.OrdensColeta?.desenhar(cont);
   }
 
   // ---------- Painel em tempo real ----------

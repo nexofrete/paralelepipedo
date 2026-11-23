@@ -1558,7 +1558,7 @@ def parte_uso(g):
     s += h1('20-A. Pátio e portaria')
     s.append(P('Controle de quem vem <b>carregar</b> (a transportadora que coleta as notas) ou <b>descarregar</b> (recebimento de '
                'fornecedor): agendamento da janela, check-in na portaria pelo <b>QR Code</b>, fila do pátio, chamada para a doca, '
-               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423). '
+               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta 424). '
                'Para quem só trabalha na portaria, use o modelo de acesso <b>Portaria e pátio</b> (Cadastros, Usuários).'))
     s += h2('Docas e regras (423)')
     s += lista([
@@ -1569,6 +1569,23 @@ def parte_uso(g):
         '<b>"Não compareceu" depois de</b>: o agendamento que passou desse tempo sem chegar aparece como "Não veio" nas próximas chegadas.',
         'Doca que já foi usada não é apagada: fica inativa e o histórico continua.',
     ])
+    s += h2('Ordens de coleta (424)')
+    s.append(P('A expedição pede a coleta à transportadora pelo sistema, e a transportadora confirma por um link, sem login.'))
+    s += passos([
+        '<b>Nova ordem de coleta</b>: escolha a transportadora (filtra as notas) e marque as notas a coletar. Aparecem as notas CIF '
+        'dos últimos 45 dias ainda sem CT-e, sem saída e fora de outra ordem aberta. Informe quando a carga fica pronta, a janela '
+        '(horas), o veículo e uma observação. O e-mail da transportadora vem do cadastro (Cadastros, Transportadoras).',
+        '<b>Salvar e mandar à transportadora</b>: ela recebe o e-mail com o botão <b>Confirmar a coleta</b> e o documento da ordem '
+        'anexo. Sem e-mail configurado, a ordem fica salva e dá para <b>copiar o link</b> e mandar pelo WhatsApp.',
+        'Pelo link, a transportadora <b>confirma</b> (data e hora de chegada, placa, tipo de veículo, motorista, CPF/CNH e celular) '
+        'ou <b>recusa</b> com o motivo. Confirmada, a ordem já vira <b>agendamento no pátio</b>, e a página mostra o link do '
+        'motorista (QR Code da portaria). Enquanto o caminhão não chega, ela pode alterar a confirmação pelo mesmo link.',
+        '<b>Acompanhamento</b>: a aba mostra as ordens por situação: rascunho, aguardando confirmação, sem resposta (mais de 4 horas), '
+        'confirmada, atrasada (passou da janela sem chegar), no pátio, coletada (saiu pela portaria), não compareceu, recusada e '
+        'cancelada. <b>Abrir</b> mostra a resposta, o link, o documento para imprimir e as ações (alterar, mandar de novo, cancelar).',
+    ])
+    s += aviso('nota', 'Cancelar a ordem cancela também o agendamento do pátio, enquanto o caminhão não entrou. A nota só pode estar '
+                       'em uma ordem aberta por vez.')
     s += h2('Agendamentos (422)')
     s += lista([
         '<b>＋ Agendar</b>: operação, data e hora, janela (minutos), transportadora ou fornecedor, placa e carreta, tipo de veículo, '

@@ -259,6 +259,8 @@ app.use('/api/romaneios', romaneiosRoutes);
 app.use('/api/motorista', motoristaRoutes);
 app.use('/api/patio-publico', rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false }), require('./src/routes/patio').publico);
 app.use('/api/patio', require('./src/routes/patio'));
+app.use('/api/ordem-coleta-publica', rateLimit({ windowMs: 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false }), require('./src/routes/ordensColeta').publico);
+app.use('/api/ordens-coleta', require('./src/routes/ordensColeta'));
 app.use('/api/coletas', coletasRoutes);
 app.use('/api/cotacoes', cotacoesRoutes);
 app.use('/api/etiquetas', conferenciasRoutes.etiquetas);

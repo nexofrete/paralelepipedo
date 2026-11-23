@@ -74,6 +74,7 @@ async function criar(dados, usuarioNome) {
     `INSERT INTO coletas (${CAMPOS.join(', ')}, criado_por_nome, cotacao_id) VALUES (${CAMPOS.map((_, i) => `$${i + 1}`).join(', ')}, $${CAMPOS.length + 1}, $${CAMPOS.length + 2}) RETURNING *`,
     [...CAMPOS.map((k) => c[k]), usuarioNome, cotacaoId]);
   if (cotacaoId) await pool.query('UPDATE cotacoes SET coleta_id = $2, atualizado_em = NOW() WHERE id = $1', [cotacaoId, rows[0].id]);
+  setImmediate(() => avisarSolicitante(rows[0], 'recebida').catch((e) => console.error('[coletas] aviso:', e.message)));
   return rows[0];
 }
 
@@ -183,20 +184,37 @@ async function baixar(id, b, { foto, assinaturaPng, usuarioNome, romaneioId = nu
   } catch (err) { await cliente.query('ROLLBACK').catch(() => {}); throw err; } finally { cliente.release(); }
 }
 
-// Avisa quem pediu a coleta (mesma chave dos avisos de entrega da Configuração fiscal).
-async function avisarSolicitante(c) {
-  if (!c || !['coletada', 'nao_coletada'].includes(c.status)) return;
+// Avisa quem pediu a coleta (mesma chave dos avisos de entrega da Configuração fiscal): pedido recebido (evento
+// 'recebida'), programada com o dia, a placa e o motorista (evento 'programada') e, na baixa, coletada ou não coletada.
+const diaBr = (d) => (d ? new Date(`${String(d instanceof Date ? d.toISOString() : d).slice(0, 10)}T12:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '');
+async function avisarSolicitante(c, evento = null) {
+  if (!c) return;
+  if (!evento && !['coletada', 'nao_coletada'].includes(c.status)) return;
   const { rows } = await pool.query('SELECT * FROM empresa WHERE id = 1');
   const e = rows[0] || {};
   if (!e.aviso_entrega_ativo) return;
   const nomeEmpresa = e.nome_fantasia || e.razao_social || 'Transportadora';
-  const titulo = c.status === 'coletada' ? `Coleta nº ${c.id} realizada` : `Coleta nº ${c.id} não realizada`;
-  const quando = c.coletado_em ? new Date(c.coletado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
-  const linhas = c.status === 'coletada'
+  const ola = `Olá${c.solicitante_nome ? `, ${c.solicitante_nome}` : ''}.`;
+  const janela = [c.hora_de, c.hora_ate].filter(Boolean).map((h) => String(h).slice(0, 5)).join(' às ');
+  let titulo; let linhas;
+  if (evento === 'recebida') {
+    titulo = `Pedido de coleta nº ${c.id} recebido`;
+    linhas = [ola, `Recebemos o seu pedido de coleta em ${c.remetente_nome} (${[c.cidade, c.uf].filter(Boolean).join('/')}) para ${diaBr(c.data_coleta)}${janela ? `, das ${janela}` : ''}.`,
+      'Avisamos de novo quando a coleta for programada, com a placa e o motorista.'];
+  } else if (evento === 'programada') {
+    titulo = `Coleta nº ${c.id} programada`;
+    linhas = [ola, `A coleta em ${c.remetente_nome} está programada para ${diaBr(c.romaneio_data || c.data_coleta)}${janela ? `, das ${janela}` : ''}.`,
+      [c.placa ? `Veículo: ${c.placa}${c.veiculo ? ` (${c.veiculo})` : ''}` : null, c.motorista_nome ? `Motorista: ${c.motorista_nome}` : null].filter(Boolean).join(' · ') || 'O veículo e o motorista ainda vão ser definidos.',
+      c.volumes ? `Deixe ${c.volumes} volume(s) prontos para a coleta.` : 'Deixe a mercadoria pronta para a coleta.'];
+  } else {
+    titulo = c.status === 'coletada' ? `Coleta nº ${c.id} realizada` : `Coleta nº ${c.id} não realizada`;
+    const quando = c.coletado_em ? new Date(c.coletado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+    linhas = c.status === 'coletada'
     ? [`Olá${c.solicitante_nome ? `, ${c.solicitante_nome}` : ''}.`, `Coletamos a mercadoria de ${c.remetente_nome}${quando ? ` em ${quando}` : ''}: ${c.volumes_coletados} volume(s)${c.peso_coletado ? `, ${Number(c.peso_coletado).toLocaleString('pt-BR')} kg` : ''}.`,
       `Entregue por ${c.entregue_por}.`]
     : [`Olá${c.solicitante_nome ? `, ${c.solicitante_nome}` : ''}.`, `Não conseguimos fazer a coleta em ${c.remetente_nome}: ${c.motivo}.`,
       `Fale com a gente para reagendar${e.telefone ? `: ${e.telefone}` : ''}.`];
+  }
   const m = { titulo, linhas, assunto: `${titulo} — ${nomeEmpresa}`, rodape: `Aviso automático de ${nomeEmpresa}.` };
   const email = String(c.solicitante_email || '').trim();
   if (e.aviso_entrega_email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -289,7 +307,81 @@ async function vincularCte(cteId, remetenteDoc, origem) {
   return rows[0].id;
 }
 
+// Depois de programar no romaneio: avisa cada solicitante com o dia, a placa e o motorista.
+async function avisarProgramadas(ids) {
+  const { rows } = await pool.query(`SELECT c.*, r.placa, r.veiculo, r.motorista_nome, r.data AS romaneio_data FROM coletas c JOIN romaneios r ON r.id = c.romaneio_id
+    WHERE c.id = ANY($1::int[]) AND c.status IN ('programada', 'em_coleta')`, [ids]);
+  for (const c of rows) await avisarSolicitante(c, 'programada').catch((e) => console.error('[coletas] aviso:', e.message));
+}
+
+// ---------- Ordem de coleta (documento para o motorista) e etiquetas da coleta ----------
+const escH = (t) => String(t ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+async function comRomaneio(id) {
+  const { rows } = await pool.query(`SELECT c.*, r.placa, r.veiculo, r.motorista_nome, r.motorista_documento, r.data AS romaneio_data FROM coletas c LEFT JOIN romaneios r ON r.id = c.romaneio_id WHERE c.id = $1`, [id]);
+  if (!rows[0]) throw falha('Coleta não encontrada.', 404);
+  const { rows: [e] } = await pool.query('SELECT * FROM empresa WHERE id = 1');
+  return { c: rows[0], e: e || {} };
+}
+async function ordemHtml(id) {
+  const { c, e } = await comRomaneio(id);
+  const num = (v, k = 0) => (v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: k, maximumFractionDigits: k }));
+  const end = [[c.logradouro, c.numero].filter(Boolean).join(', '), c.complemento, c.bairro, [c.cidade, c.uf].filter(Boolean).join('/'), c.cep ? `CEP ${c.cep}` : null].filter(Boolean).join(' - ');
+  const empEnd = [[e.endereco, e.numero].filter(Boolean).join(', '), e.bairro, [e.municipio, e.uf].filter(Boolean).join('/')].filter(Boolean).join(' - ');
+  const logo = /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/=]+$/.test(String(e.logo || '')) ? `<img src="${e.logo}" alt="" style="max-height:52px; max-width:160px;">` : '';
+  const cel = (rot, v) => `<div><b>${rot}</b>${escH(v) || '&nbsp;'}</div>`;
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ordem de coleta nº ${c.id}</title><style>
+    @page { size: A4; margin: 14mm; } body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12px; margin: 0; }
+    .cab { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: 8px; } h1 { font-size: 20px; margin: 0; }
+    .num { font-size: 15px; font-weight: 700; text-align: right; } h2 { font-size: 13px; margin: 14px 0 4px; text-transform: uppercase; }
+    .grade { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #111; } .grade div { padding: 6px 8px; border-right: 1px solid #111; border-bottom: 1px solid #111; min-height: 18px; }
+    .grade div:nth-child(2n) { border-right: none; } .grade b { display: block; font-size: 10px; text-transform: uppercase; color: #444; } .largo { grid-column: 1 / -1; border-right: none !important; }
+    .ass { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 46px; } .ass div { border-top: 1px solid #111; padding-top: 4px; text-align: center; }
+    .acoes { margin-bottom: 10px; } @media print { .acoes { display: none; } } @media screen { body { padding: 18px; max-width: 920px; margin: 0 auto; } }
+  </style></head><body><div class="acoes"><button type="button" onclick="window.print()">Imprimir</button></div>
+  <div class="cab"><div style="display:flex; gap:12px; align-items:center;">${logo}<div><h1>ORDEM DE COLETA</h1><div>${escH(e.razao_social || '')}${e.cnpj ? ` · CNPJ ${escH(e.cnpj)}` : ''}${e.rntrc ? ` · RNTRC ${escH(e.rntrc)}` : ''}</div><div>${escH(empEnd)}${e.telefone ? ` · ${escH(e.telefone)}` : ''}</div></div></div>
+    <div class="num">Nº ${c.id}<br><span style="font-weight:400; font-size:11px;">${escH(STATUS[c.status] || c.status)}</span></div></div>
+  <h2>Coleta</h2><div class="grade">${cel('Data', diaBr(c.romaneio_data || c.data_coleta))}${cel('Janela', [c.hora_de, c.hora_ate].filter(Boolean).map((h) => String(h).slice(0, 5)).join(' às '))}
+    ${cel('Veículo', [c.placa, c.veiculo].filter(Boolean).join(' · '))}${cel('Motorista', [c.motorista_nome, c.motorista_documento].filter(Boolean).join(' · '))}</div>
+  <h2>Remetente (local da coleta)</h2><div class="grade">${cel('Nome', c.remetente_nome)}${cel('CNPJ/CPF', c.remetente_doc)}<div class="largo"><b>Endereço</b>${escH(end)}</div>
+    ${cel('Contato', [c.contato_nome, c.contato_telefone].filter(Boolean).join(' · '))}${cel('Pedido por', [c.solicitante_nome, c.solicitante_telefone].filter(Boolean).join(' · '))}</div>
+  <h2>Destino e carga</h2><div class="grade">${cel('Destinatário', c.destinatario_nome)}${cel('Destino', [c.destino_cidade, c.destino_uf].filter(Boolean).join('/'))}
+    ${cel('Volumes', num(c.volumes))}${cel('Peso (kg)', num(c.peso_kg, 1))}${cel('Cubagem (m³)', num(c.cubagem_m3, 3))}${cel('Valor da mercadoria (R$)', num(c.valor_mercadoria, 2))}
+    ${cel('Produto', c.produto)}${cel('Notas fiscais', c.notas)}<div class="largo"><b>Observação</b>${escH(c.observacao) || '&nbsp;'}</div></div>
+  <h2>Na coleta (preencher)</h2><div class="grade">${cel('Volumes coletados', c.volumes_coletados != null ? num(c.volumes_coletados) : '')}${cel('Peso conferido (kg)', c.peso_coletado != null ? num(c.peso_coletado, 1) : '')}
+    ${cel('Data e hora', '')}${cel('Entregue por (nome e documento)', c.entregue_por)}</div>
+  <div class="ass"><div>Remetente (assinatura e carimbo)</div><div>Motorista</div></div></body></html>`;
+}
+// Uma etiqueta por volume, antes do CT-e existir: transportadora, coleta, destino em destaque, remetente e VOL x/y.
+async function etiquetasHtml(id, { volumes = null } = {}) {
+  const { c, e } = await comRomaneio(id);
+  const total = Math.max(1, Math.min(999, Number(volumes) || Number(c.volumes_coletados) || Number(c.volumes) || 1));
+  const { FORMATOS } = require('./etiquetas'); const f = FORMATOS[e.etiqueta_formato] || FORMATOS['100x100'];
+  const { code128Svg } = require('./cte/codigoBarras');
+  const nome = e.nome_fantasia || e.razao_social || '';
+  const pag = Array.from({ length: total }, (_, i) => {
+    const cod = `COL${String(c.id).padStart(7, '0')}${String(i + 1).padStart(3, '0')}`;
+    return `<section class="et"><div class="topo"><b>${escH(nome)}</b><span>COLETA ${c.id}</span></div>
+      <div class="dest">${escH(c.destino_cidade || c.cidade || '')}<small>${c.destino_uf ? `/${escH(c.destino_uf)}` : ''}</small></div>
+      <div class="linha"><b>${escH(c.destinatario_nome || 'Destinatário a confirmar no CT-e')}</b></div>
+      <div class="linha">Rem.: ${escH(c.remetente_nome)} · ${escH([c.cidade, c.uf].filter(Boolean).join('/'))}</div>
+      <div class="meio"><div class="vol">VOL <b>${i + 1}</b>/${total}</div><div class="info">${c.notas ? `NF ${escH(c.notas)}<br>` : ''}${c.peso_kg ? `${Number(c.peso_kg).toLocaleString('pt-BR')} kg` : ''}<br>${diaBr(c.data_coleta)}</div></div>
+      <div class="barras">${code128Svg(cod, { altura: f.a <= 50 ? 34 : 56, modulo: 2 })}<div class="cod">${cod}</div></div></section>`;
+  }).join('');
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas da coleta ${c.id}</title><style>
+    @page { size: ${f.l}mm ${f.a}mm; margin: 0; } * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; }
+    .et { width: ${f.l}mm; height: ${f.a}mm; padding: 3mm 4mm; display: flex; flex-direction: column; gap: 1.2mm; overflow: hidden; page-break-after: always; break-after: page; }
+    .topo { display: flex; justify-content: space-between; font-size: 10pt; border-bottom: 0.4mm solid #000; padding-bottom: 0.8mm; } .topo b { max-width: 60%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .dest { font-size: ${f.a <= 50 ? '16pt' : '24pt'}; font-weight: 800; line-height: 1.05; text-transform: uppercase; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .dest small { font-size: 60%; }
+    .linha { font-size: 9.5pt; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .meio { display: flex; justify-content: space-between; align-items: center; border-top: 0.3mm solid #000; padding-top: 0.8mm; } .vol { font-size: 15pt; } .vol b { font-size: 26pt; } .info { text-align: right; font-size: 9pt; }
+    .barras { margin-top: auto; } .cod { text-align: center; font-family: monospace; font-size: 9pt; letter-spacing: 1px; } .acoes { padding: 10px; font-family: Arial; } .acoes button { padding: 8px 14px; }
+    @media screen { body { background: #ddd; } .et { background: #fff; margin: 8px auto; box-shadow: 0 1px 4px rgba(0,0,0,.25); } } @media print { .acoes { display: none; } }
+  </style></head><body><div class="acoes"><button type="button" onclick="window.print()">Imprimir ${total} etiqueta(s)</button>
+    <span style="font-size:12px; color:#444;">Etiqueta da coleta (antes do CT-e). Na impressora térmica, papel ${f.l} × ${f.a} mm e margens "nenhuma".</span></div>${pag}</body></html>`;
+}
+
 module.exports = {
+  avisarProgramadas, ordemHtml, etiquetasHtml,
   PASTA, STATUS, CANAIS, MOTIVOS, lerColeta, criar, alterar, programar, desprogramar, sairComColetas, fecharColetas, soltarColetas,
   coletasDoRomaneio, baixar, gerarCte, vincularCte, avisarSolicitante,
 };

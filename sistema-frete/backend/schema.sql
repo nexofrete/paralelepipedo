@@ -3717,3 +3717,22 @@ INSERT INTO patio_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
 -- Pré-nota: a linha da planilha do ERP (o pedido antes da NF-e), guardada para o relatório 87 (NF-e x pré-nota).
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS pre_nota JSONB;
+
+-- Ordens de coleta do embarcador (Pátio e portaria » Ordens de coleta; src/ordensColeta.js): a expedição manda à transportadora
+-- as notas a coletar; pelo link (token) ela aceita (data, placa, motorista: vira agendamento no pátio) ou recusa.
+CREATE TABLE IF NOT EXISTS ordens_coleta (
+  id SERIAL PRIMARY KEY,
+  token VARCHAR(40) NOT NULL UNIQUE,
+  status VARCHAR(20) NOT NULL DEFAULT 'rascunho',            -- rascunho, enviada, aceita, recusada, cancelada
+  transportadora VARCHAR(160), email_para VARCHAR(250),
+  notas VARCHAR(20)[] NOT NULL DEFAULT '{}', frete_ids INTEGER[] NOT NULL DEFAULT '{}',
+  volumes INTEGER, peso_kg NUMERIC(14,2), valor NUMERIC(14,2), cubagem_m3 NUMERIC(12,3),
+  coletar_em TIMESTAMPTZ, janela_min INTEGER NOT NULL DEFAULT 120, tipo_veiculo VARCHAR(20), observacao TEXT,
+  enviada_em TIMESTAMPTZ, enviada_por VARCHAR(120), aberta_em TIMESTAMPTZ,
+  respondida_em TIMESTAMPTZ, resposta_nome VARCHAR(120), motivo_recusa TEXT, resposta_obs TEXT,
+  placa VARCHAR(10), motorista_nome VARCHAR(120), motorista_documento VARCHAR(20), motorista_telefone VARCHAR(20), previsto_em TIMESTAMPTZ,
+  visita_id INTEGER REFERENCES patio_visitas(id) ON DELETE SET NULL,
+  criado_por_nome VARCHAR(120), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ordens_coleta_status ON ordens_coleta (status);
+CREATE INDEX IF NOT EXISTS idx_ordens_coleta_fretes ON ordens_coleta USING GIN (frete_ids);

@@ -1180,9 +1180,36 @@ def parte_uso(g):
         ['85', 'Resultado analítico da simulação de histórico', 'Cada nota embarcada (até 2000 por consulta): o frete real, o valor pela tabela da própria transportadora (e a diferença), a melhor tabela, o valor dela, a economia que teria havido e uma coluna por transportadora. Os cartões somam o frete real, o da melhor tabela, a economia e as notas sem tabela para o destino.'],
         ['86', 'Curva ABC de fretes extras e complementares', 'Os CT-e a mais do período (reentrega, devolução, complementar, redespacho, retorno) por cliente, com a classe ABC pelo valor, a divisão por tipo e as transportadoras.'],
     ], [0.1, 0.28, 0.62])
-    s += h2('Recursos de todas as telas de relatórios (324 a 331)')
+    s += h2('Relatórios operacionais (tela 332)')
+    s.append(P('No menu, em Operar » <b>Controle operacional</b>, cada relatório tem o seu item (todos abrem a tela 332, Ctrl+K 332). '
+               'Vê a tela quem pode ver relatórios; os relatórios que usam tabelas de preço, pátio, arquivos EDI, faturas ou as ações '
+               'dos usuários (92, 93, 95 e 96) são só de quem vê todos os fretes. O período vem nos últimos 30 dias.'))
+    s += lista([
+        '<b>Pré-nota</b>: é o pedido que chega na planilha do ERP antes da NF-e (Importação do ERP). Desde a versão 1.74 o sistema '
+        'guarda essa linha na nota quando o XML chega, e o relatório 87 compara as duas. Notas que chegaram antes disso aparecem em '
+        '"Notas sem pré-nota".',
+        '<b>Comparativo de fretes</b> (88) e <b>Possibilidade de agrupamento de CT-e</b> (94) já existiam: na lista da tela eles '
+        'aparecem com a seta e abrem o relatório 13 (Frete contratado x cobrado) e a tela Consolidar rotas (314).',
+        'Os relatórios 89 e 99 mostram a situação de hoje (o período não vale).',
+    ])
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['87', 'Comparativo entre nota fiscal e pré-nota fiscal', 'Cada NF-e do período ao lado da pré-nota: valor (e a diferença), volumes, peso (diferença acima de 2%), transportadora, destino e cliente, com "Confere" ou "Diverge" e o que mudou.'],
+        ['88', 'Comparativo de fretes', 'Atalho para o 13 · Frete contratado x cobrado.'],
+        ['89', 'Transportadoras que possuem arquivos pendentes', 'Por transportadora: notas CIF emitidas há mais de 3 dias ainda sem o CT-e (e o valor delas), CT-e sem a nota e arquivos EDI aguardando conferência ou com erro, com a pendência mais antiga. Dois cliques mostram as notas sem CT-e.'],
+        ['90', 'Relação de conhecimentos de frete', 'Todos os CT-e do período, inclusive os cancelados: tomador, remetente, destinatário, trecho, nota, tipo, valor, valor pela tabela e diferença, glosa, situação (em conferência, retido, liberado, faturado, pago, reprovado, cancelado), fatura e chave.'],
+        ['91', 'Relação de integração de conhecimentos de frete', 'Cada CT-e que entrou no período: quando, por onde (envio manual, e-mail, SEFAZ, pasta de XML, NF-Stock), quem enviou e quantos dias depois da emissão ele chegou.'],
+        ['92', 'Produtividade de resolução de pendência', 'Por usuário: CT-e aprovados e reprovados, glosas, faturas conferidas e decididas, arquivos EDI tratados, contestações abertas e os dias, em média, entre o CT-e chegar e a decisão.'],
+        ['93', 'Vigência de tabela de frete', 'Cada tabela de preço: vigente desde, validade, vencimento, dias para vencer, índice de reajuste e as notas e o frete calculados com ela no período. Situação: válida, vence em até 30 dias, vencida, sem validade ou inativa.'],
+        ['94', 'Possibilidade de agrupamento de CT-e', 'Atalho para a tela Consolidar rotas (314).'],
+        ['95', 'Restrição pessoa tabela de frete', 'Tabelas que valem só para um cliente (o CNPJ/CPF ou todas as filiais pela raiz do CNPJ) e as que cobram descarga só de alguns clientes, com a situação da tabela e quanto o cliente usa.'],
+        ['96', 'Operação doca', 'Por doca (Pátio e portaria): visitas, carregamentos, descargas, concluídas, atrasadas, não compareceram, canceladas, espera até a doca, tempo na doca e no pátio, horas de doca ocupada, volumes e peso.'],
+        ['97', 'Relação de justificativas de ação', 'Cada ação com motivo escrito no período: aprovação e reprovação de CT-e, glosa, bloqueio de fatura e manifestação de NF-e, com quem fez e quando.'],
+        ['98', 'Operação por documentos', 'Por dia (até 62 dias) ou mês: NF-e e CT-e recebidos, CT-e aprovados e reprovados, comprovantes de entrega, ocorrências, faturas e arquivos EDI.'],
+        ['99', 'Relação de pendências', 'Tudo o que está pendente hoje, da mais antiga para a mais nova: notas sem CT-e, CT-e retidos, CT-e sem nota, entregas atrasadas, faturas bloqueadas ou vencidas, arquivos EDI parados e contestações sem resposta.'],
+    ], [0.1, 0.28, 0.62])
+    s += h2('Recursos de todas as telas de relatórios (324 a 332)')
     s.append(P('As telas Relatórios de entregas (324), Desempenho das transportadoras (325), Relatórios NF-e x CT-e (326), '
-               'Relatórios de auditoria (327), Relatórios de rotas e operação (328), Relatórios financeiros (329) e Relatórios de planejamento (331) funcionam do mesmo jeito:'))
+               'Relatórios de auditoria (327), Relatórios de rotas e operação (328), Relatórios financeiros (329), Relatórios de planejamento (331) e Relatórios operacionais (332) funcionam do mesmo jeito:'))
     s += lista([
         '<b>Filtros</b>: período, transportadora, cliente (nome ou CNPJ), cidade e UF; em <b>Mais filtros</b>, a filial (a empresa '
         'que emitiu a nota, pelo CNPJ), o número da NF-e e do CT-e (um ou vários, separados por vírgula ou espaço) e o status do '

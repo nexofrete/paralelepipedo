@@ -441,6 +441,7 @@ telaRelatorios({ pagina: 'relatorios-operacao', conteudo: 'opConteudo', P: 'op',
 telaRelatorios({ pagina: 'relatorios-financeiros', conteudo: 'fiConteudo', P: 'fi', tela: 'financeiro', primeiro: 51, chaveLs: 'nexofreteRelFinanceiro', periodoPadrao: 'mes',
   api: '/api/relatorios-financeiros', pode: () => usuario?.perfil === 'admin' || !!usuario?.pode_ver_financeiro });
 telaRelatorios({ pagina: 'relatorios-auditoria', conteudo: 'auConteudo', P: 'au', tela: 'auditoria', primeiro: 11, chaveLs: 'nexofreteRelAuditoria', periodoPadrao: '30d' });
+telaRelatorios({ pagina: 'relatorios-operacionais', conteudo: 'oqConteudo', P: 'oq', tela: 'operacional', primeiro: 99, chaveLs: 'nexofreteRelOperacional', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'relatorios-planejamento', conteudo: 'pjConteudo', P: 'pj', tela: 'planejamento', primeiro: 81, chaveLs: 'nexofreteRelPlanejamento', periodoPadrao: '3m' });
 telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

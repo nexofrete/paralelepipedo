@@ -3714,3 +3714,6 @@ CREATE TABLE IF NOT EXISTS patio_config (
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 INSERT INTO patio_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+-- Pré-nota: a linha da planilha do ERP (o pedido antes da NF-e), guardada para o relatório 87 (NF-e x pré-nota).
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS pre_nota JSONB;

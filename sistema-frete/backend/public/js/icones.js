@@ -73,7 +73,7 @@
   // Grupos do menu e itens do alto → ícone.
   const MAPA = {
     operacao: 'truck', fretes: 'package', patio: 'warehouse', auditoria: 'scale', clientes: 'users', financeiro: 'wallet', faturamento: 'receipt',
-    fiscal: 'calculator', frota: 'wrench', transportadoras: 'trophy', planejamento: 'target', paineis: 'chart', cadastros: 'idcard', config: 'sliders',
+    fiscal: 'calculator', frota: 'wrench', transportadoras: 'trophy', planejamento: 'target', controle: 'clipboard', paineis: 'chart', cadastros: 'idcard', config: 'sliders',
     hoje: 'home', inicio: 'home', 'visao-geral': 'inbox', mensagens: 'mail', agenda: 'calendar', buscar: 'search',
   };
   const svg = (nome, tam = 18) => {

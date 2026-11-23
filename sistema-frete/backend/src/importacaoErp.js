@@ -106,6 +106,16 @@ const CAMPOS_PREENCHIVEIS = [
 // (o pedido pode mudar até ser faturado); valor gravado 0 também é substituído.
 const MEDIDAS = ['qtd_volumes', 'peso_kg', 'cubagem_m3'];
 
+// Pré-nota: o que o ERP disse do pedido antes da NF-e (relatório 87, NF-e x pré-nota).
+const CAMPOS_PRE_NOTA = ['numero_pedido', 'numero_nf', 'data_pedido', 'cliente', 'cliente_documento', 'cidade', 'uf', 'transportadora', 'frete_cif_fob',
+  'redespacho', 'valor_faturado', 'qtd_volumes', 'peso_kg', 'cubagem_m3'];
+function preNotaDa(linha, recebidoEm = null) {
+  const p = {};
+  CAMPOS_PRE_NOTA.forEach((c) => { if (linha[c] != null && linha[c] !== '') p[c] = linha[c]; });
+  p.recebido_em = recebidoEm ? new Date(recebidoEm).toISOString() : new Date().toISOString();
+  return JSON.stringify(p);
+}
+
 // Monta as mensagens e força status/nf_cancelada quando o ERP indicar cancelamento.
 async function aplicarRegrasCancelamento(freteId, linha) {
   const mensagens = [];
@@ -173,6 +183,8 @@ async function importarLinhas(linhasMapeadas, usuarioId) {
           `UPDATE fretes SET ${sets.join(', ')}, atualizado_em = NOW() WHERE id = $${valores.length}`,
           valores
         );
+        // Pré-nota: a planilha mais nova enquanto a NF-e não chegou (depois, só se ainda não houver).
+        await pool.query('UPDATE fretes SET pre_nota = $1::jsonb WHERE id = $2 AND (chave_nfe IS NULL OR pre_nota IS NULL)', [preNotaDa(linha), freteId]);
         // Itens sem medida: vale sempre o da planilha mais nova (o ERP pode ter medido os itens).
         if (linha.itens_sem_medida != null) {
           await pool.query('UPDATE fretes SET itens_sem_medida = $1 WHERE id = $2', [Math.round(linha.itens_sem_medida), freteId]);
@@ -229,6 +241,7 @@ async function aplicarPendenteDaNota(freteId) {
     await pool.query(
       `UPDATE fretes SET ${sets.join(', ')}, numero_pedido = COALESCE(numero_pedido, $${valores.length - 1}), atualizado_em = NOW()
         WHERE id = $${valores.length}`, valores);
+    await pool.query('UPDATE fretes SET pre_nota = $1::jsonb WHERE id = $2', [preNotaDa(linha, rows[0].recebido_em), freteId]);
     await aplicarRegrasCancelamento(freteId, linha);
     await pool.query('DELETE FROM erp_pendentes WHERE numero_pedido = $1', [rows[0].numero_pedido]);
     return true;

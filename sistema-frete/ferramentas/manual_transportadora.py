@@ -71,6 +71,7 @@ def parte_operacao(g):
         ['Finanças · Faturamento', 'Faturas, A faturar (CT-e sem fatura), Serviços extras', '100, 105, 104', '41'],
         ['Finanças · Faturamento', 'Relatórios: Margem por CT-e e cliente', '301', '48'],
         ['Finanças · Fiscal e contábil', 'Livros fiscais e contabilidade, Notas de entrada, NF-e contra o CNPJ, GNRE, Pacote do contador', '140 a 144', '49'],
+        ['Gestão · Pessoas (RH)', 'Painel de férias, Programação de férias, Funcionários', '270 a 272', '40-A'],
         ['Gestão · Frota', 'Abastecimentos, Manutenções, Documentos, Pneus, Jornada; Relatórios: Custos e alertas', '201 a 250, 200', '40'],
         ['Gestão · Transportadoras', 'Melhor transportadora por destino, Comparar cotações; Relatórios: Desempenho e ranking, Scorecard', '313, 317, 325, 319', '19'],
         ['Gestão · Planejamento', 'Relatórios: Analítico de transportadora, Curvas ABC, Rotas por transportadora, Volumetria, Simulação de histórico', '331', '19'],
@@ -739,6 +740,36 @@ def parte_financeiro(g):
                'Faturamento, boleto, cobrança, caixa e bancos, contas a pagar, comissões, centros de custo, margem e contabilidade.')
 
     # 41
+    s += h1('40-A. Pessoas: funcionários e férias')
+    s.append(P('Menu Gestão, <b>Pessoas (RH)</b>: Painel de férias (Ctrl+K 270), Programação de férias (271) e Funcionários (272). Vê o '
+               'módulo o administrador, quem gerencia usuários ou quem tem a tela "Pessoas: funcionários e férias" na grade de acesso.'))
+    s += h2('Funcionários (272)')
+    s.append(P('Cadastre cada funcionário com a <b>data de admissão</b> (é dela que saem os períodos de férias), o cargo, o departamento, a '
+               'unidade, o e-mail e o gestor. Com a data de desligamento, ele sai das listas.'))
+    s += h2('Painel de férias (270)')
+    s += lista([
+        'Cartões: de férias hoje, quem entra e quem volta nos próximos dias, aviso de férias a entregar, férias vencidas e vencendo.',
+        'Listas de quem está saindo, voltando, de férias agora e os avisos a entregar (com o link para imprimir).',
+        'A tabela mostra cada funcionário com o período pendente mais antigo, o saldo, a data limite para programar (fim do período '
+        'concessivo) e a situação: <b>Vencidas</b> (passou do limite: pagamento em dobro), <b>Vencendo</b> (até 90 dias do limite), '
+        '<b>A programar</b>, <b>Programadas</b>, <b>Em aquisição</b> ou <b>Gozadas</b>.',
+        '<b>Avisos por e-mail</b>: os e-mails do RH e dos gestores, com quantos dias de antecedência avisar, e o e-mail diário (7h20), que '
+        'só sai nos dias com algo a avisar. Os mesmos avisos aparecem na tela Hoje (área Pessoas) e no sino.',
+    ])
+    s += h2('Programação de férias (271)')
+    s += lista([
+        '<b>Programar férias</b>: funcionário, período aquisitivo (vem o mais antigo com saldo), início, dias, abono (dias vendidos) e se '
+        'adianta o 13º. A prévia mostra o fim, o retorno, a data limite do pagamento e a do aviso.',
+        'O sistema segue a CLT: cada período com pelo menos 5 dias; até 3 períodos, um deles com 14 ou mais; abono de até 10 dias; sem '
+        'passar do saldo nem cair em cima de outras férias do funcionário. E avisa (sem bloquear): início na sexta, no sábado ou nos 2 dias '
+        'antes de feriado; férias fora do período concessivo (pagamento em dobro); menos de 30 dias para o aviso; outras pessoas do '
+        'mesmo departamento de férias nas mesmas datas.',
+        'O calendário mostra os próximos 12 meses, uma linha por funcionário, com as férias coloridas pela situação (programada, '
+        'aprovada, em férias, concluída) e a linha de hoje. Dá para filtrar pelo departamento.',
+        'Na lista: <b>Aviso</b> imprime o aviso de férias (art. 135 da CLT) para o funcionário assinar; <b>Entregue</b> registra a data do '
+        'aviso; <b>Aprovar</b>, <b>Editar</b> e <b>Cancelar</b> (os dias voltam para o saldo).',
+    ])
+
     s += h1('41. Faturamento e contas a receber')
     s.append(P('A mesma tela atende a duas áreas do menu: <b>Faturamento</b> (Faturas, A faturar e Serviços extras) e '
                '<b>Financeiro » Contas a receber</b> (Contas a receber, Boletos, Régua de cobrança e a configuração da cobrança por PIX e banco). '

@@ -281,6 +281,17 @@ router.get('/', autenticar, async (req, res) => {
         notificacoes.unshift({ tipo: 'urgente', icone: '🔐', pagina: 'cadastros', texto });
       }
     }
+    // Pessoas (RH): férias.
+    try {
+      const ferias = require('../ferias');
+      if (ferias.pode(req.usuario)) {
+        const p = await ferias.pendencias();
+        if (p?.vencidas.length) notificacoes.push({ tipo: 'urgente', icone: '⚠️', pagina: 'ferias', texto: `${p.vencidas.length} funcionário(s) com férias vencidas (pagamento em dobro) — programe já` });
+        const partes = [p?.saem.length ? `${p.saem.length} entra(m) de férias` : '', p?.voltam.length ? `${p.voltam.length} volta(m) de férias` : ''].filter(Boolean);
+        if (partes.length) notificacoes.push({ tipo: 'aviso', icone: '🏖', pagina: 'ferias', texto: `Nos próximos dias: ${partes.join(' e ')} — ${[...p.saem, ...p.voltam].slice(0, 3).map((f) => f.nome).join(', ')}` });
+        if (p?.aviso_pendente.length) notificacoes.push({ tipo: 'aviso', icone: '📝', pagina: 'ferias', texto: `${p.aviso_pendente.length} aviso(s) de férias a entregar (30 dias antes do início)` });
+      }
+    } catch (e) { console.error('[notificações] férias:', e.message); }
     res.json(notificacoes);
   } catch (err) {
     console.error(err);

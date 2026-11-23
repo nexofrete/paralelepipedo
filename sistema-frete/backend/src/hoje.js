@@ -216,13 +216,33 @@ async function montar(req) {
     } catch (e) { console.error('[hoje]', e.message); }
   }
 
+  // Pessoas (RH): férias saindo, voltando, em andamento, aviso a entregar, vencidas e vencendo.
+  const ferias = require('./ferias');
+  const rh = ferias.pode(req.usuario);
+  if (rh) {
+    try {
+      const p = await ferias.pendencias();
+      if (p) {
+        const br = (s) => new Date(`${s}T12:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit' });
+        const nomes = (ls, fn) => ls.slice(0, 3).map(fn).join(' · ') + (ls.length > 3 ? ` e mais ${ls.length - 3}` : '');
+        const destino = { ir: 'ferias', aba: 'painel' };
+        add('rh', { chave: 'ferias_vencidas', icone: '⚠️', titulo: 'Férias vencidas (pagamento em dobro)', qtd: p.vencidas.length, nivel: 'perigo', detalhe: nomes(p.vencidas, (f) => `${f.nome} (${f.saldo} d)`), destino });
+        add('rh', { chave: 'ferias_saem', icone: '🏖', titulo: 'Entram de férias nos próximos dias', qtd: p.saem.length, nivel: 'atencao', detalhe: nomes(p.saem, (f) => `${f.nome} em ${br(f.inicio)}`), destino });
+        add('rh', { chave: 'ferias_aviso', icone: '📝', titulo: 'Aviso de férias a entregar', qtd: p.aviso_pendente.length, nivel: 'atencao', detalhe: 'a CLT pede o aviso por escrito 30 dias antes', destino });
+        add('rh', { chave: 'ferias_vencendo', icone: '⏳', titulo: 'Férias vencendo: programe', qtd: p.vencendo.length, nivel: 'atencao', detalhe: nomes(p.vencendo, (f) => `${f.nome} até ${br(f.limite)}`), destino });
+        add('rh', { chave: 'ferias_voltam', icone: '👋', titulo: 'Voltam de férias nos próximos dias', qtd: p.voltam.length, nivel: 'info', detalhe: nomes(p.voltam, (f) => `${f.nome} em ${br(ferias.somaDias(f.fim, 1))}`), destino });
+        add('rh', { chave: 'ferias_hoje', icone: '🌴', titulo: 'De férias hoje', qtd: p.em_ferias.length, nivel: 'info', detalhe: nomes(p.em_ferias, (f) => `${f.nome} até ${br(f.fim)}`), destino });
+      }
+    } catch (e) { console.error('[hoje]', e.message); }
+  }
+
   // Cartões que abrem tela de módulo bloqueado para o usuário saem da lista.
   const { paginaBloqueada } = require('./permissoes');
   for (let i = itens.length - 1; i >= 0; i -= 1) if (itens[i].destino?.ir && paginaBloqueada(req.usuario, itens[i].destino.ir)) itens.splice(i, 1);
   const ordem = { perigo: 0, atencao: 1, info: 2 };
   itens.sort((x, y) => ordem[x.nivel] - ordem[y.nivel]);
   return {
-    hoje: h, nome: req.usuario?.nome || '', areas: { operacao, financeiro, frota: operacao || financeiro }, itens,
+    hoje: h, nome: req.usuario?.nome || '', areas: { operacao, financeiro, frota: operacao || financeiro, rh }, itens,
     resumo: { perigo: itens.filter((i) => i.nivel === 'perigo').length, atencao: itens.filter((i) => i.nivel === 'atencao').length },
   };
 }

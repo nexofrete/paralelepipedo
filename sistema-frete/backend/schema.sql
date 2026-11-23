@@ -3777,3 +3777,24 @@ CREATE TABLE IF NOT EXISTS tabelas_lotacao (
   valor_viagem NUMERIC(14,2) NOT NULL, cap_kg NUMERIC(12,2), cap_m3 NUMERIC(10,2), prazo_dias INTEGER, ativa BOOLEAN NOT NULL DEFAULT TRUE, observacao TEXT,
   criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ============ Pessoas (RH): funcionários e férias (src/ferias.js, telas 270 a 272) ============
+CREATE TABLE IF NOT EXISTS funcionarios (
+  id SERIAL PRIMARY KEY, nome VARCHAR(150) NOT NULL, cpf VARCHAR(11) UNIQUE, matricula VARCHAR(30), cargo VARCHAR(100),
+  departamento_id INTEGER REFERENCES departamentos(id) ON DELETE SET NULL, unidade_id INTEGER REFERENCES unidades(id) ON DELETE SET NULL,
+  admissao DATE NOT NULL, demissao DATE, email VARCHAR(150), telefone VARCHAR(30), gestor VARCHAR(150), email_gestor VARCHAR(150),
+  ativo BOOLEAN NOT NULL DEFAULT TRUE, observacoes VARCHAR(1000), criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Férias: um período de gozo (dentro de um período aquisitivo), com o abono (dias vendidos) e o aviso entregue.
+CREATE TABLE IF NOT EXISTS ferias (
+  id SERIAL PRIMARY KEY, funcionario_id INTEGER NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  aquisitivo_inicio DATE NOT NULL, aquisitivo_fim DATE NOT NULL, inicio DATE NOT NULL, fim DATE NOT NULL, dias INTEGER NOT NULL, abono_dias INTEGER NOT NULL DEFAULT 0,
+  adiantar_13 BOOLEAN NOT NULL DEFAULT FALSE, status VARCHAR(12) NOT NULL DEFAULT 'programada',   -- programada, aprovada, cancelada
+  aviso_em DATE, observacao VARCHAR(1000), criado_por_nome VARCHAR(120), aprovado_por VARCHAR(120), aprovado_em TIMESTAMPTZ,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ferias_funcionario ON ferias (funcionario_id, inicio);
+CREATE INDEX IF NOT EXISTS idx_ferias_inicio ON ferias (inicio) WHERE status <> 'cancelada';
+CREATE TABLE IF NOT EXISTS ferias_config (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1), emails TEXT, dias_aviso INTEGER NOT NULL DEFAULT 7, email_diario BOOLEAN NOT NULL DEFAULT FALSE
+);

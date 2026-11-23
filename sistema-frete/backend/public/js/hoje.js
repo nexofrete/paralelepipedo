@@ -12,7 +12,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const AREAS = { operacao: '🚛 Operação', financeiro: '💰 Financeiro', frota: '🔧 Frota' };
+  const AREAS = { operacao: '🚛 Operação', financeiro: '💰 Financeiro', frota: '🔧 Frota', rh: '👥 Pessoas' };
   const NIVEL = { perigo: 'var(--vermelho)', atencao: '#f59e0b', info: 'var(--azul)' };
   let dados = null;
 

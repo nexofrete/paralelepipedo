@@ -263,6 +263,7 @@ app.use('/api/ordem-coleta-publica', rateLimit({ windowMs: 60 * 1000, max: 40, s
 app.use('/api/ordens-coleta', require('./src/routes/ordensColeta'));
 app.use('/api/cargas', require('./src/routes/cargas'));
 app.use('/api/pedidos', require('./src/routes/pedidos'));
+app.use('/api/ferias', require('./src/routes/ferias'));
 app.use('/api/coletas', coletasRoutes);
 app.use('/api/cotacoes', cotacoesRoutes);
 app.use('/api/etiquetas', conferenciasRoutes.etiquetas);
@@ -384,6 +385,7 @@ async function iniciar() {
     alertaWhatsapp.agendarAlertaDiario();
     require('./src/rastreioSsw').agendarConsultaDiaria();
     agenda.agendarLembretes();
+    require('./src/ferias').agendar();
     require('./src/pastaXml').agendar();
     require('./src/regrasAuditoria').agendar();
     require('./src/resumoAuditoria').agendar();

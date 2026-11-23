@@ -200,6 +200,12 @@
         <div class="nav-subtit">Relatórios</div>
         <div class="nav-tsub" data-ir="frota" data-aba="painel">📊 Custos e alertas</div>
       </div>
+      <div class="nav-grupo oculto" data-grupo="pessoas">👥 Pessoas (RH) <span class="nav-seta">▸</span></div>
+      <div class="nav-sub oculto" data-grupo="pessoas">
+        <div class="nav-tsub" data-ir="ferias" data-aba="painel">🏖 Painel de férias</div>
+        <div class="nav-tsub" data-ir="ferias" data-aba="programacao">📅 Programação de férias</div>
+        <div class="nav-tsub" data-ir="ferias" data-aba="funcionarios">🪪 Funcionários</div>
+      </div>
       <div class="nav-grupo oculto" data-grupo="transportadoras">🏆 Transportadoras <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="transportadoras">
         <div class="nav-tsub" data-subaba="melhorTransp">🏷️ Melhor transportadora por destino</div>
@@ -261,6 +267,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="patio" id="navPatio" data-modulo="embarcador">🚧 Pátio e portaria</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cargas" id="navCargas" data-modulo="embarcador">🚛 Cargas</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="pedidos" id="navPedidos" data-modulo="embarcador">📋 Pedidos</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="ferias" id="navFerias">🏖 Férias</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-entregas" id="navRelEntregas">📦 Relatórios de entregas</div>
       <div class="nav-item nav-no-grupo" data-pagina="desempenho-transportadoras" id="navDesempTransp">🏆 Desempenho das transportadoras</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-nfe-cte" id="navRelNfeCte">🔗 Relatórios NF-e × CT-e</div>
@@ -444,6 +451,21 @@
           </div>
         </div>
         <div id="opConteudo"></div>
+      </section>
+
+      <section id="pagina-ferias" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>Pessoas: férias</h2>
+            <p>Saldo e vencimento das férias de cada funcionário, programação do ano e os avisos de quem sai e de quem volta</p>
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-fe-aba="painel">🏖 Painel de férias</div>
+          <div class="cte-aba" data-fe-aba="programacao">📅 Programação</div>
+          <div class="cte-aba" data-fe-aba="funcionarios">🪪 Funcionários</div>
+        </div>
+        <div id="feConteudo"></div>
       </section>
 
       <section id="pagina-pedidos" class="oculto">
@@ -4291,6 +4313,7 @@
   <script src="js/kanbanPatio.js"></script>
   <script src="js/cargas.js"></script>
   <script src="js/pedidos.js"></script>
+  <script src="js/ferias.js"></script>
   <script src="js/patio.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>

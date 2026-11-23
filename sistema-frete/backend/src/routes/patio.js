@@ -24,6 +24,7 @@ router.post('/docas', autenticar, rota((req) => patio.salvarDoca(null, req.body 
 router.put('/docas/:id(\\d+)', autenticar, rota((req) => patio.salvarDoca(Number(req.params.id), req.body || {})));
 router.delete('/docas/:id(\\d+)', autenticar, rota((req) => patio.excluirDoca(Number(req.params.id))));
 router.get('/painel', autenticar, rota(() => patio.painel()));
+router.get('/kanban', autenticar, rota(() => patio.kanban()));
 router.get('/visitas', autenticar, rota((req) => patio.listar(req.query)));
 router.get('/notas', autenticar, rota((req) => patio.notasDaVisita(req, String(req.query.numeros || '').split(/[\s,;]+/))));
 router.get('/visitas/:id(\\d+)', autenticar, rota(async (req) => {

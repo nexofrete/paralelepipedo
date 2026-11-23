@@ -365,6 +365,44 @@ async function painel() {
   };
 }
 
+// Kanban gerencial dos veículos (aba Kanban, tela 426): uma coluna por etapa, com o tempo de cada um na etapa e o alerta
+// de quem passou do tempo: agendado (próximas 24 h e os atrasados), aguardando doca, chamado, na doca, liberado, saiu hoje.
+const LIMITES_MIN = { aguardando: 60, chamado: 15, liberado: 20 };
+function etapaKanban(v, agora, { tolMin = 15, naoCompareceuMin = 240, minutosDoca = 60 } = {}) {
+  const desde = { agendado: v.previsto_em, aguardando: v.chegada_em, chamado: v.chamado_em, em_doca: v.inicio_doca_em, liberado: v.fim_doca_em, saiu: v.chegada_em }[v.status];
+  const fim = v.status === 'saiu' ? ms(v.saida_em) : agora;
+  const minutos = desde ? Math.round((fim - ms(desde)) / MIN) : null;
+  let alerta = null;
+  if (v.status === 'agendado') {
+    if (minutos > naoCompareceuMin) alerta = 'Não veio';
+    else if (minutos > (v.janela_min || 0) + tolMin) alerta = 'Atrasado';
+  } else if (v.status === 'em_doca') { if (minutos > (v.minutos_previstos || minutosDoca)) alerta = 'Passou do tempo na doca'; }
+  else if (LIMITES_MIN[v.status] && minutos > LIMITES_MIN[v.status]) alerta = { aguardando: 'Esperando há muito tempo', chamado: 'Chamado e não encostou', liberado: 'Ainda não saiu' }[v.status];
+  return { minutos, alerta };
+}
+async function kanban() {
+  const agora = Date.now();
+  const [cfg, med] = await Promise.all([config(), medias()]);
+  const { rows } = await pool.query(`SELECT ${CAMPOS_VISITA}, d.minutos_padrao FROM patio_visitas v LEFT JOIN patio_docas d ON d.id = v.doca_id
+    WHERE (v.status = 'agendado' AND v.previsto_em < NOW() + INTERVAL '24 hours' AND v.previsto_em > NOW() - INTERVAL '24 hours')
+       OR v.status IN ('aguardando', 'chamado', 'em_doca', 'liberado') OR (v.status = 'saiu' AND v.saida_em::date = CURRENT_DATE)
+    ORDER BY COALESCE(v.chegada_em, v.previsto_em) LIMIT 500`);
+  const COLUNAS = ['agendado', 'aguardando', 'chamado', 'em_doca', 'liberado', 'saiu'];
+  const cartoes = rows.map((v) => {
+    const md = (v.doca_id && (med[`${v.doca_id}|${v.operacao}`] || v.minutos_padrao)) || 60;
+    return { id: v.id, codigo: v.codigo, status: v.status, operacao: v.operacao, placa: v.placa, transportadora: v.transportadora, fornecedor: v.fornecedor, motorista: v.motorista_nome,
+      doca: v.doca_nome, notas: v.notas || [], volumes: v.volumes, previsto_em: v.previsto_em, chegada_em: v.chegada_em, saida_em: v.saida_em, sem_agendamento: v.sem_agendamento,
+      ...etapaKanban(v, agora, { tolMin: cfg.tolerancia_min, naoCompareceuMin: cfg.nao_compareceu_min, minutosDoca: md }) };
+  });
+  const colunas = COLUNAS.map((c) => {
+    const cs = cartoes.filter((k) => k.status === c);
+    const com = cs.filter((k) => k.minutos != null && (c !== 'agendado' || k.minutos > 0));
+    return { chave: c, titulo: c === 'saiu' ? 'Saiu hoje' : STATUS[c], total: cs.length, alertas: cs.filter((k) => k.alerta).length,
+      media_min: c === 'agendado' ? null : com.length ? Math.round(com.reduce((t, k) => t + k.minutos, 0) / com.length) : null, cartoes: cs };
+  });
+  return { agora: new Date(agora).toISOString(), colunas };
+}
+
 // Página do motorista (pelo código): sem dados internos, só o que ele precisa ver.
 async function publico(codigo) {
   const c = String(codigo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -387,5 +425,5 @@ async function eventos(id) {
   return rows;
 }
 
-module.exports = { OPERACOES, VEICULOS, STATUS, compativel, prioridade, ordenarFila, simular, config, salvarConfig, docas, salvarDoca, excluirDoca, medias, visita, listar,
+module.exports = { kanban, etapaKanban, OPERACOES, VEICULOS, STATUS, compativel, prioridade, ordenarFila, simular, config, salvarConfig, docas, salvarDoca, excluirDoca, medias, visita, listar,
   notasDaVisita, criar, atualizar, checkin, chamar, iniciar, finalizar, saida, cancelar, naoCompareceu, voltarFila, alocarFila, painel, publico, eventos, novoCodigo };

@@ -1558,7 +1558,7 @@ def parte_uso(g):
     s += h1('20-A. Pátio e portaria')
     s.append(P('Controle de quem vem <b>carregar</b> (a transportadora que coleta as notas) ou <b>descarregar</b> (recebimento de '
                'fornecedor): agendamento da janela, check-in na portaria pelo <b>QR Code</b>, fila do pátio, chamada para a doca, '
-               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta e descarga 424, Painel de expedição 425). '
+               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta e descarga 424, Painel de expedição 425, Kanban 426, Minha doca 427). '
                'Para quem só trabalha na portaria, use o modelo de acesso <b>Portaria e pátio</b> (Cadastros, Usuários).'))
     s += h2('Docas e regras (423)')
     s += lista([
@@ -1569,6 +1569,24 @@ def parte_uso(g):
         '<b>"Não compareceu" depois de</b>: o agendamento que passou desse tempo sem chegar aparece como "Não veio" nas próximas chegadas.',
         'Doca que já foi usada não é apagada: fica inativa e o histórico continua.',
     ])
+    s += h2('Kanban gerencial (426)')
+    s.append(P('Um quadro com uma coluna por etapa, para o gestor ver onde as coisas estão paradas. Atualiza sozinho a cada 20 segundos e '
+               'tem tela cheia. Dois quadros, escolhidos no alto (o navegador lembra a escolha):'))
+    s += lista([
+        '<b>Veículos (pátio)</b>: Agendado (próximas 24 horas e os atrasados), No pátio aguardando doca, Chamado para a doca, Em operação na '
+        'doca, Liberado e Saiu hoje. Cada cartão mostra a placa, a transportadora, o motorista, as notas, a doca e o tempo na etapa; cada '
+        'coluna, a contagem, o tempo médio e quantos estão com alerta. O botão do cartão faz o próximo passo (Chegou, Chamar, Encostou, '
+        'Terminou, Saída).',
+        '<b>Alertas</b> (cartão com a borda vermelha): agendado atrasado ou que não veio, esperando a doca há mais de 1 hora, chamado e '
+        'não encostou em 15 minutos, na doca além do tempo previsto (o informado, a média real da doca ou o padrão dela) e liberado há '
+        'mais de 20 minutos sem sair.',
+        '<b>Notas (expedição)</b>: as mesmas etapas do painel de expedição (sem ordem de coleta, aguardando a transportadora, coleta '
+        'confirmada, atrasada, no pátio, expedida hoje), com os volumes e a idade média das notas de cada coluna.',
+    ])
+    s += h2('Minha doca (427)')
+    s.append(P('Tela para o tablet do conferente: escolha a doca (o navegador lembra) e ela mostra só o caminhão daquela doca, em letra '
+               'grande, com as notas, os volumes e o tempo, e os botões <b>Encostou, iniciar a operação</b>, <b>Terminou a operação</b> e, '
+               'com a doca livre, <b>Chamar o próximo</b>. Ao lado fica a fila prevista para a doca. Atualiza sozinha.'))
     s += h2('Painel de expedição (425)')
     s.append(P('A aba <b>Expedição</b> mostra, de uma vez, todas as notas de venda dos últimos 45 dias que ainda não saíram e as que '
                'saíram hoje, cada uma na sua etapa. Atualiza sozinha a cada 20 segundos e tem <b>tela cheia</b> para a TV da expedição.'))

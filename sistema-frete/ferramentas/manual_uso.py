@@ -1558,7 +1558,7 @@ def parte_uso(g):
     s += h1('20-A. Pátio e portaria')
     s.append(P('Controle de quem vem <b>carregar</b> (a transportadora que coleta as notas) ou <b>descarregar</b> (recebimento de '
                'fornecedor): agendamento da janela, check-in na portaria pelo <b>QR Code</b>, fila do pátio, chamada para a doca, '
-               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta e descarga 424). '
+               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta e descarga 424, Painel de expedição 425). '
                'Para quem só trabalha na portaria, use o modelo de acesso <b>Portaria e pátio</b> (Cadastros, Usuários).'))
     s += h2('Docas e regras (423)')
     s += lista([
@@ -1568,6 +1568,24 @@ def parte_uso(g):
         '<b>Tolerância de atraso</b>: quem chega até o fim da janela agendada mais a tolerância mantém a prioridade. '
         '<b>"Não compareceu" depois de</b>: o agendamento que passou desse tempo sem chegar aparece como "Não veio" nas próximas chegadas.',
         'Doca que já foi usada não é apagada: fica inativa e o histórico continua.',
+    ])
+    s += h2('Painel de expedição (425)')
+    s.append(P('A aba <b>Expedição</b> mostra, de uma vez, todas as notas de venda dos últimos 45 dias que ainda não saíram e as que '
+               'saíram hoje, cada uma na sua etapa. Atualiza sozinha a cada 20 segundos e tem <b>tela cheia</b> para a TV da expedição.'))
+    s += tabela(['Etapa', 'Quando'], [
+        ['Sem ordem de coleta', 'A nota ainda não está em nenhuma ordem de coleta (ou a ordem ainda é rascunho).'],
+        ['Aguardando a transportadora', 'A ordem foi mandada e a transportadora ainda não confirmou ("sem resposta" depois de 4 horas ou passada a janela).'],
+        ['Coleta confirmada', 'A transportadora confirmou a data, a placa e o motorista.'],
+        ['Coleta atrasada', 'Passou da janela confirmada e o caminhão não chegou.'],
+        ['No pátio / na doca', 'O caminhão da ordem entrou pela portaria e está aguardando a doca ou carregando.'],
+        ['Expedida hoje', 'A nota saiu hoje pela portaria, ou o CT-e da transportadora foi emitido hoje.'],
+    ], [0.3, 0.7])
+    s += lista([
+        'Os cartões do alto somam as notas a expedir (volumes, peso e valor) e as expedidas hoje. Clicar num cartão filtra as notas daquela etapa.',
+        '<b>Por transportadora</b>: quantas notas em cada etapa, a nota mais antiga e a próxima coleta. <b>Pedir coleta</b> abre a ordem de '
+        'coleta já com as notas dela que estão sem ordem. Clicar no nome filtra as notas da transportadora.',
+        '<b>Alertas</b>: nota parada há mais de 2 dias sem ordem de coleta, ordem sem resposta da transportadora e coleta atrasada.',
+        'As notas FOB (o cliente busca) ficam fora; marque <b>incluir FOB</b> para vê-las.',
     ])
     s += h2('Ordens de coleta (424)')
     s.append(P('A expedição pede a coleta à transportadora pelo sistema, e a transportadora confirma por um link, sem login.'))

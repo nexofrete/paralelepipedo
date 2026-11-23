@@ -53,7 +53,7 @@
     clearInterval(timer);
     timer = setInterval(() => {
       if ($('pagina-patio').classList.contains('oculto') || document.visibilityState !== 'visible' || !modal.classList.contains('oculto')) return;
-      if (['painel', 'portaria'].includes(aba)) carregar().catch(() => {});
+      if (['painel', 'portaria', 'expedicao'].includes(aba)) carregar().catch(() => {});
     }, 20000);
   }
   async function carregar() {
@@ -62,6 +62,7 @@
     if (aba === 'agenda') return desenharAgenda();
     if (aba === 'docas') return desenharDocas();
     if (aba === 'ordens') return window.OrdensColeta?.desenhar(cont);
+    if (aba === 'expedicao') return window.Expedicao?.desenhar(cont);
   }
 
   // ---------- Painel em tempo real ----------

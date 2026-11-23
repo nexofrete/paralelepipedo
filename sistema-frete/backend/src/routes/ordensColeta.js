@@ -24,6 +24,7 @@ const talvezEnviar = async (req, o) => {
 
 router.get('/', autenticar, rota((req) => oc.listar(req.query)));
 router.get('/candidatas', autenticar, rota((req) => (req.query.tipo === 'descarga' ? oc.candidatasDescarga(req.query) : oc.candidatas(req, req.query))));
+router.get('/expedicao', autenticar, rota((req) => require('../expedicao').painel(req, req.query)));
 router.get('/email-transportadora', autenticar, rota(async (req) => ({ email: await oc.emailDaTransportadora(req.query.nome) })));
 router.get('/:id(\\d+)', autenticar, rota(async (req) => comLink(req, await oc.buscar(Number(req.params.id)))));
 router.post('/', autenticar, rota(async (req) => {

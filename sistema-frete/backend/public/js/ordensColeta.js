@@ -63,17 +63,19 @@
   const cab = (t) => `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;"><h3 style="margin:0;">${t}</h3><span style="cursor:pointer; font-size:18px;" data-oc-fechar>✕</span></div>`;
   const agoraMais = (h) => { const d = new Date(Date.now() + h * 3600000 - new Date().getTimezoneOffset() * 60000); d.setUTCMinutes(0); return d.toISOString().slice(0, 16); };
 
-  async function formulario(o, tipoNovo = 'coleta') {
+  // pre: { transportadora, ids, depois } — aberto de outra tela (painel de expedição) já com as notas marcadas.
+  async function formulario(o, tipoNovo = 'coleta', pre = {}) {
+    pre = pre || {};
     const tipo = o?.tipo || tipoNovo; const desc = tipo === 'descarga'; const campoIds = desc ? 'dfe_ids' : 'frete_ids';
     const [notas, opcoes] = await Promise.all([api(`/candidatas?tipo=${tipo}`), apiFetch('/api/patio/opcoes').then((r) => r.json()).catch(() => ({ veiculos: {} }))]);
     // As notas já desta ordem também aparecem (marcadas) ao alterar.
-    const marcadas = new Set(o?.[campoIds] || []);
+    const marcadas = new Set(o?.[campoIds] || pre.ids || []);
     const lista = [...notas];
     if (o) (o[campoIds] || []).forEach((id, i) => { if (!lista.some((n) => n.id === id)) lista.unshift({ id, numero: o.notas[i], cliente: desc ? o.fornecedor : '', transportadora: o.transportadora }); });
     const transps = [...new Set(lista.flatMap((n) => (desc ? [n.transportadora, n.cliente] : [n.transportadora])).filter(Boolean))].sort();
     const caixa = janela(`${cab(o ? `Ordem de ${tipo} nº ${o.id}` : `Nova ordem de ${tipo}`)}
       <div class="cte-grade" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px 14px;">
-        <div class="campo"><label for="ocTransp">${desc ? 'Quem entrega (transportadora ou fornecedor)' : 'Transportadora'}</label><input id="ocTransp" list="ocTranspLista" value="${esc(o?.transportadora || '')}" placeholder="Filtra as notas"><datalist id="ocTranspLista">${transps.map((t) => `<option value="${esc(t)}">`).join('')}</datalist></div>
+        <div class="campo"><label for="ocTransp">${desc ? 'Quem entrega (transportadora ou fornecedor)' : 'Transportadora'}</label><input id="ocTransp" list="ocTranspLista" value="${esc(o?.transportadora || pre.transportadora || '')}" placeholder="Filtra as notas"><datalist id="ocTranspLista">${transps.map((t) => `<option value="${esc(t)}">`).join('')}</datalist></div>
         <div class="campo"><label for="ocEmail">E-mail de ${desc ? 'quem entrega' : 'transportadora'}</label><input id="ocEmail" type="email" value="${esc(o?.email_para || '')}"></div>
         <div class="campo"><label for="ocColetar">${desc ? 'Receber a partir de' : 'Pronta para coleta em'}</label><input id="ocColetar" type="datetime-local" value="${esc(o?.coletar_local || agoraMais(3))}"></div>
         <div class="campo"><label for="ocJanela">Janela (horas)</label><input id="ocJanela" type="number" min="0" max="24" step="0.5" value="${o ? o.janela_min / 60 : 2}"></div>
@@ -116,13 +118,13 @@
       fecharJanela();
       if (r.aviso) mostrarAlerta(`Ordem de ${tipo} nº ${r.id} salva, mas não foi mandada. ${r.aviso}`, { tipo: 'erro' });
       else mostrarAlerta(enviar ? `Ordem de ${tipo} nº ${r.id} mandada para ${r.email_para}.` : `Ordem de ${tipo} nº ${r.id} salva como rascunho.`, { tipo: 'sucesso' });
-      await desenhar();
+      if (pre.depois) await pre.depois(); else await desenhar();
     };
     $('ocSalvar').addEventListener('click', () => salvar(false).catch(erro));
     $('ocSalvarEnviar').addEventListener('click', () => salvar(true).catch(erro));
   }
 
-  async function abrir(id) {
+  async function abrir(id, depois = null) {
     const o = await api(`/${id}`);
     const pode = { alterar: ['rascunho', 'enviada'].includes(o.status), enviar: ['rascunho', 'enviada', 'aceita'].includes(o.status), cancelar: !['cancelada', 'recusada'].includes(o.status) && !['aguardando', 'chamado', 'em_doca', 'liberado', 'saiu'].includes(o.visita_status) };
     const caixa = janela(`${cab(`Ordem de ${o.tipo === 'descarga' ? 'descarga' : 'coleta'} nº ${o.id}`)}
@@ -149,21 +151,21 @@
       const w = window.open('', '_blank');
       try { const r = await apiFetch(`/api/ordens-coleta/${o.id}/documento`); const html = await r.text(); if (w) { w.document.write(html); w.document.close(); } } catch (e) { w?.close(); erro(e); }
     });
-    $('ocAlterar')?.addEventListener('click', () => formulario(o).catch(erro));
+    $('ocAlterar')?.addEventListener('click', () => formulario(o, o.tipo, { depois }).catch(erro));
     $('ocEnviar')?.addEventListener('click', async () => {
       try {
         const para = o.email_para || await pedirTexto('E-mail da transportadora:');
         if (!para) return;
         const r = await post(`/${o.id}/enviar`, { para });
-        mostrarAlerta(`Ordem mandada para ${r.email_para}.`, { tipo: 'sucesso' }); fecharJanela(); await desenhar();
+        mostrarAlerta(`Ordem mandada para ${r.email_para}.`, { tipo: 'sucesso' }); fecharJanela(); await (depois ? depois() : desenhar());
       } catch (e) { erro(e); }
     });
     $('ocCancelar')?.addEventListener('click', async () => {
       if (!await confirmar('Cancelar esta ordem? Se já houver agendamento no pátio, ele também é cancelado.', { textoOk: 'Cancelar a ordem' })) return;
-      try { await post(`/${o.id}/cancelar`, {}); fecharJanela(); await desenhar(); } catch (e) { erro(e); }
+      try { await post(`/${o.id}/cancelar`, {}); fecharJanela(); await (depois ? depois() : desenhar()); } catch (e) { erro(e); }
     });
     return caixa;
   }
 
-  window.OrdensColeta = { desenhar: (alvo) => desenhar(alvo) };
+  window.OrdensColeta = { desenhar: (alvo) => desenhar(alvo), nova: (tipo, pre) => formulario(null, tipo, pre).catch(erro), abrir: (id, depois) => abrir(id, depois).catch(erro) };
 })();

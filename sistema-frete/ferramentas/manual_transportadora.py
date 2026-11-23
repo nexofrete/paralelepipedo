@@ -70,6 +70,7 @@ def parte_operacao(g):
         ['Finanças · Fiscal e contábil', 'Livros fiscais e contabilidade, Notas de entrada, NF-e contra o CNPJ, GNRE, Pacote do contador', '140 a 144', '49'],
         ['Gestão · Frota', 'Abastecimentos, Manutenções, Documentos, Pneus, Jornada; Relatórios: Custos e alertas', '201 a 250, 200', '40'],
         ['Gestão · Transportadoras', 'Melhor transportadora por destino, Comparar cotações; Relatórios: Desempenho e ranking, Scorecard', '313, 317, 325, 319', '19'],
+        ['Gestão · Planejamento', 'Relatórios: Analítico de transportadora, Curvas ABC, Rotas por transportadora, Volumetria, Simulação de histórico', '331', '19'],
         ['Gestão · Painéis e BI', 'Painel da operação (CT-e emitidos), Indicadores dos fretes contratados, Gráficos, Montar relatório (BI)', '300, 309, 310, 316', '48, 19'],
         ['Administração · Cadastros', 'Clientes, Fornecedores, Transportadoras, Veículos e motoristas, Conjuntos, Ajudantes, Produtos, Tipos de mercadoria, '
          'Tabelas de preço, Regiões de atendimento, Tipos de operação, Condições de pagamento, Departamentos, Usuários, Empresa',

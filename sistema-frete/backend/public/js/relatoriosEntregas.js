@@ -247,6 +247,9 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   async function carregar() {
     const meu = ++pedido;
     const info = catalogo.find((r) => r.numero === atual) || {};
+    // O menu acende o item do relatório aberto (itens com data-rel, como os de Planejamento).
+    const sec = document.getElementById(`pagina-${pagina}`);
+    if (sec && sec.dataset.rel !== String(atual)) { sec.dataset.rel = String(atual); document.dispatchEvent(new Event('tela-mudou')); }
     $(P + 'Titulo').textContent = `${atual} · ${info.titulo || ''}`; $(P + 'Desc').textContent = info.desc || '';
     $(P + 'PerCaixa').classList.toggle('re-sem-periodo', !!info.semPeriodo);
     $(P + 'ProbCaixa').classList.toggle('oculto', atual !== 46);
@@ -438,5 +441,6 @@ telaRelatorios({ pagina: 'relatorios-operacao', conteudo: 'opConteudo', P: 'op',
 telaRelatorios({ pagina: 'relatorios-financeiros', conteudo: 'fiConteudo', P: 'fi', tela: 'financeiro', primeiro: 51, chaveLs: 'nexofreteRelFinanceiro', periodoPadrao: 'mes',
   api: '/api/relatorios-financeiros', pode: () => usuario?.perfil === 'admin' || !!usuario?.pode_ver_financeiro });
 telaRelatorios({ pagina: 'relatorios-auditoria', conteudo: 'auConteudo', P: 'au', tela: 'auditoria', primeiro: 11, chaveLs: 'nexofreteRelAuditoria', periodoPadrao: '30d' });
+telaRelatorios({ pagina: 'relatorios-planejamento', conteudo: 'pjConteudo', P: 'pj', tela: 'planejamento', primeiro: 81, chaveLs: 'nexofreteRelPlanejamento', periodoPadrao: '3m' });
 telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

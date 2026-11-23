@@ -273,6 +273,8 @@ Object.assign(RELATORIOS, require('./relatoriosAuditoria')(ajudas));
 Object.assign(RELATORIOS, require('./relatoriosFinanceiro')(ajudas));
 // 71 a 80: roteirização e operação da transportadora (tela 328, pelos romaneios; rota /api/relatorios-operacao).
 Object.assign(RELATORIOS, require('./relatoriosOperacao')());
+// 81 a 86: planejamento dos fretes contratados (tela 331).
+Object.assign(RELATORIOS, require('./relatoriosPlanejamento')(ajudas));
 
 // Relatório que repetia outro vira atalho para ele; e cada relatório que tem uma tela de trabalho (com as ações: aprovar,
 // glosar, religar, aceitar, buscar na SSW, pagar) ganha o botão para abri-la.
@@ -288,7 +290,7 @@ trabalho('r:anomalias', 'Anomalias e duplicidades (318)', [34]);
 trabalho('r:entregas', 'Entregas previstas (311)', [35, 37, 38, 39]);
 trabalho('p:financeiro', 'Pagamento de fretes (130)', [51, 52, 53, 55, 56]);
 
-// tela: 'financeiro' (329, relatórios 51 a 60), 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24) ou 'operacao' (328, relatórios 71 a 80).
+// tela: 'planejamento' (331, relatórios 81 a 86), 'financeiro' (329, relatórios 51 a 60), 'entregas' (324, relatórios 35 a 50), 'desempenho' (325, relatórios 61 a 70) 'nfecte' (326, relatórios 25 a 34) ou 'auditoria' (327, relatórios 11 a 24) ou 'operacao' (328, relatórios 71 a 80).
 function catalogo(tela = 'entregas') {
   return Object.entries(RELATORIOS).filter(([, r]) => (r.tela || 'entregas') === tela)
     .map(([n, r]) => ({ numero: Number(n), titulo: r.titulo, grupo: r.grupo, desc: r.desc, semPeriodo: !!r.semPeriodo, atalho: r.atalho || null, trabalho: r.trabalho || null }));

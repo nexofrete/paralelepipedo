@@ -2679,3 +2679,5 @@ router.delete('/:id', autenticar, permitir('pode_excluir_registros'), freteDoCli
 });
 
 module.exports = router;
+// O relatório 85 (simulação de histórico, src/relatoriosPlanejamento.js) usa a mesma regra de destino.
+module.exports.contextoDestinos = contextoDestinos;

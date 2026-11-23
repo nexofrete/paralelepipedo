@@ -1161,9 +1161,28 @@ def parte_uso(g):
         ['59', 'Custo de frete por faturamento', 'Mês a mês (ou dia a dia): faturamento das notas de venda (o mesmo do Faturamento do dia), o frete dessas notas (com reentregas) e o % de frete sobre as vendas.'],
         ['60', 'Custo de frete por pedido', 'Cada pedido: as notas, o valor, o frete (com o rateio do CT-e de várias notas e as reentregas), o % e as transportadoras.'],
     ], [0.1, 0.28, 0.62])
-    s += h2('Recursos de todas as telas de relatórios (324 a 329)')
+    s += h2('Relatórios de planejamento (tela 331)')
+    s.append(P('No menu, em Gestão » <b>Planejamento</b>, cada relatório tem o seu item (todos abrem a tela 331, Ctrl+K 331, com a lista '
+               'dos seis ao lado). Vê a tela quem pode ver relatórios. O período vem nos últimos 3 meses.'))
+    s += lista([
+        '<b>Curva ABC</b>: as linhas vão do maior para o menor valor; classe A = os que somam até 80% do total (a linha que passa '
+        'dos 80% ainda é A), B = até 95%, C = o resto. A coluna "% acumulado" mostra onde cada um fica.',
+        '<b>Simulação de histórico</b>: as notas já embarcadas (com CT-e) são recalculadas pela tabela de preço de cada transportadora, '
+        'com a mesma conta do "Melhor transportadora por destino" (até onde a transportadora leva, redespacho, peso cubado, ICMS). '
+        'Notas FOB e notas de entrada ficam fora. Cada transportadora com tabela ganha uma coluna (as 8 que atendem mais notas).',
+        'Dois cliques numa linha agrupada mostram as notas (ou, no 86, os CT-e); dois cliques numa nota abrem a nota.',
+    ])
+    s += tabela(['Nr.', 'Relatório', 'O que mostra'], [
+        ['81', 'Relatório analítico de transportadora', 'Cada CT-e do período (data do CT-e), por transportadora: nota, cliente, destino, tipo (entrega, reentrega, devolução...), peso, volumes, valor da nota, frete, frete por kg, frete sobre a nota, previsão, entrega e se foi no prazo. O resumo por transportadora é o 68 (Comparativo).'],
+        ['82', 'Curva ABC de clientes e fornecedores', 'Frete das notas emitidas no período por cliente (notas de saída) e por fornecedor (notas de entrada, o frete da compra), cada lado com a sua curva: classe, posição, frete, notas, valor, peso, frete sobre o valor, participação e % acumulado.'],
+        ['83', 'Rotas por transportadora', 'Cada transportadora em cada rota: UF de origem (pela chave da NF-e) até a cidade/UF de destino, com notas, peso, valor, frete, frete por kg, frete sobre o valor, prazo médio e % no prazo.'],
+        ['84', 'Volumetria', 'Dia a dia (período de até 62 dias) ou mês a mês: notas, volumes, peso, cubagem, valor e frete, com o peso e os volumes por nota, o kg por volume, a densidade (kg/m3) e o frete por kg.'],
+        ['85', 'Resultado analítico da simulação de histórico', 'Cada nota embarcada (até 2000 por consulta): o frete real, o valor pela tabela da própria transportadora (e a diferença), a melhor tabela, o valor dela, a economia que teria havido e uma coluna por transportadora. Os cartões somam o frete real, o da melhor tabela, a economia e as notas sem tabela para o destino.'],
+        ['86', 'Curva ABC de fretes extras e complementares', 'Os CT-e a mais do período (reentrega, devolução, complementar, redespacho, retorno) por cliente, com a classe ABC pelo valor, a divisão por tipo e as transportadoras.'],
+    ], [0.1, 0.28, 0.62])
+    s += h2('Recursos de todas as telas de relatórios (324 a 331)')
     s.append(P('As telas Relatórios de entregas (324), Desempenho das transportadoras (325), Relatórios NF-e x CT-e (326), '
-               'Relatórios de auditoria (327), Relatórios de rotas e operação (328) e Relatórios financeiros (329) funcionam do mesmo jeito:'))
+               'Relatórios de auditoria (327), Relatórios de rotas e operação (328), Relatórios financeiros (329) e Relatórios de planejamento (331) funcionam do mesmo jeito:'))
     s += lista([
         '<b>Filtros</b>: período, transportadora, cliente (nome ou CNPJ), cidade e UF; em <b>Mais filtros</b>, a filial (a empresa '
         'que emitiu a nota, pelo CNPJ), o número da NF-e e do CT-e (um ou vários, separados por vírgula ou espaço) e o status do '

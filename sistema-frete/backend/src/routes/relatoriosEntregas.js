@@ -7,7 +7,7 @@ const { permitirAlguma } = require('../permissoes');
 const rel = require('../relatoriosEntregas');
 
 const erro = (res, err, padrao) => { if (!err.status) console.error('[relatórios de entregas]', err.message); res.status(err.status || 500).json({ erro: err.status ? err.message : padrao }); };
-const TELAS = ['entregas', 'desempenho', 'nfecte', 'auditoria'];
+const TELAS = ['entregas', 'desempenho', 'nfecte', 'auditoria', 'planejamento'];
 
 function montar(telas, pode) {
   const router = express.Router();

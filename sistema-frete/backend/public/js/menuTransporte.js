@@ -96,18 +96,20 @@
     grupoAtual = g ? g.chave : null;
     desenhar();
   };
+  // data-rel: o item abre um relatório da tela (ex.: Planejamento » Volumetria).
+  const relOk = (x) => !x.dataset.rel || document.getElementById(`pagina-${x.dataset.ir}`)?.dataset.rel === x.dataset.rel;
   tsubs.forEach((el) => el.addEventListener('click', () => {
     if (el.classList.contains('oculto')) return;
-    N.ir(el.dataset.destino);
+    if (el.dataset.rel && window.abrirRelatorio) window.abrirRelatorio(el.dataset.ir, Number(el.dataset.rel)); else N.ir(el.dataset.destino);
     marcar(el);
   }));
 
   // Mudou a tela (menu, atalho, notificação, aba dentro da tela): acende o item dela e abre o grupo.
   function acompanhar() {
     const atual = tsubs.find((x) => x.classList.contains('ativo'));
-    if (atual && visivel(atual) && N.ehAtual(atual.dataset.destino)) { desenhar(); return; }
-    // Primeiro o que bate exato (página + aba); depois só a página (aba que não está no menu).
-    let tsub = tsubs.find((x) => visivel(x) && N.ehAtual(x.dataset.destino));
+    if (atual && visivel(atual) && N.ehAtual(atual.dataset.destino) && relOk(atual)) { desenhar(); return; }
+    // Primeiro o que bate exato (página + aba + relatório); depois só a página (aba que não está no menu).
+    let tsub = tsubs.find((x) => visivel(x) && N.ehAtual(x.dataset.destino) && relOk(x)) || tsubs.find((x) => visivel(x) && N.ehAtual(x.dataset.destino));
     if (!tsub) {
       const aberta = document.querySelector('main > section[id^="pagina-"]:not(.oculto)')?.id.slice(7);
       // Página que é item direto dentro de um grupo (Cadastros, Manutenção...) vem antes de um subitem de outra aba dela.

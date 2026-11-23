@@ -89,6 +89,8 @@
       </div>
       <div class="nav-grupo oculto" data-grupo="fretes" data-modulo="embarcador">📦 Fretes contratados <span class="nav-seta">▸</span></div>
       <div class="nav-sub oculto" data-grupo="fretes" data-modulo="embarcador">
+        <div class="nav-tsub" data-ir="pedidos" data-aba="pedidos">📋 Pedidos</div>
+        <div class="nav-tsub" data-ir="pedidos" data-aba="prenotas">📝 Pré-notas fiscais</div>
         <div class="nav-tsub" data-ir="upload">📤 Enviar XML</div>
         <div class="nav-tsub" data-ir="notas-fiscais">🧾 Consulta de notas</div>
         <div class="nav-tsub" data-ir="ctes-recebidos">🚛 CT-e recebidos</div>
@@ -258,6 +260,7 @@
       <div class="nav-item nav-no-grupo" data-pagina="notas-fiscais" data-modulo="embarcador">🧾 Consulta de notas</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="patio" id="navPatio" data-modulo="embarcador">🚧 Pátio e portaria</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cargas" id="navCargas" data-modulo="embarcador">🚛 Cargas</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="pedidos" id="navPedidos" data-modulo="embarcador">📋 Pedidos</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-entregas" id="navRelEntregas">📦 Relatórios de entregas</div>
       <div class="nav-item nav-no-grupo" data-pagina="desempenho-transportadoras" id="navDesempTransp">🏆 Desempenho das transportadoras</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-nfe-cte" id="navRelNfeCte">🔗 Relatórios NF-e × CT-e</div>
@@ -441,6 +444,20 @@
           </div>
         </div>
         <div id="opConteudo"></div>
+      </section>
+
+      <section id="pagina-pedidos" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>Pedidos e pré-notas</h2>
+            <p>Os pedidos da planilha do ERP, do pedido à entrega, e as pré-notas esperando faturamento</p>
+          </div>
+        </div>
+        <div class="cte-abas">
+          <div class="cte-aba ativo" data-pd-aba="pedidos">📋 Pedidos</div>
+          <div class="cte-aba" data-pd-aba="prenotas">📝 Pré-notas fiscais</div>
+        </div>
+        <div id="pdConteudo"></div>
       </section>
 
       <section id="pagina-cargas" class="oculto">
@@ -4273,6 +4290,7 @@
   <script src="js/expedicao.js"></script>
   <script src="js/kanbanPatio.js"></script>
   <script src="js/cargas.js"></script>
+  <script src="js/pedidos.js"></script>
   <script src="js/patio.js"></script>
   <script src="js/ctesRecebidos.js"></script>
   <script src="js/periodo.js"></script>

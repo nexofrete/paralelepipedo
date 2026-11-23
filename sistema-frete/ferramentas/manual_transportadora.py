@@ -52,6 +52,7 @@ def parte_operacao(g):
         ['Operar · Operação', 'Onde está a mercadoria, Transferências, Paletes, Parceiros e redespacho', '060, 061, 066, 065', '36, 35'],
         ['Operar · Operação', 'EDI', '070', '38'],
         ['Operar · Operação', 'Relatórios: Rotas e operação', '328', '35'],
+        ['Operar · Fretes contratados', 'Pedidos, Pré-notas fiscais', '405, 406', '14-A'],
         ['Operar · Fretes contratados', 'Enviar XML, Consulta de notas, CT-e recebidos (Todos os registros, 402, só pelo Ctrl+K)', '401, 403, 404', '12, 14'],
         ['Operar · Fretes contratados', 'Inconsistências NF-e x CT-e, Notas e seus CT-e', '322, 320', '13, 19'],
         ['Operar · Fretes contratados', 'Entregas previstas, Notas sem mapa, Consolidar rotas, Roteirizar entregas', '311, 312, 314, 315', '19'],

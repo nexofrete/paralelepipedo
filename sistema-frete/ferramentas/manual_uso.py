@@ -555,6 +555,28 @@ def parte_uso(g):
     ])
 
     # 15
+    s += h1('14-A. Pedidos e pré-notas fiscais')
+    s.append(P('Em Fretes contratados, <b>Pedidos</b> (Ctrl+K 405) e <b>Pré-notas fiscais</b> (406) mostram o que entra pela planilha do ERP '
+               '(Importação do ERP), antes e depois da nota fiscal.'))
+    s += h2('Pedidos (405)')
+    s += lista([
+        'Cada pedido do período (data do pedido, padrão últimos 30 dias): os que já viraram nota e os que ainda estão só na planilha, com '
+        'o cliente, o destino, volumes, peso, valor, a transportadora, a NF-e e o CT-e.',
+        '<b>Situação</b>: Aguardando nota, Faturado (sem embarque nem coleta pedida), Em embarque, Coleta pedida, Coletado / em trânsito, '
+        'Entregue e Cancelado (pedido cancelado no ERP ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',
+        'Clique na NF-e para abrir a nota. Os botões do alto filtram pela situação; a busca acha pedido, pedido do cliente, cliente, NF, cidade ou transportadora.',
+    ])
+    s += h2('Pré-notas fiscais (406)')
+    s += lista([
+        'A pré-nota é a linha da planilha do ERP: o pedido antes da NF-e. A aba lista as que esperam faturamento e as já faturadas dos '
+        'últimos 60 dias.',
+        '<b>Situação</b>: A faturar; Parada sem faturar (mais de 3 dias desde o pedido); NF sem XML (o ERP já informou o número da nota, mas '
+        'o XML ainda não chegou ao sistema); Faturada, confere; Faturada, mudou (com o que mudou: valor, volumes, peso, transportadora, '
+        'destino ou cliente); e Cancelada no ERP.',
+        'Os cartões somam o valor esperando faturamento, as paradas, as faturadas com diferença e quantos dias, em média, vão do pedido à '
+        'nota. A comparação completa, campo a campo, está no relatório 87 (Controle operacional).',
+    ])
+
     s += h1('15. Tabelas de preço e o cálculo do frete')
     s.append(P('A tabela de preço é o que a transportadora negociou. É com ela que o sistema calcula quanto cada frete '
                'deveria custar. Fica em <b>Cadastros » Tabelas de Preço</b>.'))

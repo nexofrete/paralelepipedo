@@ -17,29 +17,31 @@
   };
   let o = null;
   function desenhar() {
+    const desc = o.tipo === 'descarga'; const T = desc ? 'descarga' : 'coleta';
+    document.title = `Ordem de ${T}`; document.querySelector('.rt-topo h1').textContent = `Ordem de ${T}`;
     $('ocEmpresa').textContent = o.empresa ? `${o.empresa} · ordem nº ${o.numero}` : `Ordem nº ${o.numero}`;
-    $('ocCartao').innerHTML = `<div class="rt-status"><div><h2>${esc(o.transportadora || 'Transportadora')}</h2><small>Ordem de coleta nº ${o.numero}</small></div><span class="rt-sit ${COR[o.situacao] || ''}">${esc(o.situacao)}</span></div>
-      <div class="rt-dados"><div>Pronta para coleta<b>${dataHora(o.coletar_em)}</b>${o.janela_min ? `<small>janela de ${num(o.janela_min / 60, 1)} h</small>` : ''}</div>
-        <div>Local<b>${esc(o.endereco || '—')}</b>${o.telefone ? `<small>${esc(o.telefone)}</small>` : ''}</div>
+    $('ocCartao').innerHTML = `<div class="rt-status"><div><h2>${esc(o.transportadora || 'Transportadora')}</h2><small>Ordem de ${T} nº ${o.numero}${desc && o.fornecedor ? ` · ${esc(o.fornecedor)}` : ''}</small></div><span class="rt-sit ${COR[o.situacao] || ''}">${esc(o.situacao)}</span></div>
+      <div class="rt-dados"><div>${desc ? 'Receber a partir de' : 'Pronta para coleta'}<b>${dataHora(o.coletar_em)}</b>${o.janela_min ? `<small>janela de ${num(o.janela_min / 60, 1)} h</small>` : ''}</div>
+        <div>${desc ? 'Local da entrega' : 'Local da coleta'}<b>${esc(o.endereco || '—')}</b>${o.telefone ? `<small>${esc(o.telefone)}</small>` : ''}</div>
         <div>Carga<b>${o.notas.length} nota(s)</b><small>${num(o.volumes)} volume(s) · ${num(o.peso_kg, 1)} kg${o.cubagem_m3 ? ` · ${num(o.cubagem_m3, 2)} m³` : ''}</small></div>
         ${o.tipo_veiculo ? `<div>Veículo pedido<b>${esc(o.veiculos[o.tipo_veiculo] || o.tipo_veiculo)}</b></div>` : ''}</div>
       ${o.observacao ? `<p class="rt-aviso">${esc(o.observacao)}</p>` : ''}
       <p><a href="/api/ordem-coleta-publica/${token}/documento" target="_blank" rel="noopener">Abrir o documento da ordem (para imprimir)</a></p>`;
-    $('ocNotas').innerHTML = `<h3 style="margin:0 0 4px;">Notas a coletar</h3><table class="oc-notas"><thead><tr><th>NF-e</th><th>Cliente</th><th>Destino</th><th>Vol.</th><th>Peso (kg)</th></tr></thead><tbody>
+    $('ocNotas').innerHTML = `<h3 style="margin:0 0 4px;">${desc ? 'Notas a entregar' : 'Notas a coletar'}</h3><table class="oc-notas"><thead><tr><th>NF-e</th><th>${desc ? 'Fornecedor' : 'Cliente'}</th><th>${desc ? 'Origem' : 'Destino'}</th><th>Vol.</th><th>Peso (kg)</th></tr></thead><tbody>
       ${o.notas.map((n) => `<tr><td>${esc(n.numero)}</td><td>${esc(n.cliente)}</td><td>${esc([n.cidade, n.uf].filter(Boolean).join('/'))}</td><td class="n">${num(n.volumes)}</td><td class="n">${num(n.peso, 1)}</td></tr>`).join('')}</tbody></table>`;
     const r = o.resposta; const box = $('ocResposta');
     box.classList.remove('oculto');
     const motorista = o.motorista_codigo ? `${location.origin}/patio.html?c=${o.motorista_codigo}` : null;
     let html = '';
     if (r && o.status === 'aceita') {
-      html += `<h3 style="margin:0;">Coleta confirmada</h3><p>Chegada prevista: <b>${dataHora(r.previsto_em)}</b>${r.placa ? ` · placa <b>${esc(r.placa)}</b>` : ''}${r.motorista_nome ? ` · ${esc(r.motorista_nome)}` : ''}<br><small>Confirmado por ${esc(r.nome)}.</small></p>
+      html += `<h3 style="margin:0;">${desc ? 'Entrega agendada' : 'Coleta confirmada'}</h3><p>Chegada prevista: <b>${dataHora(r.previsto_em)}</b>${r.placa ? ` · placa <b>${esc(r.placa)}</b>` : ''}${r.motorista_nome ? ` · ${esc(r.motorista_nome)}` : ''}<br><small>Confirmado por ${esc(r.nome)}.</small></p>
         ${motorista ? `<p>Mande este link ao motorista: ele mostra o QR Code na portaria e acompanha a vez dele no pátio.<br><a class="oc-link" href="${esc(motorista)}" target="_blank" rel="noopener">${esc(motorista)}</a></p>` : ''}`;
     } else if (r && o.status === 'recusada') {
-      html += `<h3 style="margin:0;">Coleta recusada</h3><p>Motivo: ${esc(r.motivo)}<br><small>Por ${esc(r.nome)}.</small></p>`;
+      html += `<h3 style="margin:0;">${desc ? 'Entrega não agendada' : 'Coleta recusada'}</h3><p>Motivo: ${esc(r.motivo)}<br><small>Por ${esc(r.nome)}.</small></p>`;
     }
     if (o.pode_responder) {
       const sug = (r && r.previsto_em) || o.coletar_em || '';
-      html += `<h3 style="margin:${html ? '18px' : '0'} 0 0;">${o.status === 'aceita' ? 'Alterar a confirmação' : 'Confirme a coleta'}</h3>
+      html += `<h3 style="margin:${html ? '18px' : '0'} 0 0;">${o.status === 'aceita' ? 'Alterar a confirmação' : desc ? 'Agende a entrega' : 'Confirme a coleta'}</h3>
         <div class="oc-form">
           <label>Data e hora da chegada<input type="datetime-local" id="ocPrevisto" value="${esc(sug)}"></label>
           <label>Placa<input id="ocPlaca" maxlength="8" value="${esc(r?.placa || '')}" placeholder="ABC1D23"></label>
@@ -50,8 +52,8 @@
           <label>Seu nome<input id="ocNome" maxlength="120" value="${esc(r?.nome || '')}"></label>
           <label class="largo">Observação<textarea id="ocObs" rows="2" maxlength="500"></textarea></label>
         </div>
-        <div class="oc-botoes"><button type="button" class="ok" id="ocAceitar">${o.status === 'aceita' ? 'Salvar a alteração' : 'Confirmar a coleta'}</button>
-          ${o.status === 'enviada' ? '<button type="button" class="nao" id="ocRecusar">Não posso atender</button>' : ''}</div>
+        <div class="oc-botoes"><button type="button" class="ok" id="ocAceitar">${o.status === 'aceita' ? 'Salvar a alteração' : desc ? 'Agendar a entrega' : 'Confirmar a coleta'}</button>
+          ${o.status === 'enviada' ? `<button type="button" class="nao" id="ocRecusar">${desc ? 'Não consigo entregar' : 'Não posso atender'}</button>` : ''}</div>
         <p id="ocMsg" class="rt-erro"></p>`;
     }
     if (!html) { box.classList.add('oculto'); return; }
@@ -64,7 +66,7 @@
       } catch (e) { $('ocMsg').textContent = e.message; }
     });
     $('ocRecusar')?.addEventListener('click', async () => {
-      const motivo = window.prompt('Por que não pode atender esta coleta?');
+      const motivo = window.prompt(o.tipo === 'descarga' ? 'Por que não consegue entregar? (ex.: mercadoria ainda não saiu do fornecedor)' : 'Por que não pode atender esta coleta?');
       if (!motivo) return;
       try { o = await api('/recusar', { motivo, nome: $('ocNome').value || window.prompt('Seu nome:') || '' }); desenhar(); } catch (e) { $('ocMsg').textContent = e.message; }
     });

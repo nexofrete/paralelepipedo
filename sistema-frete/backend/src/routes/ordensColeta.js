@@ -23,12 +23,12 @@ const talvezEnviar = async (req, o) => {
 };
 
 router.get('/', autenticar, rota((req) => oc.listar(req.query)));
-router.get('/candidatas', autenticar, rota((req) => oc.candidatas(req, req.query)));
+router.get('/candidatas', autenticar, rota((req) => (req.query.tipo === 'descarga' ? oc.candidatasDescarga(req.query) : oc.candidatas(req, req.query))));
 router.get('/email-transportadora', autenticar, rota(async (req) => ({ email: await oc.emailDaTransportadora(req.query.nome) })));
 router.get('/:id(\\d+)', autenticar, rota(async (req) => comLink(req, await oc.buscar(Number(req.params.id)))));
 router.post('/', autenticar, rota(async (req) => {
   const o = await oc.salvar(req, null, req.body || {}, usuario(req));
-  log(req, `Criou a ordem de coleta ${o.id} (${o.transportadora}, ${o.notas.length} nota(s))`);
+  log(req, `Criou a ordem de ${o.tipo === 'descarga' ? 'descarga' : 'coleta'} ${o.id} (${o.transportadora}, ${o.notas.length} nota(s))`);
   return talvezEnviar(req, o);
 }));
 router.put('/:id(\\d+)', autenticar, rota(async (req) => {

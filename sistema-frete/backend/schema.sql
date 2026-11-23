@@ -3736,3 +3736,7 @@ CREATE TABLE IF NOT EXISTS ordens_coleta (
 );
 CREATE INDEX IF NOT EXISTS idx_ordens_coleta_status ON ordens_coleta (status);
 CREATE INDEX IF NOT EXISTS idx_ordens_coleta_fretes ON ordens_coleta USING GIN (frete_ids);
+-- Ordem de descarga (tipo 'descarga'): as NF-e de compra contra o CNPJ (dfe_recebidos) que alguém vai entregar.
+ALTER TABLE ordens_coleta ADD COLUMN IF NOT EXISTS tipo VARCHAR(10) NOT NULL DEFAULT 'coleta';
+ALTER TABLE ordens_coleta ADD COLUMN IF NOT EXISTS dfe_ids INTEGER[] NOT NULL DEFAULT '{}';
+ALTER TABLE ordens_coleta ADD COLUMN IF NOT EXISTS fornecedor VARCHAR(160);

@@ -1,4 +1,6 @@
-// Ordens de coleta do embarcador (Pátio e portaria » Ordens de coleta, tela 424).
+// Ordens de coleta e de descarga do embarcador (Pátio e portaria » Ordens de coleta e descarga, tela 424).
+// Descarga (tipo 'descarga'): as NF-e de compra que estão para chegar (NF-e contra o CNPJ, ainda não lançadas na entrada)
+// vão para quem entrega (a transportadora do XML ou o fornecedor), que confirma pelo mesmo link; vira agendamento de descarga.
 // A expedição junta as notas que a transportadora deve buscar, gera a ordem e manda por e-mail com um link. Pelo link
 // (sem login, só com o código da ordem) a transportadora aceita, informando a data/hora, a placa e o motorista, ou
 // recusa com o motivo. Aceitar já cria o agendamento no pátio (src/patio.js) e devolve o link do motorista.
@@ -15,7 +17,9 @@ const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || '').trim())
 const novoToken = () => crypto.randomBytes(18).toString('base64url');
 const SEM_RESPOSTA_H = 4;
 const REQ_SISTEMA = { usuario: { id: null, nome: 'Ordem de coleta', perfil: 'admin', pode_ver_todos: true } };
-const SITUACOES = ['Rascunho', 'Aguardando confirmação', 'Sem resposta', 'Confirmada', 'Atrasada', 'No pátio', 'Coletada', 'Não compareceu', 'Recusada', 'Cancelada'];
+const SITUACOES = ['Rascunho', 'Aguardando confirmação', 'Sem resposta', 'Confirmada', 'Atrasada', 'No pátio', 'Coletada', 'Descarregada', 'Não compareceu', 'Recusada', 'Cancelada'];
+const TIPOS = { coleta: 'Coleta', descarga: 'Descarga' };
+const nomeTipo = (o) => (o.tipo === 'descarga' ? 'descarga' : 'coleta');
 const FOB = "COALESCE(f.frete_cif_fob, '') NOT IN ('FOB', 'Destinatário', 'Destinatario', 'Sem frete', 'Próprio destinatário')";
 const ABERTAS = "o.status IN ('rascunho', 'enviada', 'aceita') AND (o.visita_id IS NULL OR NOT EXISTS (SELECT 1 FROM patio_visitas v WHERE v.id = o.visita_id AND v.status IN ('saiu', 'cancelado', 'nao_compareceu')))";
 
@@ -29,7 +33,7 @@ function situacao(o, agora = Date.now()) {
     return o.enviada_em && agora - new Date(o.enviada_em).getTime() > SEM_RESPOSTA_H * 3600000 ? 'Sem resposta' : 'Aguardando confirmação';
   }
   const v = o.visita_status;
-  if (v === 'saiu') return 'Coletada';
+  if (v === 'saiu') return o.tipo === 'descarga' ? 'Descarregada' : 'Coletada';
   if (v === 'nao_compareceu') return 'Não compareceu';
   if (v === 'cancelado') return 'Cancelada';
   if (['aguardando', 'chamado', 'em_doca', 'liberado'].includes(v)) return 'No pátio';
@@ -57,7 +61,8 @@ async function porToken(token) {
 
 async function listar(q = {}) {
   const p = []; const cond = [];
-  if (String(q.transportadora || '').trim()) { p.push(`%${String(q.transportadora).trim()}%`); cond.push(`o.transportadora ILIKE $${p.length}`); }
+  if (String(q.transportadora || '').trim()) { p.push(`%${String(q.transportadora).trim()}%`); cond.push(`(o.transportadora ILIKE $${p.length} OR o.fornecedor ILIKE $${p.length})`); }
+  if (TIPOS[q.tipo]) { p.push(q.tipo); cond.push(`o.tipo = $${p.length}`); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(q.de || '')) { p.push(q.de); cond.push(`COALESCE(o.previsto_em, o.coletar_em, o.criado_em) >= $${p.length}::date`); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(q.ate || '')) { p.push(q.ate); cond.push(`COALESCE(o.previsto_em, o.coletar_em, o.criado_em) < $${p.length}::date + 1`); }
   const { rows } = await pool.query(`SELECT ${CAMPOS} FROM ordens_coleta o LEFT JOIN patio_visitas v ON v.id = o.visita_id
@@ -87,6 +92,33 @@ async function candidatas(req, q = {}) {
   return rows;
 }
 
+// Descarga: NF-e de compra contra o CNPJ (autorizadas, não ignoradas, não recusadas), dos últimos 60 dias, ainda não
+// lançadas na entrada e fora de outra ordem aberta. Volumes, peso e a transportadora saem do XML, quando já baixado.
+function doXmlCompra(xml) {
+  try {
+    const { inf } = require('./notasFiscais').lerXml(xml);
+    const vols = [].concat(inf.transp?.vol || []);
+    const soma = (k) => vols.reduce((t, v) => t + (Number(v?.[k]) || 0), 0);
+    const e = inf.emit?.enderEmit || {};
+    return { transportadora: inf.transp?.transporta?.xNome || null, volumes: soma('qVol') || null, peso: soma('pesoB') || soma('pesoL') || null, cidade: e.xMun || null, uf: e.UF || null };
+  } catch { return {}; }
+}
+const DFE_A_RECEBER = `d.papel = 'destinatario' AND d.situacao_nfe = 1 AND NOT d.ignorada AND d.manifestacao NOT IN ('desconhecida', 'nao_realizada')
+  AND NOT EXISTS (SELECT 1 FROM notas_entrada n WHERE n.chave = d.chave AND n.status = 'lancada')`;
+async function notasDfe(ids) {
+  const { rows } = await pool.query(`SELECT d.id, SUBSTRING(d.chave FROM 26 FOR 9)::bigint::text AS numero, d.emitente_nome AS cliente, d.emitente_doc, to_char(d.emissao, 'YYYY-MM-DD') AS emissao,
+      d.valor::float AS valor, d.xml FROM dfe_recebidos d WHERE d.id = ANY($1) ORDER BY d.emissao, d.id`, [ids]);
+  return rows.map(({ xml, ...r }) => ({ ...r, ...doXmlCompra(xml) }));
+}
+async function candidatasDescarga(q = {}) {
+  const p = []; const cond = [];
+  if (String(q.transportadora || '').trim()) { p.push(`%${String(q.transportadora).trim()}%`); cond.push(`(d.emitente_nome ILIKE $${p.length} OR d.xml ILIKE '%<xNome>' || $${p.length} || '%')`); }
+  const { rows } = await pool.query(`SELECT d.id FROM dfe_recebidos d WHERE ${DFE_A_RECEBER} AND d.emissao >= NOW() - INTERVAL '60 days'
+      AND NOT EXISTS (SELECT 1 FROM ordens_coleta o WHERE d.id = ANY(o.dfe_ids) AND ${ABERTAS})${cond.length ? ` AND ${cond.join(' AND ')}` : ''}
+    ORDER BY d.emissao DESC LIMIT 800`, p).catch(() => ({ rows: [] }));
+  return notasDfe(rows.map((r) => r.id));
+}
+
 // E-mail da transportadora pelo cadastro (nome parecido).
 async function emailDaTransportadora(nome) {
   if (!String(nome || '').trim()) return null;
@@ -97,9 +129,10 @@ async function emailDaTransportadora(nome) {
 }
 
 function dados(b) {
+  const tipo = TIPOS[b.tipo] ? b.tipo : 'coleta';
   const coletar = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(b.coletar_em || '')) ? String(b.coletar_em).slice(0, 16) : null;
   return {
-    transportadora: texto(b.transportadora, 160), email_para: texto(b.email_para, 250), coletar_em: coletar,
+    tipo, transportadora: texto(b.transportadora, 160), email_para: texto(b.email_para, 250), coletar_em: coletar,
     janela_min: Math.min(1440, Math.max(0, parseInt(b.janela_min ?? 120, 10) || 0)),
     tipo_veiculo: patio.VEICULOS[b.tipo_veiculo] ? b.tipo_veiculo : null, observacao: texto(b.observacao, 2000),
   };
@@ -107,7 +140,9 @@ function dados(b) {
 
 // Cria (ou altera, enquanto rascunho/enviada sem resposta) a ordem com as notas escolhidas (ids dos registros).
 async function salvar(req, id, b, usuario) {
+  if (id) b = { ...b, tipo: (await buscar(id)).tipo };
   const d = dados(b);
+  if (d.tipo === 'descarga') return salvarDescarga(id, d, b, usuario);
   const ids = [...new Set((Array.isArray(b.frete_ids) ? b.frete_ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 300);
   if (!ids.length) throw falha('Escolha pelo menos uma nota para a transportadora coletar.');
   if (!d.coletar_em) throw falha('Informe a data e a hora em que a carga estará pronta para a coleta.');
@@ -136,6 +171,44 @@ async function salvar(req, id, b, usuario) {
   return buscar(o.id);
 }
 
+// Ordem de descarga: as NF-e de compra (ids de dfe_recebidos).
+async function salvarDescarga(id, d, b, usuario) {
+  const ids = [...new Set((Array.isArray(b.dfe_ids) ? b.dfe_ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 300);
+  if (!ids.length) throw falha('Escolha pelo menos uma NF-e de compra para receber.');
+  if (!d.coletar_em) throw falha('Informe a partir de quando a entrega pode ser feita.');
+  if (d.email_para && !emailOk(d.email_para)) throw falha('E-mail de quem entrega inválido.');
+  const notas = await notasDfe(ids);
+  if (!notas.length) throw falha('Nenhuma das NF-e foi encontrada.');
+  const outras = await pool.query(`SELECT o.id FROM ordens_coleta o, unnest(o.dfe_ids) n WHERE n = ANY($1) AND ${ABERTAS} AND o.id <> COALESCE($2, 0)`, [notas.map((n) => n.id), id]);
+  if (outras.rows.length) throw falha(`Uma ou mais NF-e já estão na ordem de descarga nº ${outras.rows[0].id}. Tire de lá antes.`, 409);
+  const fornecedores = [...new Set(notas.map((n) => n.cliente).filter(Boolean))];
+  const fornecedor = fornecedores.length > 1 ? `${fornecedores[0]} e mais ${fornecedores.length - 1}` : fornecedores[0] || null;
+  if (!d.transportadora) d.transportadora = notas.find((n) => n.transportadora)?.transportadora || fornecedor;
+  if (!d.transportadora) throw falha('Informe quem vai entregar (a transportadora ou o fornecedor).');
+  if (!d.email_para) d.email_para = await emailDaTransportadora(d.transportadora);
+  const tot = (k) => notas.reduce((s2, n) => s2 + (Number(n[k]) || 0), 0);
+  const vals = [d.transportadora, d.email_para, notas.map((n) => n.numero), notas.map((n) => n.id), Math.round(tot('volumes')) || null, Math.round(tot('peso') * 100) / 100 || null,
+    Math.round(tot('valor') * 100) / 100 || null, d.coletar_em, d.janela_min, d.tipo_veiculo, d.observacao, fornecedor];
+  if (id) {
+    const atual = await buscar(id);
+    if (!['rascunho', 'enviada'].includes(atual.status)) throw falha('Quem entrega já respondeu esta ordem; cancele e faça outra.', 409);
+    await pool.query(`UPDATE ordens_coleta SET transportadora = $1, email_para = $2, notas = $3, dfe_ids = $4, volumes = $5, peso_kg = $6, valor = $7,
+      coletar_em = ($8::timestamp AT TIME ZONE 'America/Sao_Paulo'), janela_min = $9, tipo_veiculo = $10, observacao = $11, fornecedor = $12, atualizado_em = NOW() WHERE id = $13`, [...vals, id]);
+    return buscar(id);
+  }
+  const { rows: [o] } = await pool.query(`INSERT INTO ordens_coleta (tipo, transportadora, email_para, notas, dfe_ids, volumes, peso_kg, valor, coletar_em, janela_min, tipo_veiculo, observacao, fornecedor, token, criado_por_nome)
+    VALUES ('descarga', $1, $2, $3, $4, $5, $6, $7, ($8::timestamp AT TIME ZONE 'America/Sao_Paulo'), $9, $10, $11, $12, $13, $14) RETURNING id`, [...vals, novoToken(), usuario]);
+  return buscar(o.id);
+}
+
+// As notas da ordem (coleta: as notas de venda; descarga: as NF-e de compra), no mesmo formato.
+async function notasDaOrdem(o) {
+  if (o.tipo === 'descarga') return notasDfe(o.dfe_ids || []);
+  const { rows } = await pool.query(`SELECT LTRIM(numero_nf, '0') AS numero, cliente, cidade, uf, qtd_volumes AS volumes, COALESCE(peso_bruto, peso_kg)::float AS peso, valor_faturado::float AS valor
+    FROM fretes WHERE id = ANY($1) ORDER BY numero_nf`, [o.frete_ids]);
+  return rows;
+}
+
 async function empresa() {
   const { rows: [e] } = await pool.query('SELECT razao_social, nome_fantasia, cnpj, telefone, email, endereco, numero, complemento, bairro, municipio, uf, cep, logo FROM empresa WHERE id = 1').catch(() => ({ rows: [] }));
   return e || {};
@@ -151,19 +224,20 @@ async function enviar(id, linkBase, usuario, { para } = {}) {
   if (!emailOk(email)) throw falha('Informe o e-mail da transportadora para mandar a ordem.');
   const e = await empresa();
   const nomeEmp = e.nome_fantasia || e.razao_social || 'Expedição';
+  const desc = o.tipo === 'descarga'; const Tipo = desc ? 'Ordem de descarga' : 'Ordem de coleta';
   const link = `${linkBase}/coleta.html?t=${o.token}`;
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const html = `<div style="font-family:Arial,sans-serif; max-width:560px; margin:0 auto;">
-    <h2 style="color:#1F4E78;">Ordem de coleta nº ${o.id} — ${esc(nomeEmp)}</h2>
+    <h2 style="color:#1F4E78;">${Tipo} nº ${o.id} — ${esc(nomeEmp)}</h2>
     <p>Olá, ${esc(o.transportadora)}.</p>
-    <p>Temos <b>${o.notas.length} nota(s)</b> para coletar${o.volumes ? `, ${o.volumes} volume(s)` : ''}${o.peso_kg ? `, ${Number(o.peso_kg).toLocaleString('pt-BR')} kg` : ''}.</p>
-    <p><b>Pronta para coleta:</b> ${esc(quando(o.coletar_em))}${o.janela_min ? ` (janela de ${Math.round(o.janela_min / 60 * 10) / 10} h)` : ''}<br><b>Local:</b> ${esc(enderecoEmpresa(e))}</p>
-    <p>Confirme pelo botão abaixo informando a data e a hora, a placa e o motorista (ou recuse, se não puder atender). O documento da ordem vai anexo.</p>
-    <p style="margin:22px 0;"><a href="${esc(link)}" style="background:#2f5bea; color:#fff; padding:11px 20px; border-radius:6px; text-decoration:none;">Confirmar a coleta</a></p>
+    <p>${desc ? `Estamos aguardando a entrega de <b>${o.notas.length} NF-e</b>${o.fornecedor ? ` de ${esc(o.fornecedor)}` : ''} (${esc(o.notas.join(', '))})` : `Temos <b>${o.notas.length} nota(s)</b> para coletar`}${o.volumes ? `, ${o.volumes} volume(s)` : ''}${o.peso_kg ? `, ${Number(o.peso_kg).toLocaleString('pt-BR')} kg` : ''}.</p>
+    <p><b>${desc ? 'Receber a partir de' : 'Pronta para coleta'}:</b> ${esc(quando(o.coletar_em))}${o.janela_min ? ` (janela de ${Math.round(o.janela_min / 60 * 10) / 10} h)` : ''}<br><b>Local:</b> ${esc(enderecoEmpresa(e))}</p>
+    <p>${desc ? 'Agende a entrega pelo botão abaixo informando a data e a hora, a placa e o motorista (ou avise se não puder entregar nesse prazo).' : 'Confirme pelo botão abaixo informando a data e a hora, a placa e o motorista (ou recuse, se não puder atender).'} O documento da ordem vai anexo.</p>
+    <p style="margin:22px 0;"><a href="${esc(link)}" style="background:#2f5bea; color:#fff; padding:11px 20px; border-radius:6px; text-decoration:none;">${desc ? 'Agendar a entrega' : 'Confirmar a coleta'}</a></p>
     ${o.observacao ? `<p><b>Observações:</b> ${esc(o.observacao)}</p>` : ''}
     <p style="color:#888; font-size:12px; margin-top:26px;">${esc(nomeEmp)}${e.telefone ? ` · ${esc(e.telefone)}` : ''}${e.email ? ` · ${esc(e.email)}` : ''}</p></div>`;
-  await require('./email').enviarRelatorio({ para: email, assunto: `Ordem de coleta nº ${o.id} — ${nomeEmp}`, html,
-    anexos: [{ filename: `ordem-coleta-${o.id}.html`, content: await documentoDe(o, link), contentType: 'text/html; charset=utf-8' }] })
+  await require('./email').enviarRelatorio({ para: email, assunto: `${Tipo} nº ${o.id} — ${nomeEmp}`, html,
+    anexos: [{ filename: `${desc ? 'ordem-descarga' : 'ordem-coleta'}-${o.id}.html`, content: await documentoDe(o, link), contentType: 'text/html; charset=utf-8' }] })
     .catch((e) => { throw falha(`Não consegui mandar o e-mail: ${e.message} Você pode copiar o link da ordem e mandar por WhatsApp.`, 502); });
   await pool.query(`UPDATE ordens_coleta SET status = CASE WHEN status = 'rascunho' THEN 'enviada' ELSE status END, email_para = $2, enviada_em = NOW(), enviada_por = $3, atualizado_em = NOW() WHERE id = $1`, [id, email, usuario]);
   return buscar(id);
@@ -183,10 +257,9 @@ async function publico(token, { marcarAberta = true } = {}) {
   const o = await porToken(token);
   if (marcarAberta && !o.aberta_em) await pool.query('UPDATE ordens_coleta SET aberta_em = NOW() WHERE id = $1', [o.id]);
   const e = await empresa();
-  const { rows: notas } = await pool.query(`SELECT LTRIM(numero_nf, '0') AS numero, cliente, cidade, uf, qtd_volumes AS volumes, COALESCE(peso_bruto, peso_kg)::float AS peso
-    FROM fretes WHERE id = ANY($1) ORDER BY numero_nf`, [o.frete_ids]);
+  const notas = (await notasDaOrdem(o)).map(({ numero, cliente, cidade, uf, volumes, peso }) => ({ numero, cliente, cidade, uf, volumes, peso }));
   return {
-    numero: o.id, status: o.status, situacao: o.situacao, transportadora: o.transportadora, empresa: e.nome_fantasia || e.razao_social || '', endereco: enderecoEmpresa(e), telefone: e.telefone || null,
+    tipo: nomeTipo(o), fornecedor: o.fornecedor || null, numero: o.id, status: o.status, situacao: o.situacao, transportadora: o.transportadora, empresa: e.nome_fantasia || e.razao_social || '', endereco: enderecoEmpresa(e), telefone: e.telefone || null,
     coletar_em: o.coletar_local, janela_min: o.janela_min, tipo_veiculo: o.tipo_veiculo, veiculos: patio.VEICULOS, observacao: o.observacao,
     volumes: o.volumes, peso_kg: o.peso_kg != null ? Number(o.peso_kg) : null, cubagem_m3: o.cubagem_m3 != null ? Number(o.cubagem_m3) : null, notas,
     resposta: o.respondida_em ? { em: o.respondida_em, nome: o.resposta_nome, placa: o.placa, motorista_nome: o.motorista_nome, previsto_em: o.previsto_local, motivo: o.motivo_recusa, obs: o.resposta_obs } : null,
@@ -203,9 +276,11 @@ async function aceitar(token, b) {
   if (!previsto) throw falha('Informe a data e a hora em que o caminhão vai chegar.');
   const nome = texto(b.nome, 120); if (!nome) throw falha('Informe o seu nome.');
   const placa = String(b.placa || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7) || null;
-  const visita = { operacao: 'carga', previsto_em: previsto, janela_min: o.janela_min || 60, transportadora: o.transportadora, placa, placa_carreta: b.placa_carreta,
+  const desc = o.tipo === 'descarga';
+  const visita = { operacao: desc ? 'descarga' : 'carga', fornecedor: desc ? o.fornecedor : null, previsto_em: previsto, janela_min: o.janela_min || 60, transportadora: o.transportadora, placa, placa_carreta: b.placa_carreta,
     tipo_veiculo: b.tipo_veiculo || o.tipo_veiculo, motorista_nome: b.motorista_nome, motorista_documento: b.motorista_documento, motorista_telefone: b.motorista_telefone,
-    pedido: `Ordem de coleta ${o.id}`, notas: o.notas.join(' '), observacao: [`Ordem de coleta nº ${o.id}`, texto(b.obs, 500)].filter(Boolean).join(' — ') };
+    pedido: `Ordem de ${nomeTipo(o)} ${o.id}`, notas: o.notas.join(' '), volumes: o.volumes, peso_kg: o.peso_kg,
+    observacao: [`Ordem de ${nomeTipo(o)} nº ${o.id}`, texto(b.obs, 500)].filter(Boolean).join(' — ') };
   const quem = `${nome} (${o.transportadora || 'transportadora'})`;
   const v = o.visita_id ? await patio.atualizar(REQ_SISTEMA, o.visita_id, visita, quem) : await patio.criar(REQ_SISTEMA, visita, quem);
   await pool.query(`UPDATE ordens_coleta SET status = 'aceita', respondida_em = NOW(), resposta_nome = $2, placa = $3, motorista_nome = $4, motorista_documento = $5, motorista_telefone = $6,
@@ -217,7 +292,7 @@ async function aceitar(token, b) {
 async function recusar(token, b) {
   const o = await porToken(token);
   if (o.status !== 'enviada') throw falha('Esta ordem não está mais aguardando resposta.', 409);
-  const motivo = texto(b.motivo, 500); if (!motivo) throw falha('Conte o motivo da recusa.');
+  const motivo = texto(b.motivo, 500); if (!motivo) throw falha('Conte o motivo.');
   const nome = texto(b.nome, 120); if (!nome) throw falha('Informe o seu nome.');
   await pool.query(`UPDATE ordens_coleta SET status = 'recusada', respondida_em = NOW(), resposta_nome = $2, motivo_recusa = $3, atualizado_em = NOW() WHERE id = $1`, [o.id, nome, motivo]);
   return publico(token, { marcarAberta: false });
@@ -228,8 +303,9 @@ function documento(o, e, link = null) {
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const num = (v, c = 0) => (v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c }));
   const notas = o._notas || [];
+  const desc = o.tipo === 'descarga';
   const logo = /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/=]+$/.test(String(e.logo || '')) ? `<img src="${e.logo}" alt="" style="max-height:52px; max-width:160px;">` : '';
-  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ordem de coleta nº ${o.id}</title><style>
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ordem de ${nomeTipo(o)} nº ${o.id}</title><style>
     @page { size: A4; margin: 14mm; } body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12px; margin: 0; }
     .cab { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: 8px; }
     h1 { font-size: 20px; margin: 0; } .num { font-size: 15px; font-weight: 700; text-align: right; }
@@ -242,26 +318,24 @@ function documento(o, e, link = null) {
     .acoes { margin-bottom: 10px; } @media print { .acoes { display: none; } } @media screen { body { padding: 18px; max-width: 920px; margin: 0 auto; } }
   </style></head><body>
   <div class="acoes"><button type="button" onclick="window.print()">Imprimir</button></div>
-  <div class="cab"><div style="display:flex; gap:12px; align-items:center;">${logo}<div><h1>ORDEM DE COLETA</h1><div>${esc(e.razao_social || e.nome_fantasia || '')}${e.cnpj ? ` · CNPJ ${esc(e.cnpj)}` : ''}</div></div></div>
+  <div class="cab"><div style="display:flex; gap:12px; align-items:center;">${logo}<div><h1>ORDEM DE ${desc ? 'DESCARGA' : 'COLETA'}</h1><div>${esc(e.razao_social || e.nome_fantasia || '')}${e.cnpj ? ` · CNPJ ${esc(e.cnpj)}` : ''}</div></div></div>
     <div class="num">Nº ${o.id}<br><span style="font-weight:400; font-size:11px;">emitida em ${esc(quando(o.criado_em))}</span></div></div>
   <div class="grade">
-    <div><b>Transportadora</b>${esc(o.transportadora)}</div><div><b>Situação</b>${esc(o.situacao || '')}</div>
-    <div><b>Local da coleta</b>${esc(enderecoEmpresa(e))}</div><div><b>Contato</b>${esc([e.telefone, e.email].filter(Boolean).join(' · '))}</div>
-    <div><b>Pronta para coleta</b>${esc(quando(o.coletar_em))}${o.janela_min ? ` (janela de ${num(o.janela_min / 60, 1)} h)` : ''}</div><div><b>Veículo pedido</b>${esc(patio.VEICULOS[o.tipo_veiculo] || 'Qualquer')}</div>
+    <div><b>${desc ? 'Quem entrega' : 'Transportadora'}</b>${esc(o.transportadora)}${desc && o.fornecedor && o.fornecedor !== o.transportadora ? `<br><small>Fornecedor: ${esc(o.fornecedor)}</small>` : ''}</div><div><b>Situação</b>${esc(o.situacao || '')}</div>
+    <div><b>${desc ? 'Local da entrega' : 'Local da coleta'}</b>${esc(enderecoEmpresa(e))}</div><div><b>Contato</b>${esc([e.telefone, e.email].filter(Boolean).join(' · '))}</div>
+    <div><b>${desc ? 'Receber a partir de' : 'Pronta para coleta'}</b>${esc(quando(o.coletar_em))}${o.janela_min ? ` (janela de ${num(o.janela_min / 60, 1)} h)` : ''}</div><div><b>Veículo pedido</b>${esc(patio.VEICULOS[o.tipo_veiculo] || 'Qualquer')}</div>
     <div><b>Chegada confirmada</b>${esc(quando(o.previsto_em))}</div><div><b>Placa / motorista</b>${esc([o.placa, o.motorista_nome, o.motorista_documento].filter(Boolean).join(' · '))}</div>
   </div>
-  <table><thead><tr><th>NF-e</th><th>Cliente</th><th>Destino</th><th>Volumes</th><th>Peso (kg)</th><th>Valor (R$)</th></tr></thead><tbody>
+  <table><thead><tr><th>NF-e</th><th>${desc ? 'Fornecedor (emitente)' : 'Cliente'}</th><th>${desc ? 'Origem' : 'Destino'}</th><th>Volumes</th><th>Peso (kg)</th><th>Valor (R$)</th></tr></thead><tbody>
   ${notas.map((n) => `<tr><td>${esc(n.numero)}</td><td>${esc(n.cliente)}</td><td>${esc([n.cidade, n.uf].filter(Boolean).join('/'))}</td><td class="n">${num(n.volumes)}</td><td class="n">${num(n.peso, 1)}</td><td class="n">${num(n.valor, 2)}</td></tr>`).join('')}
   </tbody><tfoot><tr><td colspan="3">${notas.length} nota(s)</td><td class="n">${num(o.volumes)}</td><td class="n">${num(o.peso_kg, 1)}</td><td class="n">${num(o.valor, 2)}</td></tr></tfoot></table>
   ${o.observacao ? `<p><b>Observações:</b> ${esc(o.observacao)}</p>` : ''}
-  ${link ? `<p>Confirme a coleta em: ${esc(link)}</p>` : ''}
-  <div class="ass"><div>Expedição (${esc(e.nome_fantasia || e.razao_social || '')})</div><div>Motorista (nome e documento)</div></div>
+  ${link ? `<p>${desc ? 'Agende a entrega' : 'Confirme a coleta'} em: ${esc(link)}</p>` : ''}
+  <div class="ass"><div>${desc ? 'Recebimento' : 'Expedição'} (${esc(e.nome_fantasia || e.razao_social || '')})</div><div>Motorista (nome e documento)</div></div>
   </body></html>`;
 }
 async function documentoDe(o, link = null) {
-  const { rows } = await pool.query(`SELECT LTRIM(numero_nf, '0') AS numero, cliente, cidade, uf, qtd_volumes AS volumes, COALESCE(peso_bruto, peso_kg)::float AS peso, valor_faturado::float AS valor
-    FROM fretes WHERE id = ANY($1) ORDER BY numero_nf`, [o.frete_ids]);
-  return documento({ ...o, _notas: rows }, await empresa(), link);
+  return documento({ ...o, _notas: await notasDaOrdem(o) }, await empresa(), link);
 }
 
-module.exports = { porToken, situacao, SITUACOES, listar, candidatas, buscar, salvar, enviar, cancelar, publico, aceitar, recusar, documento, documentoDe, emailDaTransportadora };
+module.exports = { TIPOS, candidatasDescarga, doXmlCompra, porToken, situacao, SITUACOES, listar, candidatas, buscar, salvar, enviar, cancelar, publico, aceitar, recusar, documento, documentoDe, emailDaTransportadora };

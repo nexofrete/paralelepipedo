@@ -1558,7 +1558,7 @@ def parte_uso(g):
     s += h1('20-A. Pátio e portaria')
     s.append(P('Controle de quem vem <b>carregar</b> (a transportadora que coleta as notas) ou <b>descarregar</b> (recebimento de '
                'fornecedor): agendamento da janela, check-in na portaria pelo <b>QR Code</b>, fila do pátio, chamada para a doca, '
-               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta 424). '
+               'operação e saída. Menu <b>Pátio e portaria</b> (Painel 420, Portaria 421, Agendamentos 422, Docas e regras 423, Ordens de coleta e descarga 424). '
                'Para quem só trabalha na portaria, use o modelo de acesso <b>Portaria e pátio</b> (Cadastros, Usuários).'))
     s += h2('Docas e regras (423)')
     s += lista([
@@ -1586,6 +1586,19 @@ def parte_uso(g):
     ])
     s += aviso('nota', 'Cancelar a ordem cancela também o agendamento do pátio, enquanto o caminhão não entrou. A nota só pode estar '
                        'em uma ordem aberta por vez.')
+    s += h2('Ordens de descarga (424)')
+    s.append(P('Na mesma aba, <b>＋ Ordem de descarga</b> faz o caminho inverso: pede a entrega das compras e agenda o recebimento.'))
+    s += lista([
+        'As notas da lista são as <b>NF-e de compra</b> que estão para chegar: as NF-e contra o CNPJ (Fiscal, NF-e contra o CNPJ) dos '
+        'últimos 60 dias, autorizadas, não desconhecidas e ainda não lançadas na entrada. Do XML saem o fornecedor, a cidade de origem, '
+        'a transportadora, os volumes e o peso (se o XML ainda não foi baixado, essas colunas ficam vazias).',
+        '<b>Quem entrega</b> vem preenchido com a transportadora do XML (ou o fornecedor). Informe a partir de quando dá para receber e a '
+        'janela, e mande por e-mail ou pelo link.',
+        'Pelo link, quem entrega <b>agenda a entrega</b> (data, placa e motorista) ou avisa que <b>não consegue entregar</b> com o motivo. '
+        'Agendada, a ordem vira um <b>agendamento de descarga</b> no pátio, com o fornecedor, as notas, os volumes e o peso, e vai para '
+        'uma doca que aceita descarga.',
+        'As situações são as mesmas da coleta. Quando o caminhão sai pela portaria, a ordem fica <b>Descarregada</b>.',
+    ])
     s += h2('Agendamentos (422)')
     s += lista([
         '<b>＋ Agendar</b>: operação, data e hora, janela (minutos), transportadora ou fornecedor, placa e carreta, tipo de veículo, '

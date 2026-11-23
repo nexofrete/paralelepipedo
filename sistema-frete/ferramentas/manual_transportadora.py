@@ -56,7 +56,7 @@ def parte_operacao(g):
         ['Operar · Fretes contratados', 'Inconsistências NF-e x CT-e, Notas e seus CT-e', '322, 320', '13, 19'],
         ['Operar · Fretes contratados', 'Entregas previstas, Notas sem mapa, Consolidar rotas, Roteirizar entregas', '311, 312, 314, 315', '19'],
         ['Operar · Fretes contratados', 'Relatórios: Entregas e rastreamento, NF-e x CT-e', '324, 326', '19'],
-        ['Operar · Pátio e portaria', 'Painel do pátio, Portaria (check-in), Ordens de coleta, Agendamentos, Docas e regras', '420 a 424', '20-A'],
+        ['Operar · Pátio e portaria', 'Painel do pátio, Portaria (check-in), Ordens de coleta e descarga, Agendamentos, Docas e regras', '420 a 424', '20-A'],
         ['Operar · Controle operacional', 'Relatórios: NF-e x pré-nota, Arquivos pendentes, Conhecimentos, Integração de CT-e, Produtividade, Vigência e restrição das tabelas, Operação doca, Justificativas, Operação por documentos, Pendências', '332', '19'],
         ['Operar · Auditoria de fretes', 'Fretes auditados, Conferência de CT-e, Cobranças indevidas, Anomalias e duplicidades', '330, 321, 323, 318', '16, 19'],
         ['Operar · Auditoria de fretes', 'Sinistros', '410', '20'],

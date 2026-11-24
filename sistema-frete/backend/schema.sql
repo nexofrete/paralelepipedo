@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS fretes (
     outras_despesas             NUMERIC(14,2),
     valor_total_frete           NUMERIC(14,2),
     dif_negociado_tabela        NUMERIC(14,2),
-    percent_frete               NUMERIC(6,3),
+    percent_frete               NUMERIC(12,3),
 
     status                      VARCHAR(40) DEFAULT 'Pendente',
     observacoes                 TEXT,
@@ -391,6 +391,15 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_acesso TIMESTAMP;
 -- com o endereço completo da transportadora de redespacho, que é longo).
 ALTER TABLE fretes ALTER COLUMN redespacho TYPE VARCHAR(600);
 
+-- % Frete cabia só até 999,999%: nota de valor baixo (remessa, amostra, R$ 1)
+-- com frete de centenas de reais estourava o campo e travava a gravação.
+DO $$ BEGIN
+  IF (SELECT numeric_precision FROM information_schema.columns
+       WHERE table_name = 'fretes' AND column_name = 'percent_frete') < 12 THEN
+    ALTER TABLE fretes ALTER COLUMN percent_frete TYPE NUMERIC(12,3);
+  END IF;
+END $$;
+
 -- Importação automática da planilha do ERP (preenche campos faltantes dos registros).
 CREATE TABLE IF NOT EXISTS configuracao_importacao_erp (
     id                          INTEGER PRIMARY KEY DEFAULT 1,
@@ -445,7 +454,9 @@ BEGIN
 
   -- % Frete: quanto o frete representa do valor da mercadoria (nota fiscal).
   IF NEW.valor_total_frete IS NOT NULL AND NEW.valor_faturado IS NOT NULL AND NEW.valor_faturado > 0 THEN
-    NEW.percent_frete := ROUND((NEW.valor_total_frete / NEW.valor_faturado) * 100, 3);
+    -- Acima do que o campo guarda (nota de centavos) fica vazio, sem travar a gravação.
+    NEW.percent_frete := CASE WHEN ABS(NEW.valor_total_frete / NEW.valor_faturado) < 1e7
+                              THEN ROUND((NEW.valor_total_frete / NEW.valor_faturado) * 100, 3) END;
   END IF;
 
   -- SLA: data prevista de entrega = data da coleta (ou emissão do CT-e, se

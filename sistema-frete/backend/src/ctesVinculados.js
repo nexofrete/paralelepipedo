@@ -518,64 +518,69 @@ async function reconciliarCtesSoltos() {
           AND xml_cte_original IS NOT NULL
         LIMIT 2000`);
     for (const solto of soltos) {
-      let dados;
-      try { dados = parseCTe(solto.xml_cte_original); } catch (e) { continue; }
-      const chaves = dados.chaves_nfe_referenciadas || [];
-      const numeros = [...numerosDasChaves(chaves), dados.numero_nf_referenciada ? String(dados.numero_nf_referenciada).replace(/^0+(?=\d)/, '') : null].filter(Boolean);
-      if (!chaves.length && !numeros.length) continue;
-      const { rows: notas } = await pool.query(
-        `SELECT * FROM fretes
-          WHERE id <> $1 AND frete_principal_id IS NULL AND cliente IS NOT NULL
-            AND (chave_nfe = ANY($2) OR LTRIM(numero_nf, '0') = ANY($3))
-            -- CT-e que alguém desligou desta nota (NF-e × CT-e) não volta sozinho.
-            AND NOT EXISTS (SELECT 1 FROM nfe_cte_desvinculos dv WHERE dv.frete_id = fretes.id AND dv.chave_cte = $4)
-          ORDER BY (chave_cte IS NULL) DESC, id LIMIT 1`,
-        [solto.id, chaves, numeros, solto.chave_cte]);
-      const nota = notas[0];
-      if (!nota) continue;
+      // Um CT-e com problema não pode travar os outros: registra e segue.
+      try {
+        let dados;
+        try { dados = parseCTe(solto.xml_cte_original); } catch (e) { continue; }
+        const chaves = dados.chaves_nfe_referenciadas || [];
+        const numeros = [...numerosDasChaves(chaves), dados.numero_nf_referenciada ? String(dados.numero_nf_referenciada).replace(/^0+(?=\d)/, '') : null].filter(Boolean);
+        if (!chaves.length && !numeros.length) continue;
+        const { rows: notas } = await pool.query(
+          `SELECT * FROM fretes
+            WHERE id <> $1 AND frete_principal_id IS NULL AND cliente IS NOT NULL
+              AND (chave_nfe = ANY($2) OR LTRIM(numero_nf, '0') = ANY($3))
+              -- CT-e que alguém desligou desta nota (NF-e × CT-e) não volta sozinho.
+              AND NOT EXISTS (SELECT 1 FROM nfe_cte_desvinculos dv WHERE dv.frete_id = fretes.id AND dv.chave_cte = $4)
+            ORDER BY (chave_cte IS NULL) DESC, id LIMIT 1`,
+          [solto.id, chaves, numeros, solto.chave_cte]);
+        const nota = notas[0];
+        if (!nota) continue;
 
-      if (!nota.chave_cte) {
-        // A nota ainda esperava CT-e: o CT-e vai pra linha dela e a linha solta some.
-        const cliente = await pool.connect();
-        try {
-          await cliente.query('BEGIN');
-          await cliente.query('DELETE FROM fretes WHERE id = $1', [solto.id]);
-          const sets = CAMPOS_DO_CTE.map((c, i) => `${c} = $${i + 2}`).join(', ');
-          await cliente.query(
-            `UPDATE fretes SET ${sets}, transportadora = COALESCE(transportadora, $${CAMPOS_DO_CTE.length + 2}),
-                    observacoes = CONCAT_WS(E'\n', NULLIF(observacoes, ''), NULLIF($${CAMPOS_DO_CTE.length + 3}, '')),
-                    atualizado_em = NOW()
-              WHERE id = $1`,
-            [nota.id, ...CAMPOS_DO_CTE.map((c) => solto[c] ?? null), solto.transportadora_cte || solto.transportadora, solto.observacoes || '']);
-          await cliente.query('COMMIT');
-        } catch (err) {
-          await cliente.query('ROLLBACK').catch(() => {});
-          console.error('[ctes] Não consegui juntar o CT-e', solto.numero_cte, 'com a nota', nota.numero_nf, err.message);
-          continue;
-        } finally {
-          cliente.release();
+        if (!nota.chave_cte) {
+          // A nota ainda esperava CT-e: o CT-e vai pra linha dela e a linha solta some.
+          const cliente = await pool.connect();
+          try {
+            await cliente.query('BEGIN');
+            await cliente.query('DELETE FROM fretes WHERE id = $1', [solto.id]);
+            const sets = CAMPOS_DO_CTE.map((c, i) => `${c} = $${i + 2}`).join(', ');
+            await cliente.query(
+              `UPDATE fretes SET ${sets}, transportadora = COALESCE(transportadora, $${CAMPOS_DO_CTE.length + 2}),
+                      observacoes = CONCAT_WS(E'\n', NULLIF(observacoes, ''), NULLIF($${CAMPOS_DO_CTE.length + 3}, '')),
+                      atualizado_em = NOW()
+                WHERE id = $1`,
+              [nota.id, ...CAMPOS_DO_CTE.map((c) => solto[c] ?? null), solto.transportadora_cte || solto.transportadora, solto.observacoes || '']);
+            await cliente.query('COMMIT');
+          } catch (err) {
+            await cliente.query('ROLLBACK').catch(() => {});
+            console.error('[ctes] Não consegui juntar o CT-e', solto.numero_cte, 'com a nota', nota.numero_nf, err.message);
+            continue;
+          } finally {
+            cliente.release();
+          }
+          try { await require('./calculoFrete').calcularEGravar(nota.id, 'ct-e-juntado-a-nota'); } catch (e) { /* segue */ }
+          await recalcularFilhos(nota.id);
+        } else {
+          // A nota já tinha CT-e: esse vira um CT-e a mais dela.
+          const vinculo = classificar(nota, { tipo_cte: solto.tipo_cte || 0, transportador_cnpj: solto.transportadora_cnpj_cte, transportadora: solto.transportadora_cte || solto.transportadora, observacoes_cte: dados.observacoes_cte || '' });
+          const alerta = vinculo === 'redespacho';
+          const pct = await percentualReentrega();
+          const esperado = valorEsperado(vinculo, nota, pct);
+          const campos = CAMPOS_DA_NOTA.filter((c) => c !== 'numero_nf');
+          const sets = campos.map((c, i) => `${c} = $${i + 1}`);
+          const params = campos.map((c) => nota[c] ?? null);
+          params.push(nota.numero_nf, nota.id, vinculo, alerta, esperado, alerta ? 'Frete Retido' : null, solto.id);
+          const n = params.length;
+          await pool.query(
+            `UPDATE fretes SET ${sets.join(', ')}, numero_nf = $${n - 6}, frete_principal_id = $${n - 5}, vinculo_cte = $${n - 4},
+                    alerta_transportadora_diferente = $${n - 3}, valor_total_calculado = COALESCE($${n - 2}::numeric, valor_total_calculado),
+                    status = COALESCE($${n - 1}::text, status), atualizado_em = NOW()
+              WHERE id = $${n}`, params);
+          if (alerta) await pool.query('UPDATE fretes SET alerta_transportadora_diferente = TRUE WHERE id = $1', [nota.id]);
         }
-        try { await require('./calculoFrete').calcularEGravar(nota.id, 'ct-e-juntado-a-nota'); } catch (e) { /* segue */ }
-        await recalcularFilhos(nota.id);
-      } else {
-        // A nota já tinha CT-e: esse vira um CT-e a mais dela.
-        const vinculo = classificar(nota, { tipo_cte: solto.tipo_cte || 0, transportador_cnpj: solto.transportadora_cnpj_cte, transportadora: solto.transportadora_cte || solto.transportadora, observacoes_cte: dados.observacoes_cte || '' });
-        const alerta = vinculo === 'redespacho';
-        const pct = await percentualReentrega();
-        const esperado = valorEsperado(vinculo, nota, pct);
-        const campos = CAMPOS_DA_NOTA.filter((c) => c !== 'numero_nf');
-        const sets = campos.map((c, i) => `${c} = $${i + 1}`);
-        const params = campos.map((c) => nota[c] ?? null);
-        params.push(nota.numero_nf, nota.id, vinculo, alerta, esperado, alerta ? 'Frete Retido' : null, solto.id);
-        const n = params.length;
-        await pool.query(
-          `UPDATE fretes SET ${sets.join(', ')}, numero_nf = $${n - 6}, frete_principal_id = $${n - 5}, vinculo_cte = $${n - 4},
-                  alerta_transportadora_diferente = $${n - 3}, valor_total_calculado = COALESCE($${n - 2}::numeric, valor_total_calculado),
-                  status = COALESCE($${n - 1}::text, status), atualizado_em = NOW()
-            WHERE id = $${n}`, params);
-        if (alerta) await pool.query('UPDATE fretes SET alerta_transportadora_diferente = TRUE WHERE id = $1', [nota.id]);
+        juntados += 1;
+      } catch (err) {
+        console.error('[ctes] Não consegui juntar o CT-e', solto.numero_cte || solto.chave_cte, err.message);
       }
-      juntados += 1;
     }
     if (juntados) console.log(`[ctes] ${juntados} CT-e que tinham chegado antes da nota foram juntados à nota deles.`);
     // CT-e que leva várias notas: liga as notas que chegaram depois (e divide o frete).

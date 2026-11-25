@@ -602,6 +602,11 @@ def parte_uso(g):
         'se vierem preenchidas, valem mais que as do ERP). Célula vazia não apaga o que já estava.',
         'Se a maioria dos valores de uma coluna não for do tipo dela (por exemplo, datas em "Qtd. Etiquetas"), a planilha é <b>recusada '
         'sem gravar nada</b>: é sinal de colunas deslocadas. Valores estranhos isolados ficam vazios e são avisados.',
+        '<b>Ligação com o WMS</b> (só o administrador): cadastro do endereço, do usuário e da senha do WMS, para o Nexofrete consultar o '
+        'WMS sozinho, só lendo. Use um usuário só de consulta criado para o Nexofrete. A senha fica criptografada e não aparece de novo. '
+        '<b>Salvar e testar conexão</b> abre o WMS a partir do servidor (o WMS fica na rede da empresa) e mostra um <b>diagnóstico</b> da '
+        'tela de login: nomes dos campos, tecnologia e caminhos de API, sem senha nem dados. Copie e envie para quem monta a integração. '
+        'A consulta automática dos pedidos entra numa próxima etapa.',
         '<b>Situação</b>: Aguardando nota; Em separação (o WMS começou a separar); Separado (separação terminada, esperando a nota); '
         'Faturado (sem embarque nem coleta pedida); Em embarque; Coleta pedida; Coletado / em trânsito; Entregue; e Cancelado (no ERP, no '
         'WMS ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',

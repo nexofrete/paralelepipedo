@@ -57,7 +57,8 @@
         <label style="font-size:13px;">De <input type="date" id="pdDe" value="${esc(d.de)}"></label><label style="font-size:13px;">até <input type="date" id="pdAte" value="${esc(d.ate)}"></label>
         <input id="pdBusca" placeholder="Pedido, cliente, NF, usuário" value="${esc(st.busca)}" style="max-width:220px;">
         ${podeImportar() ? '<button class="btn btn-secundario" id="pdWms" style="width:auto;" title="Planilha exportada do WMS com Número Pedido, Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização e Cancelado Wms">⬆ Planilha do WMS</button><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
-        <button class="btn btn-secundario" id="pdExcel" style="width:auto;">⬇ Excel</button></div>
+        <button class="btn btn-secundario" id="pdExcel" style="width:auto;">⬇ Excel</button>
+        ${usuario?.perfil === 'admin' ? '<button class="btn btn-secundario" id="pdWmsCfg" style="width:auto;" title="Endereço, usuário e senha do WMS e o teste da conexão">⚙ Ligação com o WMS</button>' : ''}</div>
       <div id="pdWmsRes" style="font-size:12.5px; margin-top:6px;"></div>
       <div class="painel" style="padding:0; overflow-x:auto; margin-top:10px;"><table class="tabela" style="font-size:12.5px;"><thead><tr>
         <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas</th><th>Separação</th><th>NF-e</th></tr></thead><tbody>
@@ -84,6 +85,7 @@
         p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, dh(p.sep_inicio).replace('—', ''),
         dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.destino || '', p.transportadora || '', p.numero_cte || ''])}]).catch(erro);
     });
+    $('pdWmsCfg')?.addEventListener('click', () => abrirWms().catch(erro));
     $('pdWms')?.addEventListener('click', () => $('pdWmsArq').click());
     $('pdWmsArq')?.addEventListener('change', async (e) => {
       const arq = e.target.files[0]; if (!arq) return;
@@ -100,6 +102,45 @@
         $('pdWmsRes').innerHTML = `<span style="color:var(--verde);">✓</span> ${num(j.pedidos)} pedido(s) do WMS gravados (${num(j.total)} linhas). Colunas lidas: ${(j.colunas || []).map((c) => esc(c.coluna)).join(', ')}.`
           + (inv.length ? `<br><span style="color:var(--vermelho);">Valores que não são do tipo da coluna (ficaram vazios): ${esc(inv.join(' · '))}. Confira se as colunas da planilha não estão deslocadas.</span>` : '');
       } catch (err) { res.innerHTML = `<span style="color:var(--vermelho);">${esc(err.message)}</span>`; } finally { e.target.value = ''; }
+    });
+  }
+
+  // ---------- Ligação com o WMS (administrador): cadastro e diagnóstico da conexão (src/wms.js) ----------
+  async function abrirWms() {
+    const pedir = async (c, op = {}) => { const r = await apiFetch(`/api/wms${c}`, op); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.erro || 'Erro na ligação com o WMS.'); return j; };
+    const c = await pedir('/config');
+    let m = $('modalWms');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'modal-overlay'; m.id = 'modalWms';
+      m.innerHTML = '<div class="painel modal-card" style="width:100%; max-width:760px; max-height:94vh; overflow-y:auto; padding:22px 24px;" id="wmsModal"></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-wms-fechar]')) m.classList.add('oculto'); });
+    }
+    m.classList.remove('oculto');
+    $('wmsModal').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h3 style="margin:0;">⚙ Ligação com o WMS</h3><span style="cursor:pointer; font-size:18px;" data-wms-fechar>✕</span></div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:0;">O Nexofrete vai consultar o WMS sozinho (só leitura) para preencher status, expedição, conferência, placa e motorista dos pedidos.
+        Esta primeira etapa guarda o acesso e testa a conexão a partir do servidor (o WMS fica na rede da empresa). Use um <b>usuário só de consulta</b>, criado para o Nexofrete.</p>
+      <label style="display:block; font-size:13px;">Endereço do WMS<input style="display:block; width:100%; margin-top:3px;" id="wmsUrl" value="${esc(c.url || '')}" placeholder="http://10.150.15.66/auth/login"></label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <label style="display:block; font-size:13px; margin-top:8px;">Usuário<input style="display:block; width:100%; margin-top:3px;" id="wmsUsuario" value="${esc(c.usuario || '')}" autocomplete="off"></label>
+        <label style="display:block; font-size:13px; margin-top:8px;">Senha<input style="display:block; width:100%; margin-top:3px;" id="wmsSenha" type="password" autocomplete="new-password" placeholder="${c.tem_senha ? 'senha cadastrada (deixe em branco para manter)' : ''}"></label></div>
+      <p style="font-size:12px; color:var(--texto-fraco);">A senha é guardada criptografada e não aparece de novo para ninguém.${c.ultimo_teste_em ? ` Último teste: ${dh(String(c.ultimo_teste_em).replace('T', ' '))} — ${c.ultimo_teste_ok ? 'respondeu' : 'falhou'}.` : ''}</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primario" id="wmsSalvar" style="width:auto;">Salvar</button>
+        <button class="btn btn-secundario" id="wmsTestar" style="width:auto;">🔌 Salvar e testar conexão</button></div>
+      <div id="wmsRes" style="margin-top:12px;"></div>`;
+    const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value }) });
+    $('wmsSalvar').addEventListener('click', async () => { try { await salvar(); $('wmsSenha').value = ''; mostrarAlerta('Ligação com o WMS salva.', { tipo: 'sucesso' }); } catch (e) { erro(e); } });
+    $('wmsTestar').addEventListener('click', async () => {
+      const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Testando a partir do servidor...</p>';
+      try {
+        await salvar(); $('wmsSenha').value = '';
+        const t = await pedir('/testar', { method: 'POST' });
+        res.innerHTML = `<p style="font-size:13px;">${t.ok ? '<span style="color:var(--verde);">✓ O servidor alcançou o WMS.</span>' : '<span style="color:var(--vermelho);">✗ O servidor não conseguiu abrir a página do WMS.</span>'}
+          Copie o diagnóstico abaixo e envie para quem está montando a integração (ele não tem senha nem dados).</p>
+          <textarea id="wmsDiag" readonly style="width:100%; height:260px; font-family:monospace; font-size:11.5px;">${esc(t.texto)}</textarea>
+          <button class="btn btn-secundario" id="wmsCopiar" style="width:auto; margin-top:6px;">📋 Copiar diagnóstico</button>`;
+        $('wmsCopiar').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('wmsDiag').value); mostrarAlerta('Diagnóstico copiado.', { tipo: 'sucesso' }); } catch (e) { $('wmsDiag').select(); document.execCommand('copy'); } });
+      } catch (e) { res.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${esc(e.message)}</p>`; }
     });
   }
 

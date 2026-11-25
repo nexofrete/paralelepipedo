@@ -910,6 +910,16 @@ CREATE TABLE IF NOT EXISTS pedidos_wms (
     origem                 VARCHAR(20) NOT NULL DEFAULT 'planilha',
     atualizado_em          TIMESTAMP NOT NULL DEFAULT NOW()
 );
+-- Ligação com o WMS (src/wms.js): endereço, usuário e senha (criptografada como a dos portais das transportadoras).
+CREATE TABLE IF NOT EXISTS wms_config (
+    id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    url             VARCHAR(300),
+    usuario         VARCHAR(120),
+    senha           TEXT,
+    atualizado_em   TIMESTAMP,
+    ultimo_teste_em TIMESTAMP,
+    ultimo_teste_ok BOOLEAN
+);
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

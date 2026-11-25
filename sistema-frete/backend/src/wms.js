@@ -162,6 +162,16 @@ class Sessao {
     throw falha('O WMS redirecionou vezes demais.', 502);
   }
 }
+// Mensagem de erro da tela de login (caixa de erro ou frase com "inválido", "incorreto", "bloqueado"...).
+function avisoDoLogin(html) {
+  const h = String(html || '');
+  const caixa = tirarTags((h.match(/<(?:div|span|p|label|td|font|strong|b)[^>]*(?:erro|error|alert|mensagem|msg|aviso|warning|danger)[^>]*>([\s\S]{0,400}?)<\/(?:div|span|p|label|td|font|strong|b)>/i) || [])[1]);
+  if (caixa) return caixa.slice(0, 200);
+  const frase = tirarTags(h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ')).match(/[^.!?]{0,80}(inv[aá]lid|incorret|bloquead|expirad|n[aã]o encontrad|n[aã]o autorizad|tentativas)[^.!?]{0,80}/i);
+  if (frase) return frase[0].trim().slice(0, 200);
+  const alerta = h.match(/alert\(\s*['"]([^'"]{3,200})['"]/i);
+  return alerta ? alerta[1] : '';
+}
 const temSenha = (html) => /<input[^>]+type\s*=\s*["']?password/i.test(html || '');
 
 // Login: lê o formulário da tela de login (campos escondidos, usuário, senha e o botão) e envia como o navegador.
@@ -186,8 +196,10 @@ async function entrar(c) {
   const destino = new URL(attr(form[1], 'action') || c.url, pg.url).toString();
   const r = await s.pedir(destino, { metodo: (attr(form[1], 'method') || 'post').toUpperCase(), form: dados });
   if (temSenha(r.corpo)) {
-    const aviso = tirarTags((r.corpo.match(/<(?:div|span|p|label)[^>]*(?:erro|error|alert|mensagem|msg)[^>]*>([\s\S]{0,300}?)<\/(?:div|span|p|label)>/i) || [])[1]).slice(0, 160);
-    throw falha(`O WMS não aceitou o login${aviso ? `: ${aviso}` : ' (confira o usuário e a senha)'}.`, 401);
+    // Nunca 401: na tela do Nexofrete, 401 quer dizer "a SUA sessão expirou" e tira o usuário do sistema.
+    const aviso = avisoDoLogin(r.corpo);
+    const detalhe = `HTTP ${r.status}, voltou para ${r.url}; campos enviados: ${Object.keys(dados).join(', ')}; cookies: ${[...s.cookies.keys()].join(', ') || 'nenhum'}`;
+    throw falha(`O WMS não aceitou o login${aviso ? `: "${aviso}"` : ' (sem mensagem de erro na tela; confira o usuário e a senha)'}. Detalhe: ${detalhe}.`, 422);
   }
   return { sessao: s, depois: r.url };
 }
@@ -259,4 +271,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

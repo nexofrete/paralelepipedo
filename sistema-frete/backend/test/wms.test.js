@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { lerHtml, caminhosApi, montarTexto, urlValida, descreverTela, textoTela } = require('../src/wms');
+const { lerHtml, caminhosApi, montarTexto, urlValida, descreverTela, textoTela, avisoDoLogin } = require('../src/wms');
 
 test('lê o formulário de login sem pegar valores', () => {
   const h = lerHtml(`<html><head><title>WMS - Login</title></head><body>
@@ -42,4 +42,11 @@ test('descreve a tela de expedição sem os dados das linhas', () => {
   assert.strictEqual(t.exportar.length, 1);
   const texto = textoTela(t, 'http://wms/exp', 'http://wms/home');
   assert.ok(!/84472/.test(texto), 'o diagnóstico não leva os dados das linhas');
+});
+
+test('mensagem de erro do login do WMS', () => {
+  assert.strictEqual(avisoDoLogin('<div class="alert alert-danger">Usuário ou senha inválidos</div>'), 'Usuário ou senha inválidos');
+  assert.match(avisoDoLogin('<body><p>Login</p><td>Atenção: senha incorreta para o usuário</td></body>'), /senha incorreta para o usuário/);
+  assert.strictEqual(avisoDoLogin('<script>alert("Usuario bloqueado")</script>'), 'Usuario bloqueado');
+  assert.strictEqual(avisoDoLogin('<form><input type=password></form>'), '');
 });

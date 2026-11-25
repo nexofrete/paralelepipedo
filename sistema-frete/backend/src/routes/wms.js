@@ -7,7 +7,7 @@ const wms = require('../wms');
 const router = express.Router();
 const soAdmin = (req, res, next) => (req.usuario?.perfil === 'admin' ? next() : res.status(403).json({ erro: 'Só o administrador configura a ligação com o WMS.' }));
 const rota = (fn) => async (req, res) => {
-  try { res.json(await fn(req)); } catch (err) { if (!err.status) console.error('[wms]', err.message); res.status(err.status || 500).json({ erro: err.status ? err.message : 'Erro na ligação com o WMS.' }); }
+  try { res.json(await fn(req)); } catch (err) { if (!err.status) console.error('[wms]', err.message); res.status(err.status === 401 ? 422 : (err.status || 500)).json({ erro: err.status ? err.message : 'Erro na ligação com o WMS.' }); }
 };
 router.get('/config', autenticar, soAdmin, rota(() => wms.config()));
 router.put('/config', autenticar, soAdmin, rota(async (req) => {

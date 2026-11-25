@@ -202,12 +202,13 @@
         <input style="display:block; width:100%; margin-top:3px;" id="wmsTela" value="${esc(c.url_expedicao || '')}" placeholder="http://10.150.15.66/..."></label>
       <fieldset style="border:1px solid var(--borda); border-radius:8px; padding:10px 12px; margin-top:12px;"><legend style="font-size:13px; padding:0 6px;">Consulta automática</legend>
         <label style="font-size:13px; display:flex; gap:6px; align-items:center;"><input type="checkbox" id="wmsAtivo" ${c.ativo ? 'checked' : ''} style="width:auto;"> Ligada (pausar desmarca na hora)</label>
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:6px; font-size:13px;">
+        <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-top:6px; font-size:13px;">
           <label>A cada<select id="wmsIntervalo" style="display:block; width:100%; margin-top:3px;">${[30, 60, 120, 240].map((m) => `<option value="${m}" ${Number(c.intervalo_min || 60) === m ? 'selected' : ''}>${m < 60 ? `${m} min` : `${m / 60} h`}</option>`).join('')}</select></label>
           <label>Das (hora)<input id="wmsHoraIni" type="number" min="0" max="23" value="${c.hora_inicio ?? 7}" style="display:block; width:100%; margin-top:3px;"></label>
           <label>Até (hora)<input id="wmsHoraFim" type="number" min="1" max="24" value="${c.hora_fim ?? 19}" style="display:block; width:100%; margin-top:3px;"></label>
-          <label>Dias para trás<input id="wmsDias" type="number" min="1" max="31" value="${c.dias ?? 7}" style="display:block; width:100%; margin-top:3px;"></label></div>
-        <p style="font-size:12px; color:var(--texto-fraco); margin:6px 0 0;">Uma busca por período (Data Inicial da expedição) na tela Expedição Mercadorias, como uma pessoa clicando em Buscar. Depois de uma falha, espera o dobro do intervalo.
+          <label>Dias para trás<input id="wmsDias" type="number" min="1" max="31" value="${c.dias ?? 7}" style="display:block; width:100%; margin-top:3px;"></label>
+          <label title="Depois da busca por período, quantos pedidos procurar pela Carga em cada rodada (os sem dados do WMS ou não finalizados)">Por carga (máx.)<input id="wmsPorCarga" type="number" min="0" max="200" value="${c.por_carga_max ?? 40}" style="display:block; width:100%; margin-top:3px;"></label></div>
+        <p style="font-size:12px; color:var(--texto-fraco); margin:6px 0 0;">Uma busca por período (Data Inicial da expedição) na tela Expedição Mercadorias e, depois, os pedidos que ela não trouxe (sem dados do WMS ou não finalizados) procurados pela Carga, um por vez, até o máximo por rodada. Depois de uma falha, espera o dobro do intervalo.
           ${c.ultima_consulta_em ? `Última consulta: ${dh(c.ultima_consulta_em)} — ${c.ultima_consulta_ok ? 'ok' : 'falhou'}: ${esc(c.ultima_consulta_msg || '')}` : ''}</p>
         <button class="btn btn-secundario" id="wmsConsultar" style="width:auto; margin-top:8px;">⟳ Salvar e consultar agora</button></fieldset>
       <p style="font-size:12px; color:var(--texto-fraco);">A senha é guardada criptografada e não aparece de novo para ninguém.${c.ultimo_teste_em ? ` Último teste: ${dh(String(c.ultimo_teste_em).replace('T', ' '))} — ${c.ultimo_teste_ok ? 'respondeu' : 'falhou'}.` : ''}</p>
@@ -216,7 +217,7 @@
         <button class="btn btn-secundario" id="wmsTestarTela" style="width:auto;" title="Faz o login no WMS e abre a tela Expedição Mercadorias">🔐 Testar login e tela de expedição</button></div>
       <div id="wmsRes" style="margin-top:12px;"></div>`;
     const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value, url_expedicao: $('wmsTela').value,
-      ativo: $('wmsAtivo').checked, intervalo_min: $('wmsIntervalo').value, hora_inicio: $('wmsHoraIni').value, hora_fim: $('wmsHoraFim').value, dias: $('wmsDias').value }) });
+      ativo: $('wmsAtivo').checked, intervalo_min: $('wmsIntervalo').value, hora_inicio: $('wmsHoraIni').value, hora_fim: $('wmsHoraFim').value, dias: $('wmsDias').value, por_carga_max: $('wmsPorCarga').value }) });
     $('wmsSalvar').addEventListener('click', async () => { try { await salvar(); $('wmsSenha').value = ''; mostrarAlerta('Ligação com o WMS salva.', { tipo: 'sucesso' }); } catch (e) { erro(e); } });
     const testarCom = (caminho, msgOk, msgErro) => async () => {
       const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Testando a partir do servidor...</p>';

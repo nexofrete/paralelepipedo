@@ -13,7 +13,7 @@ const falha = (m, status = 400) => Object.assign(new Error(m), { status });
 const LIMITE_BYTES = 3 * 1024 * 1024;
 
 async function config() {
-  const { rows } = await pool.query(`SELECT url, url_expedicao, usuario, (senha IS NOT NULL) AS tem_senha, atualizado_em, ultimo_teste_em, ultimo_teste_ok, ativo, intervalo_min, hora_inicio, hora_fim, dias,
+  const { rows } = await pool.query(`SELECT url, url_expedicao, usuario, (senha IS NOT NULL) AS tem_senha, atualizado_em, ultimo_teste_em, ultimo_teste_ok, ativo, intervalo_min, hora_inicio, hora_fim, dias, por_carga_max,
       to_char(ultima_consulta_em, 'YYYY-MM-DD HH24:MI') AS ultima_consulta_em, ultima_consulta_ok, ultima_consulta_msg FROM wms_config WHERE id = 1`);
   return rows[0] || { url: '', url_expedicao: '', usuario: '', tem_senha: false };
 }
@@ -34,8 +34,8 @@ async function salvarConfig(b = {}) {
     ON CONFLICT (id) DO UPDATE SET url = $1, usuario = $2, senha = COALESCE($3, wms_config.senha), url_expedicao = $4, atualizado_em = NOW()`, [url, usuario, senha, tela]);
   if (b.ativo !== undefined) {
     const n = (v, min, max, pad) => { const x = parseInt(v, 10); return Number.isFinite(x) ? Math.min(Math.max(x, min), max) : pad; };
-    await pool.query('UPDATE wms_config SET ativo = $1, intervalo_min = $2, hora_inicio = $3, hora_fim = $4, dias = $5 WHERE id = 1',
-      [!!b.ativo, n(b.intervalo_min, 15, 720, 60), n(b.hora_inicio, 0, 23, 7), n(b.hora_fim, 1, 24, 19), n(b.dias, 1, 31, 7)]);
+    await pool.query('UPDATE wms_config SET ativo = $1, intervalo_min = $2, hora_inicio = $3, hora_fim = $4, dias = $5, por_carga_max = $6 WHERE id = 1',
+      [!!b.ativo, n(b.intervalo_min, 15, 720, 60), n(b.hora_inicio, 0, 23, 7), n(b.hora_fim, 1, 24, 19), n(b.dias, 1, 31, 7), n(b.por_carga_max, 0, 200, 40)]);
   }
   return config();
 }
@@ -318,16 +318,43 @@ function paraPedidos(linhas) {
 
 const dataBr = (d) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
 // Endereço da busca: o da tela copiada do navegador, com o período trocado e os outros filtros limpos.
-function urlBusca(c, de, ate) {
+function urlBusca(c, de, ate, carga = null) {
   const base = new URL(c.url_expedicao || '/expedicao?submit=Buscar&control=roll', c.url);
   const u = new URL(base.pathname, base);
   const p = new URLSearchParams(base.search);
   for (const k of ['idExpedicao', 'dataFinal1', 'dataFinal2', 'status', 'codCargaExterno', 'placa', 'pedido', 'produto']) p.set(k, '');
   p.set('submit', p.get('submit') || 'Buscar'); p.set('control', p.get('control') || 'roll');
-  p.set('dataInicial1', dataBr(de)); p.set('dataInicial2', dataBr(ate));
+  // Por carga (= pedido): sem período, como a busca feita à mão na tela.
+  if (carga) { p.set('codCargaExterno', String(carga)); p.set('dataInicial1', ''); p.set('dataInicial2', ''); } else { p.set('dataInicial1', dataBr(de)); p.set('dataInicial2', dataBr(ate)); }
   u.search = p.toString();
   return u.toString();
 }
+
+// Pedidos do Nexofrete (últimos 60 dias) que a busca por período não trouxe: sem dados do WMS ou ainda não
+// finalizados. A busca por período pode vir só com a 1ª página do WMS e não pega expedição que começou antes do
+// período; por isso, depois dela, consulta carga por carga, no máximo "por_carga_max" por rodada. Quem foi consultado
+// há pouco fica de fora (2 h se achou, 12 h se o WMS não tinha a carga), e os mais novos vêm primeiro.
+async function cargasParaConsultar(jaVieram, limite) {
+  if (limite <= 0) return [];
+  const { rows } = await pool.query(`WITH ped AS (
+      SELECT numero_pedido AS p, MAX(COALESCE(data_pedido, data_emissao_nf, criado_em::date)) AS d FROM fretes
+       WHERE frete_principal_id IS NULL AND numero_pedido ~ '^[0-9]+$' AND data_entrega IS NULL
+         AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Arquivado') AND COALESCE(data_pedido, data_emissao_nf, criado_em::date) >= CURRENT_DATE - 60
+       GROUP BY numero_pedido
+      UNION ALL
+      SELECT numero_pedido, recebido_em::date FROM erp_pendentes WHERE numero_pedido ~ '^[0-9]+$' AND recebido_em >= NOW() - INTERVAL '60 days')
+    SELECT ped.p FROM ped
+      LEFT JOIN pedidos_wms w ON w.numero_pedido = ped.p
+      LEFT JOIN wms_cargas_consultadas k ON k.numero_pedido = ped.p
+     WHERE NOT (ped.p = ANY($1::text[]))
+       AND COALESCE(w.status, '') !~* '^(FINALIZADO|CANCELAD)'
+       AND (k.consultado_em IS NULL OR k.consultado_em < NOW() - CASE WHEN k.achado THEN INTERVAL '2 hours' ELSE INTERVAL '12 hours' END)
+     GROUP BY ped.p, (w.numero_pedido IS NULL), k.consultado_em
+     ORDER BY (w.numero_pedido IS NULL) DESC, k.consultado_em NULLS FIRST, MAX(ped.d) DESC
+     LIMIT $2`, [[...jaVieram], limite]);
+  return rows.map((r) => r.p);
+}
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let consultando = false;
 // Faz o login, busca as expedições dos últimos N dias (pela Data Inicial) e grava em pedidos_wms.
@@ -350,10 +377,27 @@ async function consultar({ origem = 'manual' } = {}) {
     const pedidos = paraPedidos(g.linhas);
     const gravados = await require('./pedidosWms').gravar(pedidos, 'wms');
     const incompleto = g.total != null && g.total > g.linhas.length;
-    const msg = `${g.linhas.length} expedição(ões) de ${dataBr(de)} a ${dataBr(hoje)}, ${pedidos.length} pedido(s) atualizados`
-      + `${incompleto ? `. ATENÇÃO: o WMS diz ${g.total} registros e vieram ${g.linhas.length} (a tela pode estar paginando)` : ''} (${origem}, ${Math.round((Date.now() - inicio) / 100) / 10} s)`;
-    await registrar(true, msg, pedidos.length);
-    return { ok: true, expedicoes: g.linhas.length, pedidos: pedidos.length, gravados, total_wms: g.total, incompleto, msg };
+    // Complemento carga por carga (os que a busca por período não trouxe).
+    const porCarga = { consultadas: 0, achadas: 0, pedidos: 0 };
+    const lista = await cargasParaConsultar(new Set(pedidos.map((x) => x.numero_pedido)), Math.min(Math.max(Number(c.por_carga_max ?? 40), 0), 200));
+    for (const carga of lista) {
+      await esperar(700);   // sem rajada: uma busca por vez, como uma pessoa
+      const r = await sessao.pedir(urlBusca(c, null, null, carga), { timeout: 30000 });
+      if (temSenha(r.corpo)) break;
+      const gc = lerGrid(r.corpo);
+      const ps = paraPedidos(gc.linhas);
+      if (ps.length) await require('./pedidosWms').gravar(ps, 'wms');
+      const achou = ps.some((x) => x.numero_pedido === carga);
+      await pool.query(`INSERT INTO wms_cargas_consultadas (numero_pedido, consultado_em, achado) VALUES ($1, NOW(), $2)
+        ON CONFLICT (numero_pedido) DO UPDATE SET consultado_em = NOW(), achado = $2`, [carga, achou]);
+      porCarga.consultadas += 1; if (achou) porCarga.achadas += 1; porCarga.pedidos += ps.length;
+    }
+    const total = pedidos.length + porCarga.pedidos;
+    const msg = `${g.linhas.length} expedição(ões) de ${dataBr(de)} a ${dataBr(hoje)}${incompleto ? ` (o WMS diz ${g.total}; vieram ${g.linhas.length})` : ''}`
+      + `${porCarga.consultadas ? `; ${porCarga.consultadas} pedido(s) consultados pela carga, ${porCarga.achadas} achado(s) no WMS` : ''}; ${total} pedido(s) atualizados`
+      + ` (${origem}, ${Math.round((Date.now() - inicio) / 100) / 10} s)`;
+    await registrar(true, msg, total);
+    return { ok: true, expedicoes: g.linhas.length, pedidos: total, gravados, total_wms: g.total, incompleto, por_carga: porCarga, msg };
   } catch (e) {
     await registrar(false, e.message);
     throw e;

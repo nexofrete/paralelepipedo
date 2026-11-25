@@ -940,6 +940,13 @@ ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS itinerario VARCHAR(120);
 ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS expedicao_fim TIMESTAMP;
 ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS conferencia_pct NUMERIC(6,2);
 ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS imprimir BOOLEAN;
+-- Consulta carga por carga no WMS (complemento da busca por período): quando cada pedido foi procurado e se o WMS tinha.
+CREATE TABLE IF NOT EXISTS wms_cargas_consultadas (
+    numero_pedido VARCHAR(50) PRIMARY KEY,
+    consultado_em TIMESTAMP NOT NULL DEFAULT NOW(),
+    achado        BOOLEAN NOT NULL DEFAULT FALSE
+);
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS por_carga_max INTEGER NOT NULL DEFAULT 40;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

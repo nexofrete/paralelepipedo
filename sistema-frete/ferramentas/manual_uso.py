@@ -613,7 +613,12 @@ def parte_uso(g):
         'escolha o intervalo (30 min a 4 h; comece com 1 h), o horário (das/até) e quantos dias para trás olhar. A cada intervalo o Nexofrete '
         'faz o login e <b>uma busca por período</b> (Data Inicial da expedição), como uma pessoa clicando em Buscar, e grava em cada pedido: '
         'status do WMS, % de conferência, número da expedição, tipo, placa, motorista, itinerário, data inicial e final. Depois de uma falha, '
-        'espera o dobro do intervalo. Desmarcar Ligada pausa na hora. Expedição iniciada antes do período escolhido não é mais atualizada.',
+        'espera o dobro do intervalo. Desmarcar Ligada pausa na hora.',
+        '<b>Pedidos procurados pela Carga</b>: a busca por período pode trazer só a primeira página do WMS e não pega expedição que começou '
+        'antes do período. Por isso, depois dela, o Nexofrete procura pela Carga, um de cada vez, os pedidos dos últimos 60 dias que ainda '
+        'estão sem dados do WMS ou não estão finalizados, até o máximo por rodada (campo <b>Por carga (máx.)</b>, padrão 40; 0 desliga). Quem '
+        'foi procurado há pouco fica para a próxima rodada (2 horas se o WMS tinha a carga, 12 horas se não tinha), e pedido FINALIZADO ou '
+        'CANCELADO não é mais procurado. A mensagem da consulta diz quantos foram procurados e achados.',
         '<b>Pausar integração</b>: na tela Pedidos, ao lado da linha do WMS (quem edita registros). Depois de confirmar, o Nexofrete para na '
         'hora de consultar o WMS: nem a consulta automática nem o botão Atualizar do WMS falam com ele, e a linha mostra "integração pausada". '
         '<b>Retomar integração</b> volta a consultar no intervalo configurado. Cada pausa e retomada fica na auditoria. O teste da janela '

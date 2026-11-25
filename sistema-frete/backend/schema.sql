@@ -920,6 +920,7 @@ CREATE TABLE IF NOT EXISTS wms_config (
     ultimo_teste_em TIMESTAMP,
     ultimo_teste_ok BOOLEAN
 );
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS url_expedicao VARCHAR(500);
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

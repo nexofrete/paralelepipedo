@@ -124,24 +124,29 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <label style="display:block; font-size:13px; margin-top:8px;">Usuário<input style="display:block; width:100%; margin-top:3px;" id="wmsUsuario" value="${esc(c.usuario || '')}" autocomplete="off"></label>
         <label style="display:block; font-size:13px; margin-top:8px;">Senha<input style="display:block; width:100%; margin-top:3px;" id="wmsSenha" type="password" autocomplete="new-password" placeholder="${c.tem_senha ? 'senha cadastrada (deixe em branco para manter)' : ''}"></label></div>
+      <label style="display:block; font-size:13px; margin-top:8px;">Endereço da tela Expedição Mercadorias <small style="color:var(--texto-fraco);">(no navegador, abra a tela, busque uma Carga e copie o endereço da barra)</small>
+        <input style="display:block; width:100%; margin-top:3px;" id="wmsTela" value="${esc(c.url_expedicao || '')}" placeholder="http://10.150.15.66/..."></label>
       <p style="font-size:12px; color:var(--texto-fraco);">A senha é guardada criptografada e não aparece de novo para ninguém.${c.ultimo_teste_em ? ` Último teste: ${dh(String(c.ultimo_teste_em).replace('T', ' '))} — ${c.ultimo_teste_ok ? 'respondeu' : 'falhou'}.` : ''}</p>
       <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primario" id="wmsSalvar" style="width:auto;">Salvar</button>
-        <button class="btn btn-secundario" id="wmsTestar" style="width:auto;">🔌 Salvar e testar conexão</button></div>
+        <button class="btn btn-secundario" id="wmsTestar" style="width:auto;">🔌 Salvar e testar conexão</button>
+        <button class="btn btn-secundario" id="wmsTestarTela" style="width:auto;" title="Faz o login no WMS e abre a tela Expedição Mercadorias">🔐 Testar login e tela de expedição</button></div>
       <div id="wmsRes" style="margin-top:12px;"></div>`;
-    const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value }) });
+    const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value, url_expedicao: $('wmsTela').value }) });
     $('wmsSalvar').addEventListener('click', async () => { try { await salvar(); $('wmsSenha').value = ''; mostrarAlerta('Ligação com o WMS salva.', { tipo: 'sucesso' }); } catch (e) { erro(e); } });
-    $('wmsTestar').addEventListener('click', async () => {
+    const testarCom = (caminho, msgOk, msgErro) => async () => {
       const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Testando a partir do servidor...</p>';
       try {
         await salvar(); $('wmsSenha').value = '';
-        const t = await pedir('/testar', { method: 'POST' });
-        res.innerHTML = `<p style="font-size:13px;">${t.ok ? '<span style="color:var(--verde);">✓ O servidor alcançou o WMS.</span>' : '<span style="color:var(--vermelho);">✗ O servidor não conseguiu abrir a página do WMS.</span>'}
+        const t = await pedir(caminho, { method: 'POST' });
+        res.innerHTML = `<p style="font-size:13px;">${t.ok ? `<span style="color:var(--verde);">✓ ${msgOk}</span>` : `<span style="color:var(--vermelho);">✗ ${msgErro}</span>`}
           Copie o diagnóstico abaixo e envie para quem está montando a integração (ele não tem senha nem dados).</p>
           <textarea id="wmsDiag" readonly style="width:100%; height:260px; font-family:monospace; font-size:11.5px;">${esc(t.texto)}</textarea>
           <button class="btn btn-secundario" id="wmsCopiar" style="width:auto; margin-top:6px;">📋 Copiar diagnóstico</button>`;
         $('wmsCopiar').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('wmsDiag').value); mostrarAlerta('Diagnóstico copiado.', { tipo: 'sucesso' }); } catch (e) { $('wmsDiag').select(); document.execCommand('copy'); } });
       } catch (e) { res.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${esc(e.message)}</p>`; }
-    });
+    };
+    $('wmsTestar').addEventListener('click', testarCom('/testar', 'O servidor alcançou o WMS.', 'O servidor não conseguiu abrir a página do WMS.'));
+    $('wmsTestarTela').addEventListener('click', testarCom('/testar-tela', 'Login feito e tela de expedição aberta.', 'Não consegui abrir a tela de expedição.'));
   }
 
   async function desenharPrenotas() {

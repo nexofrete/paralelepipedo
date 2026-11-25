@@ -16,4 +16,5 @@ router.put('/config', autenticar, soAdmin, rota(async (req) => {
   return r;
 }));
 router.post('/testar', autenticar, soAdmin, rota(() => wms.testar()));
+router.post('/testar-tela', autenticar, soAdmin, rota(() => wms.testarTela()));
 module.exports = router;

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { lerHtml, caminhosApi, montarTexto, urlValida } = require('../src/wms');
+const { lerHtml, caminhosApi, montarTexto, urlValida, descreverTela, textoTela } = require('../src/wms');
 
 test('lê o formulário de login sem pegar valores', () => {
   const h = lerHtml(`<html><head><title>WMS - Login</title></head><body>
@@ -25,4 +25,21 @@ test('endereço do WMS', () => {
   assert.strictEqual(urlValida(' http://10.150.15.66/auth/login '), 'http://10.150.15.66/auth/login');
   assert.throws(() => urlValida('10.150.15.66'), /inválido/);
   assert.throws(() => urlValida('ftp://10.0.0.1'), /http/);
+});
+
+test('descreve a tela de expedição sem os dados das linhas', () => {
+  const t = descreverTela(`<title>WMS - Imperium</title><form method="get" action="/wms/exp" id="f">
+    <label for="c">Carga:</label><input name="carga" id="c" value="217227"> Data Inicio: <input name="dt_de"> a <input name="dt_ate">
+    <select name="status"><option value="">Todos</option><option value="I">INTEGRADO</option></select><input type="submit" value="Buscar"></form>
+    <table><tr><th>Expedição</th><th>Cargas</th><th>Status</th></tr><tr><td>84472</td><td>217227</td><td>INTEGRADO</td></tr></table>
+    <button onclick="exportar()">Exportar</button>`);
+  assert.deepStrictEqual(t.formularios[0].campos.map((c) => c.nome), ['carga', 'dt_de', 'dt_ate', 'status', null]);
+  assert.strictEqual(t.formularios[0].campos[0].rotulo, 'Carga:');
+  assert.deepStrictEqual(t.formularios[0].campos[3].opcoes, ['=Todos', 'I=INTEGRADO']);
+  assert.strictEqual(t.formularios[0].campos[4].valor_botao, 'Buscar');
+  assert.deepStrictEqual(t.tabelas[0].titulos, ['Expedição', 'Cargas', 'Status']);
+  assert.strictEqual(t.tabelas[0].linhas, 1);
+  assert.strictEqual(t.exportar.length, 1);
+  const texto = textoTela(t, 'http://wms/exp', 'http://wms/home');
+  assert.ok(!/84472/.test(texto), 'o diagnóstico não leva os dados das linhas');
 });

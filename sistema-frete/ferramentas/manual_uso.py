@@ -606,7 +606,9 @@ def parte_uso(g):
         'WMS sozinho, só lendo. Use um usuário só de consulta criado para o Nexofrete. A senha fica criptografada e não aparece de novo. '
         '<b>Salvar e testar conexão</b> abre o WMS a partir do servidor (o WMS fica na rede da empresa) e mostra um <b>diagnóstico</b> da '
         'tela de login: nomes dos campos, tecnologia e caminhos de API, sem senha nem dados. Copie e envie para quem monta a integração. '
-        'A consulta automática dos pedidos entra numa próxima etapa.',
+        'Em <b>Endereço da tela Expedição Mercadorias</b>, cole o endereço da barra do navegador depois de buscar uma Carga: o botão '
+        '<b>Testar login e tela de expedição</b> faz o login no WMS (avisa se o usuário ou a senha não forem aceitos) e descreve a tela: '
+        'filtros, colunas da tabela e o botão Exportar, sem os dados das linhas. A consulta automática dos pedidos entra numa próxima etapa.',
         '<b>Situação</b>: Aguardando nota; Em separação (o WMS começou a separar); Separado (separação terminada, esperando a nota); '
         'Faturado (sem embarque nem coleta pedida); Em embarque; Coleta pedida; Coletado / em trânsito; Entregue; e Cancelado (no ERP, no '
         'WMS ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',

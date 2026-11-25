@@ -428,22 +428,23 @@ module.exports = function criar(h) {
     const { rows } = await consulta(req, `SELECT f.id, f.numero_nf, to_char(f.data_emissao_nf, 'YYYY-MM-DD') AS emissao, to_char(f.data_coleta, 'YYYY-MM-DD') AS coleta,
         f.numero_mapa, f.cliente, f.cidade, f.uf, COALESCE(f.transportadora_nfe, f.pre_nota->>'transportadora') AS transp_nf,
         f.mapa_transportadora AS transp_mapa, f.mapa_transportadora_cnpj, f.transportadora_cte AS transp_cte, f.transportadora_cnpj_cte, f.numero_cte,
-        to_char(f.data_entrega_prevista, 'YYYY-MM-DD') AS previsao
+        to_char(f.data_entrega_prevista, 'YYYY-MM-DD') AS previsao, (f.mapa_sem_tabela AND f.carga_direta IS NOT TRUE) AS sem_tabela
       FROM fretes f WHERE ${BASE} AND (f.mapa_transportadora IS NOT NULL OR f.mapa_transportadora_cnpj IS NOT NULL)
         AND COALESCE(f.data_coleta, f.data_emissao_nf) BETWEEN $1 AND $2${extra}
       ORDER BY COALESCE(f.data_coleta, f.data_emissao_nf) DESC, f.numero_nf DESC LIMIT 5001`, p);
     const linhas = rows.map((l) => ({
       ...l, destino: [l.cidade, l.uf].filter(Boolean).join('/'),
-      situacao: tm.situacao({ nf: { nome: l.transp_nf }, mapa: { nome: l.transp_mapa, cnpj: l.mapa_transportadora_cnpj }, cte: { nome: l.transp_cte, cnpj: l.transportadora_cnpj_cte } }),
+      situacao: tm.situacao({ nf: { nome: l.transp_nf }, mapa: { nome: l.transp_mapa, cnpj: l.mapa_transportadora_cnpj }, cte: { nome: l.transp_cte, cnpj: l.transportadora_cnpj_cte } })
+        + (l.sem_tabela ? ' · sem tabela: carga direta?' : ''),
     }));
-    const qs = (t) => conta(linhas, (l) => l.situacao === t);
+    const qs = (t) => conta(linhas, (l) => l.situacao.split(' · ')[0] === t);
     return {
       colunas: [['numero_nf', 'NF'], ['situacao', 'Situação'], ['coleta', 'Coleta', 'data'], ['numero_mapa', 'Mapa'], ['cliente', 'Cliente'], ['destino', 'Destino'],
         ['transp_nf', 'Na NF-e'], ['transp_mapa', 'Coletou (mapa)'], ['transp_cte', 'No CT-e'], ['previsao', 'Previsão', 'data']],
       linhas,
       resumo: [['Notas com mapa', linhas.length], ['CT-e de outra transportadora', qs('CT-e de outra transportadora')],
         ['Saiu por outra (NF-e ≠ mapa)', conta(linhas, (l) => l.situacao.startsWith('Saiu por outra'))], ['Aguardando CT-e', conta(linhas, (l) => /aguardando CT-e/i.test(l.situacao))],
-        ['Confere', qs('Confere')]],
+        ['Confere', qs('Confere')], ['Sem tabela: carga direta?', conta(linhas, (l) => l.sem_tabela)]],
     };
   }
 

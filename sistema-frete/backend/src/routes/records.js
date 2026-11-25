@@ -551,6 +551,7 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
         `SELECT f.id, f.numero_pedido, f.numero_nf, f.numero_cte, f.chave_nfe, f.chave_cte, f.cliente, f.cidade, f.uf,
                 ${LEVA('f.')} AS transportadora, f.transportadora_cte,
                 (f.mapa_transportadora IS NOT NULL OR f.mapa_transportadora_cnpj IS NOT NULL) AS pelo_mapa,
+                (f.mapa_sem_tabela AND f.carga_direta IS NOT TRUE) AS mapa_sem_tabela,
                 (SELECT t.url_rastreamento FROM transportadoras t
                    WHERE LOWER(TRIM(t.razao_social)) = LOWER(TRIM(${LEVA('f.')}))
                    LIMIT 1) AS url_rastreamento,

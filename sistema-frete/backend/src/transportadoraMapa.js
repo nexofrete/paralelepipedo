@@ -85,7 +85,10 @@ async function prazoPeloMapa(freteId) {
   const { rows: [f] } = await pool.query('SELECT * FROM fretes WHERE id = $1', [freteId]);
   if (!f || f.frete_principal_id || !(f.mapa_transportadora || f.mapa_transportadora_cnpj)) return null;
   const doMapa = { nome: f.mapa_transportadora, cnpj: f.mapa_transportadora_cnpj };
-  if (f.chave_cte && mesma(doMapa, { nome: f.transportadora_cte, cnpj: f.transportadora_cnpj_cte }) !== false) return null;
+  // Sem tabela da transportadora do mapa para o destino: só avisa ("sem tabela: carga direta?");
+  // uma pessoa marca a Carga Direta. O prazo fica o que já estava (o do CT-e).
+  const marcar = (v) => pool.query('UPDATE fretes SET mapa_sem_tabela = $1 WHERE id = $2 AND mapa_sem_tabela IS DISTINCT FROM $1', [v, freteId]);
+  if (f.chave_cte && mesma(doMapa, { nome: f.transportadora_cte, cnpj: f.transportadora_cnpj_cte }) !== false) { await marcar(false); return null; }
   const calc = require('./calculoFrete');
   let r;
   try {
@@ -95,8 +98,10 @@ async function prazoPeloMapa(freteId) {
       qtdVolumes: f.qtd_volumes, pesoKg: f.peso_kg, cubagemM3: f.cubagem_m3, valorFaturado: f.valor_faturado,
       registro: f, xmlNfe: f.xml_nfe_original, redespachoCnpj: f.redespacho_cnpj,
     });
-  } catch (e) { return null; }
-  const prazo = r && !r.erro ? calc.prazoDoTrecho(r.trecho) : null;
+  } catch (e) { r = { erro: e.message }; }
+  if (r?.erro) { await marcar(true); return null; }
+  await marcar(false);
+  const prazo = calc.prazoDoTrecho(r.trecho);
   if (prazo == null) return null;
   await pool.query('UPDATE fretes SET prazo_dias_tabela = $1 WHERE id = $2 AND prazo_dias_tabela IS DISTINCT FROM $1', [prazo, freteId]);
   return prazo;

@@ -1245,6 +1245,8 @@ ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_ajudante VARCHAR(150);
 -- (a da NF-e fica em transportadora_nfe), dá o prazo antes do CT-e e é comparada com a do CT-e.
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_transportadora VARCHAR(200);
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_transportadora_cnpj VARCHAR(14);
+-- A transportadora do mapa não tem tabela para o destino: aviso "sem tabela: carga direta?" (não marca sozinho).
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_sem_tabela BOOLEAN NOT NULL DEFAULT FALSE;
 -- Nota de entrada / devolução (não sai do estoque como venda): marcada pra ficar fora do relatório de notas sem mapa.
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_entrada BOOLEAN NOT NULL DEFAULT FALSE;
 UPDATE fretes SET nf_entrada = TRUE

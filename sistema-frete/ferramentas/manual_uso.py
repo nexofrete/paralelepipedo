@@ -309,6 +309,9 @@ def parte_uso(g):
         'continua conferido pelo CT-e, mas o prazo segue o de quem coletou. CT-e da mesma transportadora: vale o cálculo do CT-e.',
         '<b>Entregas a acompanhar</b> mostra a transportadora que coletou, com a linha "coletou (mapa)" e, se o CT-e for de '
         'outra, "CT-e: nome". O Conferir no portal (Central de Canhotos da LD Rio) também procura as notas que ela coletou.',
+        '<b>Sem tabela: carga direta?</b> Quando a transportadora que coletou não tem tabela de preço para o destino (caso típico '
+        'de carga direta), a nota ganha esse aviso em Entregas a acompanhar e no relatório 106. O sistema <b>não marca</b> nada '
+        'sozinho e o prazo continua o do CT-e: se foi carga direta, marque <b>Carga Direta</b> no registro e o aviso some.',
         '<b>Comparação com o CT-e</b>: CT-e de outra transportadora que não a do mapa aparece em NF-e x CT-e, inconsistências, como '
         '"Transportadora do mapa x CT-e diferente", e no relatório <b>106 · Transportadora do mapa x NF-e x CT-e</b>.',
         'Na exportação atual do ERP as colunas do fim vêm deslocadas uma casa (a transportadora em DS_MAPA_CARREGAMENTO, o '

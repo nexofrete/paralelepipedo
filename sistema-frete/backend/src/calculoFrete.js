@@ -633,6 +633,8 @@ async function calcularEGravar(id, origem = 'importacao') {
   );
   // A reposição é conferida contra esse cálculo: atualiza os CT-e a mais da nota.
   await require('./ctesVinculados').recalcularFilhos(id).catch(() => {});
+  // Coletou outra transportadora (mapa de carregamento): o frete é do CT-e, o prazo é de quem leva.
+  await require('./transportadoraMapa').prazoPeloMapa(id).catch(() => null);
   return { ok: true };
 }
 

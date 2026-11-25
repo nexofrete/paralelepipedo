@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Entregas", "texto": "Nota com CT-e de uma transportadora e mapa de carregamento de outra: Entregas a acompanhar mostra quem coletou (\"coletou (mapa) · CT-e: ...\"), a previsão de entrega segue o prazo da tabela de quem coletou e o Conferir no portal da LD Rio também procura essas notas. O frete continua conferido pelo CT-e."},
         {"area": "Importação", "texto": "Transportadora do mapa (TRANSPORTADORA_MAPA da Timeline de pedidos): quem de fato coletou passa a ser a transportadora da nota, mesmo que a NF-e cite outra; com a data da coleta e o prazo da tabela dela, a nota já tem previsão de entrega antes do CT-e; e o CT-e de outra transportadora aparece nas inconsistências NF-e x CT-e e no novo relatório 106 (Transportadora do mapa x NF-e x CT-e)."},
         {"area": "Importação", "texto": "O mapa de carregamento agora vem na planilha do ERP (Timeline de pedidos): número, descrição, data de referência e 1º ajudante do mapa entram junto com o pedido, e a data do mapa vira a Data da Coleta. A importação separada do mapa de carregamento saiu da tela Enviar XML."},
         {"area": "Correção", "texto": "CT-e que chegou antes da nota não ficava mais preso quando a nota tinha valor muito baixo (remessa, amostra): o % do frete sobre a nota passava de 999% e a gravação falhava (\"estouro de campo numeric\"), travando a junção de todos os outros CT-e. O campo agora aceita valores maiores e um CT-e com problema não impede os demais."},

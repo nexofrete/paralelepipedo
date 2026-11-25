@@ -304,8 +304,11 @@ def parte_uso(g):
         '<b>Vira a transportadora da nota</b> quando é outra empresa (pelo CNPJ que vem junto do nome; o nome usado é o do cadastro '
         'de transportadoras). A da NF-e continua guardada e aparece no relatório 106. Se for a mesma empresa escrita de outro '
         'jeito ("TRAS LTDA" x "TRANSPORTES LTDA"), nada muda.',
-        '<b>Previsão de entrega antes do CT-e</b>: com a Data da Coleta do mapa e o prazo da tabela de preço da transportadora '
-        'que coletou, a nota já ganha a Data Prevista de Entrega. Quando o CT-e chega, vale o cálculo pelo CT-e.',
+        '<b>Previsão de entrega pela transportadora que coletou</b>: com a Data da Coleta do mapa e o prazo da tabela de preço '
+        'dela, a nota já ganha a Data Prevista de Entrega antes do CT-e. Se o CT-e vier de <b>outra</b> transportadora, o frete '
+        'continua conferido pelo CT-e, mas o prazo segue o de quem coletou. CT-e da mesma transportadora: vale o cálculo do CT-e.',
+        '<b>Entregas a acompanhar</b> mostra a transportadora que coletou, com a linha "coletou (mapa)" e, se o CT-e for de '
+        'outra, "CT-e: nome". O Conferir no portal (Central de Canhotos da LD Rio) também procura as notas que ela coletou.',
         '<b>Comparação com o CT-e</b>: CT-e de outra transportadora que não a do mapa aparece em NF-e x CT-e, inconsistências, como '
         '"Transportadora do mapa x CT-e diferente", e no relatório <b>106 · Transportadora do mapa x NF-e x CT-e</b>.',
         'Na exportação atual do ERP as colunas do fim vêm deslocadas uma casa (a transportadora em DS_MAPA_CARREGAMENTO, o '

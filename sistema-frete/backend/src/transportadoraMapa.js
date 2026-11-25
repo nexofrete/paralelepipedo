@@ -14,7 +14,7 @@ function separar(valor) {
   if (!t) return { nome: null, cnpj: null };
   const m = t.match(/C\.?\s*N\.?\s*P\.?\s*J\.?\s*[:\-]?\s*([\d./\-\s]{14,20})/i);
   const cnpj = m && dig(m[1]).length === 14 ? dig(m[1]) : null;
-  const nome = texto((m ? t.slice(0, m.index) : t).replace(/[\s\-–:;,/]+$/, ''));
+  const nome = texto((m ? t.slice(0, m.index) : t).replace(/[\s\-–:;,./]+$/, ''));
   return { nome, cnpj };
 }
 
@@ -77,11 +77,15 @@ async function nomeDoCadastro(cnpj, cliente = pool) {
   return rows[0]?.razao_social || null;
 }
 
-// Prazo da tabela da transportadora do mapa (antes do CT-e): com a Data da Coleta, o trigger
-// calcula a Data Prevista de Entrega. Quando o CT-e chega, o cálculo dele assume.
+// Prazo da tabela da transportadora do mapa: com a Data da Coleta, o trigger calcula a Data
+// Prevista de Entrega. Vale antes do CT-e e também quando o CT-e é de outra transportadora (o
+// frete é conferido pelo CT-e, mas quem leva a mercadoria é quem coletou). CT-e da mesma
+// transportadora do mapa: fica o prazo do cálculo do CT-e.
 async function prazoPeloMapa(freteId) {
   const { rows: [f] } = await pool.query('SELECT * FROM fretes WHERE id = $1', [freteId]);
-  if (!f || f.chave_cte || f.frete_principal_id || !(f.mapa_transportadora || f.mapa_transportadora_cnpj)) return null;
+  if (!f || f.frete_principal_id || !(f.mapa_transportadora || f.mapa_transportadora_cnpj)) return null;
+  const doMapa = { nome: f.mapa_transportadora, cnpj: f.mapa_transportadora_cnpj };
+  if (f.chave_cte && mesma(doMapa, { nome: f.transportadora_cte, cnpj: f.transportadora_cnpj_cte }) !== false) return null;
   const calc = require('./calculoFrete');
   let r;
   try {
@@ -94,7 +98,7 @@ async function prazoPeloMapa(freteId) {
   } catch (e) { return null; }
   const prazo = r && !r.erro ? calc.prazoDoTrecho(r.trecho) : null;
   if (prazo == null) return null;
-  await pool.query('UPDATE fretes SET prazo_dias_tabela = $1 WHERE id = $2 AND chave_cte IS NULL AND prazo_dias_tabela IS DISTINCT FROM $1', [prazo, freteId]);
+  await pool.query('UPDATE fretes SET prazo_dias_tabela = $1 WHERE id = $2 AND prazo_dias_tabela IS DISTINCT FROM $1', [prazo, freteId]);
   return prazo;
 }
 

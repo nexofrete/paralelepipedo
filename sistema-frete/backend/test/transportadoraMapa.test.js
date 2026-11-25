@@ -5,6 +5,7 @@ const { separar, lerMapaDaLinha, mesma, situacao } = require('../src/transportad
 test('separa o nome e o CNPJ da transportadora do mapa', () => {
   assert.deepStrictEqual(separar('ANDRADE E ABREU TRAS LTDA CNPJ:09.318.444/0002-25'), { nome: 'ANDRADE E ABREU TRAS LTDA', cnpj: '09318444000225' });
   assert.deepStrictEqual(separar('TRANSP XYZ - CNPJ 12345678000190'), { nome: 'TRANSP XYZ', cnpj: '12345678000190' });
+  assert.deepStrictEqual(separar('LD RIO PIZZO Transportes.CNPJ.59.286.667/0001-45'), { nome: 'LD RIO PIZZO Transportes', cnpj: '59286667000145' });
   assert.deepStrictEqual(separar('RODONAVES'), { nome: 'RODONAVES', cnpj: null });
   assert.deepStrictEqual(separar(''), { nome: null, cnpj: null });
 });

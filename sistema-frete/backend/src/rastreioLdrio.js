@@ -157,12 +157,17 @@ async function notasEmAberto(t) {
   const { rows } = await pool.query(
     `SELECT f.id, f.numero_nf, f.numero_cte, f.chave_nfe, f.data_emissao_cte, f.data_coleta, COALESCE(f.data_emissao_cte, f.criado_em::date) AS referencia
        FROM fretes f
-      WHERE f.frete_principal_id IS NULL AND f.data_entrega IS NULL AND f.chave_cte IS NOT NULL AND (f.numero_nf IS NOT NULL OR f.chave_nfe IS NOT NULL)
+      WHERE f.frete_principal_id IS NULL AND f.data_entrega IS NULL AND (f.numero_nf IS NOT NULL OR f.chave_nfe IS NOT NULL)
+        AND (f.chave_cte IS NOT NULL OR f.mapa_transportadora_cnpj IS NOT NULL OR f.mapa_transportadora IS NOT NULL)
         AND COALESCE(f.status, 'Pendente') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado') AND f.nf_cancelada IS NOT TRUE AND f.nf_devolvida IS NOT TRUE AND f.nf_retornou IS NOT TRUE
         AND COALESCE(f.data_emissao_cte, f.criado_em::date) >= CURRENT_DATE - 120
         AND ((LENGTH(REGEXP_REPLACE(COALESCE($2, ''), '[^0-9]', '', 'g')) = 14
               AND LEFT(REGEXP_REPLACE($2, '[^0-9]', '', 'g'), 8) = LEFT(REGEXP_REPLACE(COALESCE(f.transportadora_cnpj_cte, ''), '[^0-9]', '', 'g'), 8))
-          OR LOWER(TRIM($1)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora))))`,
+          OR LOWER(TRIM($1)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora)))
+          -- Coletou pelo mapa de carregamento (TRANSPORTADORA_MAPA), mesmo com CT-e de outra transportadora.
+          OR (LENGTH(REGEXP_REPLACE(COALESCE($2, ''), '[^0-9]', '', 'g')) = 14
+              AND LEFT(REGEXP_REPLACE($2, '[^0-9]', '', 'g'), 8) = LEFT(COALESCE(f.mapa_transportadora_cnpj, ''), 8))
+          OR ((f.mapa_transportadora IS NOT NULL OR f.mapa_transportadora_cnpj IS NOT NULL) AND LOWER(TRIM($1)) = LOWER(TRIM(f.transportadora))))`,
     [t.razao_social, t.cnpj]);
   return rows;
 }

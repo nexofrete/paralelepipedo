@@ -519,6 +519,11 @@ router.get('/relatorios/cidades', autenticar, permitirAlguma('pode_ver_relatorio
 // (Coleta ou CT-e + prazo do trecho): atrasados, hoje, próximos dias.
 router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ver_relatorios'), async (req, res) => {
   // Nota cancelada não tem entrega a acompanhar.
+  // Quem leva a mercadoria: com mapa de carregamento, a transportadora que coletou (fretes.transportadora
+  // já é ela; src/transportadoraMapa.js); sem mapa, a do CT-e.
+  const LEVA = (a = '') => `CASE WHEN ${a}mapa_transportadora IS NOT NULL OR ${a}mapa_transportadora_cnpj IS NOT NULL
+    THEN COALESCE(${a}transportadora, ${a}transportadora_cte) ELSE COALESCE(${a}transportadora_cte, ${a}transportadora) END`;
+  const CNPJ_LEVA = (a = '') => `REGEXP_REPLACE(COALESCE(${a}mapa_transportadora_cnpj, ${a}transportadora_cnpj_cte, ''), '[^0-9]', '', 'g')`;
   const ABERTO = `data_entrega IS NULL AND nf_cancelada IS NOT TRUE AND nf_devolvida IS NOT TRUE AND nf_retornou IS NOT TRUE AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Não cobrado', 'Arquivado')`;
   try {
     const [{ rows: resumo }, { rows: porTransp }, { rows: porDia }, { rows: lista }, { rows: slaMes }] = await Promise.all([
@@ -533,7 +538,7 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
            COUNT(*) FILTER (WHERE data_entrega_prevista < CURRENT_DATE - 30)::int AS atrasadas_30
          FROM fretes WHERE ${ABERTO}`),
       consultaCliente(req,
-        `SELECT COALESCE(transportadora_cte, transportadora, 'Sem transportadora') AS transportadora,
+        `SELECT COALESCE(${LEVA()}, 'Sem transportadora') AS transportadora,
                 COUNT(*)::int AS qtd, MAX(CURRENT_DATE - data_entrega_prevista)::int AS maior_atraso
            FROM fretes WHERE ${ABERTO} AND data_entrega_prevista < CURRENT_DATE
           GROUP BY 1 ORDER BY qtd DESC, maior_atraso DESC LIMIT 10`),
@@ -544,16 +549,17 @@ router.get('/relatorios/entregas-previstas', autenticar, permitirAlguma('pode_ve
           ORDER BY d`),
       consultaCliente(req,
         `SELECT f.id, f.numero_pedido, f.numero_nf, f.numero_cte, f.chave_nfe, f.chave_cte, f.cliente, f.cidade, f.uf,
-                COALESCE(f.transportadora_cte, f.transportadora) AS transportadora,
+                ${LEVA('f.')} AS transportadora, f.transportadora_cte,
+                (f.mapa_transportadora IS NOT NULL OR f.mapa_transportadora_cnpj IS NOT NULL) AS pelo_mapa,
                 (SELECT t.url_rastreamento FROM transportadoras t
-                   WHERE LOWER(TRIM(t.razao_social)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora)))
+                   WHERE LOWER(TRIM(t.razao_social)) = LOWER(TRIM(${LEVA('f.')}))
                    LIMIT 1) AS url_rastreamento,
                 EXISTS (SELECT 1 FROM transportadoras t WHERE t.portal_tipo = 'ldrio' AND t.portal_usuario IS NOT NULL AND t.portal_senha IS NOT NULL
                   AND ((LENGTH(REGEXP_REPLACE(COALESCE(t.cnpj, ''), '[^0-9]', '', 'g')) = 14
-                        AND LEFT(REGEXP_REPLACE(t.cnpj, '[^0-9]', '', 'g'), 8) = LEFT(REGEXP_REPLACE(COALESCE(f.transportadora_cnpj_cte, ''), '[^0-9]', '', 'g'), 8))
-                    OR LOWER(TRIM(t.razao_social)) = LOWER(TRIM(COALESCE(f.transportadora_cte, f.transportadora))))) AS portal_canhotos,
+                        AND LEFT(REGEXP_REPLACE(t.cnpj, '[^0-9]', '', 'g'), 8) = LEFT(${CNPJ_LEVA('f.')}, 8))
+                    OR LOWER(TRIM(t.razao_social)) = LOWER(TRIM(${LEVA('f.')})))) AS portal_canhotos,
                 -- Transportadora com "LD RIO" no nome sem o portal no cadastro: o botão aparece para explicar o que falta.
-                (COALESCE(f.transportadora_cte, f.transportadora) ~* 'ld[[:space:]]*rio') AS parece_ldrio,
+                (${LEVA('f.')} ~* 'ld[[:space:]]*rio') AS parece_ldrio,
                 f.data_coleta, f.data_emissao_cte, f.prazo_dias_tabela, f.data_entrega_prevista,
                 f.rastreio_ultima_ocorrencia, f.rastreio_ultima_em, f.rastreio_problema, f.rastreio_entrega_agendada,
                 f.rastreio_consultado_em,

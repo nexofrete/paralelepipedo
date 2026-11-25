@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "A tabela da tela Pedidos rola dentro da tela, com o cabeçalho fixo e as barras de rolagem sempre à vista (não precisa mais ir até o fim da lista para arrastar para o lado); Etiquetas e Separação viraram uma coluna só."},
         {"area": "Pedidos", "texto": "Consulta automática do WMS (Imperium): o Nexofrete entra no WMS sozinho, no intervalo e no horário escolhidos, busca as expedições dos últimos dias e preenche em cada pedido o status do WMS, a % de conferência, a expedição, a placa, o motorista e as datas. Botão Atualizar do WMS na tela Pedidos, nova situação Em conferência e o Exportar do WMS também entra pela Planilha do WMS."},
         {"area": "Correção", "texto": "Ligação com o WMS: quando o WMS recusava o login no teste, o Nexofrete mostrava \"Sua sessão expirou\" e tirava o usuário do sistema. Agora ele continua logado e a mensagem diz o que o WMS respondeu (texto de erro, para onde voltou e os campos enviados, sem a senha)."},
         {"area": "Pedidos", "texto": "Ligação com o WMS (tela Pedidos, botão do administrador): cadastro do endereço, usuário e senha do WMS (senha criptografada), Salvar e testar conexão (diagnóstico da tela de login, sem senha) e Testar login e tela de expedição, que entra no WMS como o navegador e descreve os filtros e as colunas da tela Expedição Mercadorias, sem os dados, para montar a consulta automática dos pedidos."},

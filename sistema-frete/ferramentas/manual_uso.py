@@ -622,6 +622,8 @@ def parte_uso(g):
         '<b>Situação</b>: Aguardando nota; Em separação (o WMS começou a separar); Separado (separação terminada, esperando a nota); '
         'Faturado (sem embarque nem coleta pedida); Em embarque; Coleta pedida; Coletado / em trânsito; Entregue; e Cancelado (no ERP, no '
         'WMS ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',
+        'A tabela rola dentro da tela, com o cabeçalho fixo: as barras de rolagem (inclusive a de lado, em telas menores) ficam sempre '
+        'à vista, sem precisar ir até o fim da lista. Etiquetas e separação ficam na mesma coluna.',
         'Clique na NF-e para abrir a nota. Os botões do alto filtram pela situação; a busca acha pedido, pedido do cliente, cliente, nome '
         'curto, CNPJ, NF, cidade, transportadora, status do WMS ou usuário. O <b>Excel</b> leva todos os pedidos com as colunas da planilha de '
         'pedidos, mais a situação, o destino, a transportadora e o CT-e.',

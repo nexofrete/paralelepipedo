@@ -40,6 +40,14 @@
   const cnpjF = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : String(v || ''); };
   let ultimaLista = [];
 
+  // A tabela rola dentro da tela: a altura vai até o pé da janela, então as barras de rolagem (a de lado também)
+  // ficam sempre à vista, sem ir até o fim da lista.
+  function ajustarRolagem() {
+    const el = cont.querySelector('.nf-rolagem'); if (!el || !el.offsetParent) return;
+    el.style.maxHeight = `${Math.max(260, window.innerHeight - el.getBoundingClientRect().top - 18)}px`;
+  }
+  window.addEventListener('resize', () => ajustarRolagem());
+
   async function desenharPedidos() {
     const st = estado.pedidos;
     const d = await api(`/?${new URLSearchParams({ situacao: st.situacao, busca: st.busca, de: st.de, ate: st.ate })}`);
@@ -62,8 +70,8 @@
         <button class="btn btn-secundario" id="pdExcel" style="width:auto;">⬇ Excel</button>
         ${usuario?.perfil === 'admin' ? '<button class="btn btn-secundario" id="pdWmsCfg" style="width:auto;" title="Endereço, usuário e senha do WMS e o teste da conexão">⚙ Ligação com o WMS</button>' : ''}</div>
       <div id="pdWmsRes" style="font-size:12.5px; margin-top:6px;"></div>
-      <div class="painel" style="padding:0; overflow-x:auto; margin-top:10px;"><table class="tabela" style="font-size:12.5px;"><thead><tr>
-        <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas</th><th>Separação</th><th>NF-e</th></tr></thead><tbody>
+      <div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela" style="font-size:12.5px; width:100%;"><thead><tr>
+        <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas / separação</th><th>NF-e</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
         <td><b>${esc(p.pedido)}</b>${p.pedido_cliente ? fraco(`Mercus ${esc(p.pedido_cliente)}`) : ''}</td>
         <td style="white-space:nowrap;">${sit(p.situacao)}${p.embarque_id ? fraco(`embarque ${p.embarque_id}`) : ''}${p.ordem_id ? fraco(`ordem ${p.ordem_id}`) : ''}${p.data_entrega ? fraco(dia(p.data_entrega)) : ''}</td>
@@ -71,13 +79,17 @@
         <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}</td>
         <td style="white-space:nowrap;">${num(p.peso, 1)} kg${fraco(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}</td>
         <td>${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}% conf.</small>` : ''}${p.data_inicial || p.usuario || p.exp_wms ? fraco([p.exp_wms ? `exp. ${esc(p.exp_wms)}` : '', p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.placa || p.motorista ? fraco(`🚚 ${[p.placa, p.motorista].filter(Boolean).map(esc).join(' · ')}`) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
-        <td style="white-space:nowrap;">${p.qtd_etiquetas == null ? '—' : `${num(p.qtd_etiquetas)} etq.`}${p.etiquetas_em ? fraco(`impressas ${dh(p.etiquetas_em)}`) : ''}</td>
-        <td style="white-space:nowrap;">${p.sep_inicio ? `${dh(p.sep_inicio)}${fraco(p.sep_fim ? `até ${dh(p.sep_fim)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : 'em andamento')}` : p.exp_fim ? `fim ${dh(p.exp_fim)}` : '—'}</td>
+        <td style="white-space:nowrap;">${[
+          p.qtd_etiquetas != null ? `${num(p.qtd_etiquetas)} etq.${p.etiquetas_em ? ` · ${dh(p.etiquetas_em)}` : ''}` : '',
+          p.sep_inicio ? `separação ${dh(p.sep_inicio)}${p.sep_fim ? ` → ${String(p.sep_fim).slice(11, 16)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : ' (em andamento)'}` : '',
+          !p.sep_inicio && p.exp_fim ? `fim ${dh(p.exp_fim)}` : '',
+        ].filter(Boolean).map((t, i) => (i ? fraco(t) : t)).join('') || '—'}</td>
         <td style="white-space:nowrap;">${p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>${fraco(dia(p.emissao_nf))}` : esc(p.nf || '—')}</td>
         </tr>`).join('')
-        : '<tr><td colspan="9" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
-      </tbody></table>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:0 10px;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
+        : '<tr><td colspan="8" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
+      </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
     ligar(st, desenharPedidos);
+    ajustarRolagem();
     ['pdDe', 'pdAte'].forEach((id) => $(id).addEventListener('change', () => { st.de = $('pdDe').value; st.ate = $('pdAte').value; desenharPedidos().catch(erro); }));
     $('pdExcel').addEventListener('click', () => {
       window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação', 'Peso (kg)', 'Cubagem (m³)',

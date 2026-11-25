@@ -614,7 +614,11 @@ def parte_uso(g):
         'faz o login e <b>uma busca por período</b> (Data Inicial da expedição), como uma pessoa clicando em Buscar, e grava em cada pedido: '
         'status do WMS, % de conferência, número da expedição, tipo, placa, motorista, itinerário, data inicial e final. Depois de uma falha, '
         'espera o dobro do intervalo. Desmarcar Ligada pausa na hora. Expedição iniciada antes do período escolhido não é mais atualizada.',
-        'Na tela Pedidos: a linha "WMS: consulta automática ligada... última: ..." mostra a última consulta (com o erro, se falhou), e o botão '
+        '<b>Pausar integração</b>: na tela Pedidos, ao lado da linha do WMS (quem edita registros). Depois de confirmar, o Nexofrete para na '
+        'hora de consultar o WMS: nem a consulta automática nem o botão Atualizar do WMS falam com ele, e a linha mostra "integração pausada". '
+        '<b>Retomar integração</b> volta a consultar no intervalo configurado. Cada pausa e retomada fica na auditoria. O teste da janela '
+        'Ligação com o WMS continua funcionando com a integração pausada.',
+        'Na tela Pedidos: a linha "WMS: integração ligada... última: ..." mostra a última consulta (com o erro, se falhou), e o botão '
         '<b>Atualizar do WMS</b> (quem edita registros) consulta na hora, no máximo uma vez a cada 2 minutos. A situação segue o status do WMS '
         'antes da nota: INTEGRADO fica em Aguardando nota; EM SEPARAÇÃO em <b>Em separação</b>; EM CONFERÊNCIA, 1ª e 2ª CONFERÊNCIA em '
         '<b>Em conferência</b>; CONFERIDO, EM FINALIZAÇÃO, PARCIALMENTE FINALIZADO e FINALIZADO em <b>Separado</b>; CANCELADA em Cancelado.',

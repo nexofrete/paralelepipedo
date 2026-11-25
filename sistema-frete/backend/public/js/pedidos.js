@@ -132,8 +132,23 @@
     // Situação da consulta ao WMS e o "Atualizar do WMS".
     apiFetch('/api/wms/situacao').then((x) => x.json()).then((w) => {
       const el = $('pdWmsSit'); if (!el || !w?.configurado) return;
-      el.innerHTML = `WMS: ${w.ativo ? `consulta automática ligada (a cada ${w.intervalo_min} min, das ${w.hora_inicio}h às ${w.hora_fim}h)` : 'consulta automática desligada'}`
-        + (w.ultima_consulta_em ? ` · última: ${dh(w.ultima_consulta_em)} ${w.ultima_consulta_ok ? '<span style="color:var(--verde);">✓</span>' : `<span style="color:var(--vermelho);">✗ ${esc(w.ultima_consulta_msg || '')}</span>`}` : '');
+      el.style.cssText = 'font-size:12.5px; margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--texto-fraco);';
+      el.innerHTML = `<span>WMS: ${w.ativo ? `<span style="color:var(--verde);">● integração ligada</span> (consulta a cada ${w.intervalo_min} min, das ${w.hora_inicio}h às ${w.hora_fim}h)` : '<span style="color:var(--vermelho);">● integração pausada</span> (o Nexofrete não consulta o WMS)'}`
+        + (w.ultima_consulta_em ? ` · última: ${dh(w.ultima_consulta_em)} ${w.ultima_consulta_ok ? '<span style="color:var(--verde);">✓</span>' : `<span style="color:var(--vermelho);">✗ ${esc(w.ultima_consulta_msg || '')}</span>`}` : '') + '</span>'
+        + (podeImportar() ? (w.ativo
+          ? '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px; border-color:var(--vermelho); color:var(--vermelho);" title="Para na hora a consulta automática e o Atualizar do WMS">Pausar integração</button>'
+          : '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px;" title="Volta a consultar o WMS no intervalo configurado">Retomar integração</button>') : '');
+      const agora = $('pdWmsAgora');
+      if (agora && !w.ativo) { agora.disabled = true; agora.title = 'A integração com o WMS está pausada'; }
+      $('pdWmsPausar')?.addEventListener('click', async () => {
+        if (w.ativo && !await confirmar('O Nexofrete para de consultar o WMS (a consulta automática e o botão Atualizar do WMS) até alguém clicar em Retomar integração.', { titulo: 'Pausar a integração com o WMS?', textoOk: 'Pausar', tipo: 'perigo' })) return;
+        try {
+          const r2 = await apiFetch('/api/wms/pausar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ativo: !w.ativo }) });
+          const j = await r2.json().catch(() => ({}));
+          if (!r2.ok) throw new Error(j.erro || 'Não consegui mudar a integração.');
+          await desenharPedidos();
+        } catch (err) { erro(err); }
+      });
     }).catch(() => null);
     $('pdWmsAgora')?.addEventListener('click', async (e) => {
       const b = e.currentTarget; b.disabled = true; const t0 = b.textContent; b.textContent = 'Consultando o WMS...';
@@ -221,7 +236,7 @@
       const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Consultando o WMS a partir do servidor...</p>';
       try {
         await salvar(); $('wmsSenha').value = '';
-        const t = await pedir('/consultar', { method: 'POST' });
+        const t = await pedir('/consultar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teste: true }) });
         res.innerHTML = `<p style="font-size:13px;"><span style="color:var(--verde);">✓</span> ${esc(t.msg)}</p>`;
         desenharPedidos().catch(() => null);
       } catch (e) { res.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${esc(e.message)}</p>`; }

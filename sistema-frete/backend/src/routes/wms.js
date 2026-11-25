@@ -22,10 +22,20 @@ router.get('/situacao', autenticar, rota(() => wms.situacao()));
 let ultimaManual = 0;
 router.post('/consultar', autenticar, rota(async (req) => {
   if (!(req.usuario?.perfil === 'admin' || req.usuario?.pode_editar_registros)) throw Object.assign(new Error('Sem permissão para consultar o WMS.'), { status: 403 });
+  // Integração pausada: o "Atualizar do WMS" não consulta (o teste da janela de configuração, sim).
+  if (!req.body?.teste && !(await wms.situacao()).ativo) throw Object.assign(new Error('A integração com o WMS está pausada. Clique em "Retomar integração" para voltar a consultar.'), { status: 409 });
   if (Date.now() - ultimaManual < 120000) throw Object.assign(new Error('O WMS foi consultado há menos de 2 minutos. Espere um pouco.'), { status: 429 });
   ultimaManual = Date.now();
   const r = await wms.consultar({ origem: `manual: ${req.usuario.nome}` });
   registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'consultar_wms', detalhes: r.msg });
+  return r;
+}));
+// Pausar / retomar (quem edita registros ou o administrador).
+router.post('/pausar', autenticar, rota(async (req) => {
+  if (!(req.usuario?.perfil === 'admin' || req.usuario?.pode_editar_registros)) throw Object.assign(new Error('Sem permissão para pausar a integração com o WMS.'), { status: 403 });
+  const ativo = !!req.body?.ativo;
+  const r = await wms.pausar(ativo);
+  registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'config_wms', detalhes: ativo ? 'Retomou a integração com o WMS' : 'Pausou a integração com o WMS' });
   return r;
 }));
 module.exports = router;

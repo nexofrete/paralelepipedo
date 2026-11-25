@@ -387,6 +387,14 @@ function agendar() {
   tarefa = require('node-cron').schedule('*/5 * * * *', () => { talvezConsultar().catch(() => null); });
 }
 
+// Pausar / retomar a integração (botão da tela Pedidos): pausada, nem a consulta automática nem o
+// "Atualizar do WMS" falam com o WMS. O teste da janela Ligação com o WMS continua liberado.
+async function pausar(ativo) {
+  const { rowCount } = await pool.query('UPDATE wms_config SET ativo = $1 WHERE id = 1', [!!ativo]);
+  if (!rowCount) throw falha('Cadastre a ligação com o WMS primeiro.');
+  return situacao();
+}
+
 async function testar() {
   const c = await config();
   if (!c.url) throw falha('Cadastre o endereço do WMS primeiro.');
@@ -395,4 +403,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

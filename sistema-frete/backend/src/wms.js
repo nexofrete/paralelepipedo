@@ -13,7 +13,8 @@ const falha = (m, status = 400) => Object.assign(new Error(m), { status });
 const LIMITE_BYTES = 3 * 1024 * 1024;
 
 async function config() {
-  const { rows } = await pool.query('SELECT url, url_expedicao, usuario, (senha IS NOT NULL) AS tem_senha, atualizado_em, ultimo_teste_em, ultimo_teste_ok FROM wms_config WHERE id = 1');
+  const { rows } = await pool.query(`SELECT url, url_expedicao, usuario, (senha IS NOT NULL) AS tem_senha, atualizado_em, ultimo_teste_em, ultimo_teste_ok, ativo, intervalo_min, hora_inicio, hora_fim, dias,
+      to_char(ultima_consulta_em, 'YYYY-MM-DD HH24:MI') AS ultima_consulta_em, ultima_consulta_ok, ultima_consulta_msg FROM wms_config WHERE id = 1`);
   return rows[0] || { url: '', url_expedicao: '', usuario: '', tem_senha: false };
 }
 
@@ -31,6 +32,11 @@ async function salvarConfig(b = {}) {
   const tela = String(b.url_expedicao || '').trim() ? urlValida(b.url_expedicao) : null;
   await pool.query(`INSERT INTO wms_config (id, url, usuario, senha, url_expedicao, atualizado_em) VALUES (1, $1, $2, $3, $4, NOW())
     ON CONFLICT (id) DO UPDATE SET url = $1, usuario = $2, senha = COALESCE($3, wms_config.senha), url_expedicao = $4, atualizado_em = NOW()`, [url, usuario, senha, tela]);
+  if (b.ativo !== undefined) {
+    const n = (v, min, max, pad) => { const x = parseInt(v, 10); return Number.isFinite(x) ? Math.min(Math.max(x, min), max) : pad; };
+    await pool.query('UPDATE wms_config SET ativo = $1, intervalo_min = $2, hora_inicio = $3, hora_fim = $4, dias = $5 WHERE id = 1',
+      [!!b.ativo, n(b.intervalo_min, 15, 720, 60), n(b.hora_inicio, 0, 23, 7), n(b.hora_fim, 1, 24, 19), n(b.dias, 1, 31, 7)]);
+  }
   return config();
 }
 
@@ -263,6 +269,124 @@ async function testarTela() {
   return { ok: true, http: pg.status, texto: textoTela(t, pg.url, depois), ...t };
 }
 
+// ---------- Consulta automática: tela Expedição Mercadorias (Imperium) ----------
+// Lê a tabela "grid-expedicao" pelos títulos das colunas. Uma linha por expedição; a coluna Cargas traz o(s)
+// pedido(s) do ERP. Devolve também o "Total de N registros" da página, para saber se veio tudo.
+function lerGrid(html) {
+  const h = String(html || '');
+  const tabelas = [...h.matchAll(/<table\b([^>]*)>([\s\S]*?)<\/table>/gi)];
+  const alvo = tabelas.find((t) => /grid-expedicao/i.test(t[1])) || tabelas.find((t) => /<th\b[^>]*>[\s\S]*?Cargas/i.test(t[2]));
+  const totalTxt = tirarTags(h).match(/Total de\s+([\d.]+)\s+registros?/i);
+  const total = totalTxt ? Number(totalTxt[1].replace(/\./g, '')) : null;
+  if (!alvo) return { linhas: [], total, sem_tabela: true };
+  const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim();
+  const trs = [...alvo[2].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((m) => [...m[1].matchAll(/<(t[hd])\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => ({ th: c[1].toLowerCase() === 'th', txt: tirarTags(c[2]) })));
+  const iCab = trs.findIndex((r) => r.some((c) => norm(c.txt) === 'cargas'));
+  if (iCab < 0) return { linhas: [], total, sem_tabela: true };
+  const cab = trs[iCab].map((c) => norm(c.txt));
+  const col = (...nomes) => cab.findIndex((x) => nomes.includes(x));
+  const C = { exp: col('expedicao'), cargas: col('cargas'), tipo: col('tipo pedido'), cub: col('cubagem'), peso: col('peso'), qtd: col('qtd ped'), placa: col('placa'),
+    itin: col('itinerarios', 'itinerario'), mot: col('motorista'), ini: col('data inicial'), fim: col('data final'), imp: col('imprimir'), conf: col('% conferencia', 'conferencia'), st: col('status') };
+  const { dataHora, numeroBr } = require('./pedidosWms');
+  const v = (r, i) => (i >= 0 && r[i] ? r[i].txt.trim() : '') || null;
+  const linhas = [];
+  for (const r of trs.slice(iCab + 1)) {
+    if (r.length < cab.length - 1 || r.every((c) => c.th)) continue;
+    const cargas = String(v(r, C.cargas) || '').split(/[^\d]+/).filter(Boolean);
+    if (!cargas.length) continue;
+    const imp = String(v(r, C.imp) || '').toUpperCase();
+    linhas.push({ expedicao_numero: v(r, C.exp), cargas, tipo_pedido: v(r, C.tipo), cubagem: numeroBr(v(r, C.cub)), peso: numeroBr(v(r, C.peso)), qtd_pedidos: numeroBr(v(r, C.qtd)),
+      placa: v(r, C.placa), itinerario: v(r, C.itin), motorista: v(r, C.mot), data_inicial: dataHora(v(r, C.ini)), expedicao_fim: dataHora(v(r, C.fim)),
+      imprimir: imp === 'SIM' ? true : imp === 'NAO' || imp === 'NÃO' ? false : null, conferencia_pct: numeroBr(v(r, C.conf)), status: v(r, C.st) });
+  }
+  return { linhas, total };
+}
+
+// Linhas do grid → pedidos_wms (uma por carga = pedido). "SEM TRANSPORTADORA 25-11-2026" na Placa não é placa.
+function paraPedidos(linhas) {
+  const out = [];
+  for (const l of linhas) {
+    const placa = l.placa && /^SEM\b/i.test(l.placa) ? null : l.placa;
+    for (const carga of l.cargas) {
+      out.push({ numero_pedido: carga, status: l.status, data_inicial: l.data_inicial, expedicao_numero: l.expedicao_numero, tipo_pedido: l.tipo_pedido, placa,
+        motorista: l.motorista, itinerario: l.itinerario, expedicao_fim: l.expedicao_fim, conferencia_pct: l.conferencia_pct, imprimir: l.imprimir,
+        cancelado: /CANCELAD/i.test(l.status || '') ? true : (l.status ? false : null) });
+    }
+  }
+  return out;
+}
+
+const dataBr = (d) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+// Endereço da busca: o da tela copiada do navegador, com o período trocado e os outros filtros limpos.
+function urlBusca(c, de, ate) {
+  const base = new URL(c.url_expedicao || '/expedicao?submit=Buscar&control=roll', c.url);
+  const u = new URL(base.pathname, base);
+  const p = new URLSearchParams(base.search);
+  for (const k of ['idExpedicao', 'dataFinal1', 'dataFinal2', 'status', 'codCargaExterno', 'placa', 'pedido', 'produto']) p.set(k, '');
+  p.set('submit', p.get('submit') || 'Buscar'); p.set('control', p.get('control') || 'roll');
+  p.set('dataInicial1', dataBr(de)); p.set('dataInicial2', dataBr(ate));
+  u.search = p.toString();
+  return u.toString();
+}
+
+let consultando = false;
+// Faz o login, busca as expedições dos últimos N dias (pela Data Inicial) e grava em pedidos_wms.
+async function consultar({ origem = 'manual' } = {}) {
+  if (consultando) throw falha('Já tem uma consulta ao WMS em andamento. Espere um pouco.', 409);
+  consultando = true;
+  const inicio = Date.now();
+  const registrar = (ok, msg, qtd = null) => pool.query('UPDATE wms_config SET ultima_consulta_em = NOW(), ultima_consulta_ok = $1, ultima_consulta_msg = $2, ultima_consulta_qtd = $3, ultima_consulta_ms = $4 WHERE id = 1',
+    [ok, String(msg).slice(0, 500), qtd, Date.now() - inicio]).catch(() => null);
+  try {
+    const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
+    if (!c) throw falha('Cadastre a ligação com o WMS.');
+    const dias = Math.min(Math.max(Number(c.dias) || 7, 1), 31);
+    const hoje = new Date(Date.now() - 3 * 3600000); const de = new Date(hoje.getTime() - (dias - 1) * 86400000);
+    const { sessao } = await entrar(c);
+    const pg = await sessao.pedir(urlBusca(c, de, hoje), { timeout: 60000 });
+    if (temSenha(pg.corpo)) throw falha('O WMS voltou para o login na busca (a sessão não foi aceita).', 502);
+    const g = lerGrid(pg.corpo);
+    if (g.sem_tabela) throw falha('A tela de expedição do WMS não trouxe a tabela de resultados (a tela pode ter mudado).', 502);
+    const pedidos = paraPedidos(g.linhas);
+    const gravados = await require('./pedidosWms').gravar(pedidos, 'wms');
+    const incompleto = g.total != null && g.total > g.linhas.length;
+    const msg = `${g.linhas.length} expedição(ões) de ${dataBr(de)} a ${dataBr(hoje)}, ${pedidos.length} pedido(s) atualizados`
+      + `${incompleto ? `. ATENÇÃO: o WMS diz ${g.total} registros e vieram ${g.linhas.length} (a tela pode estar paginando)` : ''} (${origem}, ${Math.round((Date.now() - inicio) / 100) / 10} s)`;
+    await registrar(true, msg, pedidos.length);
+    return { ok: true, expedicoes: g.linhas.length, pedidos: pedidos.length, gravados, total_wms: g.total, incompleto, msg };
+  } catch (e) {
+    await registrar(false, e.message);
+    throw e;
+  } finally { consultando = false; }
+}
+
+// Situação da ligação (para a tela Pedidos: "WMS atualizado às...").
+async function situacao() {
+  const { rows: [c] } = await pool.query(`SELECT ativo, intervalo_min, hora_inicio, hora_fim, ultima_consulta_ok, ultima_consulta_msg, ultima_consulta_qtd,
+      to_char(ultima_consulta_em, 'YYYY-MM-DD HH24:MI') AS ultima_consulta_em, (url IS NOT NULL AND senha IS NOT NULL) AS configurado FROM wms_config WHERE id = 1`).catch(() => ({ rows: [] }));
+  return c || { configurado: false, ativo: false };
+}
+
+// Agendamento: confere a cada 5 minutos se está ligado, dentro do horário e se já passou o intervalo.
+let tarefa = null;
+async function talvezConsultar() {
+  // Minutos desde a última consulta e a hora de Brasília calculados no banco (o mesmo relógio que gravou a consulta).
+  const { rows: [c] } = await pool.query(`SELECT ativo, intervalo_min, hora_inicio, hora_fim, ultima_consulta_ok,
+      EXTRACT(EPOCH FROM (NOW() - ultima_consulta_em)) / 60 AS minutos, EXTRACT(HOUR FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int AS hora
+    FROM wms_config WHERE id = 1`).catch(() => ({ rows: [] }));
+  if (!c?.ativo) return false;
+  if (c.hora < Number(c.hora_inicio) || c.hora >= Number(c.hora_fim)) return false;
+  // Depois de uma falha, espera o dobro do intervalo (não insiste com o WMS fora do ar ou lento).
+  const intervalo = Math.max(Number(c.intervalo_min) || 60, 15) * (c.ultima_consulta_ok === false ? 2 : 1);
+  if (c.minutos != null && Number(c.minutos) < intervalo - 0.5) return false;
+  await consultar({ origem: 'automático' }).catch((e) => console.error('[wms]', e.message));
+  return true;
+}
+function agendar() {
+  if (tarefa) return;
+  tarefa = require('node-cron').schedule('*/5 * * * *', () => { talvezConsultar().catch(() => null); });
+}
+
 async function testar() {
   const c = await config();
   if (!c.url) throw falha('Cadastre o endereço do WMS primeiro.');
@@ -271,4 +395,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

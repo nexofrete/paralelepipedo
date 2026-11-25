@@ -30,11 +30,14 @@ function dataHora(v) {
 const inteiro = (v) => { if (v == null || v === '' || v instanceof Date) return null; const n = Number(String(v).replace(',', '.')); return Number.isFinite(n) && n >= 0 && n < 1e6 && Number.isInteger(n) ? n : null; };
 const simNao = (v) => { const t = semAcento(v); if (!t) return null; if (['s', 'sim', 'x', '1', 'true', 'cancelado', 'y'].includes(t)) return true; if (['n', 'nao', '0', 'false'].includes(t)) return false; return null; };
 const texto = (v) => { if (v == null || v instanceof Date) return null; const t = String(v).trim(); return t ? t.slice(0, 120) : null; };
+// Número brasileiro: "0,419", "1.234,5", "12%" (ou número do Excel).
+const numeroBr = (v) => { if (v == null || v === '' || v instanceof Date) return null; if (typeof v === 'number') return Number.isFinite(v) ? v : null; let t = String(v).replace(/[%\s]/g, ''); if (!t) return null; if (/,/.test(t)) t = t.replace(/\./g, '').replace(',', '.'); const n = Number(t); return Number.isFinite(n) ? n : null; };
 const pedido = (v) => { const t = String(v ?? '').trim().replace(/\.0+$/, ''); return t ? t.slice(0, 50) : null; };
 
 // Coluna da planilha → campo. Nomes sem acento, sem pontuação e em minúsculas.
 const COLUNAS = [
-  ['numero_pedido', ['numero pedido', 'nr pedido', 'pedido', 'n pedido', 'num pedido'], pedido],
+  // No WMS (Imperium) a Carga é o número do pedido do ERP.
+  ['numero_pedido', ['numero pedido', 'nr pedido', 'pedido', 'n pedido', 'num pedido', 'cargas', 'carga', 'cod carga externo'], pedido],
   ['status', ['status wms', 'status', 'situacao wms'], texto],
   ['data_inicial', ['data inicial'], dataHora],
   ['usuario', ['usuario', 'separador'], texto],
@@ -45,6 +48,15 @@ const COLUNAS = [
   ['cancelado', ['cancelado wms', 'cancelado'], simNao],
   ['liberacao', ['liberacao haila leticia', 'liberacao'], dataHora],
   ['expedicao', ['expedicao'], texto],
+  // Tela Expedição Mercadorias do WMS (consulta automática ou o Exportar dela).
+  ['expedicao_numero', ['numero da expedicao', 'numero expedicao', 'expedicao wms'], texto],
+  ['tipo_pedido', ['tipo pedido'], texto],
+  ['placa', ['placa'], texto],
+  ['motorista', ['motorista'], texto],
+  ['itinerario', ['itinerarios', 'itinerario'], texto],
+  ['expedicao_fim', ['data final'], dataHora],
+  ['conferencia_pct', ['conferencia', 'perc conferencia'], numeroBr],
+  ['imprimir', ['imprimir'], simNao],
 ];
 const CAMPOS = COLUNAS.map(([c]) => c).filter((c) => c !== 'numero_pedido');
 
@@ -56,6 +68,9 @@ function lerPlanilha(buffer) {
   const cab = Object.keys(linhas[0]);
   const achar = (nomes) => cab.find((h) => nomes.includes(semAcento(h)));
   const mapa = COLUNAS.map(([campo, nomes, conv]) => ({ campo, col: achar(nomes), conv })).filter((m) => m.col);
+  // Exportar da tela do WMS: "Cargas" é o pedido e "Expedição" é o número da expedição (não o tipo do ERP).
+  const colPedido = mapa.find((m) => m.campo === 'numero_pedido')?.col;
+  if (['cargas', 'carga'].includes(semAcento(colPedido))) mapa.forEach((m) => { if (m.campo === 'expedicao') { m.campo = 'expedicao_numero'; m.conv = texto; } });
   if (!mapa.some((m) => m.campo === 'numero_pedido')) throw Object.assign(new Error('Não achei a coluna "Número Pedido".'), { status: 400 });
   if (mapa.length < 2) throw Object.assign(new Error('A planilha não tem nenhuma coluna do WMS (Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização, Cancelado Wms).'), { status: 400 });
   const invalidos = {}; const preenchidos = {};
@@ -85,7 +100,8 @@ async function gravar(linhas, origem = 'planilha') {
   if (!linhas.length) return 0;
   const arr = (c) => linhas.map((l) => l[c] ?? null);
   const tipos = { status: 'text', data_inicial: 'timestamp', usuario: 'text', etiquetas_impressas_em: 'timestamp', qtd_etiquetas: 'int', separacao_inicio: 'timestamp',
-    separacao_fim: 'timestamp', cancelado: 'boolean', liberacao: 'timestamp', expedicao: 'text' };
+    separacao_fim: 'timestamp', cancelado: 'boolean', liberacao: 'timestamp', expedicao: 'text', expedicao_numero: 'text', tipo_pedido: 'text', placa: 'text',
+    motorista: 'text', itinerario: 'text', expedicao_fim: 'timestamp', conferencia_pct: 'numeric', imprimir: 'boolean' };
   const params = [arr('numero_pedido'), ...CAMPOS.map(arr), origem];
   const { rowCount } = await pool.query(
     `INSERT INTO pedidos_wms (numero_pedido, ${CAMPOS.join(', ')}, origem, atualizado_em)
@@ -101,4 +117,4 @@ async function importar(buffer) {
   return { total: r.total, pedidos: r.linhas.length, gravados, colunas: r.colunas, invalidos: r.invalidos };
 }
 
-module.exports = { dataHora, lerPlanilha, gravar, importar, COLUNAS };
+module.exports = { dataHora, numeroBr, lerPlanilha, gravar, importar, COLUNAS };

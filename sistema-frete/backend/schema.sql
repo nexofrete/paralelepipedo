@@ -921,6 +921,25 @@ CREATE TABLE IF NOT EXISTS wms_config (
     ultimo_teste_ok BOOLEAN
 );
 ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS url_expedicao VARCHAR(500);
+-- Consulta automática do WMS (Imperium, tela Expedição Mercadorias): liga/pausa, intervalo, horário e quantos dias olhar.
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS intervalo_min INTEGER NOT NULL DEFAULT 60;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS hora_inicio INTEGER NOT NULL DEFAULT 7;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS hora_fim INTEGER NOT NULL DEFAULT 19;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS dias INTEGER NOT NULL DEFAULT 7;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS ultima_consulta_em TIMESTAMP;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS ultima_consulta_ok BOOLEAN;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS ultima_consulta_msg TEXT;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS ultima_consulta_qtd INTEGER;
+ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS ultima_consulta_ms INTEGER;
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS expedicao_numero VARCHAR(40);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS tipo_pedido VARCHAR(60);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS placa VARCHAR(120);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS motorista VARCHAR(120);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS itinerario VARCHAR(120);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS expedicao_fim TIMESTAMP;
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS conferencia_pct NUMERIC(6,2);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS imprimir BOOLEAN;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

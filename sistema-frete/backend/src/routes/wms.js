@@ -17,4 +17,15 @@ router.put('/config', autenticar, soAdmin, rota(async (req) => {
 }));
 router.post('/testar', autenticar, soAdmin, rota(() => wms.testar()));
 router.post('/testar-tela', autenticar, soAdmin, rota(() => wms.testarTela()));
+// Situação da ligação (tela Pedidos) e "Atualizar do WMS" (quem edita registros; no máximo 1 a cada 2 minutos).
+router.get('/situacao', autenticar, rota(() => wms.situacao()));
+let ultimaManual = 0;
+router.post('/consultar', autenticar, rota(async (req) => {
+  if (!(req.usuario?.perfil === 'admin' || req.usuario?.pode_editar_registros)) throw Object.assign(new Error('Sem permissão para consultar o WMS.'), { status: 403 });
+  if (Date.now() - ultimaManual < 120000) throw Object.assign(new Error('O WMS foi consultado há menos de 2 minutos. Espere um pouco.'), { status: 429 });
+  ultimaManual = Date.now();
+  const r = await wms.consultar({ origem: `manual: ${req.usuario.nome}` });
+  registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'consultar_wms', detalhes: r.msg });
+  return r;
+}));
 module.exports = router;

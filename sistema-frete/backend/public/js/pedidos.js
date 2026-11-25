@@ -16,7 +16,7 @@
   const dia = (v) => (v ? new Date(`${String(v).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—');
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
   const api = async (c) => { const r = await apiFetch(`/api/pedidos${c}`); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.erro || 'Erro ao carregar.'); return j; };
-  const COR = { 'Aguardando nota': 'pendente', 'Em separação': 'ocorrencia', Separado: 'em_transito', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
+  const COR = { 'Aguardando nota': 'pendente', 'Em separação': 'ocorrencia', 'Em conferência': 'ocorrencia', Separado: 'em_transito', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
     'A faturar': 'pendente', 'Parada sem faturar': 'ocorrencia', 'NF sem XML': 'ocorrencia', 'Faturada, confere': 'entregue', 'Faturada, mudou': 'cancelado', 'Cancelada no ERP': 'cancelado' };
   const sit = (s) => `<span class="oc-sit ${COR[s] || ''}">${esc(s)}</span>`;
   let aba = 'pedidos'; const estado = { pedidos: { situacao: '', busca: '', de: '', ate: '' }, prenotas: { situacao: '', busca: '' } };
@@ -48,14 +48,16 @@
     cont.innerHTML = `<div class="nf-resumo">
         <div>Pedidos no período<b>${num(r.pedidos)}</b><span>${num(r.peso, 1)} kg${r.etiquetas ? ` · ${num(r.etiquetas)} etiquetas` : ''}</span></div>
         <div>Aguardando nota<b>${num(r.aguardando_nota)}</b><span>${r.aguardando_mais_dias ? `${r.aguardando_mais_dias} há mais de 3 dias` : 'ainda não separados'}</span></div>
-        <div>Em separação<b>${num(r.em_separacao)}</b><span>no WMS</span></div>
+        <div>Em separação / conferência<b>${num(r.em_separacao)}</b><span>no WMS</span></div>
         <div>Separados<b>${num(r.separados)}</b><span>esperando a nota</span></div>
         <div>Faturados<b>${num(d.contagem.Faturado + d.contagem['Em embarque'] + d.contagem['Coleta pedida'])}</b><span>ainda não saíram</span></div>
         <div>Em trânsito / entregues<b>${num(d.contagem['Coletado / em trânsito'] + d.contagem.Entregue)}</b><span>${num(d.contagem.Entregue)} entregues</span></div></div>
-      ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS (status, data inicial, usuário, etiquetas, separação e cancelamento) ainda estão vazios: importe a planilha do WMS no botão "Planilha do WMS".</p>`}
+      <div id="pdWmsSit" style="font-size:12.5px; color:var(--texto-fraco); margin-top:8px;"></div>
+      ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS ainda estão vazios: ligue a consulta automática em "Ligação com o WMS" ou importe a planilha do WMS.</p>`}
       <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span>
         <label style="font-size:13px;">De <input type="date" id="pdDe" value="${esc(d.de)}"></label><label style="font-size:13px;">até <input type="date" id="pdAte" value="${esc(d.ate)}"></label>
         <input id="pdBusca" placeholder="Pedido, cliente, NF, usuário" value="${esc(st.busca)}" style="max-width:220px;">
+        ${podeImportar() ? '<button class="btn btn-secundario" id="pdWmsAgora" style="width:auto;" title="Consulta o WMS agora (no máximo 1 vez a cada 2 minutos)">⟳ Atualizar do WMS</button>' : ''}
         ${podeImportar() ? '<button class="btn btn-secundario" id="pdWms" style="width:auto;" title="Planilha exportada do WMS com Número Pedido, Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização e Cancelado Wms">⬆ Planilha do WMS</button><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
         <button class="btn btn-secundario" id="pdExcel" style="width:auto;">⬇ Excel</button>
         ${usuario?.perfil === 'admin' ? '<button class="btn btn-secundario" id="pdWmsCfg" style="width:auto;" title="Endereço, usuário e senha do WMS e o teste da conexão">⚙ Ligação com o WMS</button>' : ''}</div>
@@ -68,9 +70,9 @@
         <td style="max-width:220px; min-width:200px; white-space:normal;">${esc(p.cliente || '—')}${fraco([p.nome_curto, cnpjF(p.cnpj)].filter(Boolean).map(esc).join(' · ') || '&nbsp;')}</td>
         <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}</td>
         <td style="white-space:nowrap;">${num(p.peso, 1)} kg${fraco(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}</td>
-        <td>${esc(p.status_wms || '—')}${p.data_inicial || p.usuario ? fraco([p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
+        <td>${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}% conf.</small>` : ''}${p.data_inicial || p.usuario || p.exp_wms ? fraco([p.exp_wms ? `exp. ${esc(p.exp_wms)}` : '', p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.placa || p.motorista ? fraco(`🚚 ${[p.placa, p.motorista].filter(Boolean).map(esc).join(' · ')}`) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
         <td style="white-space:nowrap;">${p.qtd_etiquetas == null ? '—' : `${num(p.qtd_etiquetas)} etq.`}${p.etiquetas_em ? fraco(`impressas ${dh(p.etiquetas_em)}`) : ''}</td>
-        <td style="white-space:nowrap;">${p.sep_inicio ? `${dh(p.sep_inicio)}${fraco(p.sep_fim ? `até ${dh(p.sep_fim)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : 'em andamento')}` : '—'}</td>
+        <td style="white-space:nowrap;">${p.sep_inicio ? `${dh(p.sep_inicio)}${fraco(p.sep_fim ? `até ${dh(p.sep_fim)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : 'em andamento')}` : p.exp_fim ? `fim ${dh(p.exp_fim)}` : '—'}</td>
         <td style="white-space:nowrap;">${p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>${fraco(dia(p.emissao_nf))}` : esc(p.nf || '—')}</td>
         </tr>`).join('')
         : '<tr><td colspan="9" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
@@ -80,12 +82,29 @@
     $('pdExcel').addEventListener('click', () => {
       window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação', 'Peso (kg)', 'Cubagem (m³)',
         'Status/WMS', 'Data Inicial', 'Expedição', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Data Início', 'Data Finalização', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
-        'Situação', 'Destino', 'Transportadora', 'CT-e'],
+        'Situação', 'Destino', 'Transportadora', 'CT-e', 'Expedição WMS', 'Tipo Pedido', 'Placa', 'Motorista', 'Itinerário', 'Data Final (WMS)', '% Conferência', 'Imprimir'],
       linhas: ultimaLista.map((p) => [p.pedido, cnpjF(p.cnpj), p.cliente || '', p.nome_curto || '', p.pedido_cliente || '', dh(p.liberado_em || p.data_pedido).replace('—', ''), p.peso, p.cubagem,
         p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, dh(p.sep_inicio).replace('—', ''),
-        dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.destino || '', p.transportadora || '', p.numero_cte || ''])}]).catch(erro);
+        dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.destino || '', p.transportadora || '', p.numero_cte || '',
+        p.exp_wms || '', p.tipo_pedido || '', p.placa || '', p.motorista || '', p.itinerario || '', dh(p.exp_fim).replace('—', ''), p.conferencia_pct, p.imprimir == null ? '' : (p.imprimir ? 'SIM' : 'NÃO')])}]).catch(erro);
     });
     $('pdWmsCfg')?.addEventListener('click', () => abrirWms().catch(erro));
+    // Situação da consulta ao WMS e o "Atualizar do WMS".
+    apiFetch('/api/wms/situacao').then((x) => x.json()).then((w) => {
+      const el = $('pdWmsSit'); if (!el || !w?.configurado) return;
+      el.innerHTML = `WMS: ${w.ativo ? `consulta automática ligada (a cada ${w.intervalo_min} min, das ${w.hora_inicio}h às ${w.hora_fim}h)` : 'consulta automática desligada'}`
+        + (w.ultima_consulta_em ? ` · última: ${dh(w.ultima_consulta_em)} ${w.ultima_consulta_ok ? '<span style="color:var(--verde);">✓</span>' : `<span style="color:var(--vermelho);">✗ ${esc(w.ultima_consulta_msg || '')}</span>`}` : '');
+    }).catch(() => null);
+    $('pdWmsAgora')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true; const t0 = b.textContent; b.textContent = 'Consultando o WMS...';
+      try {
+        const r2 = await apiFetch('/api/wms/consultar', { method: 'POST' });
+        const j = await r2.json().catch(() => ({}));
+        if (!r2.ok) throw new Error(j.erro || 'Erro ao consultar o WMS.');
+        await desenharPedidos();
+        mostrarAlerta(`WMS: ${j.msg}`, { tipo: j.incompleto ? 'aviso' : 'sucesso' });
+      } catch (err) { erro(err); b.disabled = false; b.textContent = t0; }
+    });
     $('pdWms')?.addEventListener('click', () => $('pdWmsArq').click());
     $('pdWmsArq')?.addEventListener('change', async (e) => {
       const arq = e.target.files[0]; if (!arq) return;
@@ -118,20 +137,31 @@
     }
     m.classList.remove('oculto');
     $('wmsModal').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h3 style="margin:0;">⚙ Ligação com o WMS</h3><span style="cursor:pointer; font-size:18px;" data-wms-fechar>✕</span></div>
-      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:0;">O Nexofrete vai consultar o WMS sozinho (só leitura) para preencher status, expedição, conferência, placa e motorista dos pedidos.
-        Esta primeira etapa guarda o acesso e testa a conexão a partir do servidor (o WMS fica na rede da empresa). Use um <b>usuário só de consulta</b>, criado para o Nexofrete.</p>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:0;">O Nexofrete consulta o WMS sozinho (só leitura), a partir do servidor (o WMS fica na rede da empresa), e preenche status, expedição, conferência,
+        placa e motorista dos pedidos (Carga = pedido do ERP). Use um <b>usuário só de consulta</b>, criado para o Nexofrete.</p>
       <label style="display:block; font-size:13px;">Endereço do WMS<input style="display:block; width:100%; margin-top:3px;" id="wmsUrl" value="${esc(c.url || '')}" placeholder="http://10.150.15.66/auth/login"></label>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <label style="display:block; font-size:13px; margin-top:8px;">Usuário<input style="display:block; width:100%; margin-top:3px;" id="wmsUsuario" value="${esc(c.usuario || '')}" autocomplete="off"></label>
         <label style="display:block; font-size:13px; margin-top:8px;">Senha<input style="display:block; width:100%; margin-top:3px;" id="wmsSenha" type="password" autocomplete="new-password" placeholder="${c.tem_senha ? 'senha cadastrada (deixe em branco para manter)' : ''}"></label></div>
       <label style="display:block; font-size:13px; margin-top:8px;">Endereço da tela Expedição Mercadorias <small style="color:var(--texto-fraco);">(no navegador, abra a tela, busque uma Carga e copie o endereço da barra)</small>
         <input style="display:block; width:100%; margin-top:3px;" id="wmsTela" value="${esc(c.url_expedicao || '')}" placeholder="http://10.150.15.66/..."></label>
+      <fieldset style="border:1px solid var(--borda); border-radius:8px; padding:10px 12px; margin-top:12px;"><legend style="font-size:13px; padding:0 6px;">Consulta automática</legend>
+        <label style="font-size:13px; display:flex; gap:6px; align-items:center;"><input type="checkbox" id="wmsAtivo" ${c.ativo ? 'checked' : ''} style="width:auto;"> Ligada (pausar desmarca na hora)</label>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:6px; font-size:13px;">
+          <label>A cada<select id="wmsIntervalo" style="display:block; width:100%; margin-top:3px;">${[30, 60, 120, 240].map((m) => `<option value="${m}" ${Number(c.intervalo_min || 60) === m ? 'selected' : ''}>${m < 60 ? `${m} min` : `${m / 60} h`}</option>`).join('')}</select></label>
+          <label>Das (hora)<input id="wmsHoraIni" type="number" min="0" max="23" value="${c.hora_inicio ?? 7}" style="display:block; width:100%; margin-top:3px;"></label>
+          <label>Até (hora)<input id="wmsHoraFim" type="number" min="1" max="24" value="${c.hora_fim ?? 19}" style="display:block; width:100%; margin-top:3px;"></label>
+          <label>Dias para trás<input id="wmsDias" type="number" min="1" max="31" value="${c.dias ?? 7}" style="display:block; width:100%; margin-top:3px;"></label></div>
+        <p style="font-size:12px; color:var(--texto-fraco); margin:6px 0 0;">Uma busca por período (Data Inicial da expedição) na tela Expedição Mercadorias, como uma pessoa clicando em Buscar. Depois de uma falha, espera o dobro do intervalo.
+          ${c.ultima_consulta_em ? `Última consulta: ${dh(c.ultima_consulta_em)} — ${c.ultima_consulta_ok ? 'ok' : 'falhou'}: ${esc(c.ultima_consulta_msg || '')}` : ''}</p>
+        <button class="btn btn-secundario" id="wmsConsultar" style="width:auto; margin-top:8px;">⟳ Salvar e consultar agora</button></fieldset>
       <p style="font-size:12px; color:var(--texto-fraco);">A senha é guardada criptografada e não aparece de novo para ninguém.${c.ultimo_teste_em ? ` Último teste: ${dh(String(c.ultimo_teste_em).replace('T', ' '))} — ${c.ultimo_teste_ok ? 'respondeu' : 'falhou'}.` : ''}</p>
       <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primario" id="wmsSalvar" style="width:auto;">Salvar</button>
         <button class="btn btn-secundario" id="wmsTestar" style="width:auto;">🔌 Salvar e testar conexão</button>
         <button class="btn btn-secundario" id="wmsTestarTela" style="width:auto;" title="Faz o login no WMS e abre a tela Expedição Mercadorias">🔐 Testar login e tela de expedição</button></div>
       <div id="wmsRes" style="margin-top:12px;"></div>`;
-    const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value, url_expedicao: $('wmsTela').value }) });
+    const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value, url_expedicao: $('wmsTela').value,
+      ativo: $('wmsAtivo').checked, intervalo_min: $('wmsIntervalo').value, hora_inicio: $('wmsHoraIni').value, hora_fim: $('wmsHoraFim').value, dias: $('wmsDias').value }) });
     $('wmsSalvar').addEventListener('click', async () => { try { await salvar(); $('wmsSenha').value = ''; mostrarAlerta('Ligação com o WMS salva.', { tipo: 'sucesso' }); } catch (e) { erro(e); } });
     const testarCom = (caminho, msgOk, msgErro) => async () => {
       const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Testando a partir do servidor...</p>';
@@ -147,6 +177,15 @@
     };
     $('wmsTestar').addEventListener('click', testarCom('/testar', 'O servidor alcançou o WMS.', 'O servidor não conseguiu abrir a página do WMS.'));
     $('wmsTestarTela').addEventListener('click', testarCom('/testar-tela', 'Login feito e tela de expedição aberta.', 'Não consegui abrir a tela de expedição.'));
+    $('wmsConsultar').addEventListener('click', async () => {
+      const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Consultando o WMS a partir do servidor...</p>';
+      try {
+        await salvar(); $('wmsSenha').value = '';
+        const t = await pedir('/consultar', { method: 'POST' });
+        res.innerHTML = `<p style="font-size:13px;"><span style="color:var(--verde);">✓</span> ${esc(t.msg)}</p>`;
+        desenharPedidos().catch(() => null);
+      } catch (e) { res.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${esc(e.message)}</p>`; }
+    });
   }
 
   async function desenharPrenotas() {

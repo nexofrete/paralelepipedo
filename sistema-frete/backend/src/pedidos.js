@@ -15,14 +15,17 @@ const dataOk = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) :
 const dias = (de, ate = hojeSP()) => (de ? Math.round((Date.parse(`${String(ate).slice(0, 10)}T12:00:00Z`) - Date.parse(`${String(de).slice(0, 10)}T12:00:00Z`)) / 86400000) : null);
 const numero = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 const semZeros = (v) => (v == null ? null : String(v).replace(/^0+(?=\d)/, ''));
-const SITUACOES_PEDIDO = ['Aguardando nota', 'Em separação', 'Separado', 'Faturado', 'Em embarque', 'Coleta pedida', 'Coletado / em trânsito', 'Entregue', 'Cancelado'];
+const SITUACOES_PEDIDO = ['Aguardando nota', 'Em separação', 'Em conferência', 'Separado', 'Faturado', 'Em embarque', 'Coleta pedida', 'Coletado / em trânsito', 'Entregue', 'Cancelado'];
 
 // Situação do pedido (sem banco).
 function situacaoPedido(r) {
   if (r.cancelado || r.cancelado_wms) return 'Cancelado';
   if (!r.tem_nota) {
-    if (r.sep_fim) return 'Separado';
-    if (r.sep_inicio) return 'Em separação';
+    // Status do WMS (Imperium): INTEGRADO → EM SEPARACAO → (1ª/2ª) CONFERENCIA → CONFERIDO → FINALIZADO.
+    const st = String(r.status_wms || '').toUpperCase();
+    if (r.sep_fim || /CONFERIDO|FINALIZ/.test(st)) return 'Separado';
+    if (/CONFERENCIA|CONFERÊNCIA/.test(st)) return 'Em conferência';
+    if (r.sep_inicio || /SEPARA/.test(st)) return 'Em separação';
     return 'Aguardando nota';
   }
   if (r.data_entrega) return 'Entregue';
@@ -53,7 +56,8 @@ async function dadosWms(pedidosLista) {
   const { rows } = await pool.query(`SELECT numero_pedido, status, usuario, qtd_etiquetas, cancelado, expedicao,
       to_char(data_inicial, 'YYYY-MM-DD HH24:MI') AS data_inicial, to_char(etiquetas_impressas_em, 'YYYY-MM-DD HH24:MI') AS etiquetas_impressas_em,
       to_char(separacao_inicio, 'YYYY-MM-DD HH24:MI') AS separacao_inicio, to_char(separacao_fim, 'YYYY-MM-DD HH24:MI') AS separacao_fim,
-      to_char(liberacao, 'YYYY-MM-DD HH24:MI') AS liberacao
+      to_char(liberacao, 'YYYY-MM-DD HH24:MI') AS liberacao, expedicao_numero, tipo_pedido, placa, motorista, itinerario, conferencia_pct::float AS conferencia_pct, imprimir,
+      to_char(expedicao_fim, 'YYYY-MM-DD HH24:MI') AS expedicao_fim, origem, to_char(atualizado_em, 'YYYY-MM-DD HH24:MI') AS wms_atualizado_em
     FROM pedidos_wms WHERE numero_pedido = ANY($1::text[])`, [ids]).catch(() => ({ rows: [] }));
   return new Map(rows.map((r) => [r.numero_pedido, r]));
 }
@@ -93,12 +97,14 @@ async function pedidos(req, q = {}) {
       status_wms: w.status || null, data_inicial: w.data_inicial || null, usuario: w.usuario || null, etiquetas_em: w.etiquetas_impressas_em || null,
       qtd_etiquetas: w.qtd_etiquetas ?? null, sep_inicio: w.separacao_inicio || null, sep_fim: w.separacao_fim || null, cancelado_wms: w.cancelado === true,
       liberado_em: w.liberacao || r.liberado_em || null, expedicao: w.expedicao || r.expedicao || null, tem_wms: !!w.numero_pedido,
+      exp_wms: w.expedicao_numero || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
+      conferencia_pct: w.conferencia_pct ?? null, imprimir: w.imprimir ?? null, exp_fim: w.expedicao_fim || null, wms_origem: w.origem || null, wms_atualizado_em: w.wms_atualizado_em || null,
     });
     r.sep_minutos = r.sep_inicio && r.sep_fim ? Math.round((Date.parse(r.sep_fim.replace(' ', 'T')) - Date.parse(r.sep_inicio.replace(' ', 'T'))) / 60000) : null;
   }
   const busca = String(q.busca || '').trim().toUpperCase();
   const todos = lista.map((r) => ({ ...r, situacao: situacaoPedido(r), dias: dias(r.data_pedido, hoje), destino: [r.cidade, r.uf].filter(Boolean).join('/') }))
-    .filter((r) => !busca || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario].some((x) => String(x || '').toUpperCase().includes(busca)))
+    .filter((r) => !busca || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.placa, r.motorista, r.exp_wms].some((x) => String(x || '').toUpperCase().includes(busca)))
     .sort((a, b) => String(b.data_pedido || '').localeCompare(String(a.data_pedido || '')));
   const contagem = Object.fromEntries(SITUACOES_PEDIDO.map((s) => [s, todos.filter((r) => r.situacao === s).length]));
   const filtro = String(q.situacao || '');
@@ -107,7 +113,7 @@ async function pedidos(req, q = {}) {
     de, ate, situacoes: SITUACOES_PEDIDO, contagem, pedidos: filtro ? todos.filter((r) => r.situacao === filtro) : todos,
     resumo: { pedidos: ativos.length, valor: Math.round(ativos.reduce((t, r) => t + (r.valor || 0), 0) * 100) / 100, peso: Math.round(ativos.reduce((t, r) => t + (r.peso || 0), 0) * 10) / 10,
       aguardando_nota: contagem['Aguardando nota'], aguardando_mais_dias: todos.filter((r) => r.situacao === 'Aguardando nota' && r.dias > DIAS_PARADA).length,
-      em_separacao: contagem['Em separação'], separados: contagem.Separado, com_wms: todos.filter((r) => r.tem_wms).length,
+      em_separacao: contagem['Em separação'] + contagem['Em conferência'], separados: contagem.Separado, com_wms: todos.filter((r) => r.tem_wms).length,
       etiquetas: todos.reduce((t, r) => t + (r.qtd_etiquetas || 0), 0) },
   };
 }

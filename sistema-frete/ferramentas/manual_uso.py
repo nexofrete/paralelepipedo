@@ -608,7 +608,17 @@ def parte_uso(g):
         'tela de login: nomes dos campos, tecnologia e caminhos de API, sem senha nem dados. Copie e envie para quem monta a integração. '
         'Em <b>Endereço da tela Expedição Mercadorias</b>, cole o endereço da barra do navegador depois de buscar uma Carga: o botão '
         '<b>Testar login e tela de expedição</b> faz o login no WMS (avisa se o usuário ou a senha não forem aceitos) e descreve a tela: '
-        'filtros, colunas da tabela e o botão Exportar, sem os dados das linhas. A consulta automática dos pedidos entra numa próxima etapa.',
+        'filtros, colunas da tabela e o botão Exportar, sem os dados das linhas.',
+        '<b>Consulta automática do WMS</b> (Imperium, tela Expedição Mercadorias; a Carga do WMS é o pedido do ERP): marque <b>Ligada</b> e '
+        'escolha o intervalo (30 min a 4 h; comece com 1 h), o horário (das/até) e quantos dias para trás olhar. A cada intervalo o Nexofrete '
+        'faz o login e <b>uma busca por período</b> (Data Inicial da expedição), como uma pessoa clicando em Buscar, e grava em cada pedido: '
+        'status do WMS, % de conferência, número da expedição, tipo, placa, motorista, itinerário, data inicial e final. Depois de uma falha, '
+        'espera o dobro do intervalo. Desmarcar Ligada pausa na hora. Expedição iniciada antes do período escolhido não é mais atualizada.',
+        'Na tela Pedidos: a linha "WMS: consulta automática ligada... última: ..." mostra a última consulta (com o erro, se falhou), e o botão '
+        '<b>Atualizar do WMS</b> (quem edita registros) consulta na hora, no máximo uma vez a cada 2 minutos. A situação segue o status do WMS '
+        'antes da nota: INTEGRADO fica em Aguardando nota; EM SEPARAÇÃO em <b>Em separação</b>; EM CONFERÊNCIA, 1ª e 2ª CONFERÊNCIA em '
+        '<b>Em conferência</b>; CONFERIDO, EM FINALIZAÇÃO, PARCIALMENTE FINALIZADO e FINALIZADO em <b>Separado</b>; CANCELADA em Cancelado.',
+        'O arquivo do botão Exportar da tela Expedição Mercadorias também pode ser importado em Planilha do WMS (a coluna Cargas vira o pedido).',
         '<b>Situação</b>: Aguardando nota; Em separação (o WMS começou a separar); Separado (separação terminada, esperando a nota); '
         'Faturado (sem embarque nem coleta pedida); Em embarque; Coleta pedida; Coletado / em trânsito; Entregue; e Cancelado (no ERP, no '
         'WMS ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',

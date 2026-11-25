@@ -387,6 +387,7 @@ async function iniciar() {
     require('./src/rastreioSsw').agendarConsultaDiaria();
     agenda.agendarLembretes();
     require('./src/ferias').agendar();
+    require('./src/wms').agendar();
     require('./src/pastaXml').agendar();
     require('./src/regrasAuditoria').agendar();
     require('./src/resumoAuditoria').agendar();

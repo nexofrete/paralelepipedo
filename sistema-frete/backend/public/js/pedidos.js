@@ -1,7 +1,8 @@
 // =====================================================================
 // Pedidos (405) e Pré-notas fiscais (406), fretes contratados (regras em src/pedidos.js): os pedidos da planilha do
 // ERP com a situação até a entrega, e as pré-notas (o pedido antes da NF-e) esperando faturamento ou já faturadas.
-// Usa do dashboard.js: usuario, apiFetch, mostrarAlerta; abre a nota com window.abrirNotaDetalhe (js/notasFiscais.js).
+// Usa do dashboard.js: usuario, apiFetch, mostrarAlerta; abre a nota com window.abrirNotaDetalhe (js/notasFiscais.js);
+// window.exportarExcel (js/indicadores.js). Os campos do WMS vêm de pedidos_wms (planilha do WMS; src/pedidosWms.js).
 // =====================================================================
 (() => {
   const nav = document.getElementById('navPedidos');
@@ -15,7 +16,7 @@
   const dia = (v) => (v ? new Date(`${String(v).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—');
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
   const api = async (c) => { const r = await apiFetch(`/api/pedidos${c}`); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.erro || 'Erro ao carregar.'); return j; };
-  const COR = { 'Aguardando nota': 'pendente', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
+  const COR = { 'Aguardando nota': 'pendente', 'Em separação': 'ocorrencia', Separado: 'em_transito', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
     'A faturar': 'pendente', 'Parada sem faturar': 'ocorrencia', 'NF sem XML': 'ocorrencia', 'Faturada, confere': 'entregue', 'Faturada, mudou': 'cancelado', 'Cancelada no ERP': 'cancelado' };
   const sit = (s) => `<span class="oc-sit ${COR[s] || ''}">${esc(s)}</span>`;
   let aba = 'pedidos'; const estado = { pedidos: { situacao: '', busca: '', de: '', ate: '' }, prenotas: { situacao: '', busca: '' } };
@@ -31,29 +32,75 @@
     cont.querySelectorAll('[data-pd-nota]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); window.abrirNotaDetalhe?.(Number(a.dataset.pdNota)); }));
   };
 
+  // Data e hora "AAAA-MM-DD HH:MM" → "dd/mm/aa hh:mm".
+  const dh = (v) => (v ? `${dia(v)} ${String(v).slice(11, 16)}`.trim() : '—');
+  const duracao = (min) => (min == null || min < 0 ? '' : min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`);
+  const fraco = (t) => `<br><small style="color:var(--texto-fraco);">${t}</small>`;
+  const podeImportar = () => !!(usuario?.perfil === 'admin' || usuario?.pode_editar_registros);
+  const cnpjF = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : String(v || ''); };
+  let ultimaLista = [];
+
   async function desenharPedidos() {
     const st = estado.pedidos;
     const d = await api(`/?${new URLSearchParams({ situacao: st.situacao, busca: st.busca, de: st.de, ate: st.ate })}`);
     const r = d.resumo;
+    ultimaLista = d.pedidos;
     cont.innerHTML = `<div class="nf-resumo">
-        <div>Pedidos no período<b>${num(r.pedidos)}</b><span>${moeda(r.valor)} · ${num(r.peso, 1)} kg</span></div>
-        <div>Aguardando nota<b>${num(r.aguardando_nota)}</b><span>${r.aguardando_mais_dias ? `${r.aguardando_mais_dias} há mais de 3 dias` : '&nbsp;'}</span></div>
-        <div>Faturados<b>${num(d.contagem.Faturado)}</b><span>sem embarque nem coleta pedida</span></div>
-        <div>Em embarque / coleta pedida<b>${num(d.contagem['Em embarque'] + d.contagem['Coleta pedida'])}</b><span>&nbsp;</span></div>
-        <div>Em trânsito<b>${num(d.contagem['Coletado / em trânsito'])}</b><span>&nbsp;</span></div>
-        <div>Entregues<b>${num(d.contagem.Entregue)}</b><span>&nbsp;</span></div></div>
+        <div>Pedidos no período<b>${num(r.pedidos)}</b><span>${num(r.peso, 1)} kg${r.etiquetas ? ` · ${num(r.etiquetas)} etiquetas` : ''}</span></div>
+        <div>Aguardando nota<b>${num(r.aguardando_nota)}</b><span>${r.aguardando_mais_dias ? `${r.aguardando_mais_dias} há mais de 3 dias` : 'ainda não separados'}</span></div>
+        <div>Em separação<b>${num(r.em_separacao)}</b><span>no WMS</span></div>
+        <div>Separados<b>${num(r.separados)}</b><span>esperando a nota</span></div>
+        <div>Faturados<b>${num(d.contagem.Faturado + d.contagem['Em embarque'] + d.contagem['Coleta pedida'])}</b><span>ainda não saíram</span></div>
+        <div>Em trânsito / entregues<b>${num(d.contagem['Coletado / em trânsito'] + d.contagem.Entregue)}</b><span>${num(d.contagem.Entregue)} entregues</span></div></div>
+      ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS (status, data inicial, usuário, etiquetas, separação e cancelamento) ainda estão vazios: importe a planilha do WMS no botão "Planilha do WMS".</p>`}
       <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span>
         <label style="font-size:13px;">De <input type="date" id="pdDe" value="${esc(d.de)}"></label><label style="font-size:13px;">até <input type="date" id="pdAte" value="${esc(d.ate)}"></label>
-        <input id="pdBusca" placeholder="Pedido, cliente, NF, cidade" value="${esc(st.busca)}" style="max-width:240px;"></div>
-      <div class="painel" style="padding:0; overflow-x:auto; margin-top:10px;"><table class="tabela"><thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Destino</th><th>Vol.</th><th>Peso</th><th>Valor</th><th>Transportadora</th><th>NF-e</th><th>CT-e</th><th>Situação</th></tr></thead><tbody>
-      ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr><td><b>${esc(p.pedido)}</b>${p.pedido_cliente ? `<br><small style="color:var(--texto-fraco);">cliente: ${esc(p.pedido_cliente)}</small>` : ''}</td>
-        <td>${dia(p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}</td><td>${esc(p.cliente)}</td><td>${esc(p.destino)}</td><td>${num(p.volumes)}</td><td>${num(p.peso, 1)}</td><td>${moeda(p.valor)}</td>
-        <td>${esc(p.transportadora || '—')}</td><td>${p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a><br><small>${dia(p.emissao_nf)}</small>` : esc(p.nf || '—')}</td><td>${esc(p.numero_cte || '—')}</td>
-        <td>${sit(p.situacao)}${p.embarque_id ? `<br><small>embarque ${p.embarque_id}</small>` : ''}${p.ordem_id ? `<br><small>ordem ${p.ordem_id}</small>` : ''}${p.data_entrega ? `<br><small>${dia(p.data_entrega)}</small>` : ''}</td></tr>`).join('')
-        : '<tr><td colspan="11" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Importação do ERP).</td></tr>'}
-      </tbody></table>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:0 10px;">Mostrando os 1.000 mais recentes.</p>' : ''}</div>`;
+        <input id="pdBusca" placeholder="Pedido, cliente, NF, usuário" value="${esc(st.busca)}" style="max-width:220px;">
+        ${podeImportar() ? '<button class="btn btn-secundario" id="pdWms" style="width:auto;" title="Planilha exportada do WMS com Número Pedido, Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização e Cancelado Wms">⬆ Planilha do WMS</button><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
+        <button class="btn btn-secundario" id="pdExcel" style="width:auto;">⬇ Excel</button></div>
+      <div id="pdWmsRes" style="font-size:12.5px; margin-top:6px;"></div>
+      <div class="painel" style="padding:0; overflow-x:auto; margin-top:10px;"><table class="tabela" style="font-size:12.5px;"><thead><tr>
+        <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas</th><th>Separação</th><th>NF-e</th></tr></thead><tbody>
+      ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
+        <td><b>${esc(p.pedido)}</b>${p.pedido_cliente ? fraco(`Mercus ${esc(p.pedido_cliente)}`) : ''}</td>
+        <td style="white-space:nowrap;">${sit(p.situacao)}${p.embarque_id ? fraco(`embarque ${p.embarque_id}`) : ''}${p.ordem_id ? fraco(`ordem ${p.ordem_id}`) : ''}${p.data_entrega ? fraco(dia(p.data_entrega)) : ''}</td>
+        <td style="max-width:220px; min-width:200px; white-space:normal;">${esc(p.cliente || '—')}${fraco([p.nome_curto, cnpjF(p.cnpj)].filter(Boolean).map(esc).join(' · ') || '&nbsp;')}</td>
+        <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}</td>
+        <td style="white-space:nowrap;">${num(p.peso, 1)} kg${fraco(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}</td>
+        <td>${esc(p.status_wms || '—')}${p.data_inicial || p.usuario ? fraco([p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
+        <td style="white-space:nowrap;">${p.qtd_etiquetas == null ? '—' : `${num(p.qtd_etiquetas)} etq.`}${p.etiquetas_em ? fraco(`impressas ${dh(p.etiquetas_em)}`) : ''}</td>
+        <td style="white-space:nowrap;">${p.sep_inicio ? `${dh(p.sep_inicio)}${fraco(p.sep_fim ? `até ${dh(p.sep_fim)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : 'em andamento')}` : '—'}</td>
+        <td style="white-space:nowrap;">${p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>${fraco(dia(p.emissao_nf))}` : esc(p.nf || '—')}</td>
+        </tr>`).join('')
+        : '<tr><td colspan="9" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
+      </tbody></table>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:0 10px;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
     ligar(st, desenharPedidos);
     ['pdDe', 'pdAte'].forEach((id) => $(id).addEventListener('change', () => { st.de = $('pdDe').value; st.ate = $('pdAte').value; desenharPedidos().catch(erro); }));
+    $('pdExcel').addEventListener('click', () => {
+      window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação', 'Peso (kg)', 'Cubagem (m³)',
+        'Status/WMS', 'Data Inicial', 'Expedição', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Data Início', 'Data Finalização', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
+        'Situação', 'Destino', 'Transportadora', 'CT-e'],
+      linhas: ultimaLista.map((p) => [p.pedido, cnpjF(p.cnpj), p.cliente || '', p.nome_curto || '', p.pedido_cliente || '', dh(p.liberado_em || p.data_pedido).replace('—', ''), p.peso, p.cubagem,
+        p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, dh(p.sep_inicio).replace('—', ''),
+        dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.destino || '', p.transportadora || '', p.numero_cte || ''])}]).catch(erro);
+    });
+    $('pdWms')?.addEventListener('click', () => $('pdWmsArq').click());
+    $('pdWmsArq')?.addEventListener('change', async (e) => {
+      const arq = e.target.files[0]; if (!arq) return;
+      const res = $('pdWmsRes'); res.textContent = 'Lendo a planilha do WMS...';
+      const fd = new FormData(); fd.append('arquivo', arq);
+      try {
+        const r2 = await apiFetch('/api/pedidos/wms', { method: 'POST', body: fd });
+        const j = await r2.json().catch(() => ({}));
+        if (!r2.ok) throw new Error(j.erro || 'Erro ao importar a planilha do WMS.');
+        const NOMES = { status: 'Status/WMS', data_inicial: 'Data Inicial', usuario: 'Usuário', etiquetas_impressas_em: 'Data/Imp. Etq', qtd_etiquetas: 'Qtd. Etiquetas', separacao_inicio: 'Data Início',
+          separacao_fim: 'Data Finalização', cancelado: 'Cancelado Wms', liberacao: 'Liberação', expedicao: 'Expedição' };
+        const inv = Object.entries(j.invalidos || {}).map(([c, n]) => `${NOMES[c] || c}: ${num(n)}`);
+        await desenharPedidos();
+        $('pdWmsRes').innerHTML = `<span style="color:var(--verde);">✓</span> ${num(j.pedidos)} pedido(s) do WMS gravados (${num(j.total)} linhas). Colunas lidas: ${(j.colunas || []).map((c) => esc(c.coluna)).join(', ')}.`
+          + (inv.length ? `<br><span style="color:var(--vermelho);">Valores que não são do tipo da coluna (ficaram vazios): ${esc(inv.join(' · '))}. Confira se as colunas da planilha não estão deslocadas.</span>` : '');
+      } catch (err) { res.innerHTML = `<span style="color:var(--vermelho);">${esc(err.message)}</span>`; } finally { e.target.value = ''; }
+    });
   }
 
   async function desenharPrenotas() {

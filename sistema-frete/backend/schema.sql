@@ -890,6 +890,26 @@ CREATE TABLE IF NOT EXISTS erp_pendentes (
     recebido_em    TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_erp_pendentes_nf ON erp_pendentes (numero_nf);
+-- Tela Pedidos (405): nome curto do cliente, tipo de expedição e a hora da liberação do pedido (Timeline de pedidos).
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS cliente_nome_curto VARCHAR(120);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS expedicao VARCHAR(60);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS pedido_liberado_em TIMESTAMP;
+-- Dados do WMS por pedido (planilha do WMS hoje; ligação direta depois): src/pedidosWms.js.
+CREATE TABLE IF NOT EXISTS pedidos_wms (
+    numero_pedido          VARCHAR(50) PRIMARY KEY,
+    status                 VARCHAR(120),
+    data_inicial           TIMESTAMP,
+    usuario                VARCHAR(120),
+    etiquetas_impressas_em TIMESTAMP,
+    qtd_etiquetas          INTEGER,
+    separacao_inicio       TIMESTAMP,
+    separacao_fim          TIMESTAMP,
+    cancelado              BOOLEAN,
+    liberacao              TIMESTAMP,
+    expedicao              VARCHAR(120),
+    origem                 VARCHAR(20) NOT NULL DEFAULT 'planilha',
+    atualizado_em          TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

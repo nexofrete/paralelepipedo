@@ -4,6 +4,7 @@ const cron = require('node-cron');
 const pool = require('./db');
 const { paraData: dataDoMapa } = require('./importacaoMapa');
 const transportadoraMapa = require('./transportadoraMapa');
+const { dataHora } = require('./pedidosWms');
 
 let tarefaAgendada = null;
 
@@ -68,6 +69,10 @@ function mapearPlanilha(buffer) {
       // Pedido Mercus: só os números ("132237ANTECIPAD" → "132237").
       pedido_mercus: (String(paraTexto(linha.PEDIDO_CLIENTE) || '').match(/\d+/) || [null])[0],
       cliente: paraTexto(linha.NM_CLIENTE),
+      cliente_nome_curto: paraTexto(linha.NM_CURTO),
+      // Tipo de expedição (EXPEDICAO, ANTECIPADO...) e a hora em que o pedido foi liberado (tela Pedidos).
+      expedicao: paraTexto(linha.EXPEDICAO),
+      pedido_liberado_em: dataHora(linha.DT_PEDIDO_LIBERADO),
       cliente_documento: (String(paraTexto(linha.CdCPF_CGC) || '').replace(/\D/g, '')) || null,
       data_pedido: paraDataSql(linha.DT_PEDIDO_LIBERADO),
       numero_nf: paraTexto(linha.NR_NF) || paraTexto(linha.NR_NOTA),
@@ -108,6 +113,7 @@ const CAMPOS_PREENCHIVEIS = [
   'pedido_mercus', 'cliente', 'cliente_documento', 'data_pedido', 'numero_nf', 'data_emissao_nf',
   'cidade', 'bairro', 'uf', 'transportadora', 'frete_cif_fob',
   'redespacho', 'cidade_redespacho', 'valor_faturado', 'qtd_volumes', 'peso_kg', 'cubagem_m3', 'observacoes', 'itens_sem_medida',
+  'cliente_nome_curto', 'expedicao', 'pedido_liberado_em',
 ];
 
 // Volumes, peso e cubagem do pedido: enquanto não há NF-e, vale sempre a planilha mais nova
@@ -207,8 +213,10 @@ async function importarLinhas(linhasMapeadas, usuarioId) {
           : `${c} = COALESCE(fretes.${c}, $${i + 1})`));
         const valores = CAMPOS_PREENCHIVEIS.map((c) => linha[c]);
         valores.push(freteId);
+        // A nota pode ter chegado antes da planilha (achada pelo número da NF): fica com o número do pedido.
+        valores.push(linha.numero_pedido);
         await pool.query(
-          `UPDATE fretes SET ${sets.join(', ')}, atualizado_em = NOW() WHERE id = $${valores.length}`,
+          `UPDATE fretes SET ${sets.join(', ')}, numero_pedido = COALESCE(fretes.numero_pedido, $${valores.length}), atualizado_em = NOW() WHERE id = $${valores.length - 1}`,
           valores
         );
         // Pré-nota: a planilha mais nova enquanto a NF-e não chegou (depois, só se ainda não houver).
@@ -217,6 +225,8 @@ async function importarLinhas(linhasMapeadas, usuarioId) {
         if (linha.itens_sem_medida != null) {
           await pool.query('UPDATE fretes SET itens_sem_medida = $1 WHERE id = $2', [Math.round(linha.itens_sem_medida), freteId]);
         }
+        // Tipo de expedição: vale o da planilha mais nova (o pedido pode ser antecipado depois).
+        if (linha.expedicao) await pool.query('UPDATE fretes SET expedicao = $1 WHERE id = $2 AND expedicao IS DISTINCT FROM $1', [linha.expedicao, freteId]);
         await aplicarMapa(freteId, linha);
         atualizados++;
       } else {

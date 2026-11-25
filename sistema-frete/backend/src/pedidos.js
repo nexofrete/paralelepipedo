@@ -1,7 +1,8 @@
 // Pedidos (405) e Pré-notas fiscais (406), fretes contratados: tudo sai da planilha do ERP (src/importacaoErp.js).
 //  - Pedido: cada nota com número de pedido (fretes) mais os pedidos da planilha que ainda não viraram nota
 //    (erp_pendentes). Situação: aguardando nota → faturado → em embarque / coleta pedida → coletado (em trânsito) →
-//    entregue; cancelado quando o ERP ou a nota cancelam.
+//    entregue; cancelado quando o ERP, o WMS ou a nota cancelam. Antes da nota, o WMS diz se está em separação ou
+//    já separado (pedidos_wms: status, separação, etiquetas, usuário; src/pedidosWms.js).
 //  - Pré-nota: a linha da planilha (o pedido antes da NF-e). As que ainda esperam faturamento (com a idade e o alerta de
 //    parada) e as já faturadas, com a comparação com a NF-e (relatório 87, divergencias()).
 const pool = require('./db');
@@ -14,12 +15,16 @@ const dataOk = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) :
 const dias = (de, ate = hojeSP()) => (de ? Math.round((Date.parse(`${String(ate).slice(0, 10)}T12:00:00Z`) - Date.parse(`${String(de).slice(0, 10)}T12:00:00Z`)) / 86400000) : null);
 const numero = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 const semZeros = (v) => (v == null ? null : String(v).replace(/^0+(?=\d)/, ''));
-const SITUACOES_PEDIDO = ['Aguardando nota', 'Faturado', 'Em embarque', 'Coleta pedida', 'Coletado / em trânsito', 'Entregue', 'Cancelado'];
+const SITUACOES_PEDIDO = ['Aguardando nota', 'Em separação', 'Separado', 'Faturado', 'Em embarque', 'Coleta pedida', 'Coletado / em trânsito', 'Entregue', 'Cancelado'];
 
 // Situação do pedido (sem banco).
 function situacaoPedido(r) {
-  if (r.cancelado) return 'Cancelado';
-  if (!r.tem_nota) return 'Aguardando nota';
+  if (r.cancelado || r.cancelado_wms) return 'Cancelado';
+  if (!r.tem_nota) {
+    if (r.sep_fim) return 'Separado';
+    if (r.sep_inicio) return 'Em separação';
+    return 'Aguardando nota';
+  }
   if (r.data_entrega) return 'Entregue';
   if (r.data_saida || r.chave_cte) return 'Coletado / em trânsito';
   if (r.ordem_id) return 'Coleta pedida';
@@ -42,12 +47,24 @@ async function pendentes(req) {
   return rows.filter((r) => !cliente || String(r.dados?.cliente || '').trim().toUpperCase() === cliente);
 }
 
+async function dadosWms(pedidosLista) {
+  const ids = [...new Set(pedidosLista.filter(Boolean).map(String))];
+  if (!ids.length) return new Map();
+  const { rows } = await pool.query(`SELECT numero_pedido, status, usuario, qtd_etiquetas, cancelado, expedicao,
+      to_char(data_inicial, 'YYYY-MM-DD HH24:MI') AS data_inicial, to_char(etiquetas_impressas_em, 'YYYY-MM-DD HH24:MI') AS etiquetas_impressas_em,
+      to_char(separacao_inicio, 'YYYY-MM-DD HH24:MI') AS separacao_inicio, to_char(separacao_fim, 'YYYY-MM-DD HH24:MI') AS separacao_fim,
+      to_char(liberacao, 'YYYY-MM-DD HH24:MI') AS liberacao
+    FROM pedidos_wms WHERE numero_pedido = ANY($1::text[])`, [ids]).catch(() => ({ rows: [] }));
+  return new Map(rows.map((r) => [r.numero_pedido, r]));
+}
+
 async function pedidos(req, q = {}) {
   const hoje = hojeSP();
   const de = dataOk(q.de) || (() => { const d = new Date(`${hoje}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 30); return d.toISOString().slice(0, 10); })();
   const ate = dataOk(q.ate) || hoje;
   const { rows } = await consultaCliente(req, `SELECT f.id, f.numero_pedido AS pedido, f.pedido_mercus AS pedido_cliente, to_char(COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date), 'YYYY-MM-DD') AS data_pedido,
-      f.cliente, f.cidade, f.uf, f.qtd_volumes AS volumes, COALESCE(f.peso_bruto, f.peso_kg)::float AS peso, f.valor_faturado::float AS valor,
+      f.cliente, f.cliente_documento AS cnpj, f.cliente_nome_curto AS nome_curto, f.cubagem_m3::float AS cubagem, f.expedicao,
+      to_char(f.pedido_liberado_em, 'YYYY-MM-DD HH24:MI') AS liberado_em, f.cidade, f.uf, f.qtd_volumes AS volumes, COALESCE(f.peso_bruto, f.peso_kg)::float AS peso, f.valor_faturado::float AS valor,
       COALESCE(f.transportadora_cte, f.transportadora, f.transportadora_nfe) AS transportadora, LTRIM(f.numero_nf, '0') AS nf, to_char(f.data_emissao_nf, 'YYYY-MM-DD') AS emissao_nf,
       f.chave_nfe IS NOT NULL AS tem_nota, f.numero_cte, f.chave_cte, to_char(f.data_saida, 'YYYY-MM-DD') AS data_saida, to_char(f.data_entrega, 'YYYY-MM-DD') AS data_entrega,
       (f.nf_cancelada IS TRUE OR COALESCE(f.status, '') = 'Cancelado') AS cancelado,
@@ -57,17 +74,31 @@ async function pedidos(req, q = {}) {
       AND COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date) BETWEEN $1::date AND $2::date
     ORDER BY COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date) DESC, f.numero_pedido DESC LIMIT 5000`, [de, ate]).catch(() => ({ rows: [] }));
   const lista = rows.map((r) => ({ ...r, origem: 'nota' }));
-  for (const p of await pendentes(req)) {
+  const pend = await pendentes(req);
+  for (const p of pend) {
     const d = p.dados || {};
     const data = d.data_pedido || (p.recebido_em ? new Date(p.recebido_em).toISOString().slice(0, 10) : null);
     if (data && (data < de || data > ate)) continue;
     lista.push({ id: null, pedido: p.numero_pedido, pedido_cliente: d.pedido_mercus || null, data_pedido: data, cliente: d.cliente || null, cidade: d.cidade || null, uf: d.uf || null,
+      cnpj: d.cliente_documento || null, nome_curto: d.cliente_nome_curto || null, cubagem: numero(d.cubagem_m3), expedicao: d.expedicao || null,
+      liberado_em: d.pedido_liberado_em ? String(d.pedido_liberado_em).slice(0, 16) : null,
       volumes: numero(d.qtd_volumes), peso: numero(d.peso_kg), valor: numero(d.valor_faturado), transportadora: d.transportadora || null, nf: semZeros(p.numero_nf || d.numero_nf),
       emissao_nf: d.data_emissao_nf || null, tem_nota: false, cancelado: d._estatus_pedido === 'C' || d._nf_cancelada === 'S', origem: 'planilha' });
   }
+  // WMS: status, separação, etiquetas, usuário, cancelamento (e a liberação/expedição, quando o WMS traz).
+  const wms = await dadosWms(lista.map((r) => r.pedido));
+  for (const r of lista) {
+    const w = wms.get(String(r.pedido)) || {};
+    Object.assign(r, {
+      status_wms: w.status || null, data_inicial: w.data_inicial || null, usuario: w.usuario || null, etiquetas_em: w.etiquetas_impressas_em || null,
+      qtd_etiquetas: w.qtd_etiquetas ?? null, sep_inicio: w.separacao_inicio || null, sep_fim: w.separacao_fim || null, cancelado_wms: w.cancelado === true,
+      liberado_em: w.liberacao || r.liberado_em || null, expedicao: w.expedicao || r.expedicao || null, tem_wms: !!w.numero_pedido,
+    });
+    r.sep_minutos = r.sep_inicio && r.sep_fim ? Math.round((Date.parse(r.sep_fim.replace(' ', 'T')) - Date.parse(r.sep_inicio.replace(' ', 'T'))) / 60000) : null;
+  }
   const busca = String(q.busca || '').trim().toUpperCase();
   const todos = lista.map((r) => ({ ...r, situacao: situacaoPedido(r), dias: dias(r.data_pedido, hoje), destino: [r.cidade, r.uf].filter(Boolean).join('/') }))
-    .filter((r) => !busca || [r.pedido, r.pedido_cliente, r.cliente, r.nf, r.cidade, r.transportadora].some((x) => String(x || '').toUpperCase().includes(busca)))
+    .filter((r) => !busca || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario].some((x) => String(x || '').toUpperCase().includes(busca)))
     .sort((a, b) => String(b.data_pedido || '').localeCompare(String(a.data_pedido || '')));
   const contagem = Object.fromEntries(SITUACOES_PEDIDO.map((s) => [s, todos.filter((r) => r.situacao === s).length]));
   const filtro = String(q.situacao || '');
@@ -75,7 +106,9 @@ async function pedidos(req, q = {}) {
   return {
     de, ate, situacoes: SITUACOES_PEDIDO, contagem, pedidos: filtro ? todos.filter((r) => r.situacao === filtro) : todos,
     resumo: { pedidos: ativos.length, valor: Math.round(ativos.reduce((t, r) => t + (r.valor || 0), 0) * 100) / 100, peso: Math.round(ativos.reduce((t, r) => t + (r.peso || 0), 0) * 10) / 10,
-      aguardando_nota: contagem['Aguardando nota'], aguardando_mais_dias: todos.filter((r) => r.situacao === 'Aguardando nota' && r.dias > DIAS_PARADA).length },
+      aguardando_nota: contagem['Aguardando nota'], aguardando_mais_dias: todos.filter((r) => r.situacao === 'Aguardando nota' && r.dias > DIAS_PARADA).length,
+      em_separacao: contagem['Em separação'], separados: contagem.Separado, com_wms: todos.filter((r) => r.tem_wms).length,
+      etiquetas: todos.reduce((t, r) => t + (r.qtd_etiquetas || 0), 0) },
   };
 }
 

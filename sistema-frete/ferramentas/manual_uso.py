@@ -588,11 +588,26 @@ def parte_uso(g):
                '(Importação do ERP), antes e depois da nota fiscal.'))
     s += h2('Pedidos (405)')
     s += lista([
-        'Cada pedido do período (data do pedido, padrão últimos 30 dias): os que já viraram nota e os que ainda estão só na planilha, com '
-        'o cliente, o destino, volumes, peso, valor, a transportadora, a NF-e e o CT-e.',
-        '<b>Situação</b>: Aguardando nota, Faturado (sem embarque nem coleta pedida), Em embarque, Coleta pedida, Coletado / em trânsito, '
-        'Entregue e Cancelado (pedido cancelado no ERP ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',
-        'Clique na NF-e para abrir a nota. Os botões do alto filtram pela situação; a busca acha pedido, pedido do cliente, cliente, NF, cidade ou transportadora.',
+        'Cada pedido do período (data do pedido, padrão últimos 30 dias): os que já viraram nota e os que ainda estão só na planilha.',
+        'Colunas, na ordem da planilha de pedidos: <b>Pedido</b> (e o Pedido Mercus), <b>Situação</b>, <b>Cliente</b> (com o nome curto e o '
+        'CNPJ), <b>Liberação</b> (data e hora) e <b>Expedição</b> (EXPEDICAO, ANTECIPADO...), <b>Peso e cubagem</b>, <b>Status WMS</b> (com a '
+        'data inicial e o usuário), <b>Etiquetas</b> (quantidade e quando foram impressas), <b>Separação</b> (início, fim e quanto tempo levou) '
+        'e a <b>NF-e</b> com a emissão.',
+        'Da planilha do ERP (Timeline de pedidos) vêm o pedido, o CNPJ, o cliente, o nome curto (NM_CURTO), o Pedido Mercus, a liberação '
+        '(DT_PEDIDO_LIBERADO), o peso, a cubagem, a expedição (EXPEDICAO), a nota e a emissão.',
+        '<b>Do WMS</b> vêm o status, a data inicial, o usuário, a data e a quantidade de etiquetas, o início e o fim da separação e o '
+        'cancelamento. Enquanto não houver ligação direta com o WMS, use o botão <b>Planilha do WMS</b> (quem edita registros): uma planilha '
+        'exportada do WMS com a coluna "Número Pedido" e as colunas "Status/WMS", "Data Inicial", "Usuário", "Data/Imp. Etq", '
+        '"Qtd. Etiquetas", "Data Início", "Data Finalização" e "Cancelado Wms" (as outras colunas são ignoradas; "Liberação" e "Expedição", '
+        'se vierem preenchidas, valem mais que as do ERP). Célula vazia não apaga o que já estava.',
+        'Se a maioria dos valores de uma coluna não for do tipo dela (por exemplo, datas em "Qtd. Etiquetas"), a planilha é <b>recusada '
+        'sem gravar nada</b>: é sinal de colunas deslocadas. Valores estranhos isolados ficam vazios e são avisados.',
+        '<b>Situação</b>: Aguardando nota; Em separação (o WMS começou a separar); Separado (separação terminada, esperando a nota); '
+        'Faturado (sem embarque nem coleta pedida); Em embarque; Coleta pedida; Coletado / em trânsito; Entregue; e Cancelado (no ERP, no '
+        'WMS ou nota cancelada). Pedido aguardando nota há mais de 3 dias aparece com os dias em vermelho.',
+        'Clique na NF-e para abrir a nota. Os botões do alto filtram pela situação; a busca acha pedido, pedido do cliente, cliente, nome '
+        'curto, CNPJ, NF, cidade, transportadora, status do WMS ou usuário. O <b>Excel</b> leva todos os pedidos com as colunas da planilha de '
+        'pedidos, mais a situação, o destino, a transportadora e o CT-e.',
     ])
     s += h2('Pré-notas fiscais (406)')
     s += lista([

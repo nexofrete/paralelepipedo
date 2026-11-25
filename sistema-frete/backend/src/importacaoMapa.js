@@ -9,6 +9,7 @@ const dois = (n) => String(n).padStart(2, '0');
 function paraData(valor) {
   if (valor == null || valor === '') return null;
   if (valor instanceof Date && !isNaN(valor)) {
+    valor = new Date(Math.round(valor.getTime() / 1000) * 1000);   // 23:59:59,999 do Excel é meia-noite
     return `${valor.getFullYear()}-${dois(valor.getMonth() + 1)}-${dois(valor.getDate())}`;
   }
   if (typeof valor === 'number') {

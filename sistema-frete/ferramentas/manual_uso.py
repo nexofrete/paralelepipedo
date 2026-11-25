@@ -233,6 +233,7 @@ def parte_uso(g):
         ['DS_MAPA_CARREGAMENTO', 'Descrição do mapa'],
         ['DT_REFERENCIA_MAPA', 'Data de referência do mapa: vira a <b>Data da Coleta</b> (a Data Prevista de Entrega é recalculada)'],
         ['AJUDANTE_1_MAPA', '1º ajudante do mapa'],
+        ['TRANSPORTADORA_MAPA', 'Transportadora que <b>de fato coletou</b> (nome e CNPJ): passa a ser a transportadora da nota'],
     ], [0.3, 0.7])
     s.append(P('Os campos do <b>mapa de carregamento</b> são os únicos que a planilha atualiza mesmo já preenchidos: vale sempre o '
                'mapa da planilha mais nova, porque o pedido pode mudar de mapa. Coluna de mapa vazia não apaga o que já estava gravado.'))
@@ -297,6 +298,20 @@ def parte_uso(g):
                'separada do relatório do mapa. Cada frete recebe a <b>Data da Coleta</b> (pela data de referência do mapa; a Data Prevista '
                'de Entrega é recalculada a partir dela), o <b>número</b> e a <b>descrição</b> do mapa e o <b>1º ajudante</b>. Esses dados '
                'alimentam o relatório de notas sem mapa de carregamento (seção 19).'))
+    s += h2('Transportadora que coletou (TRANSPORTADORA_MAPA)')
+    s.append(P('A transportadora do mapa é quem de fato coletou a mercadoria na empresa, e vale mais que a que está na nota fiscal:'))
+    s += lista([
+        '<b>Vira a transportadora da nota</b> quando é outra empresa (pelo CNPJ que vem junto do nome; o nome usado é o do cadastro '
+        'de transportadoras). A da NF-e continua guardada e aparece no relatório 106. Se for a mesma empresa escrita de outro '
+        'jeito ("TRAS LTDA" x "TRANSPORTES LTDA"), nada muda.',
+        '<b>Previsão de entrega antes do CT-e</b>: com a Data da Coleta do mapa e o prazo da tabela de preço da transportadora '
+        'que coletou, a nota já ganha a Data Prevista de Entrega. Quando o CT-e chega, vale o cálculo pelo CT-e.',
+        '<b>Comparação com o CT-e</b>: CT-e de outra transportadora que não a do mapa aparece em NF-e x CT-e, inconsistências, como '
+        '"Transportadora do mapa x CT-e diferente", e no relatório <b>106 · Transportadora do mapa x NF-e x CT-e</b>.',
+        'Na exportação atual do ERP as colunas do fim vêm deslocadas uma casa (a transportadora em DS_MAPA_CARREGAMENTO, o '
+        'ajudante em TRANSPORTADORA_MAPA e a data de saída em AJUDANTE_1_MAPA). O sistema reconhece isso pelo conteúdo e lê '
+        'cada dado no lugar certo; quando o ERP for corrigido, continua funcionando.',
+    ])
 
     # 13
     s += h1('13. Vários CT-e para a mesma nota')
@@ -1234,6 +1249,7 @@ def parte_uso(g):
         ['96', 'Operação doca', 'Por doca (Pátio e portaria): visitas, carregamentos, descargas, concluídas, atrasadas, não compareceram, canceladas, espera até a doca, tempo na doca e no pátio, horas de doca ocupada, volumes e peso.'],
         ['97', 'Relação de justificativas de ação', 'Cada ação com motivo escrito no período: aprovação e reprovação de CT-e, glosa, bloqueio de fatura e manifestação de NF-e, com quem fez e quando.'],
         ['98', 'Operação por documentos', 'Por dia (até 62 dias) ou mês: NF-e e CT-e recebidos, CT-e aprovados e reprovados, comprovantes de entrega, ocorrências, faturas e arquivos EDI.'],
+        ['106', 'Transportadora do mapa × NF-e × CT-e', 'Notas com mapa no período (data da coleta): a transportadora da NF-e, a que coletou (mapa) e a do CT-e, com a previsão de entrega. Situação: confere, saiu por outra (a NF-e cita uma e coletou outra), CT-e de outra transportadora e aguardando CT-e.'],
         ['99', 'Relação de pendências', 'Tudo o que está pendente hoje, da mais antiga para a mais nova: notas sem CT-e, CT-e retidos, CT-e sem nota, entregas atrasadas, faturas bloqueadas ou vencidas, arquivos EDI parados e contestações sem resposta.'],
     ], [0.1, 0.28, 0.62])
     s += h2('Recursos de todas as telas de relatórios (324 a 332)')
@@ -1553,6 +1569,8 @@ def parte_uso(g):
         '(com redespacho, a 1ª perna pode terminar na cidade do redespacho). São os <b>vínculos suspeitos</b>.',
         '<b>Transportadora da NF-e × CT-e diferente</b>, <b>CT-e cancelado cobrado</b> (em fatura ou liberado) e '
         '<b>possível cobrança em dobro</b>.',
+        '<b>Transportadora do mapa × CT-e diferente</b>: o CT-e da entrega é de uma transportadora que não é a que coletou '
+        '(TRANSPORTADORA_MAPA da planilha do ERP). Compara pela raiz do CNPJ ou pelo nome.',
     ])
     s += lista([
         '<b>Religar</b> (quem edita registros ou aprova pagamento): mostra as notas candidatas (as que o CT-e cita e as sem '

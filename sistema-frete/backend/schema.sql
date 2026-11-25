@@ -1241,6 +1241,10 @@ ALTER TABLE configuracao_seguranca ADD COLUMN IF NOT EXISTS https_porta INTEGER 
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_descricao VARCHAR(200);
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_data_referencia DATE;
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_ajudante VARCHAR(150);
+-- Transportadora que de fato coletou (TRANSPORTADORA_MAPA da Timeline de pedidos): vira a transportadora da nota
+-- (a da NF-e fica em transportadora_nfe), dá o prazo antes do CT-e e é comparada com a do CT-e.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_transportadora VARCHAR(200);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS mapa_transportadora_cnpj VARCHAR(14);
 -- Nota de entrada / devolução (não sai do estoque como venda): marcada pra ficar fora do relatório de notas sem mapa.
 ALTER TABLE fretes ADD COLUMN IF NOT EXISTS nf_entrada BOOLEAN NOT NULL DEFAULT FALSE;
 UPDATE fretes SET nf_entrada = TRUE

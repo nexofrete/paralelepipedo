@@ -3,6 +3,7 @@ const fs = require('fs');
 const cron = require('node-cron');
 const pool = require('./db');
 const { paraData: dataDoMapa } = require('./importacaoMapa');
+const transportadoraMapa = require('./transportadoraMapa');
 
 let tarefaAgendada = null;
 
@@ -74,10 +75,10 @@ function mapearPlanilha(buffer) {
       numero_mapa: paraTexto(linha.NR_MAPA_CARREGAMENTO),
       // Mapa de carregamento (a planilha Timeline de pedidos já traz): substitui a
       // importação separada do relatório do mapa. A data de referência vira a Data da Coleta.
-      mapa_descricao: paraTexto(linha.DS_MAPA_CARREGAMENTO),
+      // Descrição, ajudante e a transportadora que de fato coletou (TRANSPORTADORA_MAPA, com o CNPJ
+      // separado do nome); trata a exportação com as colunas do fim deslocadas (transportadoraMapa.js).
+      ...(({ deslocado, ...m }) => m)(transportadoraMapa.lerMapaDaLinha(linha)),
       mapa_data_referencia: dataDoMapa(linha.DT_REFERENCIA_MAPA),
-      // "DATA:07/01/26 HORA:17:30" é a saída do mapa, não um ajudante (coluna deslocada no ERP): não grava.
-      mapa_ajudante: /^\s*DATA\s*:/i.test(String(linha.AJUDANTE_1_MAPA ?? '')) ? null : paraTexto(linha.AJUDANTE_1_MAPA),
       chave_nfe: paraTexto(linha.CdChaveAcessoNFEletronica),
       cidade: paraTexto(linha.CIDADE),
       bairro: paraTexto(linha.BAIRRO),
@@ -119,14 +120,18 @@ const MEDIDAS = ['qtd_volumes', 'peso_kg', 'cubagem_m3'];
 const CAMPOS_MAPA = ['numero_mapa', 'mapa_descricao', 'mapa_data_referencia', 'mapa_ajudante'];
 async function aplicarMapa(freteId, linha) {
   const valores = CAMPOS_MAPA.map((c) => linha[c] ?? null);
-  if (valores.every((v) => v == null)) return;
+  const transp = { nome: linha.mapa_transportadora ?? null, cnpj: linha.mapa_transportadora_cnpj ?? null };
+  if (valores.every((v) => v == null) && !transp.nome && !transp.cnpj) return;
   const novo = (c, i) => `COALESCE($${i + 1}${c === 'mapa_data_referencia' ? '::date' : ''}, ${c})`;
-  await pool.query(
+  const { rowCount } = await pool.query(
     `UPDATE fretes SET ${CAMPOS_MAPA.map((c, i) => `${c} = ${novo(c, i)}`).join(', ')},
             data_coleta = COALESCE($3::date, data_coleta), atualizado_em = NOW()
       WHERE id = $5 AND (${CAMPOS_MAPA.map((c, i) => `${c} IS DISTINCT FROM ${novo(c, i)}`).join(' OR ')}
                          OR data_coleta IS DISTINCT FROM COALESCE($3::date, data_coleta))`,
     [...valores, freteId]);
+  // A transportadora do mapa passa a ser a da nota; com coleta e transportadora, já sai a previsão de entrega.
+  const mudouTransp = await transportadoraMapa.aplicar(freteId, transp);
+  if (rowCount || mudouTransp) await transportadoraMapa.prazoPeloMapa(freteId).catch(() => null);
 }
 
 // Pré-nota: o que o ERP disse do pedido antes da NF-e (relatório 87, NF-e x pré-nota).
@@ -295,7 +300,8 @@ async function devolverParaAguardandoXml(simular) {
               JSONB_STRIP_NULLS(JSONB_BUILD_OBJECT(
                 'numero_pedido', numero_pedido, 'pedido_mercus', pedido_mercus, 'cliente', cliente, 'data_pedido', data_pedido,
                 'numero_nf', numero_nf, 'data_emissao_nf', data_emissao_nf, 'numero_mapa', numero_mapa, 'mapa_descricao', mapa_descricao,
-                'mapa_data_referencia', mapa_data_referencia, 'mapa_ajudante', mapa_ajudante, 'cidade', cidade, 'bairro', bairro,
+                'mapa_data_referencia', mapa_data_referencia, 'mapa_ajudante', mapa_ajudante,
+                'mapa_transportadora', mapa_transportadora, 'mapa_transportadora_cnpj', mapa_transportadora_cnpj, 'cidade', cidade, 'bairro', bairro,
                 'uf', uf, 'transportadora', transportadora, 'frete_cif_fob', frete_cif_fob, 'redespacho', redespacho,
                 'cidade_redespacho', cidade_redespacho, 'valor_faturado', valor_faturado, 'qtd_volumes', qtd_volumes,
                 'peso_kg', peso_kg, 'cubagem_m3', cubagem_m3, 'observacoes', observacoes,

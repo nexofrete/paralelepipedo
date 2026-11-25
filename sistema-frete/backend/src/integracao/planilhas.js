@@ -38,6 +38,7 @@ const CAMPOS_IMPORTACAO = [
   { campo: 'numero_mapa', rotulo: 'Nº do mapa de carregamento', tipo: 'texto', nomes: ['NR_MAPA_CARREGAMENTO', 'MAPA', 'MAPA_CARREGAMENTO', 'NUMERO_MAPA', 'ROMANEIO', 'CARGA'] },
   { campo: 'mapa_descricao', rotulo: 'Descrição do mapa de carregamento', tipo: 'texto', nomes: ['DS_MAPA_CARREGAMENTO', 'DESCRICAO_MAPA', 'DS_MAPA'] },
   { campo: 'mapa_data_referencia', rotulo: 'Data de referência do mapa (vira a Data da Coleta)', tipo: 'data', nomes: ['DT_REFERENCIA_MAPA', 'DATA_REFERENCIA_MAPA', 'DATA_MAPA', 'DATA_CARREGAMENTO'] },
+  { campo: 'mapa_transportadora', rotulo: 'Transportadora que coletou (mapa)', tipo: 'texto', nomes: ['TRANSPORTADORA_MAPA', 'TRANSPORTADORA_COLETA', 'TRANSPORTADORA_CARREGAMENTO'] },
   { campo: 'mapa_ajudante', rotulo: '1º ajudante do mapa', tipo: 'texto', nomes: ['AJUDANTE_1_MAPA', 'AJUDANTE_MAPA', 'AJUDANTE'] },
   { campo: 'observacoes', rotulo: 'Observação', tipo: 'texto', nomes: ['OBSERVACAO_PEDIDO', 'OBSERVACAO', 'OBS', 'OBSERVACOES'] },
   { campo: 'pedido_cancelado', rotulo: 'Pedido cancelado? (coluna)', tipo: 'sim_nao', nomes: ['ESTATUS_PEDIDO', 'STATUS_PEDIDO', 'PEDIDO_CANCELADO', 'CANCELADO', 'SITUACAO_PEDIDO'] },
@@ -145,6 +146,8 @@ function mapear(linhas, config = {}) {
     o._nf_cancelada = pega(l, 'nf_cancelada') ? 'S' : null;
     o._nr_nf = o.numero_nf; o._nr_nota = null;
     o.itens_sem_medida = null;
+    // Transportadora do mapa: "NOME CNPJ:00.000.000/0000-00" → nome e CNPJ separados.
+    if (o.mapa_transportadora) Object.assign(o, (({ nome, cnpj }) => ({ mapa_transportadora: nome, mapa_transportadora_cnpj: cnpj }))(require('../transportadoraMapa').separar(o.mapa_transportadora)));
     return o.numero_pedido ? o : null;
   }).filter(Boolean);
 }

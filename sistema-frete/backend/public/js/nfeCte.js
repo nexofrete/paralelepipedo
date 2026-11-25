@@ -22,7 +22,7 @@
     return j;
   };
   const enviar = (c, corpo) => api(c, { method: 'POST', body: JSON.stringify(corpo) });
-  const COR = { NF_SEM_CTE: '#f59e0b', CTE_SEM_NF: '#f59e0b', VALOR: '#ef4444', PESO: '#ef4444', DESTINATARIO: '#ef4444', CIDADE: '#ef4444', TRANSPORTADORA: '#a855f7', CTE_CANCELADO: '#ef4444', COBRANCA_DUPLA: '#ef4444' };
+  const COR = { NF_SEM_CTE: '#f59e0b', CTE_SEM_NF: '#f59e0b', VALOR: '#ef4444', PESO: '#ef4444', DESTINATARIO: '#ef4444', CIDADE: '#ef4444', TRANSPORTADORA: '#a855f7', MAPA: '#a855f7', CTE_CANCELADO: '#ef4444', COBRANCA_DUPLA: '#ef4444' };
   const estado = { tipo: '', dias: 3, busca: '', aceitas: false, dados: null };
   const modal = $('modalNfCte');
   const fechar = () => modal.classList.add('oculto');

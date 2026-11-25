@@ -9,6 +9,7 @@
 //  92 Produtividade de resolução de pendências: o que cada usuário decidiu no período.
 //  93 Vigência das tabelas de frete e 95 Restrição de pessoa nas tabelas.
 //  96 Operação de doca (Pátio e portaria), 97 Justificativas das ações, 98 Operação por documentos, 99 Pendências.
+//  106 Transportadora do mapa × NF-e × CT-e: quem de fato coletou (TRANSPORTADORA_MAPA da Timeline de pedidos).
 // Os que usam dados de fora das notas (tabelas, pátio, EDI, faturas, ações dos usuários) são só de quem vê todos os fretes.
 const pool = require('./db');
 const { vePotudo } = require('./permissoes');
@@ -420,6 +421,32 @@ module.exports = function criar(h) {
     };
   }
 
+  // 106 --------------------------------------------------------------------------------------------------------------
+  async function transportadoraDoMapa(req, q, de, ate) {
+    const tm = require('./transportadoraMapa');
+    const p = [de, ate]; const extra = filtros(q, p);
+    const { rows } = await consulta(req, `SELECT f.id, f.numero_nf, to_char(f.data_emissao_nf, 'YYYY-MM-DD') AS emissao, to_char(f.data_coleta, 'YYYY-MM-DD') AS coleta,
+        f.numero_mapa, f.cliente, f.cidade, f.uf, COALESCE(f.transportadora_nfe, f.pre_nota->>'transportadora') AS transp_nf,
+        f.mapa_transportadora AS transp_mapa, f.mapa_transportadora_cnpj, f.transportadora_cte AS transp_cte, f.transportadora_cnpj_cte, f.numero_cte,
+        to_char(f.data_entrega_prevista, 'YYYY-MM-DD') AS previsao
+      FROM fretes f WHERE ${BASE} AND (f.mapa_transportadora IS NOT NULL OR f.mapa_transportadora_cnpj IS NOT NULL)
+        AND COALESCE(f.data_coleta, f.data_emissao_nf) BETWEEN $1 AND $2${extra}
+      ORDER BY COALESCE(f.data_coleta, f.data_emissao_nf) DESC, f.numero_nf DESC LIMIT 5001`, p);
+    const linhas = rows.map((l) => ({
+      ...l, destino: [l.cidade, l.uf].filter(Boolean).join('/'),
+      situacao: tm.situacao({ nf: { nome: l.transp_nf }, mapa: { nome: l.transp_mapa, cnpj: l.mapa_transportadora_cnpj }, cte: { nome: l.transp_cte, cnpj: l.transportadora_cnpj_cte } }),
+    }));
+    const qs = (t) => conta(linhas, (l) => l.situacao === t);
+    return {
+      colunas: [['numero_nf', 'NF'], ['situacao', 'Situação'], ['coleta', 'Coleta', 'data'], ['numero_mapa', 'Mapa'], ['cliente', 'Cliente'], ['destino', 'Destino'],
+        ['transp_nf', 'Na NF-e'], ['transp_mapa', 'Coletou (mapa)'], ['transp_cte', 'No CT-e'], ['previsao', 'Previsão', 'data']],
+      linhas,
+      resumo: [['Notas com mapa', linhas.length], ['CT-e de outra transportadora', qs('CT-e de outra transportadora')],
+        ['Saiu por outra (NF-e ≠ mapa)', conta(linhas, (l) => l.situacao.startsWith('Saiu por outra'))], ['Aguardando CT-e', conta(linhas, (l) => /aguardando CT-e/i.test(l.situacao))],
+        ['Confere', qs('Confere')]],
+    };
+  }
+
   const T = 'operacional';
   return {
     87: { titulo: 'Comparativo entre nota fiscal e pré-nota fiscal', grupo: 'Notas e CT-e', tela: T, rodar: preNota,
@@ -449,6 +476,8 @@ module.exports = function criar(h) {
       desc: 'Cada ação com justificativa no período: aprovação e reprovação de CT-e, glosa, bloqueio de fatura e manifestação de NF-e, com quem fez, quando e o motivo escrito.' },
     98: { titulo: 'Operação por documentos', grupo: 'Pendências', tela: T, rodar: porDocumentos,
       desc: 'Quantos documentos a operação tratou por dia (período de até 62 dias) ou por mês: NF-e e CT-e recebidos, CT-e aprovados e reprovados, comprovantes, ocorrências, faturas e arquivos EDI.' },
+    106: { titulo: 'Transportadora do mapa × NF-e × CT-e', grupo: 'Notas e CT-e', tela: T, rodar: transportadoraDoMapa,
+      desc: 'Notas com mapa de carregamento no período (data da coleta): a transportadora que está na NF-e, a que de fato coletou (TRANSPORTADORA_MAPA da planilha Timeline de pedidos) e a do CT-e. Situação: confere, saiu por outra (a NF-e cita uma e coletou outra), CT-e de outra transportadora (o CT-e não é de quem coletou) e aguardando CT-e, com a previsão de entrega.' },
     99: { titulo: 'Relação de pendências', grupo: 'Pendências', tela: T, semPeriodo: true, rodar: pendencias,
       desc: 'Tudo o que está pendente hoje, da mais antiga para a mais nova: notas sem CT-e, CT-e retidos, CT-e sem nota, entregas atrasadas, faturas bloqueadas ou vencidas, arquivos EDI parados e contestações sem resposta.' },
   };

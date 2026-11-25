@@ -137,6 +137,7 @@ function conferir(d, notas, { vinculo = null } = {}) {
 const NOMES = {
   NF_SEM_CTE: 'Nota sem CT-e', CTE_SEM_NF: 'CT-e sem nota', VALOR: 'Valor da mercadoria diferente', PESO: 'Peso diferente', DESTINATARIO: 'Destinatário diferente (vínculo suspeito)',
   CIDADE: 'Cidade de destino diferente (vínculo suspeito)', TRANSPORTADORA: 'Transportadora da NF-e × CT-e diferente', CTE_CANCELADO: 'CT-e cancelado cobrado', COBRANCA_DUPLA: 'Possível cobrança em dobro',
+  MAPA: 'Transportadora do mapa × CT-e diferente',
 };
 
 // Lista única. q: { dias (nota sem CT-e há pelo menos N dias; padrão 3), tipo, busca, aceitas }
@@ -171,7 +172,8 @@ async function inconsistencias(req, q = {}) {
   const { rows: ctes } = await consultaCliente(req,
     `SELECT f.id, f.numero_nf, f.numero_cte, f.cliente, f.transportadora, f.transportadora_cte, f.transportadora_nfe, f.data_emissao_nf, f.data_emissao_cte, f.cidade, f.uf, f.valor_total_cte,
             f.xml_cte_original, f.chave_cte, f.valor_faturado, f.peso_kg, f.cliente_documento, f.cidade_redespacho, f.redespacho, f.vinculo_cte, f.tipo_cte, f.frete_principal_id,
-            f.alerta_transportadora_diferente, f.alerta_cobranca_dupla, f.cte_cancelado, f.fatura_id, f.status
+            f.alerta_transportadora_diferente, f.alerta_cobranca_dupla, f.cte_cancelado, f.fatura_id, f.status,
+            f.mapa_transportadora, f.mapa_transportadora_cnpj, f.transportadora_cnpj_cte, f.numero_mapa
        FROM fretes f WHERE f.chave_cte IS NOT NULL AND f.cliente IS NOT NULL ORDER BY f.data_emissao_cte DESC NULLS LAST LIMIT 5000`);
   const ids = ctes.map((c) => c.id);
   const { rows: cobertas } = ids.length ? await consultaCliente(req,
@@ -182,6 +184,11 @@ async function inconsistencias(req, q = {}) {
       continue;
     }
     if (f.alerta_transportadora_diferente) add(f, 'TRANSPORTADORA', `NF-e: ${f.transportadora_nfe || '—'} · CT-e: ${f.transportadora_cte || '—'}`);
+    // Quem coletou (mapa de carregamento) não é quem emitiu o CT-e da entrega.
+    if (!f.frete_principal_id && (f.mapa_transportadora || f.mapa_transportadora_cnpj)
+        && require('./transportadoraMapa').mesma({ nome: f.mapa_transportadora, cnpj: f.mapa_transportadora_cnpj }, { nome: f.transportadora_cte, cnpj: f.transportadora_cnpj_cte }) === false) {
+      add(f, 'MAPA', `Mapa ${f.numero_mapa || ''}: ${f.mapa_transportadora || f.mapa_transportadora_cnpj} · CT-e: ${f.transportadora_cte || '—'}`);
+    }
     if (f.alerta_cobranca_dupla && f.status !== 'Cancelado') add(f, 'COBRANCA_DUPLA', 'Nota devolvida e refaturada com CT-e nas duas');
     // CT-e complementar não traz carga para comparar.
     if (Number(f.tipo_cte) === 1 || f.vinculo_cte === 'complementar') continue;

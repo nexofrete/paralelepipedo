@@ -2,6 +2,7 @@ const XLSX = require('xlsx');
 const fs = require('fs');
 const cron = require('node-cron');
 const pool = require('./db');
+const { paraData: dataDoMapa } = require('./importacaoMapa');
 
 let tarefaAgendada = null;
 
@@ -71,6 +72,12 @@ function mapearPlanilha(buffer) {
       numero_nf: paraTexto(linha.NR_NF) || paraTexto(linha.NR_NOTA),
       data_emissao_nf: paraDataSql(linha.DT_EMISSAO_NF),
       numero_mapa: paraTexto(linha.NR_MAPA_CARREGAMENTO),
+      // Mapa de carregamento (a planilha Timeline de pedidos já traz): substitui a
+      // importação separada do relatório do mapa. A data de referência vira a Data da Coleta.
+      mapa_descricao: paraTexto(linha.DS_MAPA_CARREGAMENTO),
+      mapa_data_referencia: dataDoMapa(linha.DT_REFERENCIA_MAPA),
+      // "DATA:07/01/26 HORA:17:30" é a saída do mapa, não um ajudante (coluna deslocada no ERP): não grava.
+      mapa_ajudante: /^\s*DATA\s*:/i.test(String(linha.AJUDANTE_1_MAPA ?? '')) ? null : paraTexto(linha.AJUDANTE_1_MAPA),
       chave_nfe: paraTexto(linha.CdChaveAcessoNFEletronica),
       cidade: paraTexto(linha.CIDADE),
       bairro: paraTexto(linha.BAIRRO),
@@ -98,13 +105,29 @@ function mapearPlanilha(buffer) {
 // Colunas que a importação pode preencher (só entra se o registro já não tiver valor).
 const CAMPOS_PREENCHIVEIS = [
   'pedido_mercus', 'cliente', 'cliente_documento', 'data_pedido', 'numero_nf', 'data_emissao_nf',
-  'numero_mapa', 'cidade', 'bairro', 'uf', 'transportadora', 'frete_cif_fob',
+  'cidade', 'bairro', 'uf', 'transportadora', 'frete_cif_fob',
   'redespacho', 'cidade_redespacho', 'valor_faturado', 'qtd_volumes', 'peso_kg', 'cubagem_m3', 'observacoes', 'itens_sem_medida',
 ];
 
 // Volumes, peso e cubagem do pedido: enquanto não há NF-e, vale sempre a planilha mais nova
 // (o pedido pode mudar até ser faturado); valor gravado 0 também é substituído.
 const MEDIDAS = ['qtd_volumes', 'peso_kg', 'cubagem_m3'];
+
+// Mapa de carregamento: vale sempre o da planilha mais nova (o pedido pode mudar de
+// mapa), como fazia a importação do relatório do mapa. Com data de referência, ela
+// vira a Data da Coleta (a Data Prevista de Entrega é recalculada pelo trigger).
+const CAMPOS_MAPA = ['numero_mapa', 'mapa_descricao', 'mapa_data_referencia', 'mapa_ajudante'];
+async function aplicarMapa(freteId, linha) {
+  const valores = CAMPOS_MAPA.map((c) => linha[c] ?? null);
+  if (valores.every((v) => v == null)) return;
+  const novo = (c, i) => `COALESCE($${i + 1}${c === 'mapa_data_referencia' ? '::date' : ''}, ${c})`;
+  await pool.query(
+    `UPDATE fretes SET ${CAMPOS_MAPA.map((c, i) => `${c} = ${novo(c, i)}`).join(', ')},
+            data_coleta = COALESCE($3::date, data_coleta), atualizado_em = NOW()
+      WHERE id = $5 AND (${CAMPOS_MAPA.map((c, i) => `${c} IS DISTINCT FROM ${novo(c, i)}`).join(' OR ')}
+                         OR data_coleta IS DISTINCT FROM COALESCE($3::date, data_coleta))`,
+    [...valores, freteId]);
+}
 
 // Pré-nota: o que o ERP disse do pedido antes da NF-e (relatório 87, NF-e x pré-nota).
 const CAMPOS_PRE_NOTA = ['numero_pedido', 'numero_nf', 'data_pedido', 'cliente', 'cliente_documento', 'cidade', 'uf', 'transportadora', 'frete_cif_fob',
@@ -189,6 +212,7 @@ async function importarLinhas(linhasMapeadas, usuarioId) {
         if (linha.itens_sem_medida != null) {
           await pool.query('UPDATE fretes SET itens_sem_medida = $1 WHERE id = $2', [Math.round(linha.itens_sem_medida), freteId]);
         }
+        await aplicarMapa(freteId, linha);
         atualizados++;
       } else {
         // A planilha NÃO cria mais registros: o sistema acompanha notas
@@ -242,6 +266,7 @@ async function aplicarPendenteDaNota(freteId) {
       `UPDATE fretes SET ${sets.join(', ')}, numero_pedido = COALESCE(numero_pedido, $${valores.length - 1}), atualizado_em = NOW()
         WHERE id = $${valores.length}`, valores);
     await pool.query('UPDATE fretes SET pre_nota = $1::jsonb WHERE id = $2', [preNotaDa(linha, rows[0].recebido_em), freteId]);
+    await aplicarMapa(freteId, linha);
     await aplicarRegrasCancelamento(freteId, linha);
     await pool.query('DELETE FROM erp_pendentes WHERE numero_pedido = $1', [rows[0].numero_pedido]);
     return true;
@@ -269,7 +294,8 @@ async function devolverParaAguardandoXml(simular) {
        SELECT numero_pedido, LTRIM(numero_nf, '0'),
               JSONB_STRIP_NULLS(JSONB_BUILD_OBJECT(
                 'numero_pedido', numero_pedido, 'pedido_mercus', pedido_mercus, 'cliente', cliente, 'data_pedido', data_pedido,
-                'numero_nf', numero_nf, 'data_emissao_nf', data_emissao_nf, 'numero_mapa', numero_mapa, 'cidade', cidade, 'bairro', bairro,
+                'numero_nf', numero_nf, 'data_emissao_nf', data_emissao_nf, 'numero_mapa', numero_mapa, 'mapa_descricao', mapa_descricao,
+                'mapa_data_referencia', mapa_data_referencia, 'mapa_ajudante', mapa_ajudante, 'cidade', cidade, 'bairro', bairro,
                 'uf', uf, 'transportadora', transportadora, 'frete_cif_fob', frete_cif_fob, 'redespacho', redespacho,
                 'cidade_redespacho', cidade_redespacho, 'valor_faturado', valor_faturado, 'qtd_volumes', qtd_volumes,
                 'peso_kg', peso_kg, 'cubagem_m3', cubagem_m3, 'observacoes', observacoes,
@@ -400,7 +426,7 @@ async function reagendarMonitor() {
 }
 
 module.exports = {
-  aplicarPendenteDaNota, devolverParaAguardandoXml,
+  mapearPlanilha, aplicarPendenteDaNota, devolverParaAguardandoXml,
   importarBuffer,
   importarLinhasMapeadas,
   buscarConfiguracao,

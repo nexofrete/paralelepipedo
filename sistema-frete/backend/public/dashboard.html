@@ -1228,6 +1228,8 @@
           <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
             Suba a planilha exportada do seu sistema ERP (.xlsx) pra preencher automaticamente os campos que estiverem
             faltando nos registros (não sobrescreve dados já preenchidos vindos do XML).
+            A planilha <b>Timeline de pedidos</b> já traz o <b>mapa de carregamento</b> (número, descrição, data de referência e ajudante):
+            a data de referência do mapa vira a <b>Data da Coleta</b> e a Data Prevista de Entrega é recalculada. Não precisa mais importar o mapa à parte.
           </p>
           <input type="file" id="inputPlanilhaErp" accept=".xlsx,.xls,.csv" class="oculto" />
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -1239,18 +1241,6 @@
             <div id="textoAguardandoXml"></div>
             <button class="btn btn-secundario oculto" id="btnDevolverAguardando" style="width:auto; padding:6px 12px; font-size:12px; margin-top:8px;">Tirar da lista os registros que vieram só da planilha</button>
           </div>
-        </div>
-
-        <div class="painel" style="padding:20px; margin-top:20px;">
-          <h3 style="margin-top:0; font-size:15px;">🚛 Importar mapa de carregamento</h3>
-          <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:-6px;">
-            Suba a planilha do mapa de carregamento (.xls ou .xlsx) para preencher a <b>Data da Coleta</b> dos fretes,
-            usando a coluna "Dt. referência do mapa de carregamento". A ligação é pela nota fiscal ("Nr. nota").
-            A Data Prevista de Entrega é recalculada a partir da coleta. Notas sem mapa são ignoradas.
-          </p>
-          <input type="file" id="inputMapaCarregamento" accept=".xls,.xlsx" class="oculto" />
-          <button class="btn btn-secundario" id="btnEnviarMapaCarregamento" style="width:auto;">Selecionar planilha (.xls / .xlsx)</button>
-          <div id="resultadoMapaCarregamento" style="font-size:12.5px; color:var(--texto-fraco); margin-top:12px;"></div>
         </div>
 
         <div class="painel" style="padding:20px; margin-top:20px;">
@@ -2809,7 +2799,7 @@
                 <h3 style="margin:0; font-size:15px;">🗺️ Notas sem mapa de carregamento</h3>
                 <p style="margin:4px 0 0; font-size:12.5px; color:var(--texto-fraco); max-width:760px;">
                   Notas emitidas há mais dias do que o limite e que ainda não entraram em nenhum mapa de carregamento — possivelmente paradas
-                  no estoque. O número do mapa, a descrição, a data e o 1º ajudante vêm da planilha do mapa (Enviar XML » Importar mapa de carregamento).
+                  no estoque. O número do mapa, a descrição, a data e o 1º ajudante vêm da planilha do ERP (Timeline de pedidos, em Enviar XML » Atualizar planilha do ERP).
                   Não entram: notas canceladas, devolvidas e já entregues.
                 </p>
               </div>

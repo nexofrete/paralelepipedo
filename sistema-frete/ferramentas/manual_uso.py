@@ -229,7 +229,13 @@ def parte_uso(g):
         ['FRETE_CIF_FOB', 'Frete CIF ou FOB (E = CIF, D = Destinatário/FOB)'],
         ['ESTATUS_PEDIDO', 'C = pedido cancelado (linha vermelha)'],
         ['NF_CANCELADA', 'S = nota cancelada (linha laranja + observação)'],
+        ['NR_MAPA_CARREGAMENTO', 'Número do mapa de carregamento'],
+        ['DS_MAPA_CARREGAMENTO', 'Descrição do mapa'],
+        ['DT_REFERENCIA_MAPA', 'Data de referência do mapa: vira a <b>Data da Coleta</b> (a Data Prevista de Entrega é recalculada)'],
+        ['AJUDANTE_1_MAPA', '1º ajudante do mapa'],
     ], [0.3, 0.7])
+    s.append(P('Os campos do <b>mapa de carregamento</b> são os únicos que a planilha atualiza mesmo já preenchidos: vale sempre o '
+               'mapa da planilha mais nova, porque o pedido pode mudar de mapa. Coluna de mapa vazia não apaga o que já estava gravado.'))
     s += aviso('importante', 'A planilha do ERP <b>não cria registros</b>. Uma linha da planilha sem nota no sistema fica '
                              'guardada, aguardando o XML da NF-e chegar; quando ele chega, os dados da planilha são '
                              'aplicados. Isso evita que pedidos antigos da planilha virem registros soltos. O botão '
@@ -286,10 +292,11 @@ def parte_uso(g):
         '(campo "Retorno de feira / demonstração (%)": 100, 50... — vazio vale 100%).',
     ])
     s += h2('Mapa de carregamento')
-    s.append(P('Em <b>Enviar XML » Importar mapa de carregamento</b>, suba a planilha do mapa (.xls ou .xlsx). Ligando pela nota fiscal '
-               '(coluna "Nr. nota"), ela grava em cada frete: a <b>Data da Coleta</b> (pela "Dt. referência do mapa de carregamento" — a '
-               'Data Prevista de Entrega é recalculada a partir dela), o <b>número</b> e a <b>descrição</b> do mapa e o <b>1º ajudante</b>. '
-               'Notas que não estão no mapa são ignoradas. Esses dados alimentam o relatório de notas sem mapa de carregamento (seção 19).'))
+    s.append(P('O mapa de carregamento vem na própria <b>planilha do ERP (Timeline de pedidos)</b>, nas colunas NR_MAPA_CARREGAMENTO, '
+               'DS_MAPA_CARREGAMENTO, DT_REFERENCIA_MAPA e AJUDANTE_1_MAPA (veja "Planilha do ERP" acima): não existe mais a importação '
+               'separada do relatório do mapa. Cada frete recebe a <b>Data da Coleta</b> (pela data de referência do mapa; a Data Prevista '
+               'de Entrega é recalculada a partir dela), o <b>número</b> e a <b>descrição</b> do mapa e o <b>1º ajudante</b>. Esses dados '
+               'alimentam o relatório de notas sem mapa de carregamento (seção 19).'))
 
     # 13
     s += h1('13. Vários CT-e para a mesma nota')

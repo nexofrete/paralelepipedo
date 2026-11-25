@@ -3,7 +3,6 @@ const multer = require('multer');
 const { autenticar, apenasAdmin, permitir } = require('../middlewareAuth');
 const { registrar } = require('../auditoria');
 const importacaoErp = require('../importacaoErp');
-const importacaoMapa = require('../importacaoMapa');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 60 * 1024 * 1024 } });
@@ -36,23 +35,6 @@ router.get('/modelos', autenticar, permitir('pode_editar_registros'), async (req
     const cfg = await importacaoErp.buscarConfiguracao();
     res.json({ modelos: rows, padrao: cfg.modelo_id || null });
   } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao listar os modelos.' }); }
-});
-
-// POST /api/importacao-erp/mapa-carregamento  (.xls ou .xlsx)
-// Preenche a Data da Coleta dos fretes pela nota fiscal.
-router.post('/mapa-carregamento', autenticar, permitir('pode_editar_registros'), upload.single('arquivo'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ erro: 'Nenhum arquivo enviado.' });
-  try {
-    const resultado = await importacaoMapa.importarMapaBuffer(req.file.buffer);
-    registrar({
-      usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'importar_mapa_carregamento',
-      detalhes: `Importou o mapa de carregamento: ${resultado.preenchidas} data(s) de coleta preenchida(s), ${resultado.atualizadas} atualizada(s)`,
-    });
-    res.json(resultado);
-  } catch (err) {
-    console.error(err);
-    res.status(400).json({ erro: err.message || 'Erro ao ler a planilha do mapa de carregamento.' });
-  }
 });
 
 // GET /api/importacao-erp/configuracao  (admin)

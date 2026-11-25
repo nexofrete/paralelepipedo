@@ -1285,36 +1285,6 @@ inputPlanilhaErp.addEventListener('change', async () => {
   }
 });
 
-// ---------- Mapa de carregamento → Data da Coleta ----------
-const inputMapaCarregamento = document.getElementById('inputMapaCarregamento');
-document.getElementById('btnEnviarMapaCarregamento').addEventListener('click', () => inputMapaCarregamento.click());
-inputMapaCarregamento.addEventListener('change', async () => {
-  const arquivo = inputMapaCarregamento.files[0];
-  if (!arquivo) return;
-  const resultadoEl = document.getElementById('resultadoMapaCarregamento');
-  resultadoEl.textContent = 'Importando o mapa de carregamento, aguarde...';
-  const formData = new FormData();
-  formData.append('arquivo', arquivo);
-  try {
-    const resposta = await apiFetch('/api/importacao-erp/mapa-carregamento', { method: 'POST', body: formData });
-    const d = await resposta.json();
-    if (!resposta.ok) {
-      resultadoEl.innerHTML = `<span style="color:var(--vermelho);">${cfEsc(d.erro || 'Erro ao importar o mapa de carregamento.')}</span>`;
-      return;
-    }
-    resultadoEl.innerHTML = `<span style="color:var(--verde);">✓</span> ${d.notasComData} nota(s) com data no mapa: `
-      + `<b>${d.preenchidas}</b> data(s) de coleta preenchida(s), <b>${d.atualizadas}</b> atualizada(s)`
-      + `${d.jaIguais ? `, ${d.jaIguais} já estavam certas` : ''}.`
-      + `${d.semFrete ? `<br>${d.semFrete} nota(s) do mapa ainda não estão no sistema (importe a NF-e/ERP e rode o mapa de novo).` : ''}`
-      + `${d.semMapa ? `<br>${d.semMapa} linha(s) sem mapa de carregamento foram ignoradas.` : ''}`;
-    carregarResumo();
-  } catch (err) {
-    resultadoEl.innerHTML = '<span style="color:var(--vermelho);">Falha de conexão com o servidor.</span>';
-  } finally {
-    inputMapaCarregamento.value = '';
-  }
-});
-
 ['dragenter', 'dragover'].forEach((evento) =>
   dropzone.addEventListener(evento, (e) => { e.preventDefault(); dropzone.classList.add('arrastando'); })
 );

@@ -149,14 +149,15 @@ class Sessao {
   constructor() { this.cookies = new Map(); }
   cabecalhoCookie() { return [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '); }
   guardar(r) { for (const c of r.headers.getSetCookie?.() || []) { const [par] = c.split(';'); const i = par.indexOf('='); if (i > 0) this.cookies.set(par.slice(0, i).trim(), par.slice(i + 1).trim()); } }
-  async pedir(url, { metodo = 'GET', form = null, timeout = 15000 } = {}) {
-    let atual = url; let corpo = form ? new URLSearchParams(form).toString() : null; let m = metodo;
+  async pedir(url, { metodo = 'GET', form = null, json = null, ajax = false, timeout = 15000 } = {}) {
+    let atual = url; let corpo = json ? JSON.stringify(json) : (form ? new URLSearchParams(form).toString() : null); let m = metodo;
     for (let i = 0; i < 6; i++) {
       const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeout);
       let r;
       try {
         r = await fetch(atual, { method: m, redirect: 'manual', signal: ctl.signal, body: corpo,
-          headers: { 'User-Agent': 'Nexofrete (consulta do WMS)', ...(corpo ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}), ...(this.cookies.size ? { Cookie: this.cabecalhoCookie() } : {}) } });
+          headers: { 'User-Agent': 'Nexofrete (consulta do WMS)', ...(corpo ? { 'Content-Type': json ? 'application/json' : 'application/x-www-form-urlencoded' } : {}),
+            ...(ajax ? { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json, text/javascript, */*' } : {}), ...(this.cookies.size ? { Cookie: this.cabecalhoCookie() } : {}) } });
       } catch (e) { throw falha(e.name === 'AbortError' ? 'O WMS não respondeu a tempo.' : `Não consegui falar com o WMS: ${e.message}`, 502); } finally { clearTimeout(t); }
       this.guardar(r);
       if (r.status >= 300 && r.status < 400 && r.headers.get('location')) { atual = new URL(r.headers.get('location'), atual).toString(); m = 'GET'; corpo = null; continue; }
@@ -519,35 +520,110 @@ function formularioBusca(html) {
   return null;
 }
 
-// Busca na tela de apontamento: por expedição (sem datas; se a tela exigir, os últimos 120 dias) ou por período.
+// Resposta da busca por script: JSON (lista de planos, em qualquer nível) ou HTML com a tabela de planos.
+// Os campos são achados pelo nome: expedição (exped...), separador (equipe/separador/nome/pessoa/responsável; sem CPF),
+// início (ini...), fim (fim/final/término), status. "chaves" diz o que veio, para o diagnóstico.
+function pares(o, prefixo = '', prof = 0) {
+  if (o == null) return [];
+  if (typeof o !== 'object') return [[prefixo, o]];
+  if (prof > 3) return [];
+  return Object.entries(o).flatMap(([k, v]) => pares(v, prefixo ? `${prefixo}.${k}` : k, prof + 1));
+}
+function acharLista(o, prof = 0) {
+  if (Array.isArray(o)) return o.some((x) => x && typeof x === 'object') ? o : null;
+  if (o && typeof o === 'object' && prof < 3) { for (const v of Object.values(o)) { const l = acharLista(v, prof + 1); if (l) return l; } }
+  return null;
+}
+function lerSeparacoesJson(obj) {
+  const { dataHora } = require('./pedidosWms');
+  const itens = acharLista(obj) || [];
+  const linhas = [];
+  for (const it of itens) {
+    const ps = pares(it);
+    const expedicoes = [...new Set(ps.filter(([k]) => /exped/i.test(k)).flatMap(([, v]) => String(v).split(/[^\d]+/)).filter((x) => x.length >= 4))];
+    if (!expedicoes.length) continue;
+    // Nome do separador: primeiro os campos da equipe/separador; só sem eles, nome/pessoa/responsável. Nunca cliente,
+    // CPF, código ou login (nem o usuário que lançou o apontamento).
+    const naoNome = /cpf|(^|\.)id$|cod|login|matricula|cliente|usuario/i;
+    const daEquipe = ps.filter(([k]) => /equipe|separador/i.test(k) && !naoNome.test(k));
+    const separadores = [...new Set((daEquipe.length ? daEquipe : ps.filter(([k]) => /nome|pessoa|respons|funcionario/i.test(k) && !naoNome.test(k)))
+      .flatMap(([, v]) => String(v).split(/<br\s*\/?>|\n|;/i)).map((x) => tirarTags(x).replace(/\(\s*[\d.\-\/ ]+\s*\)/g, '').replace(/\d{6,}/g, '').replace(/\s+/g, ' ').trim())
+      .filter((x) => /[A-Za-zÀ-ÿ]{3}/.test(x)))];
+    const data = (re, nao) => ps.filter(([k, v]) => re.test(k) && !(nao && nao.test(k)) && dataHora(String(v))).map(([, v]) => dataHora(String(v)));
+    const ini = data(/ini/i).sort()[0] || null;
+    const fim = data(/fim|final|termin|conclu/i, /inicial/i).sort().pop() || null;
+    const status = ps.filter(([k, v]) => /status|situa/i.test(k) && /[A-Za-z]{3}/.test(String(v))).map(([, v]) => String(v))[0] || null;
+    linhas.push({ expedicoes, separadores, inicio: ini, fim, status, separacao: null });
+  }
+  return { linhas, itens: itens.length, chaves: itens[0] && typeof itens[0] === 'object' ? pares(itens[0]).map(([k]) => k).slice(0, 40) : [] };
+}
+function lerRespostaSeparacoes(r) {
+  const corpo = String(r.corpo || '').trim();
+  if (/json/i.test(r.tipo) || /^[[{]/.test(corpo)) {
+    try { return { formato: 'json', ...lerSeparacoesJson(JSON.parse(corpo)) }; } catch (e) { return { formato: 'json inválido', linhas: null }; }
+  }
+  const html = lerApontamentos(corpo);
+  return html ? { formato: 'html', linhas: html, itens: html.length, chaves: [] } : { formato: `não reconhecido (${(r.tipo || '?').slice(0, 40)}, ${corpo.length} caracteres)`, linhas: null };
+}
+
+// Busca do separador. Tela com formulário de busca comum: envia só ele. Tela AngularJS (Imperium): chama só o
+// "buscar-separacoes-ajax" do botão Buscar (nunca aplicar/validar/finalizar). Por expedição (sem datas; vazio: os
+// últimos 120 dias) ou por período. O jeito que funcionou fica guardado para as próximas buscas.
+let modoAjax = null;
 async function buscarApontamentos(sessao, c, { expedicao = null, de = null, ate = null } = {}) {
   const base = new URL(CAMINHO_APONTAMENTO, c.url).toString();
   const pg = await sessao.pedir(base, { timeout: 30000 });
   if (temSenha(pg.corpo)) return { sessao_caiu: true };
-  const f = formularioBusca(pg.corpo);
-  if (!f) throw Object.assign(falha('Não achei o formulário de busca na tela de apontamento de separação (ou ele tem botões que alteram dados). Nada foi enviado.', 502),
-    { diagnostico: diagnosticoTela(pg.corpo, pg.url) });
-  const enviar = async (dIni, dFim) => {
-    const dados = {};
-    for (const x of f.campos) {
-      if (['submit', 'button', 'image'].includes(x.tipo)) continue;
-      if (['checkbox', 'radio'].includes(x.tipo)) continue;
-      dados[x.nome] = x.tipo === 'hidden' || x.tipo === 'select' ? x.valor : '';
-    }
-    dados[f.exp.nome] = expedicao ? String(expedicao) : '';
-    if (f.de) dados[f.de.nome] = dIni ? dataBr(dIni) : '';
-    if (f.ate) dados[f.ate.nome] = dFim ? dataBr(dFim) : '';
-    if (f.botao) dados[f.botao.nome] = f.botao.valor_botao || 'Buscar';
-    const destino = new URL(f.action || base, pg.url);
-    if (f.method === 'GET') { destino.search = new URLSearchParams(dados).toString(); return sessao.pedir(destino.toString(), { timeout: 60000 }); }
-    return sessao.pedir(destino.toString(), { metodo: 'POST', form: dados, timeout: 60000 });
-  };
   const hoje = new Date(Date.now() - 3 * 3600000);
-  let r = await enviar(expedicao ? null : de, expedicao ? null : ate);
-  let linhas = lerApontamentos(r.corpo);
-  if (expedicao && (!linhas || !linhas.length)) { r = await enviar(new Date(hoje.getTime() - 120 * 86400000), hoje); linhas = lerApontamentos(r.corpo); }
-  if (temSenha(r.corpo)) return { sessao_caiu: true };
-  return { linhas: linhas || [], tabela: linhas != null, form: f, url: r.url };
+  const f = formularioBusca(pg.corpo);
+  if (f) {
+    const enviar = async (dIni, dFim) => {
+      const dados = {};
+      for (const x of f.campos) {
+        if (['submit', 'button', 'image', 'checkbox', 'radio'].includes(x.tipo)) continue;
+        dados[x.nome] = x.tipo === 'hidden' || x.tipo === 'select' ? x.valor : '';
+      }
+      dados[f.exp.nome] = expedicao ? String(expedicao) : '';
+      if (f.de) dados[f.de.nome] = dIni ? dataBr(dIni) : '';
+      if (f.ate) dados[f.ate.nome] = dFim ? dataBr(dFim) : '';
+      if (f.botao) dados[f.botao.nome] = f.botao.valor_botao || 'Buscar';
+      const destino = new URL(f.action || base, pg.url);
+      if (f.method === 'GET') { destino.search = new URLSearchParams(dados).toString(); return sessao.pedir(destino.toString(), { timeout: 60000 }); }
+      return sessao.pedir(destino.toString(), { metodo: 'POST', form: dados, timeout: 60000 });
+    };
+    let r = await enviar(expedicao ? null : de, expedicao ? null : ate);
+    let linhas = lerApontamentos(r.corpo);
+    if (expedicao && (!linhas || !linhas.length)) { r = await enviar(new Date(hoje.getTime() - 120 * 86400000), hoje); linhas = lerApontamentos(r.corpo); }
+    if (temSenha(r.corpo)) return { sessao_caiu: true };
+    return { linhas: linhas || [], tabela: linhas != null, modo: `formulário ${f.method} ${f.action || '(mesma página)'}`, url: r.url, tentativas: [] };
+  }
+  if (!/buscar-separacoes-ajax/i.test(pg.corpo)) {
+    throw Object.assign(falha('Não achei o formulário de busca nem a busca por script na tela de apontamento de separação. Nada foi enviado.', 502), { diagnostico: diagnosticoTela(pg.corpo, pg.url) });
+  }
+  const url = new URL('buscar-separacoes-ajax', pg.url).toString();
+  const filtro = (dIni, dFim) => ({ dataInicial: dIni ? dataBr(dIni) : '', dataFinal: dFim ? dataBr(dFim) : '', cpfBusca: '', meioDeSeparacao: '', expedicao: expedicao ? String(expedicao) : '' });
+  const MODOS = {
+    'POST formulário': (d) => sessao.pedir(url, { metodo: 'POST', form: d, ajax: true, timeout: 60000 }),
+    'GET': (d) => sessao.pedir(`${url}?${new URLSearchParams(d)}`, { ajax: true, timeout: 60000 }),
+    'POST JSON': (d) => sessao.pedir(url, { metodo: 'POST', json: d, ajax: true, timeout: 60000 }),
+  };
+  const tentativas = [];
+  const rodar = async (dIni, dFim) => {
+    let vazio = null;
+    for (const nome of modoAjax ? [modoAjax, ...Object.keys(MODOS).filter((x) => x !== modoAjax)] : Object.keys(MODOS)) {
+      const r = await MODOS[nome](filtro(dIni, dFim));
+      if (temSenha(r.corpo)) return { sessao_caiu: true };
+      const lido = lerRespostaSeparacoes(r);
+      tentativas.push({ modo: nome, periodo: dIni ? `${dataBr(dIni)} a ${dataBr(dFim)}` : 'sem datas', http: r.status, tipo: r.tipo, tamanho: String(r.corpo || '').length, formato: lido.formato, itens: lido.itens ?? null, planos: lido.linhas ? lido.linhas.length : null, chaves: lido.chaves || [] });
+      if (lido.linhas && lido.linhas.length) { modoAjax = nome; return { linhas: lido.linhas, modo: nome }; }
+      if (lido.linhas && !vazio) vazio = { linhas: [], modo: nome };
+    }
+    return vazio;
+  };
+  let res = await rodar(expedicao ? null : de, expedicao ? null : ate);
+  if (res?.sessao_caiu) return res;
+  if (expedicao && (!res || !res.linhas.length)) { const r2 = await rodar(new Date(hoje.getTime() - 120 * 86400000), hoje); if (r2?.sessao_caiu) return r2; if (r2) res = r2; }
+  return { linhas: res?.linhas || [], tabela: !!res, modo: `script: ${url} (${res?.modo || 'nenhum formato reconhecido'})`, url, tentativas };
 }
 // Diagnóstico de uma tela sem os dados: formulários (campos e botões, sem valores), botões e links fora dos formulários
 // (texto, onclick, href) e os trechos de script que fazem buscas (url, ajax, $.post...), para achar como a tela busca.
@@ -867,12 +943,10 @@ async function testarSeparacao(expedicao) {
   }
   if (ap.sessao_caiu) throw falha('O WMS voltou para o login na tela de apontamento.', 502);
   const sep = separacaoDaExpedicao(ap.linhas, n);
-  const f = ap.form;
-  const texto = [`DIAGNOSTICO DA SEPARACAO DA EXPEDICAO ${n} (${ap.url})`, '',
+  const texto = [`DIAGNOSTICO DA SEPARACAO DA EXPEDICAO ${n}`, '',
     sep ? `Separador: "${sep.separador || '?'}" · início ${sep.sep_inicio || '-'} · fim ${sep.sep_fim || '- (não finalizada)'} · status ${sep.status || '-'}` : 'NÃO achei plano de separação para esta expedição.',
-    `Formulário de busca: ${f.method} ${f.action || '(mesma página)'} · expedição=${f.exp.nome} · início=${f.de?.nome || '-'} · até=${f.ate?.nome || '-'} · botão=${f.botao?.nome || '-'}`,
-    `Campos enviados: ${f.campos.filter((x) => !['submit', 'button', 'image'].includes(x.tipo)).map((x) => `${x.nome} (${x.tipo}${x.rotulo ? `, "${x.rotulo}"` : ''})`).join(' | ')}`,
-    `Tabela de planos: ${ap.tabela ? `${ap.linhas.length} plano(s) lido(s)` : 'não encontrada'}`].join('\n');
+    `Busca: ${ap.modo}`, `Planos lidos: ${ap.linhas.length}`,
+    ...(ap.tentativas || []).map((t) => `Tentativa ${t.modo} (${t.periodo}): HTTP ${t.http}, ${t.tipo || 'sem tipo'}, ${t.tamanho} caracteres, formato ${t.formato}${t.itens != null ? `, ${t.itens} item(ns)` : ''}${t.planos != null ? `, ${t.planos} plano(s) com expedição` : ''}${t.chaves.length ? `; campos: ${t.chaves.join(', ')}` : ''}`)].join('\n');
   return { ok: !!sep, separacao: sep, texto };
 }
 
@@ -884,4 +958,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { diagnosticoTela, lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { lerSeparacoesJson, diagnosticoTela, lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

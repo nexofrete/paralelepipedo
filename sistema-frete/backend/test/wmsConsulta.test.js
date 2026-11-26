@@ -178,3 +178,17 @@ test('apontamento: só o formulário de BUSCA é usado; com botão que grava, na
   // Um formulário só, com Buscar e Iniciar Separação juntos: recusado.
   assert.strictEqual(formularioBusca('<form>Expedição <input name="exp"><input type="submit" name="b" value="Buscar"><input type="submit" name="i" value="Iniciar Separação"></form>'), null);
 });
+
+test('busca por script (buscar-separacoes-ajax): JSON em formatos diferentes', () => {
+  const { lerSeparacoesJson, separacaoDaExpedicao } = require('../src/wms');
+  const a = lerSeparacoesJson({ sucesso: true, dados: [{ id: 44237, equipe: [{ cpf: '22082686795', nome: 'DANILO FERREIRA' }], cliente: { nome: 'LOJA X' },
+    expedicoes: '83381, 83383', dataInicio: '19/11/2026 15:19:22', dataFinalizacao: '19/11/2026 18:44:30', status: 'FINALIZADA' }] });
+  assert.deepStrictEqual(separacaoDaExpedicao(a.linhas, '83383'), { separador: 'DANILO FERREIRA', sep_inicio: '2026-11-19 15:19:22', sep_fim: '2026-11-19 18:44:30', status: 'FINALIZADA' });
+  // Outro formato: lista direta, equipe em texto com o CPF, expedições em lista de objetos, datas ISO.
+  const b = lerSeparacoesJson([{ EQUIPE: '(22082686795) DANILO FERREIRA', EXPEDICOES: [{ ID_EXPEDICAO: 83383 }], DTH_INICIO: '2026-11-19 15:19:22', DTH_FINAL: null, STATUS: 'EM ANDAMENTO' }]);
+  assert.deepStrictEqual(b.linhas[0].separadores, ['DANILO FERREIRA']);
+  assert.strictEqual(b.linhas[0].fim, null);
+  assert.strictEqual(separacaoDaExpedicao(b.linhas, '83383').sep_fim, null);
+  assert.ok(!JSON.stringify([a.linhas, b.linhas]).includes('22082686795'), 'o CPF não é guardado');
+  assert.ok(!a.linhas[0].separadores.includes('LOJA X'), 'nome do cliente não vira separador');
+});

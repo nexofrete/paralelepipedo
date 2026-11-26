@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Menu", "texto": "Pedidos e Pré-notas fiscais passaram de Fretes contratados para o menu Faturamento (bloco Finanças). Os atalhos continuam os mesmos (Ctrl+K 405 e 406)."},
         {"area": "Pedidos", "texto": "Consulta do WMS mais completa: depois da busca por período, os pedidos que ela não trouxe (a tela do WMS mostra só a primeira página, ou a expedição começou antes do período) são procurados pela Carga, um por vez, até o máximo por rodada configurado."},
         {"area": "Pedidos", "texto": "Botão Pausar integração / Retomar integração na tela Pedidos: para na hora todas as consultas ao WMS (a automática e o Atualizar do WMS), com confirmação e registro na auditoria."},
         {"area": "Pedidos", "texto": "Tela Pedidos com a visão Planilha: cada campo da planilha de pedidos na sua própria coluna, na mesma ordem (CNPJ, Nome Curto, Pedido Mercus, Liberação, Peso, Cubagem, Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização, Cancelado Wms, Nota Fiscal, Data de Emissão), com o número do pedido fixo à esquerda. A visão Resumida continua num botão."},

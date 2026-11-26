@@ -68,7 +68,7 @@ def parte_operacao(g):
         ['Finanças · Financeiro', 'Contas a pagar, Pagamento de fretes contratados, Acerto de viagem, Comissões', '110, 130, 120, 125', '45, 18, 46'],
         ['Finanças · Financeiro', 'Caixa e bancos, Conciliação, Fluxo de caixa', '150 a 152', '44'],
         ['Finanças · Financeiro', 'Relatórios: Fretes a pagar e pagos, Centros de custo', '329, 302', '19, 47'],
-        ['Finanças · Faturamento', 'Faturas, A faturar (CT-e sem fatura), Serviços extras', '100, 105, 104', '41'],
+        ['Finanças · Faturamento', 'Pedidos e Pré-notas fiscais (embarcador), Faturas, A faturar (CT-e sem fatura), Serviços extras', '405, 406, 100, 105, 104', '14-A (Parte 2) e 41'],
         ['Finanças · Faturamento', 'Relatórios: Margem por CT-e e cliente', '301', '48'],
         ['Finanças · Fiscal e contábil', 'Livros fiscais e contabilidade, Notas de entrada, NF-e contra o CNPJ, GNRE, Pacote do contador', '140 a 144', '49'],
         ['Gestão · Pessoas (RH)', 'Painel de férias, Programação de férias, Funcionários', '270 a 272', '40-A'],

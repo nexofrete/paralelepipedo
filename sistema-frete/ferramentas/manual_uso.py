@@ -584,7 +584,7 @@ def parte_uso(g):
 
     # 15
     s += h1('14-A. Pedidos e pré-notas fiscais')
-    s.append(P('Em Fretes contratados, <b>Pedidos</b> (Ctrl+K 405) e <b>Pré-notas fiscais</b> (406) mostram o que entra pela planilha do ERP '
+    s.append(P('No menu <b>Faturamento</b> (bloco Finanças), <b>Pedidos</b> (Ctrl+K 405) e <b>Pré-notas fiscais</b> (406) mostram o que entra pela planilha do ERP '
                '(Importação do ERP), antes e depois da nota fiscal.'))
     s += h2('Pedidos (405)')
     s += lista([

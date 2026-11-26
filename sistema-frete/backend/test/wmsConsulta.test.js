@@ -136,3 +136,45 @@ test('OS: linha do histórico da conferência não vira separador', () => {
   assert.strictEqual(sep.sep_inicio, '2026-11-18 15:00:00');
   assert.strictEqual(sep.sep_fim, '2026-11-18 16:00:00');
 });
+
+// Recorte da tela Expedição > Separação > Definir Equipe de Separação (apontamento) do Imperium.
+const APONT = `<form method="get" action="/expedicao/index/apontamento-separacao" id="buscarApontamento">
+  Inicio entre <input type="text" name="dataInicio" value="26/11/2026"> Até <input type="text" name="dataFim" value="26/11/2026">
+  CPF Separador(a) <input type="text" name="cpf"> Etiqueta/Mapa <input type="text" name="etiqueta"> Expedição <input type="text" name="idExpedicao">
+  <input type="hidden" name="control" value="busca"><input type="submit" name="submit" value="Buscar"></form>
+<form method="post" action="/expedicao/index/apontamento-separacao/adicionar">Separadores <input name="qtd" value="1"> CPF Separador(a) <input name="cpfSep">
+  Expedição <input name="exp"><input type="submit" name="adicionar" value="Adicionar"></form>
+<fieldset><legend>Planos de Separação</legend><table><tr><th>Equipe</th><th>Mapa / Etiqueta Inicial - Final</th><th>Expedição</th><th>Separação</th><th>Data Início</th><th>Data Finalização</th><th>Status</th><th></th></tr>
+<tr><td>(22082686795) DANILO FERREIRA</td><td>Etiquetas 101585485 à 101585618 (134 relacionadas)</td><td>83381<br>83383<br>83337</td><td>44237</td><td>19/11/2026 15:19:22</td><td>19/11/2026 18:44:30</td><td>FINALIZADA</td><td>x</td></tr>
+<tr><td>(11111111111) PAULA SOUZA<br>(22222222222) RAFAEL LIMA</td><td>Mapa 77</td><td>83383</td><td>44240</td><td>19/11/2026 14:00:00</td><td></td><td>EM ANDAMENTO</td><td>x</td></tr>
+</table></fieldset>`;
+
+test('apontamento de separação: separador (sem CPF) e datas por expedição', () => {
+  const { lerApontamentos, separacaoDaExpedicao } = require('../src/wms');
+  const l = lerApontamentos(APONT);
+  assert.strictEqual(l.length, 2);
+  assert.deepStrictEqual(l[0].expedicoes, ['83381', '83383', '83337']);
+  assert.deepStrictEqual(l[0].separadores, ['DANILO FERREIRA']);
+  assert.deepStrictEqual(l[1].separadores, ['PAULA SOUZA', 'RAFAEL LIMA']);
+  const so1 = separacaoDaExpedicao([l[0]], '83381');
+  assert.deepStrictEqual(so1, { separador: 'DANILO FERREIRA', sep_inicio: '2026-11-19 15:19:22', sep_fim: '2026-11-19 18:44:30', status: 'FINALIZADA' });
+  // Dois planos na mesma expedição, um ainda em andamento: todos os nomes, o início mais cedo e sem fim.
+  const dois = separacaoDaExpedicao(l, '83383');
+  assert.strictEqual(dois.separador, 'DANILO FERREIRA, PAULA SOUZA, RAFAEL LIMA');
+  assert.strictEqual(dois.sep_inicio, '2026-11-19 14:00:00');
+  assert.strictEqual(dois.sep_fim, null);
+  assert.strictEqual(separacaoDaExpedicao(l, '99999'), null);
+  assert.ok(!JSON.stringify(l).includes('22082686795'), 'o CPF não é guardado');
+});
+
+test('apontamento: só o formulário de BUSCA é usado; com botão que grava, nada é enviado', () => {
+  const { formularioBusca } = require('../src/wms');
+  const f = formularioBusca(APONT);
+  assert.strictEqual(f.method, 'GET');
+  assert.strictEqual(f.exp.nome, 'idExpedicao');
+  assert.strictEqual(f.de.nome, 'dataInicio');
+  assert.strictEqual(f.ate.nome, 'dataFim');
+  assert.strictEqual(f.botao.nome, 'submit');
+  // Um formulário só, com Buscar e Iniciar Separação juntos: recusado.
+  assert.strictEqual(formularioBusca('<form>Expedição <input name="exp"><input type="submit" name="b" value="Buscar"><input type="submit" name="i" value="Iniciar Separação"></form>'), null);
+});

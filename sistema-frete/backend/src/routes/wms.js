@@ -18,6 +18,7 @@ router.put('/config', autenticar, soAdmin, rota(async (req) => {
 router.post('/testar', autenticar, soAdmin, rota(() => wms.testar()));
 router.post('/testar-tela', autenticar, soAdmin, rota(() => wms.testarTela()));
 router.post('/testar-os', autenticar, soAdmin, rota((req) => wms.testarOs(req.body?.expedicao)));
+router.post('/testar-separacao', autenticar, soAdmin, rota((req) => wms.testarSeparacao(req.body?.expedicao)));
 // Situação da ligação (tela Pedidos) e "Atualizar do WMS" (quem edita registros; no máximo 1 a cada 2 minutos).
 router.get('/situacao', autenticar, rota(() => wms.situacao()));
 let ultimaManual = 0;

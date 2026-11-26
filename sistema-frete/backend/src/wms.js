@@ -441,6 +441,121 @@ function descreverOs(html) {
 const urlOs = (c, exp) => new URL(`/expedicao/os/index/id/${encodeURIComponent(String(exp).replace(/\D/g, ''))}`, c.url).toString();
 
 // Abre a OS e grava quem imprimiu e quando em todos os pedidos daquela expedição.
+// ---------- Separador: tela Expedição > Separação > Definir Equipe de Separação (apontamento de separação) ----------
+// /expedicao/index/apontamento-separacao: tabela "Planos de Separação" com Equipe (separador; o CPF que vem junto não é
+// guardado), Mapa/Etiquetas, Expedição (várias), Separação, Data Início, Data Finalização e Status.
+// A tela também tem Adicionar, Iniciar e Finalizar Separação: o Nexofrete só envia o formulário de BUSCA.
+const CAMINHO_APONTAMENTO = '/expedicao/index/apontamento-separacao';
+const PERIGOSO = /adicion|inici|finaliz|exclu|salvar|gravar|remov|apagar|confirm|cadastr|incluir/i;
+
+function lerApontamentos(html) {
+  const { dataHora } = require('./pedidosWms');
+  const h = String(html || '');
+  for (const t of h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const trs = [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => c[1]));
+    const norm = (c) => tirarTags(c).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const iCab = trs.findIndex((r) => r.some((c) => norm(c) === 'equipe') && r.some((c) => norm(c).startsWith('expedi')));
+    if (iCab < 0) continue;
+    const cab = trs[iCab].map(norm);
+    const col = (f) => cab.findIndex(f);
+    const iE = col((x) => x === 'equipe'); const iX = col((x) => x.startsWith('expedi')); const iI = col((x) => x.startsWith('data inicio'));
+    const iF = col((x) => x.startsWith('data finaliza') || x === 'data final'); const iS = col((x) => x === 'status'); const iP = col((x) => x === 'separacao');
+    const linhas = [];
+    for (const r of trs.slice(iCab + 1)) {
+      if (r.length < cab.length - 1) continue;
+      const expedicoes = tirarTags(String(r[iX] || '').replace(/<br\s*\/?>/gi, ' ')).split(/[^\d]+/).filter(Boolean);
+      if (!expedicoes.length) continue;
+      // "(22082686795) DANILO FERREIRA": sem o CPF. Mais de um na equipe: um por linha.
+      const separadores = String(r[iE] || '').split(/<br\s*\/?>|\n|;|,/i).map((x) => tirarTags(x).replace(/\(\s*[\d.\-\/ ]+\s*\)/g, '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+      linhas.push({ expedicoes, separadores, inicio: dataHora(tirarTags(r[iI] || '')), fim: dataHora(tirarTags(r[iF] || '')),
+        status: iS >= 0 ? tirarTags(r[iS] || '') || null : null, separacao: iP >= 0 ? tirarTags(r[iP] || '') || null : null });
+    }
+    return linhas;
+  }
+  return null;
+}
+// O que vale para uma expedição: todos os planos dela juntos (nomes, o início mais cedo e o fim mais tarde).
+function separacaoDaExpedicao(linhas, exp) {
+  const dela = (linhas || []).filter((l) => l.expedicoes.includes(String(exp)));
+  if (!dela.length) return null;
+  const nomes = [...new Set(dela.flatMap((l) => l.separadores))];
+  const ini = dela.map((l) => l.inicio).filter(Boolean).sort()[0] || null;
+  const fins = dela.map((l) => l.fim).filter(Boolean).sort();
+  // Fim só quando todos os planos da expedição terminaram.
+  const fim = dela.every((l) => l.fim) ? fins.pop() || null : null;
+  return { separador: nomes.join(', ') || null, sep_inicio: ini, sep_fim: fim, status: dela.map((l) => l.status).filter(Boolean).join(', ') || null };
+}
+
+// Acha o formulário de BUSCA da tela (botão Buscar e campo Expedição; nenhum botão que grave ou mude algo).
+function formularioBusca(html) {
+  const h = String(html || '');
+  const forms = [...h.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)];
+  const desc = descreverTela(h).formularios;
+  for (let i = 0; i < forms.length; i++) {
+    const d = desc[i]; const corpo = forms[i][2];
+    if (!d) continue;
+    const botoes = d.campos.filter((x) => ['submit', 'button', 'image'].includes(x.tipo));
+    const textoBotoes = `${botoes.map((b) => `${b.valor_botao || ''} ${b.nome || ''} ${b.id || ''}`).join(' ')} ${[...corpo.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi)].map((m) => tirarTags(m[1])).join(' ')}`;
+    if (!/buscar|pesquisar|filtrar/i.test(textoBotoes) || PERIGOSO.test(textoBotoes)) continue;
+    const campos = [];
+    // Campos na ordem da página; o <select> com as opções dele (sem engolir os campos seguintes).
+    const achados = [...corpo.matchAll(/<(input|textarea)\b([^>]*)>/gi), ...corpo.matchAll(/<(select)\b([^>]*)>([\s\S]*?)<\/select>/gi)].sort((a, b) => a.index - b.index);
+    for (const m of achados) {
+      const nome = attr(m[2], 'name'); if (!nome) continue;
+      const tipo = (attr(m[2], 'type') || m[1]).toLowerCase();
+      const dd = d.campos.find((x) => x.nome === nome) || {};
+      let valor = attr(m[2], 'value') ?? '';
+      if (m[1].toLowerCase() === 'select') valor = attr(((m[3] || '').match(/<option\b[^>]*selected[^>]*>/i) || (m[3] || '').match(/<option\b[^>]*>/i) || [''])[0], 'value') ?? '';
+      campos.push({ nome, tipo, valor, rotulo: dd.rotulo || '' });
+    }
+    const exp = campos.find((x) => /expedi/i.test(x.rotulo) || /exped/i.test(x.nome));
+    if (!exp) continue;
+    const texto = campos.filter((x) => !['hidden', 'submit', 'button', 'image', 'checkbox', 'radio'].includes(x.tipo) && x !== exp);
+    const de = texto.find((x) => /in[ií]cio|entre|data\s*ini|^de$/i.test(x.rotulo) || /ini|de$/i.test(x.nome));
+    const ate = texto.find((x) => x !== de && (/^at[eé]|final|fim/i.test(x.rotulo) || /fim|final|ate/i.test(x.nome)));
+    const botao = botoes.find((b) => /buscar|pesquisar|filtrar/i.test(`${b.valor_botao || ''} ${b.nome || ''}`) && b.nome);
+    return { action: attr(forms[i][1], 'action'), method: (attr(forms[i][1], 'method') || 'get').toUpperCase(), campos, exp, de, ate, botao };
+  }
+  return null;
+}
+
+// Busca na tela de apontamento: por expedição (sem datas; se a tela exigir, os últimos 120 dias) ou por período.
+async function buscarApontamentos(sessao, c, { expedicao = null, de = null, ate = null } = {}) {
+  const base = new URL(CAMINHO_APONTAMENTO, c.url).toString();
+  const pg = await sessao.pedir(base, { timeout: 30000 });
+  if (temSenha(pg.corpo)) return { sessao_caiu: true };
+  const f = formularioBusca(pg.corpo);
+  if (!f) throw falha('Não achei o formulário de busca na tela de apontamento de separação (ou ele tem botões que alteram dados). Nada foi enviado.', 502);
+  const enviar = async (dIni, dFim) => {
+    const dados = {};
+    for (const x of f.campos) {
+      if (['submit', 'button', 'image'].includes(x.tipo)) continue;
+      if (['checkbox', 'radio'].includes(x.tipo)) continue;
+      dados[x.nome] = x.tipo === 'hidden' || x.tipo === 'select' ? x.valor : '';
+    }
+    dados[f.exp.nome] = expedicao ? String(expedicao) : '';
+    if (f.de) dados[f.de.nome] = dIni ? dataBr(dIni) : '';
+    if (f.ate) dados[f.ate.nome] = dFim ? dataBr(dFim) : '';
+    if (f.botao) dados[f.botao.nome] = f.botao.valor_botao || 'Buscar';
+    const destino = new URL(f.action || base, pg.url);
+    if (f.method === 'GET') { destino.search = new URLSearchParams(dados).toString(); return sessao.pedir(destino.toString(), { timeout: 60000 }); }
+    return sessao.pedir(destino.toString(), { metodo: 'POST', form: dados, timeout: 60000 });
+  };
+  const hoje = new Date(Date.now() - 3 * 3600000);
+  let r = await enviar(expedicao ? null : de, expedicao ? null : ate);
+  let linhas = lerApontamentos(r.corpo);
+  if (expedicao && (!linhas || !linhas.length)) { r = await enviar(new Date(hoje.getTime() - 120 * 86400000), hoje); linhas = lerApontamentos(r.corpo); }
+  if (temSenha(r.corpo)) return { sessao_caiu: true };
+  return { linhas: linhas || [], tabela: linhas != null, form: f, url: r.url };
+}
+// Grava o separador da expedição em todos os pedidos dela (a tela de apontamento vale mais que a OS).
+async function gravarSeparacao(exp, sep) {
+  if (!sep) return 0;
+  const { rowCount } = await pool.query(`UPDATE pedidos_wms SET separador = COALESCE($2, separador), separacao_inicio = COALESCE($3::timestamp, separacao_inicio),
+      separacao_fim = COALESCE($4::timestamp, separacao_fim) WHERE expedicao_numero = $1`, [String(exp), sep.separador, sep.sep_inicio, sep.sep_fim]);
+  return rowCount;
+}
+
 async function completarOs(sessao, c, expedicao) {
   if (!expedicao) return null;
   const r = await sessao.pedir(urlOs(c, expedicao), { timeout: 30000 });
@@ -450,6 +565,11 @@ async function completarOs(sessao, c, expedicao) {
       separador = COALESCE($4, separador), separacao_inicio = COALESCE($5::timestamp, separacao_inicio), separacao_fim = COALESCE($6::timestamp, separacao_fim),
       os_consultada_em = NOW(), os_leitura = 4
     WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null, os?.separador || null, os?.sep_inicio || null, os?.sep_fim || null]);
+  // Separador pela tela de apontamento de separação (vale mais que o que a OS tiver).
+  try {
+    const ap = await buscarApontamentos(sessao, c, { expedicao });
+    if (!ap.sessao_caiu) await gravarSeparacao(expedicao, separacaoDaExpedicao(ap.linhas, expedicao));
+  } catch (e) { /* tela de apontamento fora: fica o da OS */ }
   return os;
 }
 // Expedições com a OS ainda incompleta (sem quem imprimiu ou sem o fim da separação): olhada de novo a cada 2 horas.
@@ -578,9 +698,19 @@ async function consultar({ origem = 'manual' } = {}) {
       if (o?.usuario) oss += 1;
     }
     if (oss) porCarga.os = oss;
+    // Separadores do período (uma busca só na tela de apontamento de separação).
+    try {
+      const ap = await buscarApontamentos(sessao, c, { de, ate: hoje });
+      if (!ap.sessao_caiu) {
+        const exps = [...new Set(ap.linhas.flatMap((l) => l.expedicoes))];
+        let n = 0;
+        for (const exp of exps) n += await gravarSeparacao(exp, separacaoDaExpedicao(ap.linhas, exp));
+        if (n) porCarga.separacao = n;
+      }
+    } catch (e) { porCarga.erro_separacao = e.message; }
     const total = pedidos.length + porCarga.pedidos;
     const msg = `${g.linhas.length} expedição(ões) de ${dataBr(de)} a ${dataBr(hoje)}${incompleto ? ` (o WMS diz ${g.total}; vieram ${g.linhas.length})` : ''}`
-      + `${porCarga.consultadas ? `; ${porCarga.consultadas} pedido(s) consultados pela carga, ${porCarga.achadas} achado(s) no WMS` : ''}${porCarga.os ? `; ${porCarga.os} OS com quem imprimiu` : ''}; ${total} pedido(s) atualizados`
+      + `${porCarga.consultadas ? `; ${porCarga.consultadas} pedido(s) consultados pela carga, ${porCarga.achadas} achado(s) no WMS` : ''}${porCarga.os ? `; ${porCarga.os} OS com quem imprimiu` : ''}${porCarga.separacao ? `; separador em ${porCarga.separacao} pedido(s)` : ''}${porCarga.erro_separacao ? `; separação: ${porCarga.erro_separacao}` : ''}; ${total} pedido(s) atualizados`
       + ` (${origem}, ${Math.round((Date.now() - inicio) / 100) / 10} s)`;
     await registrar(true, msg, total);
     return { ok: true, expedicoes: g.linhas.length, pedidos: total, gravados, total_wms: g.total, incompleto, por_carga: porCarga, msg };
@@ -692,6 +822,25 @@ async function testarOs(expedicao) {
   return { ok: !!os, os, texto };
 }
 
+// Teste da tela de apontamento de separação para uma expedição: o formulário de busca achado e o que foi lido.
+async function testarSeparacao(expedicao) {
+  const n = String(expedicao || '').replace(/\D/g, '');
+  if (!n) throw falha('Informe o número da expedição (ex.: 83383).');
+  const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
+  if (!c) throw falha('Cadastre a ligação com o WMS.');
+  const { sessao } = await entrar(c);
+  const ap = await buscarApontamentos(sessao, c, { expedicao: n });
+  if (ap.sessao_caiu) throw falha('O WMS voltou para o login na tela de apontamento.', 502);
+  const sep = separacaoDaExpedicao(ap.linhas, n);
+  const f = ap.form;
+  const texto = [`DIAGNOSTICO DA SEPARACAO DA EXPEDICAO ${n} (${ap.url})`, '',
+    sep ? `Separador: "${sep.separador || '?'}" · início ${sep.sep_inicio || '-'} · fim ${sep.sep_fim || '- (não finalizada)'} · status ${sep.status || '-'}` : 'NÃO achei plano de separação para esta expedição.',
+    `Formulário de busca: ${f.method} ${f.action || '(mesma página)'} · expedição=${f.exp.nome} · início=${f.de?.nome || '-'} · até=${f.ate?.nome || '-'} · botão=${f.botao?.nome || '-'}`,
+    `Campos enviados: ${f.campos.filter((x) => !['submit', 'button', 'image'].includes(x.tipo)).map((x) => `${x.nome} (${x.tipo}${x.rotulo ? `, "${x.rotulo}"` : ''})`).join(' | ')}`,
+    `Tabela de planos: ${ap.tabela ? `${ap.linhas.length} plano(s) lido(s)` : 'não encontrada'}`].join('\n');
+  return { ok: !!sep, separacao: sep, texto };
+}
+
 async function testar() {
   const c = await config();
   if (!c.url) throw falha('Cadastre o endereço do WMS primeiro.');
@@ -700,4 +849,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

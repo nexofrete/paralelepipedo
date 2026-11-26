@@ -545,8 +545,12 @@ function lerSeparacoesJson(obj) {
     // Nome do separador: primeiro os campos da equipe/separador; só sem eles, nome/pessoa/responsável. Nunca cliente,
     // CPF, código ou login (nem o usuário que lançou o apontamento).
     const naoNome = /cpf|(^|\.)id$|cod|login|matricula|cliente|usuario/i;
-    const daEquipe = ps.filter(([k]) => /equipe|separador/i.test(k) && !naoNome.test(k));
-    const separadores = [...new Set((daEquipe.length ? daEquipe : ps.filter(([k]) => /nome|pessoa|respons|funcionario/i.test(k) && !naoNome.test(k)))
+    // Imperium: separadores.N.nome (ao lado de cpf, ativo e lider). Com campo "nome" na equipe, só ele; senão, os textos
+    // da equipe que não são sim/não (ativo, lider...).
+    const ehNome = ([, v]) => typeof v === 'string' && !/^(true|false|null|sim|n[aã]o|s|n|[01])$/i.test(v.trim());
+    const nomesEquipe = ps.filter(([k]) => /equipe|separador/i.test(k) && /(^|\.)nome$/i.test(k));
+    const daEquipe = nomesEquipe.length ? nomesEquipe : ps.filter((par) => /equipe|separador/i.test(par[0]) && !naoNome.test(par[0]) && ehNome(par));
+    const separadores = [...new Set((daEquipe.length ? daEquipe : ps.filter((par) => /nome|pessoa|respons|funcionario/i.test(par[0]) && !naoNome.test(par[0]) && ehNome(par)))
       .flatMap(([, v]) => String(v).split(/<br\s*\/?>|\n|;/i)).map((x) => tirarTags(x).replace(/\(\s*[\d.\-\/ ]+\s*\)/g, '').replace(/\d{6,}/g, '').replace(/\s+/g, ' ').trim())
       .filter((x) => /[A-Za-zÀ-ÿ]{3}/.test(x)))];
     const data = (re, nao) => ps.filter(([k, v]) => re.test(k) && !(nao && nao.test(k)) && dataHora(String(v))).map(([, v]) => dataHora(String(v)));

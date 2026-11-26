@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Correção", "texto": "WMS: o Separador saía com \"true\" junto do nome (\"DANILO FERREIRA, true\"); agora vem só o nome de cada separador, e os já gravados foram corrigidos."},
         {"area": "Pedidos", "texto": "WMS: a busca do separador usa a mesma busca do botão Buscar da tela Definir Equipe de Separação (por script), sem nunca chamar aplicar, validar ou finalizar."},
         {"area": "Pedidos", "texto": "WMS: quando a tela de apontamento de separação não tem o formulário de busca esperado, o Testar separador mostra um diagnóstico da tela (formulários, botões e comandos de busca, sem dados) para ajustar a leitura."},
         {"area": "Pedidos", "texto": "WMS: o Separador, a Data Início e a Data Finalização da separação vêm da tela Definir Equipe de Separação (apontamento de separação) do WMS, só pela busca e sem guardar o CPF. Botão Testar separador na janela Ligação com o WMS."},

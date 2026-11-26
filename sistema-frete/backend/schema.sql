@@ -960,6 +960,9 @@ UPDATE pedidos_wms SET os_consultada_em = NULL WHERE os_leitura = 2;
 -- Versão 4: o separador da versão 3 podia vir de uma linha do histórico que é da conferência (o conferente). Limpa o
 -- separador e as datas da separação lidas da OS e relê.
 UPDATE pedidos_wms SET separador = NULL, separacao_inicio = NULL, separacao_fim = NULL, os_consultada_em = NULL WHERE os_leitura = 3;
+-- Separador gravado com "true"/"false" junto (campos ativo/lider da busca de separação): tira.
+UPDATE pedidos_wms SET separador = NULLIF(BTRIM(REGEXP_REPLACE(separador, '(,\s*)?\m(true|false)\M', '', 'gi'), ' ,'), '')
+ WHERE separador ~* '\m(true|false)\M';
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

@@ -192,3 +192,15 @@ test('busca por script (buscar-separacoes-ajax): JSON em formatos diferentes', (
   assert.ok(!JSON.stringify([a.linhas, b.linhas]).includes('22082686795'), 'o CPF não é guardado');
   assert.ok(!a.linhas[0].separadores.includes('LOJA X'), 'nome do cliente não vira separador');
 });
+
+test('Imperium: separadores com cpf, nome, ativo e lider — só o nome', () => {
+  const { lerSeparacoesJson, separacaoDaExpedicao } = require('../src/wms');
+  const r = lerSeparacoesJson([{ id: 1, separacao: { id: 44237, dthInicio: '2026-11-19 15:19:22', dthFim: '2026-11-19 18:44:30', dscStatus: 'FINALIZADA', tipoSeparacao: 'E', exigeLote: false, separarConferindo: true },
+    separadores: [{ cpf: '22082686795', nome: 'DANILO FERREIRA', ativo: true, lider: true }, { cpf: '11111111111', nome: 'ANA PAULA', ativo: 'S', lider: false }],
+    expedicoesId: [83381, 83383, 83337], intervalos: [{ inicio: '2026-11-19 15:19:22', fim: '2026-11-19 18:44:30' }] }]);
+  const s2 = separacaoDaExpedicao(r.linhas, '83383');
+  assert.strictEqual(s2.separador, 'DANILO FERREIRA, ANA PAULA');
+  assert.strictEqual(s2.sep_inicio, '2026-11-19 15:19:22');
+  assert.strictEqual(s2.sep_fim, '2026-11-19 18:44:30');
+  assert.strictEqual(s2.status, 'FINALIZADA');
+});

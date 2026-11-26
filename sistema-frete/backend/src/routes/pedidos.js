@@ -25,6 +25,12 @@ router.post('/liberacao-comercial/pdf', autenticar, permitir('pode_editar_regist
   registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'liberacao_comercial', detalhes: `Importou ${ok.length} e-mail(s) de liberação comercial: ${ok.reduce((t, r) => t + r.gravados, 0)} pedido(s) gravados` });
   return { resultados };
 }));
+// Observação do pedido (quem edita registros).
+router.put('/observacao/:pedido', autenticar, permitir('pode_editar_registros'), rota(async (req) => {
+  const r = await p.salvarObservacao(req.params.pedido, req.body?.texto, req.usuario);
+  registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'observacao_pedido', detalhes: `Pedido ${r.numero_pedido}: ${r.texto ? `observação "${r.texto}"` : 'observação apagada'}` });
+  return r;
+}));
 router.put('/liberacao-comercial/:pedido', autenticar, permitir('pode_editar_registros'), rota(async (req) => {
   const r = await require('../liberacaoComercial').salvarManual(req.params.pedido, req.body?.liberado_em, req.usuario);
   registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'liberacao_comercial', detalhes: `Pedido ${r.numero_pedido}: liberação comercial ${r.liberado_em ? `digitada (${r.liberado_em})` : 'apagada'}` });

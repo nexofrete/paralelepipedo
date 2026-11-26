@@ -910,6 +910,13 @@ CREATE TABLE IF NOT EXISTS pedidos_wms (
     origem                 VARCHAR(20) NOT NULL DEFAULT 'planilha',
     atualizado_em          TIMESTAMP NOT NULL DEFAULT NOW()
 );
+-- Observações dos pedidos (tela Pedidos): anotação livre da equipe ("pedido agendando"...), também de pedido ainda sem nota.
+CREATE TABLE IF NOT EXISTS pedidos_observacoes (
+    numero_pedido  VARCHAR(50) PRIMARY KEY,
+    texto          VARCHAR(500) NOT NULL,
+    usuario_nome   VARCHAR(150),
+    atualizado_em  TIMESTAMP NOT NULL DEFAULT NOW()
+);
 -- Liberação comercial dos pedidos (src/liberacaoComercial.js): do e-mail de liberação em PDF ou digitada à mão.
 CREATE TABLE IF NOT EXISTS liberacoes_comerciais (
     numero_pedido  VARCHAR(50) PRIMARY KEY,

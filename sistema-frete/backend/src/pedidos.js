@@ -62,6 +62,25 @@ async function dadosWms(pedidosLista) {
   return new Map(rows.map((r) => [r.numero_pedido, r]));
 }
 
+// Observações dos pedidos (anotação livre da equipe, editável na tela).
+async function observacoes(numeros) {
+  const ids = [...new Set((numeros || []).filter(Boolean).map(String))];
+  if (!ids.length) return new Map();
+  const { rows } = await pool.query(`SELECT numero_pedido, texto, usuario_nome, to_char(atualizado_em, 'YYYY-MM-DD HH24:MI') AS atualizado_em
+    FROM pedidos_observacoes WHERE numero_pedido = ANY($1::text[])`, [ids]).catch(() => ({ rows: [] }));
+  return new Map(rows.map((r) => [r.numero_pedido, r]));
+}
+// Grava (ou apaga, com texto vazio) a observação de um pedido.
+async function salvarObservacao(numero, texto, usuario) {
+  const n = String(numero || '').trim();
+  if (!/^[\w.\-/]{1,50}$/.test(n)) throw Object.assign(new Error('Pedido inválido.'), { status: 400 });
+  const t = String(texto || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+  if (!t) { await pool.query('DELETE FROM pedidos_observacoes WHERE numero_pedido = $1', [n]); return { numero_pedido: n, texto: null }; }
+  await pool.query(`INSERT INTO pedidos_observacoes (numero_pedido, texto, usuario_nome, atualizado_em) VALUES ($1, $2, $3, NOW())
+    ON CONFLICT (numero_pedido) DO UPDATE SET texto = EXCLUDED.texto, usuario_nome = EXCLUDED.usuario_nome, atualizado_em = NOW()`, [n, t, usuario?.nome || null]);
+  return { numero_pedido: n, texto: t };
+}
+
 async function pedidos(req, q = {}) {
   const hoje = hojeSP();
   // Sem data escolhida: os últimos 30 dias; buscando por texto, o último ano.
@@ -93,6 +112,7 @@ async function pedidos(req, q = {}) {
   // WMS: status, separação, etiquetas, usuário, cancelamento (e a liberação/expedição, quando o WMS traz).
   const wms = await dadosWms(lista.map((r) => r.pedido));
   const libs = await require('./liberacaoComercial').dosPedidos(lista.map((r) => r.pedido));
+  const obs = await observacoes(lista.map((r) => r.pedido));
   for (const r of lista) {
     const w = wms.get(String(r.pedido)) || {};
     Object.assign(r, {
@@ -100,6 +120,7 @@ async function pedidos(req, q = {}) {
       qtd_etiquetas: w.qtd_etiquetas ?? null, sep_inicio: w.separacao_inicio || null, sep_fim: w.separacao_fim || null, cancelado_wms: w.cancelado === true,
       liberado_em: w.liberacao || r.liberado_em || null, expedicao: w.expedicao || r.expedicao || null, tem_wms: !!w.numero_pedido,
       separador: w.separador || null, exp_wms: w.expedicao_numero || null,
+      obs: obs.get(String(r.pedido))?.texto || null, obs_por: obs.get(String(r.pedido))?.usuario_nome || null, obs_em: obs.get(String(r.pedido))?.atualizado_em || null,
       lib_comercial: libs.get(String(r.pedido))?.liberado_em || null, lib_comercial_origem: libs.get(String(r.pedido))?.origem || null,
       lib_comercial_de: libs.get(String(r.pedido))?.email_de || libs.get(String(r.pedido))?.usuario_nome || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
       conferencia_pct: w.conferencia_pct ?? null, imprimir: w.imprimir ?? null, exp_fim: w.expedicao_fim || null, wms_origem: w.origem || null, wms_atualizado_em: w.wms_atualizado_em || null,
@@ -109,7 +130,7 @@ async function pedidos(req, q = {}) {
   const busca = String(q.busca || '').trim().toUpperCase();
   const todos = lista.map((r) => ({ ...r, situacao: situacaoPedido(r), dias: dias(r.data_pedido, hoje), destino: [r.cidade, r.uf].filter(Boolean).join('/') }))
     // CNPJ digitado com pontuação também acha (compara só os números).
-    .filter((r) => !busca || (busca.replace(/\D/g, '').length >= 8 && String(r.cnpj || '').includes(busca.replace(/\D/g, ''))) || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.placa, r.motorista, r.exp_wms].some((x) => String(x || '').toUpperCase().includes(busca)))
+    .filter((r) => !busca || (busca.replace(/\D/g, '').length >= 8 && String(r.cnpj || '').includes(busca.replace(/\D/g, ''))) || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.placa, r.motorista, r.exp_wms, r.obs].some((x) => String(x || '').toUpperCase().includes(busca)))
     .sort((a, b) => String(b.data_pedido || '').localeCompare(String(a.data_pedido || '')));
   const contagem = Object.fromEntries(SITUACOES_PEDIDO.map((s) => [s, todos.filter((r) => r.situacao === s).length]));
   const filtro = String(q.situacao || '');
@@ -164,4 +185,4 @@ async function prenotas(req, q = {}) {
   };
 }
 
-module.exports = { situacaoPedido, situacaoPrenota, pedidos, prenotas, SITUACOES_PEDIDO, DIAS_PARADA };
+module.exports = { salvarObservacao, situacaoPedido, situacaoPrenota, pedidos, prenotas, SITUACOES_PEDIDO, DIAS_PARADA };

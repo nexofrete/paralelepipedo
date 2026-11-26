@@ -659,10 +659,15 @@ def parte_uso(g):
         'A tabela rola dentro da tela, com o cabeçalho fixo: as barras de rolagem (inclusive a de lado, em telas menores) ficam sempre '
         'à vista, sem precisar ir até o fim da lista.',
         'Duas visões (botões <b>Planilha</b> e <b>Resumida</b>; o sistema lembra a escolhida): <b>Planilha</b> mostra cada campo na sua coluna, '
-        'na ordem da planilha de pedidos (Número Pedido, Situação, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação, Liberação comercial, Peso, Cubagem, '
+        'na ordem da planilha de pedidos (Número Pedido, Situação, Observações, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação, Liberação comercial, Peso, Cubagem, '
         'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Data Início, Data Finalização, Cancelado Wms, Nota '
         'Fiscal e Data de Emissão), com o número do pedido fixo à esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '
         'caber na tela (etiquetas e separação na mesma coluna, placa e motorista embaixo do status).',
+        '<b>Observações</b>: anotação livre de cada pedido (ex.: "pedido agendando", "cliente vai retirar"), até 500 caracteres, também em '
+        'pedido que ainda não tem nota. O lápis abre a janela de edição, com atalhos para as anotações mais comuns (Pedido agendando, '
+        'Entrega agendada, Aguardando pagamento, Aguardando o cliente, Cliente vai retirar, Pedido bloqueado, Faturar junto com outro '
+        'pedido); Apagar tira a observação. Quem pode editar: quem edita registros. Passar o mouse mostra quem escreveu e quando; o '
+        'buscador acha pelo texto da observação; vai também para o Excel. Na visão Planilha fica logo depois da Situação.',
         '<b>Liberação comercial</b>: a data e a hora em que o comercial de fato liberou o pedido. Vem do e-mail de liberação impresso em '
         'PDF (botão <b>Liberação comercial (PDF)</b>, quem edita registros; dá para mandar vários PDFs de uma vez): a data do cabeçalho do '
         'e-mail ("Data ...") vale para todos os pedidos listados nele ("Nr. Pedido: ..."). Se o pedido aparecer em mais de um e-mail, fica '

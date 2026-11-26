@@ -59,6 +59,9 @@
   // Visão da tabela: "planilha" (cada campo numa coluna, na ordem da planilha de pedidos) ou "resumida" (agrupada).
   let visao = (() => { try { return localStorage.getItem('nexofretePedidosVisao') || 'planilha'; } catch (e) { return 'planilha'; } })();
   const nw = (t) => `<td style="white-space:nowrap;">${t}</td>`;
+  // Observação do pedido; ✏ edita (quem edita registros).
+  const obsCel = (p) => `${p.obs ? `<span title="${esc(`${p.obs_por || ''}${p.obs_em ? ` em ${dh(p.obs_em)}` : ''}`)}">${esc(p.obs)}</span>` : '<span style="color:var(--texto-fraco);">—</span>'}`
+    + (podeImportar() ? ` <a href="#" data-pd-obs="${esc(p.pedido)}" data-valor="${esc(p.obs || '')}" title="Editar a observação" style="text-decoration:none;">✏</a>` : '');
   // Liberação comercial (do e-mail em PDF ou digitada); ✏ edita (quem edita registros).
   const libCom = (p) => `${p.lib_comercial ? `<span title="${esc(p.lib_comercial_origem === 'manual' ? `Digitada por ${p.lib_comercial_de || '?'}` : `Do e-mail de ${p.lib_comercial_de || '?'}`)}">${dh(p.lib_comercial)}${p.lib_comercial_origem === 'manual' ? ' <small>(manual)</small>' : ''}</span>` : '—'}`
     + (podeImportar() ? ` <a href="#" data-pd-libcom="${esc(p.pedido)}" data-valor="${esc(p.lib_comercial || '')}" title="Editar a liberação comercial" style="text-decoration:none;">✏</a>` : '');
@@ -70,7 +73,7 @@
         <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas / separação</th><th>NF-e</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
         <td><b>${esc(p.pedido)}</b>${p.pedido_cliente ? fraco(`Mercus ${esc(p.pedido_cliente)}`) : ''}</td>
-        <td style="white-space:nowrap;">${sit(p.situacao)}${p.embarque_id ? fraco(`embarque ${p.embarque_id}`) : ''}${p.ordem_id ? fraco(`ordem ${p.ordem_id}`) : ''}${p.data_entrega ? fraco(dia(p.data_entrega)) : ''}</td>
+        <td style="white-space:nowrap;">${sit(p.situacao)}${p.obs || podeImportar() ? `<br><small style="white-space:normal; display:inline-block; max-width:200px;">📝 ${obsCel(p)}</small>` : ''}${p.embarque_id ? fraco(`embarque ${p.embarque_id}`) : ''}${p.ordem_id ? fraco(`ordem ${p.ordem_id}`) : ''}${p.data_entrega ? fraco(dia(p.data_entrega)) : ''}</td>
         <td style="max-width:220px; min-width:200px; white-space:normal;">${esc(p.cliente || '—')}${fraco([p.nome_curto, cnpjF(p.cnpj)].filter(Boolean).map(esc).join(' · ') || '&nbsp;')}</td>
         <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}${p.lib_comercial || podeImportar() ? fraco(`comercial: ${libCom(p)}`) : ''}</td>
         <td style="white-space:nowrap;">${num(p.peso, 1)} kg${fraco(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}</td>
@@ -86,11 +89,11 @@
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
     const sim = (b) => (b == null ? '—' : b ? 'S' : 'N');
     return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela" style="font-size:12.5px;"><thead><tr>
-        <th style="position:sticky; left:0; z-index:3; background:var(--bg-card); box-shadow:inset -1px -1px 0 var(--borda);">Número Pedido</th><th>Situação</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th>Liberação comercial</th><th>Peso</th><th>Cubagem</th>
+        <th style="position:sticky; left:0; z-index:3; background:var(--bg-card); box-shadow:inset -1px -1px 0 var(--borda);">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th>Liberação comercial</th><th>Peso</th><th>Cubagem</th>
         <th>Status/WMS</th><th>Data Inicial</th><th>Expedição</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Separador</th><th>Data Início</th><th>Data Finalização</th>
         <th>Cancelado Wms</th><th>Nota Fiscal</th><th>Data de Emissão</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
-        <td style="white-space:nowrap; position:sticky; left:0; z-index:1; background:var(--bg-card); box-shadow:inset -1px 0 0 var(--borda);"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}${nw(esc(cnpjF(p.cnpj) || '—'))}
+        <td style="white-space:nowrap; position:sticky; left:0; z-index:1; background:var(--bg-card); box-shadow:inset -1px 0 0 var(--borda);"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}<td style="min-width:140px; max-width:240px; white-space:normal;">${obsCel(p)}</td>${nw(esc(cnpjF(p.cnpj) || '—'))}
         <td style="min-width:200px; max-width:260px; white-space:normal;">${esc(p.cliente || '—')}</td>
         ${nw(esc(p.nome_curto || '—'))}${nw(esc(p.pedido_cliente || '—'))}
         ${nw(`${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}`)}${nw(libCom(p))}
@@ -99,8 +102,36 @@
         ${nw(esc(p.usuario || '—'))}${nw(dh(p.etiquetas_em))}${nw(p.qtd_etiquetas == null ? '—' : num(p.qtd_etiquetas))}${nw(esc(p.separador || '—'))}${nw(dh(p.sep_inicio))}${nw(dh(p.sep_fim))}
         ${nw(p.tem_wms ? (p.cancelado_wms ? '<span class="oc-sit cancelado">S</span>' : 'N') : '—')}
         ${nw(p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>` : esc(p.nf || '—'))}${nw(dia(p.emissao_nf))}</tr>`).join('')
-        : '<tr><td colspan="22" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
+        : '<tr><td colspan="23" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
+  }
+
+  // Janela da observação do pedido (com atalhos para as mais usadas).
+  const OBS_PRONTAS = ['Pedido agendando', 'Entrega agendada', 'Aguardando pagamento', 'Aguardando o cliente', 'Cliente vai retirar', 'Pedido bloqueado', 'Faturar junto com outro pedido'];
+  async function editarObs(pedido, valor) {
+    let m = $('modalPdObs');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'modal-overlay'; m.id = 'modalPdObs';
+      m.innerHTML = '<div class="painel modal-card" style="width:100%; max-width:480px; padding:22px 24px;" id="pdObsCard"></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-po-fechar]')) m.classList.add('oculto'); });
+    }
+    m.classList.remove('oculto');
+    $('pdObsCard').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h3 style="margin:0;">Observação · pedido ${esc(pedido)}</h3><span style="cursor:pointer; font-size:18px;" data-po-fechar>✕</span></div>
+      <textarea id="poTexto" maxlength="500" rows="3" style="width:100%;" placeholder="Ex.: pedido agendando para 02/12">${esc(valor || '')}</textarea>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;">${OBS_PRONTAS.map((t) => `<button class="btn btn-secundario" data-po-pronta="${esc(t)}" style="width:auto; padding:3px 9px; font-size:12px;">${esc(t)}</button>`).join('')}</div>
+      <div style="display:flex; gap:8px; justify-content:flex-end;"><button class="btn btn-secundario" id="poApagar" style="width:auto;">Apagar</button><button class="btn btn-primario" id="poSalvar" style="width:auto;">Salvar</button></div>`;
+    $('poTexto').focus();
+    $('pdObsCard').querySelectorAll('[data-po-pronta]').forEach((b) => b.addEventListener('click', () => { const t = $('poTexto'); t.value = t.value.trim() ? `${t.value.trim()} · ${b.dataset.poPronta}` : b.dataset.poPronta; t.focus(); }));
+    const enviar = async (texto) => {
+      const r2 = await apiFetch(`/api/pedidos/observacao/${encodeURIComponent(pedido)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }) });
+      const j = await r2.json().catch(() => ({}));
+      if (!r2.ok) throw new Error(j.erro || 'Erro ao salvar.');
+      m.classList.add('oculto'); await desenharPedidos();
+    };
+    $('poSalvar').addEventListener('click', () => enviar($('poTexto').value).catch(erro));
+    $('poApagar').addEventListener('click', () => enviar('').catch(erro));
+    $('poTexto').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) enviar($('poTexto').value).catch(erro); });
   }
 
   // Janela para digitar (ou apagar) a liberação comercial de um pedido.
@@ -170,10 +201,10 @@
     $('pdExcel').addEventListener('click', () => {
       window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação', 'Liberação comercial', 'Peso (kg)', 'Cubagem (m³)',
         'Status/WMS', 'Data Inicial', 'Expedição', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Separador', 'Data Início', 'Data Finalização', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
-        'Situação', 'Destino', 'Transportadora', 'CT-e', 'Expedição WMS', 'Tipo Pedido', 'Placa', 'Motorista', 'Itinerário', 'Data Final (WMS)', '% Conferência', 'Imprimir'],
+        'Situação', 'Observações', 'Destino', 'Transportadora', 'CT-e', 'Expedição WMS', 'Tipo Pedido', 'Placa', 'Motorista', 'Itinerário', 'Data Final (WMS)', '% Conferência', 'Imprimir'],
       linhas: ultimaLista.map((p) => [p.pedido, cnpjF(p.cnpj), p.cliente || '', p.nome_curto || '', p.pedido_cliente || '', dh(p.liberado_em || p.data_pedido).replace('—', ''), dh(p.lib_comercial).replace('—', ''), p.peso, p.cubagem,
         p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, p.separador || '', dh(p.sep_inicio).replace('—', ''),
-        dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.destino || '', p.transportadora || '', p.numero_cte || '',
+        dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.obs || '', p.destino || '', p.transportadora || '', p.numero_cte || '',
         p.exp_wms || '', p.tipo_pedido || '', p.placa || '', p.motorista || '', p.itinerario || '', dh(p.exp_fim).replace('—', ''), p.conferencia_pct, p.imprimir == null ? '' : (p.imprimir ? 'SIM' : 'NÃO')])}]).catch(erro);
     });
     $('pdWmsCfg')?.addEventListener('click', () => abrirWms().catch(erro));
@@ -249,6 +280,7 @@
             + `${x.ja_mais_antigos ? `, ${num(x.ja_mais_antigos)} já tinham liberação igual ou mais antiga` : ''}${x.manuais ? `, ${num(x.manuais)} com data manual (mantida)` : ''}`)).join('<br>');
       } catch (err) { res.innerHTML = `<span style="color:var(--vermelho);">${esc(err.message)}</span>`; } finally { e.target.value = ''; }
     });
+    cont.querySelectorAll('[data-pd-obs]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); editarObs(a.dataset.pdObs, a.dataset.valor).catch(erro); }));
     cont.querySelectorAll('[data-pd-libcom]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); editarLibCom(a.dataset.pdLibcom, a.dataset.valor).catch(erro); }));
     $('pdWms')?.addEventListener('click', () => $('pdWmsArq').click());
     $('pdWmsArq')?.addEventListener('change', async (e) => {

@@ -58,4 +58,12 @@ router.post('/buscar-todos', autenticar, rota(async (req) => {
   registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'consultar_wms', detalhes: r.msg });
   return r;
 }));
+// "Atualizar do WMS" da tela Pedidos: só os pedidos da lista, com os filtros da tela (em segundo plano).
+router.post('/atualizar-pedidos', autenticar, rota(async (req) => {
+  await podeConsultar(req);
+  const pedidos = Array.isArray(req.body?.pedidos) ? req.body.pedidos.slice(0, 5000) : [];
+  const r = await wms.buscarTodos(`manual: ${req.usuario.nome}`, pedidos);
+  registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'consultar_wms', detalhes: `Atualizar do WMS (lista da tela): ${r.msg}` });
+  return r;
+}));
 module.exports = router;

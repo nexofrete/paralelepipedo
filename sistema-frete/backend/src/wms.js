@@ -846,13 +846,16 @@ async function consultarCarga(carga) {
 // Busca completa em segundo plano: todos os pedidos dos últimos 60 dias sem dados do WMS ou não finalizados,
 // um por vez (1 s entre as buscas). Para na hora se a integração for pausada. O andamento sai em situacao().
 let busca = null;
-async function buscarTodos(origem = 'manual') {
+// Com "pedidos": atualiza só essa lista (os pedidos que estão na tela Pedidos, com os filtros dela), mesmo os já consultados.
+async function buscarTodos(origem = 'manual', pedidos = null) {
   if (consultando || busca?.rodando) throw falha('Já tem uma consulta ao WMS em andamento. Espere terminar.', 409);
   const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
   if (!c) throw falha('Cadastre a ligação com o WMS.');
   if (!c.ativo) throw falha('A integração com o WMS está pausada.', 409);
-  const lista = await cargasParaConsultar(new Set(), 3000);
-  busca = { rodando: true, total: lista.length, feitas: 0, achadas: 0, inicio: new Date().toISOString(), origem, parou: null };
+  const lista = pedidos ? [...new Set(pedidos.map((x) => String(x).trim()).filter((x) => /^\d+$/.test(x)))].slice(0, 3000) : await cargasParaConsultar(new Set(), 3000);
+  if (!lista.length) throw falha(pedidos ? 'Nenhum pedido da lista tem número que o WMS conheça (a Carga do WMS é o número do pedido).' : 'Nenhum pedido para procurar.');
+  const titulo = pedidos ? 'Atualização dos pedidos da lista' : 'Busca completa';
+  busca = { rodando: true, total: lista.length, feitas: 0, achadas: 0, inicio: new Date().toISOString(), origem, parou: null, titulo };
   consultando = true;
   (async () => {
     try {
@@ -869,7 +872,7 @@ async function buscarTodos(origem = 'manual') {
       }
     } catch (e) { busca.parou = e.message; } finally {
       busca.rodando = false; busca.fim = new Date().toISOString(); consultando = false;
-      const msg = `Busca completa: ${busca.feitas} de ${busca.total} pedido(s) procurados, ${busca.achadas} achado(s) no WMS${busca.parou ? ` (parou: ${busca.parou})` : ''} (${origem})`;
+      const msg = `${busca.titulo}: ${busca.feitas} de ${busca.total} pedido(s) procurados, ${busca.achadas} achado(s) no WMS${busca.parou ? ` (parou: ${busca.parou})` : ''} (${origem})`;
       await pool.query('UPDATE wms_config SET ultima_consulta_em = NOW(), ultima_consulta_ok = $1, ultima_consulta_msg = $2, ultima_consulta_qtd = $3 WHERE id = 1',
         [!busca.parou || busca.parou === 'integração pausada', msg, busca.achadas]).catch(() => null);
     }

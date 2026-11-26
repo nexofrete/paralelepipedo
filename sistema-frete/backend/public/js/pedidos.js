@@ -116,7 +116,7 @@
       ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS ainda estão vazios: ligue a consulta automática em "Ligação com o WMS" ou importe a planilha do WMS.</p>`}
       <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span>
         <label style="font-size:13px;">De <input type="date" id="pdDe" value="${esc(d.de)}"></label><label style="font-size:13px;">até <input type="date" id="pdAte" value="${esc(d.ate)}"></label>
-        ${podeImportar() ? '<button class="btn btn-secundario" id="pdWmsAgora" style="width:auto;" title="Consulta o WMS agora (no máximo 1 vez a cada 2 minutos)">⟳ Atualizar do WMS</button>' : ''}
+        ${podeImportar() ? '<button class="btn btn-secundario" id="pdWmsAgora" style="width:auto;" title="Procura no WMS só os pedidos da lista (período, situação e busca da tela)">⟳ Atualizar do WMS</button>' : ''}
         ${podeImportar() ? '<button class="btn btn-secundario" id="pdWms" style="width:auto;" title="Planilha exportada do WMS com Número Pedido, Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização e Cancelado Wms">⬆ Planilha do WMS</button><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
         <span style="display:inline-flex; border:1px solid var(--borda); border-radius:8px; overflow:hidden;" title="Planilha: cada campo numa coluna, como a planilha de pedidos. Resumida: campos agrupados, cabe na tela.">
           <button class="btn btn-secundario" data-pd-visao="planilha" style="width:auto; border:0; border-radius:0;${visao === 'planilha' ? ' background:var(--azul); color:#fff;' : ''}">▦ Planilha</button>
@@ -179,6 +179,7 @@
       });
       const agora = $('pdWmsAgora');
       if (agora && !w.ativo) { agora.disabled = true; agora.title = 'A integração com o WMS está pausada'; }
+      if (agora && w.busca?.rodando) { agora.disabled = true; agora.title = 'Já tem uma atualização do WMS em andamento'; }
       $('pdWmsPausar')?.addEventListener('click', async () => {
         if (w.ativo && !await confirmar('O Nexofrete para de consultar o WMS (a consulta automática e o botão Atualizar do WMS) até alguém clicar em Retomar integração.', { titulo: 'Pausar a integração com o WMS?', textoOk: 'Pausar', tipo: 'perigo' })) return;
         try {
@@ -189,15 +190,21 @@
         } catch (err) { erro(err); }
       });
     }).catch(() => null);
+    // "Atualizar do WMS": só os pedidos que estão na lista (período, situação e busca da tela), em segundo plano.
     $('pdWmsAgora')?.addEventListener('click', async (e) => {
-      const b = e.currentTarget; b.disabled = true; const t0 = b.textContent; b.textContent = 'Consultando o WMS...';
+      const b = e.currentTarget;   // guardado antes de esperar a confirmação (depois o evento já não aponta para o botão)
+      const nums = [...new Set(ultimaLista.map((p) => String(p.pedido || '')).filter((x) => /^\d+$/.test(x)))];
+      if (!nums.length) { mostrarAlerta('Nenhum pedido na lista para atualizar.', { tipo: 'aviso' }); return; }
+      const min = Math.max(1, Math.round(nums.length * 1.5 / 60));
+      if (!await confirmar(`Procurar no WMS os ${nums.length.toLocaleString('pt-BR')} pedido(s) da lista (${dia(d.de)} a ${dia(d.ate)}${st.situacao ? `, ${st.situacao}` : ''}${st.busca ? `, "${st.busca}"` : ''}), um por vez: status, quem imprimiu e o separador. Leva cerca de ${min} min; o andamento aparece na linha do WMS.`,
+        { titulo: 'Atualizar estes pedidos do WMS?', textoOk: 'Atualizar' })) return;
+      b.disabled = true;
       try {
-        const r2 = await apiFetch('/api/wms/consultar', { method: 'POST' });
+        const r2 = await apiFetch('/api/wms/atualizar-pedidos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pedidos: nums }) });
         const j = await r2.json().catch(() => ({}));
-        if (!r2.ok) throw new Error(j.erro || 'Erro ao consultar o WMS.');
+        if (!r2.ok) throw new Error(j.erro || 'Erro ao atualizar do WMS.');
         await desenharPedidos();
-        mostrarAlerta(`WMS: ${j.msg}`, { tipo: j.incompleto ? 'aviso' : 'sucesso' });
-      } catch (err) { erro(err); b.disabled = false; b.textContent = t0; }
+      } catch (err) { erro(err); b.disabled = false; }
     });
     $('pdWms')?.addEventListener('click', () => $('pdWmsArq').click());
     $('pdWmsArq')?.addEventListener('change', async (e) => {

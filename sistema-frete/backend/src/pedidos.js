@@ -92,13 +92,16 @@ async function pedidos(req, q = {}) {
   }
   // WMS: status, separação, etiquetas, usuário, cancelamento (e a liberação/expedição, quando o WMS traz).
   const wms = await dadosWms(lista.map((r) => r.pedido));
+  const libs = await require('./liberacaoComercial').dosPedidos(lista.map((r) => r.pedido));
   for (const r of lista) {
     const w = wms.get(String(r.pedido)) || {};
     Object.assign(r, {
       status_wms: w.status || null, data_inicial: w.data_inicial || null, usuario: w.usuario || null, etiquetas_em: w.etiquetas_impressas_em || null,
       qtd_etiquetas: w.qtd_etiquetas ?? null, sep_inicio: w.separacao_inicio || null, sep_fim: w.separacao_fim || null, cancelado_wms: w.cancelado === true,
       liberado_em: w.liberacao || r.liberado_em || null, expedicao: w.expedicao || r.expedicao || null, tem_wms: !!w.numero_pedido,
-      separador: w.separador || null, exp_wms: w.expedicao_numero || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
+      separador: w.separador || null, exp_wms: w.expedicao_numero || null,
+      lib_comercial: libs.get(String(r.pedido))?.liberado_em || null, lib_comercial_origem: libs.get(String(r.pedido))?.origem || null,
+      lib_comercial_de: libs.get(String(r.pedido))?.email_de || libs.get(String(r.pedido))?.usuario_nome || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
       conferencia_pct: w.conferencia_pct ?? null, imprimir: w.imprimir ?? null, exp_fim: w.expedicao_fim || null, wms_origem: w.origem || null, wms_atualizado_em: w.wms_atualizado_em || null,
     });
     r.sep_minutos = r.sep_inicio && r.sep_fim ? Math.round((Date.parse(r.sep_fim.replace(' ', 'T')) - Date.parse(r.sep_inicio.replace(' ', 'T'))) / 60000) : null;

@@ -910,6 +910,18 @@ CREATE TABLE IF NOT EXISTS pedidos_wms (
     origem                 VARCHAR(20) NOT NULL DEFAULT 'planilha',
     atualizado_em          TIMESTAMP NOT NULL DEFAULT NOW()
 );
+-- Liberação comercial dos pedidos (src/liberacaoComercial.js): do e-mail de liberação em PDF ou digitada à mão.
+CREATE TABLE IF NOT EXISTS liberacoes_comerciais (
+    numero_pedido  VARCHAR(50) PRIMARY KEY,
+    liberado_em    TIMESTAMP NOT NULL,
+    origem         VARCHAR(10) NOT NULL DEFAULT 'email',   -- 'email' | 'manual'
+    email_de       VARCHAR(200),
+    email_assunto  VARCHAR(300),
+    arquivo        VARCHAR(200),
+    cliente        VARCHAR(200),
+    usuario_nome   VARCHAR(150),
+    atualizado_em  TIMESTAMP NOT NULL DEFAULT NOW()
+);
 -- Ligação com o WMS (src/wms.js): endereço, usuário e senha (criptografada como a dos portais das transportadoras).
 CREATE TABLE IF NOT EXISTS wms_config (
     id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),

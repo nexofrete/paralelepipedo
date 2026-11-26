@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "Campo Liberação comercial na tela Pedidos: lido do e-mail de liberação do comercial impresso em PDF (a data do e-mail vale para os pedidos listados nele) e editável à mão em cada pedido (a data manual não é trocada pelos e-mails seguintes)."},
         {"area": "Pedidos", "texto": "Atualizar do WMS agora atualiza só os pedidos que estão na lista, de acordo com os filtros da tela (período, situação e busca), com o andamento na tela."},
         {"area": "Correção", "texto": "WMS: o Separador saía com \"true\" junto do nome (\"DANILO FERREIRA, true\"); agora vem só o nome de cada separador, e os já gravados foram corrigidos."},
         {"area": "Pedidos", "texto": "WMS: a busca do separador usa a mesma busca do botão Buscar da tela Definir Equipe de Separação (por script), sem nunca chamar aplicar, validar ou finalizar."},

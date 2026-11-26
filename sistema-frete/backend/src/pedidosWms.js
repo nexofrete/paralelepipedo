@@ -40,7 +40,8 @@ const COLUNAS = [
   ['numero_pedido', ['numero pedido', 'nr pedido', 'pedido', 'n pedido', 'num pedido', 'cargas', 'carga', 'cod carga externo'], pedido],
   ['status', ['status wms', 'status', 'situacao wms'], texto],
   ['data_inicial', ['data inicial'], dataHora],
-  ['usuario', ['usuario', 'separador'], texto],
+  ['usuario', ['usuario'], texto],
+  ['separador', ['separador', 'responsavel separacao', 'quem separou'], texto],
   ['etiquetas_impressas_em', ['data imp etq', 'data impressao etiqueta', 'impressao etiquetas', 'data etiqueta'], dataHora],
   ['qtd_etiquetas', ['qtd etiquetas', 'quantidade etiquetas', 'qtde etiquetas'], inteiro],
   ['separacao_inicio', ['data inicio', 'inicio separacao'], dataHora],
@@ -101,7 +102,7 @@ async function gravar(linhas, origem = 'planilha') {
   const arr = (c) => linhas.map((l) => l[c] ?? null);
   const tipos = { status: 'text', data_inicial: 'timestamp', usuario: 'text', etiquetas_impressas_em: 'timestamp', qtd_etiquetas: 'int', separacao_inicio: 'timestamp',
     separacao_fim: 'timestamp', cancelado: 'boolean', liberacao: 'timestamp', expedicao: 'text', expedicao_numero: 'text', tipo_pedido: 'text', placa: 'text',
-    motorista: 'text', itinerario: 'text', expedicao_fim: 'timestamp', conferencia_pct: 'numeric', imprimir: 'boolean' };
+    motorista: 'text', itinerario: 'text', expedicao_fim: 'timestamp', conferencia_pct: 'numeric', imprimir: 'boolean', separador: 'text' };
   const params = [arr('numero_pedido'), ...CAMPOS.map(arr), origem];
   const { rowCount } = await pool.query(
     `INSERT INTO pedidos_wms (numero_pedido, ${CAMPOS.join(', ')}, origem, atualizado_em)

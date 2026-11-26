@@ -954,6 +954,9 @@ ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS os_consultada_em TIMESTAMP;
 ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS os_leitura INTEGER;
 UPDATE pedidos_wms SET usuario = NULL, etiquetas_impressas_em = NULL, os_consultada_em = NULL
  WHERE os_consultada_em IS NOT NULL AND os_leitura IS NULL;
+-- Separador (quem separou) com o início e o fim da separação, lidos da OS (versão 3): as OS lidas antes voltam a ser lidas.
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS separador VARCHAR(200);
+UPDATE pedidos_wms SET os_consultada_em = NULL WHERE os_leitura = 2;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

@@ -322,7 +322,7 @@ function lerResumo(html) {
 // colunas de usuário e de data; e, por fim, o primeiro "NOME dd/mm/aaaa hh:mm" perto da palavra etiqueta/impressão.
 const DATA_HORA = String.raw`(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)`;
 const NOME = String.raw`([A-ZÀ-Ý][A-Za-zÀ-ÿ.'\- ]{2,60}?)`;
-function lerOs(html) {
+function lerImpressao(html) {
   const { dataHora } = require('./pedidosWms');
   const h = String(html || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ');
   const texto = h.replace(/<\/(td|th|div|p|li|tr|label|span)>/gi, ' | ').replace(/<br\s*\/?>/gi, ' | ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ');
@@ -359,6 +359,57 @@ function lerOs(html) {
   if (m) return { usuario: limpo(m[1]), impresso_em: dataHora(m[2]), como: 'nome e data perto de "etiqueta"' };
   return null;
 }
+// Separação na OS: quem separou (Separador) e o início e o fim, com data e hora.
+//  1) tabela de atividades (OS | Responsavel | Atividade | ... | Inicio | Fim): as linhas de atividade "separação";
+//  2) senão, o histórico (Data | Usuário | ... | Andamento): as linhas de separação (iniciada / finalizada).
+// Mais de um separador: os nomes juntos, o início mais cedo e o fim mais tarde.
+function lerSeparacao(html) {
+  const { dataHora } = require('./pedidosWms');
+  const h = String(html || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ');
+  const tabelas = [...h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)].map((t) => [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+    .map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => tirarTags(c[1]))));
+  const limpo = (n) => String(n || '').replace(/\s+/g, ' ').trim();
+  const juntar = (linhas, como) => {
+    const nomes = [...new Set(linhas.map((l) => l.nome).filter(Boolean))];
+    const ini = linhas.map((l) => l.ini).filter(Boolean).sort()[0] || null;
+    const fim = linhas.map((l) => l.fim).filter(Boolean).sort().pop() || null;
+    return nomes.length || ini || fim ? { separador: nomes.join(', ') || null, sep_inicio: ini, sep_fim: fim, como_sep: como } : null;
+  };
+  const atividades = new Set();
+  for (const trs of tabelas) {
+    const iCab = trs.findIndex((r) => r.some((c) => /^respons[aá]vel$/i.test(c)) && r.some((c) => /^atividade$/i.test(c)));
+    if (iCab < 0) continue;
+    const cab = trs[iCab];
+    const iR = cab.findIndex((c) => /^respons[aá]vel$/i.test(c)); const iA = cab.findIndex((c) => /^atividade$/i.test(c));
+    const iI = cab.findIndex((c) => /^in[ií]cio$/i.test(c)); const iF = cab.findIndex((c) => /^fim$/i.test(c));
+    const linhas = trs.slice(iCab + 1).filter((x) => x.length >= cab.length - 1);
+    linhas.forEach((x) => { if (x[iA]) atividades.add(limpo(x[iA])); });
+    const sep = linhas.filter((x) => /separa/i.test(x[iA] || '')).map((x) => ({ nome: limpo(x[iR]), ini: dataHora(x[iI]), fim: dataHora(x[iF]) }));
+    const r = juntar(sep, 'tabela de atividades (separação)');
+    if (r) return { ...r, atividades: [...atividades] };
+  }
+  for (const trs of tabelas) {
+    const iCab = trs.findIndex((r) => r.some((c) => /^andamento$/i.test(c)) && r.some((c) => /usu[aá]rio/i.test(c)) && r.some((c) => /^data$/i.test(c)));
+    if (iCab < 0) continue;
+    const cab = trs[iCab];
+    const iU = cab.findIndex((c) => /usu[aá]rio/i.test(c)); const iD = cab.findIndex((c) => /^data$/i.test(c)); const iA = cab.findIndex((c) => /^andamento$/i.test(c));
+    const sep = trs.slice(iCab + 1).filter((x) => /separa/i.test(x[iA] || '') && dataHora(x[iD]));
+    if (!sep.length) continue;
+    const inicios = sep.filter((x) => !/finaliz|conclu|termin|\bfim\b/i.test(x[iA]));
+    const fins = sep.filter((x) => /finaliz|conclu|termin|\bfim\b/i.test(x[iA]));
+    const r = juntar([...inicios.map((x) => ({ nome: limpo(x[iU]), ini: dataHora(x[iD]) })), ...fins.map((x) => ({ nome: inicios.length ? null : limpo(x[iU]), fim: dataHora(x[iD]) }))], 'histórico (separação)');
+    if (r) return { ...r, atividades: [...atividades] };
+  }
+  return { separador: null, sep_inicio: null, sep_fim: null, como_sep: null, atividades: [...atividades] };
+}
+// A OS inteira: quem imprimiu as etiquetas (lerImpressao) e a separação (lerSeparacao). null sem nenhum dos dois.
+function lerOs(html) {
+  const imp = lerImpressao(html);
+  const sep = lerSeparacao(html);
+  if (!imp && !sep.separador && !sep.sep_inicio) return null;
+  return { usuario: imp?.usuario || null, impresso_em: imp?.impresso_em || null, como: imp?.como || null, ...sep };
+}
+
 // Estrutura da OS sem os dados (para o diagnóstico): rótulos ("Algo:") e títulos das tabelas.
 function descreverOs(html) {
   const h = String(html || '');
@@ -380,16 +431,20 @@ async function completarOs(sessao, c, expedicao) {
   const r = await sessao.pedir(urlOs(c, expedicao), { timeout: 30000 });
   if (temSenha(r.corpo)) return { sessao_caiu: true };
   const os = lerOs(r.corpo);
-  await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em), os_consultada_em = NOW(), os_leitura = 2
-    WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null]);
+  await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em),
+      separador = COALESCE($4, separador), separacao_inicio = COALESCE($5::timestamp, separacao_inicio), separacao_fim = COALESCE($6::timestamp, separacao_fim),
+      os_consultada_em = NOW(), os_leitura = 3
+    WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null, os?.separador || null, os?.sep_inicio || null, os?.sep_fim || null]);
   return os;
 }
-// Expedições ainda sem quem imprimiu (a OS é olhada de novo a cada 2 horas até aparecer).
+// Expedições com a OS ainda incompleta (sem quem imprimiu ou sem o fim da separação): olhada de novo a cada 2 horas.
+// Expedição FINALIZADA é lida mais uma vez depois do fim (expedicao_fim) e então para.
 async function expedicoesSemOs(limite) {
   if (limite <= 0) return [];
   const { rows } = await pool.query(`SELECT expedicao_numero FROM pedidos_wms
-     WHERE expedicao_numero IS NOT NULL AND usuario IS NULL AND COALESCE(status, '') !~* '^CANCELAD'
-       AND (os_consultada_em IS NULL OR os_consultada_em < NOW() - INTERVAL '2 hours')
+     WHERE expedicao_numero IS NOT NULL AND COALESCE(status, '') !~* '^CANCELAD'
+       AND (os_consultada_em IS NULL OR (os_consultada_em < NOW() - INTERVAL '2 hours' AND (usuario IS NULL OR separacao_fim IS NULL)
+            AND (COALESCE(status, '') !~* '^FINALIZADO' OR os_consultada_em < expedicao_fim)))
      GROUP BY expedicao_numero ORDER BY MAX(atualizado_em) DESC LIMIT $1`, [limite]);
   return rows.map((x) => x.expedicao_numero);
 }
@@ -461,8 +516,8 @@ async function buscarCarga(sessao, c, carga) {
   // Quem imprimiu as etiquetas e quando: na OS da expedição (se ainda não tem).
   const exp = ps.find((x) => x.numero_pedido === String(carga))?.expedicao_numero;
   if (exp) {
-    const { rows: [w] } = await pool.query('SELECT usuario FROM pedidos_wms WHERE numero_pedido = $1', [String(carga)]);
-    if (!w?.usuario) await completarOs(sessao, c, exp).catch(() => null);
+    const { rows: [w] } = await pool.query('SELECT usuario, separacao_fim FROM pedidos_wms WHERE numero_pedido = $1', [String(carga)]);
+    if (!w?.usuario || !w?.separacao_fim) await completarOs(sessao, c, exp).catch(() => null);
   }
   await pool.query(`INSERT INTO wms_cargas_consultadas (numero_pedido, consultado_em, achado) VALUES ($1, NOW(), $2)
     ON CONFLICT (numero_pedido) DO UPDATE SET consultado_em = NOW(), achado = $2`, [String(carga), achou]);
@@ -613,7 +668,9 @@ async function testarOs(expedicao) {
   if (temSenha(r.corpo)) throw falha('O WMS voltou para o login ao abrir a OS.', 502);
   const os = lerOs(r.corpo); const d = descreverOs(r.corpo);
   const texto = [`DIAGNOSTICO DA OS ${n} (${r.url}, HTTP ${r.status})`, '',
-    os ? `Lido: usuário "${os.usuario}" · impressão ${os.impresso_em || '(sem data)'} (achado por: ${os.como})` : 'NÃO consegui achar quem imprimiu e a data.',
+    os?.usuario ? `Impressão das etiquetas: "${os.usuario}" em ${os.impresso_em || '(sem data)'} (achado por: ${os.como})` : 'Impressão das etiquetas: NÃO achei quem imprimiu.',
+    os?.separador || os?.sep_inicio ? `Separação: separador "${os.separador || '?'}", início ${os.sep_inicio || '-'}, fim ${os.sep_fim || '-'} (achado por: ${os.como_sep})` : 'Separação: NÃO achei.',
+    `Atividades na tabela de atividades: ${(os?.atividades || lerSeparacao(r.corpo).atividades).join(' | ') || '-'}`,
     `Título: ${d.titulo || '-'}`, `Rótulos: ${d.rotulos.join(' | ') || '-'}`,
     ...d.tabelas.map((t, i) => `Tabela ${i + 1}: ${t.linhas} linha(s); colunas: ${t.titulos.join(' | ')}`)].join('\n');
   return { ok: !!os, os, texto };
@@ -627,4 +684,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { lerResumo, lerOs, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

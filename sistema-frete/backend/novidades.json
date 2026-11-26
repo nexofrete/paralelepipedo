@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "Tela Pedidos: novo campo Separador (quem separou), com Data Início e Data Finalização da separação (data e hora), lidos da OS da expedição no WMS."},
         {"area": "Correção", "texto": "WMS: Usuário e Data/Imp. Etq passam a vir da linha \"Etiquetas Impressas\" do histórico da OS (antes podia vir outra linha do histórico, como a finalização). Os pedidos já lidos são lidos de novo sozinhos."},
         {"area": "Pedidos", "texto": "WMS: Usuário e Data/Imp. Etq agora vêm da OS da expedição (quem imprimiu as etiquetas e quando), e a Qtd. Etiquetas do Resumo da tela de expedição. Botão Testar OS na janela Ligação com o WMS."},
         {"area": "Pedidos", "texto": "WMS: \"🔎 buscar\" em cada pedido sem dados (procura só ele, na hora) e o botão Buscar todos sem dados, que procura em segundo plano todos os pedidos dos últimos 60 dias, um por vez, com o andamento na tela e parada pelo Pausar integração."},

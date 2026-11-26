@@ -75,8 +75,8 @@ test('situação pelo status do WMS', () => {
 });
 
 test('OS da expedição: quem imprimiu as etiquetas e quando', () => {
-  const { lerOs, descreverOs } = require('../src/wms');
-  assert.deepStrictEqual(lerOs('<table><tr><td>Impressão:</td><td>JOAO PEDRO PEREIRA</td><td>21/11/2026 10:30:00</td></tr></table>'),
+  const { lerOs, lerImpressao, descreverOs } = require('../src/wms');
+  assert.deepStrictEqual(lerImpressao('<table><tr><td>Impressão:</td><td>JOAO PEDRO PEREIRA</td><td>21/11/2026 10:30:00</td></tr></table>'),
     { usuario: 'JOAO PEDRO PEREIRA', impresso_em: '2026-11-21 10:30:00', como: 'rótulo de impressão' });
   assert.strictEqual(lerOs('<table><tr><th>Usuário</th><th>Data</th></tr><tr><td>MARIA SILVA</td><td>20/11/2026 08:15</td></tr></table>').usuario, 'MARIA SILVA');
   assert.strictEqual(lerOs('<p>sem impressão registrada</p>'), null);
@@ -106,4 +106,21 @@ test('OS do Imperium: no histórico, a linha "Etiquetas Impressas" (a primeira, 
   assert.match(o.como, /Etiquetas Impressas.*1ª de 2/);
   // Histórico sem impressão: não pega outra linha.
   assert.strictEqual(lerOs('<table><tr><th>Data</th><th>Usuário</th><th>Andamento</th></tr><tr><td>21/11/2026 14:28:04</td><td>UELLIGTON</td><td>Expedição Finalizada</td></tr></table>'), null);
+});
+
+test('OS: separador (quem separou) com início e fim da separação', () => {
+  const { lerSeparacao } = require('../src/wms');
+  const ativ = `<table><tr><th>OS</th><th>Responsavel</th><th>Atividade</th><th>Qtd.Conferida</th><th>Inicio</th><th>Fim</th></tr>
+    <tr><td>1</td><td>MARCOS LIMA</td><td>SEPARACAO</td><td>10</td><td>18/11/2026 15:02:10</td><td>18/11/2026 16:40:55</td></tr>
+    <tr><td>2</td><td>PAULO</td><td>SEPARAÇÃO</td><td>6</td><td>18/11/2026 15:30:00</td><td>18/11/2026 17:05:00</td></tr>
+    <tr><td>3</td><td>JOSE</td><td>CONFERENCIA</td><td>16</td><td>18/11/2026 17:10</td><td>18/11/2026 18:00</td></tr></table>`;
+  const a = lerSeparacao(ativ);
+  assert.strictEqual(a.separador, 'MARCOS LIMA, PAULO');
+  assert.strictEqual(a.sep_inicio, '2026-11-18 15:02:10');
+  assert.strictEqual(a.sep_fim, '2026-11-18 17:05:00');
+  assert.deepStrictEqual(a.atividades, ['SEPARACAO', 'SEPARAÇÃO', 'CONFERENCIA']);
+  // Só conferência na tabela: não inventa separador (e diz as atividades que achou).
+  const b = lerSeparacao('<table><tr><th>OS</th><th>Responsavel</th><th>Atividade</th><th>Inicio</th><th>Fim</th></tr><tr><td>1</td><td>JOSE</td><td>CONFERENCIA</td><td>18/11/2026 17:10</td><td>18/11/2026 18:00</td></tr></table>');
+  assert.strictEqual(b.separador, null);
+  assert.deepStrictEqual(b.atividades, ['CONFERENCIA']);
 });

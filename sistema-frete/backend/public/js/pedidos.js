@@ -74,7 +74,7 @@
         <td>${esc(p.status_wms || '—')}${buscarWms(p)}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}% conf.</small>` : ''}${p.data_inicial || p.usuario || p.exp_wms ? fraco([p.exp_wms ? `exp. ${esc(p.exp_wms)}` : '', p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.placa || p.motorista ? fraco(`🚚 ${[p.placa, p.motorista].filter(Boolean).map(esc).join(' · ')}`) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
         <td style="white-space:nowrap;">${[
           p.qtd_etiquetas != null ? `${num(p.qtd_etiquetas)} etq.${p.etiquetas_em ? ` · ${dh(p.etiquetas_em)}` : ''}` : '',
-          p.sep_inicio ? `separação ${dh(p.sep_inicio)}${p.sep_fim ? ` → ${String(p.sep_fim).slice(11, 16)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : ' (em andamento)'}` : '',
+          p.sep_inicio ? `separação ${dh(p.sep_inicio)}${p.sep_fim ? ` → ${String(p.sep_fim).slice(11, 16)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : ' (em andamento)'}${p.separador ? ` · 👤 ${esc(p.separador)}` : ''}` : (p.separador ? `separador ${esc(p.separador)}` : ''),
           !p.sep_inicio && p.exp_fim ? `fim ${dh(p.exp_fim)}` : '',
         ].filter(Boolean).map((t, i) => (i ? fraco(t) : t)).join('') || '—'}</td>
         <td style="white-space:nowrap;">${p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>${fraco(dia(p.emissao_nf))}` : esc(p.nf || '—')}</td>
@@ -84,7 +84,7 @@
     const sim = (b) => (b == null ? '—' : b ? 'S' : 'N');
     return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela" style="font-size:12.5px;"><thead><tr>
         <th style="position:sticky; left:0; z-index:3; background:var(--bg-card); box-shadow:inset -1px -1px 0 var(--borda);">Número Pedido</th><th>Situação</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th>Peso</th><th>Cubagem</th>
-        <th>Status/WMS</th><th>Data Inicial</th><th>Expedição</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Data Início</th><th>Data Finalização</th>
+        <th>Status/WMS</th><th>Data Inicial</th><th>Expedição</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Separador</th><th>Data Início</th><th>Data Finalização</th>
         <th>Cancelado Wms</th><th>Nota Fiscal</th><th>Data de Emissão</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
         <td style="white-space:nowrap; position:sticky; left:0; z-index:1; background:var(--bg-card); box-shadow:inset -1px 0 0 var(--borda);"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}${nw(esc(cnpjF(p.cnpj) || '—'))}
@@ -93,10 +93,10 @@
         ${nw(`${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}`)}
         ${nw(p.peso == null ? '—' : `${num(p.peso, 1)} kg`)}${nw(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}
         ${nw(`${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}%</small>` : ''}${buscarWms(p)}`)}${nw(dh(p.data_inicial))}${nw(esc(p.expedicao || '—'))}
-        ${nw(esc(p.usuario || '—'))}${nw(dh(p.etiquetas_em))}${nw(p.qtd_etiquetas == null ? '—' : num(p.qtd_etiquetas))}${nw(dh(p.sep_inicio))}${nw(dh(p.sep_fim))}
+        ${nw(esc(p.usuario || '—'))}${nw(dh(p.etiquetas_em))}${nw(p.qtd_etiquetas == null ? '—' : num(p.qtd_etiquetas))}${nw(esc(p.separador || '—'))}${nw(dh(p.sep_inicio))}${nw(dh(p.sep_fim))}
         ${nw(p.tem_wms ? (p.cancelado_wms ? '<span class="oc-sit cancelado">S</span>' : 'N') : '—')}
         ${nw(p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>` : esc(p.nf || '—'))}${nw(dia(p.emissao_nf))}</tr>`).join('')
-        : '<tr><td colspan="20" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
+        : '<tr><td colspan="21" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
   }
 
@@ -141,10 +141,10 @@
     ['pdDe', 'pdAte'].forEach((id) => $(id).addEventListener('change', () => { st.de = $('pdDe').value; st.ate = $('pdAte').value; desenharPedidos().catch(erro); }));
     $('pdExcel').addEventListener('click', () => {
       window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação', 'Peso (kg)', 'Cubagem (m³)',
-        'Status/WMS', 'Data Inicial', 'Expedição', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Data Início', 'Data Finalização', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
+        'Status/WMS', 'Data Inicial', 'Expedição', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Separador', 'Data Início', 'Data Finalização', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
         'Situação', 'Destino', 'Transportadora', 'CT-e', 'Expedição WMS', 'Tipo Pedido', 'Placa', 'Motorista', 'Itinerário', 'Data Final (WMS)', '% Conferência', 'Imprimir'],
       linhas: ultimaLista.map((p) => [p.pedido, cnpjF(p.cnpj), p.cliente || '', p.nome_curto || '', p.pedido_cliente || '', dh(p.liberado_em || p.data_pedido).replace('—', ''), p.peso, p.cubagem,
-        p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, dh(p.sep_inicio).replace('—', ''),
+        p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, p.separador || '', dh(p.sep_inicio).replace('—', ''),
         dh(p.sep_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.destino || '', p.transportadora || '', p.numero_cte || '',
         p.exp_wms || '', p.tipo_pedido || '', p.placa || '', p.motorista || '', p.itinerario || '', dh(p.exp_fim).replace('—', ''), p.conferencia_pct, p.imprimir == null ? '' : (p.imprimir ? 'SIM' : 'NÃO')])}]).catch(erro);
     });

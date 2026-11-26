@@ -621,7 +621,10 @@ def parte_uso(g):
         'CANCELADO não é mais procurado. A mensagem da consulta diz quantos foram procurados e achados.',
         '<b>Usuário e Data/Imp. Etq</b> vêm da <b>OS da expedição</b> no WMS (/expedicao/os/index/id/nº da expedição): no histórico da OS '
         '(Data, Usuário, Mapa, Etiqueta, Andamento), a linha com o andamento <b>Etiquetas Impressas</b> (com reimpressão, a primeira); sem '
-        'essa linha, as etiquetas ainda não foram impressas e o campo fica vazio. Vale para todos os pedidos daquela expedição. A OS é aberta depois da busca do pedido e, na consulta de cada '
+        'essa linha, as etiquetas ainda não foram impressas e o campo fica vazio. Vale para todos os pedidos daquela expedição. '
+        '<b>Separador, Data Início e Data Finalização</b> (quem separou e o início e o fim da separação, com data e hora) também vêm da OS: da '
+        'tabela de atividades (Responsável, Atividade, Início, Fim), nas linhas de atividade de separação; sem essa tabela, das linhas de '
+        'separação do histórico. Com mais de um separador, aparecem todos os nomes, o início mais cedo e o fim mais tarde. A OS é aberta depois da busca do pedido e, na consulta de cada '
         'rodada, para as expedições ainda sem quem imprimiu (de novo a cada 2 horas, até aparecer; mesmo limite por rodada). A <b>Qtd. '
         'Etiquetas</b> vem do Resumo da tela de expedição (Qtd. Etq. Válidas) quando a expedição é só daquele pedido. Na janela Ligação com o '
         'WMS, <b>Testar OS (quem imprimiu)</b> abre a OS de uma expedição e mostra o que foi lido.',
@@ -646,7 +649,7 @@ def parte_uso(g):
         'à vista, sem precisar ir até o fim da lista.',
         'Duas visões (botões <b>Planilha</b> e <b>Resumida</b>; o sistema lembra a escolhida): <b>Planilha</b> mostra cada campo na sua coluna, '
         'na ordem da planilha de pedidos (Número Pedido, Situação, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação, Peso, Cubagem, '
-        'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização, Cancelado Wms, Nota '
+        'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Data Início, Data Finalização, Cancelado Wms, Nota '
         'Fiscal e Data de Emissão), com o número do pedido fixo à esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '
         'caber na tela (etiquetas e separação na mesma coluna, placa e motorista embaixo do status).',
         '<b>Buscador no topo</b> (o mesmo modelo da Visão geral): filtra a aba aberta enquanto você digita; com texto, procura no último ano '

@@ -56,7 +56,7 @@ async function dadosWms(pedidosLista) {
   const { rows } = await pool.query(`SELECT numero_pedido, status, usuario, qtd_etiquetas, cancelado, expedicao,
       to_char(data_inicial, 'YYYY-MM-DD HH24:MI') AS data_inicial, to_char(etiquetas_impressas_em, 'YYYY-MM-DD HH24:MI') AS etiquetas_impressas_em,
       to_char(separacao_inicio, 'YYYY-MM-DD HH24:MI') AS separacao_inicio, to_char(separacao_fim, 'YYYY-MM-DD HH24:MI') AS separacao_fim,
-      to_char(liberacao, 'YYYY-MM-DD HH24:MI') AS liberacao, expedicao_numero, tipo_pedido, placa, motorista, itinerario, conferencia_pct::float AS conferencia_pct, imprimir,
+      to_char(liberacao, 'YYYY-MM-DD HH24:MI') AS liberacao, expedicao_numero, tipo_pedido, placa, motorista, itinerario, conferencia_pct::float AS conferencia_pct, imprimir, separador,
       to_char(expedicao_fim, 'YYYY-MM-DD HH24:MI') AS expedicao_fim, origem, to_char(atualizado_em, 'YYYY-MM-DD HH24:MI') AS wms_atualizado_em
     FROM pedidos_wms WHERE numero_pedido = ANY($1::text[])`, [ids]).catch(() => ({ rows: [] }));
   return new Map(rows.map((r) => [r.numero_pedido, r]));
@@ -98,7 +98,7 @@ async function pedidos(req, q = {}) {
       status_wms: w.status || null, data_inicial: w.data_inicial || null, usuario: w.usuario || null, etiquetas_em: w.etiquetas_impressas_em || null,
       qtd_etiquetas: w.qtd_etiquetas ?? null, sep_inicio: w.separacao_inicio || null, sep_fim: w.separacao_fim || null, cancelado_wms: w.cancelado === true,
       liberado_em: w.liberacao || r.liberado_em || null, expedicao: w.expedicao || r.expedicao || null, tem_wms: !!w.numero_pedido,
-      exp_wms: w.expedicao_numero || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
+      separador: w.separador || null, exp_wms: w.expedicao_numero || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
       conferencia_pct: w.conferencia_pct ?? null, imprimir: w.imprimir ?? null, exp_fim: w.expedicao_fim || null, wms_origem: w.origem || null, wms_atualizado_em: w.wms_atualizado_em || null,
     });
     r.sep_minutos = r.sep_inicio && r.sep_fim ? Math.round((Date.parse(r.sep_fim.replace(' ', 'T')) - Date.parse(r.sep_inicio.replace(' ', 'T'))) / 60000) : null;

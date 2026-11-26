@@ -38,4 +38,22 @@ router.post('/pausar', autenticar, rota(async (req) => {
   registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'config_wms', detalhes: ativo ? 'Retomou a integração com o WMS' : 'Pausou a integração com o WMS' });
   return r;
 }));
+// Um pedido na hora (o "🔎 buscar" da linha) e a busca completa em segundo plano (quem edita registros).
+const podeConsultar = async (req) => {
+  if (!(req.usuario?.perfil === 'admin' || req.usuario?.pode_editar_registros)) throw Object.assign(new Error('Sem permissão para consultar o WMS.'), { status: 403 });
+  if (!(await wms.situacao()).ativo) throw Object.assign(new Error('A integração com o WMS está pausada.'), { status: 409 });
+};
+const ultimaCarga = new Map();
+router.post('/consultar-carga', autenticar, rota(async (req) => {
+  await podeConsultar(req);
+  if (Date.now() - (ultimaCarga.get(req.usuario.id) || 0) < 1000) throw Object.assign(new Error('Espere um segundo entre uma busca e outra.'), { status: 429 });
+  ultimaCarga.set(req.usuario.id, Date.now());
+  return wms.consultarCarga(req.body?.carga);
+}));
+router.post('/buscar-todos', autenticar, rota(async (req) => {
+  await podeConsultar(req);
+  const r = await wms.buscarTodos(`manual: ${req.usuario.nome}`);
+  registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'consultar_wms', detalhes: r.msg });
+  return r;
+}));
 module.exports = router;

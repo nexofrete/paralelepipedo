@@ -619,6 +619,11 @@ def parte_uso(g):
         'estão sem dados do WMS ou não estão finalizados, até o máximo por rodada (campo <b>Por carga (máx.)</b>, padrão 40; 0 desliga). Quem '
         'foi procurado há pouco fica para a próxima rodada (2 horas se o WMS tinha a carga, 12 horas se não tinha), e pedido FINALIZADO ou '
         'CANCELADO não é mais procurado. A mensagem da consulta diz quantos foram procurados e achados.',
+        '<b>🔎 buscar</b> (na coluna Status/WMS de cada pedido ainda sem dados do WMS): procura só aquele pedido no WMS, na hora. Se o WMS '
+        'não tiver a carga, aparece "não está no WMS".',
+        '<b>Buscar todos sem dados</b> (ao lado de Pausar integração): procura no WMS, um por vez (1 segundo entre cada um), todos os '
+        'pedidos dos últimos 60 dias sem dados ou não finalizados, em segundo plano. A linha do WMS mostra o andamento ("Buscando pedidos no '
+        'WMS: 120 de 900") e a lista é atualizada no fim. Pausar integração interrompe; uma segunda busca ao mesmo tempo não é aceita.',
         '<b>Pausar integração</b>: na tela Pedidos, ao lado da linha do WMS (quem edita registros). Depois de confirmar, o Nexofrete para na '
         'hora de consultar o WMS: nem a consulta automática nem o botão Atualizar do WMS falam com ele, e a linha mostra "integração pausada". '
         '<b>Retomar integração</b> volta a consultar no intervalo configurado. Cada pausa e retomada fica na auditoria. O teste da janela '

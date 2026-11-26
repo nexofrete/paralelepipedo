@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "WMS: \"🔎 buscar\" em cada pedido sem dados (procura só ele, na hora) e o botão Buscar todos sem dados, que procura em segundo plano todos os pedidos dos últimos 60 dias, um por vez, com o andamento na tela e parada pelo Pausar integração."},
         {"area": "Pedidos", "texto": "Buscador no topo da tela Pedidos, no mesmo modelo da Visão geral: filtra enquanto você digita (pedido, Mercus, NF, cliente, CNPJ com ou sem pontuação, transportadora, placa, status do WMS), procura no último ano e Esc limpa."},
         {"area": "Menu", "texto": "Pedidos e Pré-notas fiscais passaram de Fretes contratados para o menu Faturamento (bloco Finanças). Os atalhos continuam os mesmos (Ctrl+K 405 e 406)."},
         {"area": "Pedidos", "texto": "Consulta do WMS mais completa: depois da busca por período, os pedidos que ela não trouxe (a tela do WMS mostra só a primeira página, ou a expedição começou antes do período) são procurados pela Carga, um por vez, até o máximo por rodada configurado."},

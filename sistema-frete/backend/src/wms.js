@@ -356,6 +356,18 @@ async function cargasParaConsultar(jaVieram, limite) {
 }
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Uma carga (= pedido) no WMS: busca, grava o que veio e anota que foi procurada.
+async function buscarCarga(sessao, c, carga) {
+  const r = await sessao.pedir(urlBusca(c, null, null, carga), { timeout: 30000 });
+  if (temSenha(r.corpo)) return { sessao_caiu: true, achou: false, pedidos: 0 };
+  const ps = paraPedidos(lerGrid(r.corpo).linhas);
+  if (ps.length) await require('./pedidosWms').gravar(ps, 'wms');
+  const achou = ps.some((x) => x.numero_pedido === String(carga));
+  await pool.query(`INSERT INTO wms_cargas_consultadas (numero_pedido, consultado_em, achado) VALUES ($1, NOW(), $2)
+    ON CONFLICT (numero_pedido) DO UPDATE SET consultado_em = NOW(), achado = $2`, [String(carga), achou]);
+  return { achou, pedidos: ps.length, linha: ps.find((x) => x.numero_pedido === String(carga)) || null };
+}
+
 let consultando = false;
 // Faz o login, busca as expedições dos últimos N dias (pela Data Inicial) e grava em pedidos_wms.
 async function consultar({ origem = 'manual' } = {}) {
@@ -382,15 +394,9 @@ async function consultar({ origem = 'manual' } = {}) {
     const lista = await cargasParaConsultar(new Set(pedidos.map((x) => x.numero_pedido)), Math.min(Math.max(Number(c.por_carga_max ?? 40), 0), 200));
     for (const carga of lista) {
       await esperar(700);   // sem rajada: uma busca por vez, como uma pessoa
-      const r = await sessao.pedir(urlBusca(c, null, null, carga), { timeout: 30000 });
-      if (temSenha(r.corpo)) break;
-      const gc = lerGrid(r.corpo);
-      const ps = paraPedidos(gc.linhas);
-      if (ps.length) await require('./pedidosWms').gravar(ps, 'wms');
-      const achou = ps.some((x) => x.numero_pedido === carga);
-      await pool.query(`INSERT INTO wms_cargas_consultadas (numero_pedido, consultado_em, achado) VALUES ($1, NOW(), $2)
-        ON CONFLICT (numero_pedido) DO UPDATE SET consultado_em = NOW(), achado = $2`, [carga, achou]);
-      porCarga.consultadas += 1; if (achou) porCarga.achadas += 1; porCarga.pedidos += ps.length;
+      const r = await buscarCarga(sessao, c, carga);
+      if (r.sessao_caiu) break;
+      porCarga.consultadas += 1; if (r.achou) porCarga.achadas += 1; porCarga.pedidos += r.pedidos;
     }
     const total = pedidos.length + porCarga.pedidos;
     const msg = `${g.linhas.length} expedição(ões) de ${dataBr(de)} a ${dataBr(hoje)}${incompleto ? ` (o WMS diz ${g.total}; vieram ${g.linhas.length})` : ''}`
@@ -404,11 +410,58 @@ async function consultar({ origem = 'manual' } = {}) {
   } finally { consultando = false; }
 }
 
+// Um pedido só, na hora (o "🔎 buscar" da linha na tela Pedidos).
+async function consultarCarga(carga) {
+  const n = String(carga || '').replace(/\D/g, '');
+  if (!n) throw falha('Informe o número do pedido.');
+  const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
+  if (!c) throw falha('Cadastre a ligação com o WMS.');
+  const { sessao } = await entrar(c);
+  const r = await buscarCarga(sessao, c, n);
+  if (r.sessao_caiu) throw falha('O WMS voltou para o login na busca.', 502);
+  return { ok: true, achou: r.achou, status: r.linha?.status || null,
+    msg: r.achou ? `Pedido ${n} atualizado: ${r.linha?.status || 'sem status'}.` : `O WMS não tem a carga ${n} na tela Expedição Mercadorias.` };
+}
+
+// Busca completa em segundo plano: todos os pedidos dos últimos 60 dias sem dados do WMS ou não finalizados,
+// um por vez (1 s entre as buscas). Para na hora se a integração for pausada. O andamento sai em situacao().
+let busca = null;
+async function buscarTodos(origem = 'manual') {
+  if (consultando || busca?.rodando) throw falha('Já tem uma consulta ao WMS em andamento. Espere terminar.', 409);
+  const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
+  if (!c) throw falha('Cadastre a ligação com o WMS.');
+  if (!c.ativo) throw falha('A integração com o WMS está pausada.', 409);
+  const lista = await cargasParaConsultar(new Set(), 3000);
+  busca = { rodando: true, total: lista.length, feitas: 0, achadas: 0, inicio: new Date().toISOString(), origem, parou: null };
+  consultando = true;
+  (async () => {
+    try {
+      let { sessao } = await entrar(c);
+      for (const carga of lista) {
+        if (busca.feitas % 10 === 0) {
+          const { rows: [a] } = await pool.query('SELECT ativo FROM wms_config WHERE id = 1');
+          if (!a?.ativo) { busca.parou = 'integração pausada'; break; }
+        }
+        await esperar(1000);
+        let r = await buscarCarga(sessao, c, carga);
+        if (r.sessao_caiu) { ({ sessao } = await entrar(c)); r = await buscarCarga(sessao, c, carga); if (r.sessao_caiu) { busca.parou = 'o WMS derrubou a sessão'; break; } }
+        busca.feitas += 1; if (r.achou) busca.achadas += 1;
+      }
+    } catch (e) { busca.parou = e.message; } finally {
+      busca.rodando = false; busca.fim = new Date().toISOString(); consultando = false;
+      const msg = `Busca completa: ${busca.feitas} de ${busca.total} pedido(s) procurados, ${busca.achadas} achado(s) no WMS${busca.parou ? ` (parou: ${busca.parou})` : ''} (${origem})`;
+      await pool.query('UPDATE wms_config SET ultima_consulta_em = NOW(), ultima_consulta_ok = $1, ultima_consulta_msg = $2, ultima_consulta_qtd = $3 WHERE id = 1',
+        [!busca.parou || busca.parou === 'integração pausada', msg, busca.achadas]).catch(() => null);
+    }
+  })();
+  return { ok: true, total: lista.length, msg: `Buscando ${lista.length} pedido(s) no WMS, um por vez (cerca de ${Math.max(1, Math.round(lista.length * 1.3 / 60))} min).` };
+}
+
 // Situação da ligação (para a tela Pedidos: "WMS atualizado às...").
 async function situacao() {
   const { rows: [c] } = await pool.query(`SELECT ativo, intervalo_min, hora_inicio, hora_fim, ultima_consulta_ok, ultima_consulta_msg, ultima_consulta_qtd,
       to_char(ultima_consulta_em, 'YYYY-MM-DD HH24:MI') AS ultima_consulta_em, (url IS NOT NULL AND senha IS NOT NULL) AS configurado FROM wms_config WHERE id = 1`).catch(() => ({ rows: [] }));
-  return c || { configurado: false, ativo: false };
+  return { ...(c || { configurado: false, ativo: false }), busca: busca ? { ...busca } : null };
 }
 
 // Agendamento: confere a cada 5 minutos se está ligado, dentro do horário e se já passou o intervalo.
@@ -447,4 +500,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

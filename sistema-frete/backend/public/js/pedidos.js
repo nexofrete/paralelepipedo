@@ -59,6 +59,9 @@
   // Visão da tabela: "planilha" (cada campo numa coluna, na ordem da planilha de pedidos) ou "resumida" (agrupada).
   let visao = (() => { try { return localStorage.getItem('nexofretePedidosVisao') || 'planilha'; } catch (e) { return 'planilha'; } })();
   const nw = (t) => `<td style="white-space:nowrap;">${t}</td>`;
+  // Pedido sem dados do WMS: "🔎 buscar" consulta só ele, na hora.
+  const buscarWms = (p) => (!p.tem_wms && podeImportar() && /^\d+$/.test(String(p.pedido || ''))
+    ? ` <a href="#" data-pd-wmsbuscar="${esc(p.pedido)}" style="font-size:11.5px; white-space:nowrap;" title="Procura este pedido no WMS agora">🔎 buscar</a>` : '');
   function tabelaPedidos(d) {
     if (visao === 'resumida') return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela" style="font-size:12.5px; width:100%;"><thead><tr>
         <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas / separação</th><th>NF-e</th></tr></thead><tbody>
@@ -68,7 +71,7 @@
         <td style="max-width:220px; min-width:200px; white-space:normal;">${esc(p.cliente || '—')}${fraco([p.nome_curto, cnpjF(p.cnpj)].filter(Boolean).map(esc).join(' · ') || '&nbsp;')}</td>
         <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}</td>
         <td style="white-space:nowrap;">${num(p.peso, 1)} kg${fraco(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}</td>
-        <td>${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}% conf.</small>` : ''}${p.data_inicial || p.usuario || p.exp_wms ? fraco([p.exp_wms ? `exp. ${esc(p.exp_wms)}` : '', p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.placa || p.motorista ? fraco(`🚚 ${[p.placa, p.motorista].filter(Boolean).map(esc).join(' · ')}`) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
+        <td>${esc(p.status_wms || '—')}${buscarWms(p)}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}% conf.</small>` : ''}${p.data_inicial || p.usuario || p.exp_wms ? fraco([p.exp_wms ? `exp. ${esc(p.exp_wms)}` : '', p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.placa || p.motorista ? fraco(`🚚 ${[p.placa, p.motorista].filter(Boolean).map(esc).join(' · ')}`) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
         <td style="white-space:nowrap;">${[
           p.qtd_etiquetas != null ? `${num(p.qtd_etiquetas)} etq.${p.etiquetas_em ? ` · ${dh(p.etiquetas_em)}` : ''}` : '',
           p.sep_inicio ? `separação ${dh(p.sep_inicio)}${p.sep_fim ? ` → ${String(p.sep_fim).slice(11, 16)}${p.sep_minutos != null ? ` (${duracao(p.sep_minutos)})` : ''}` : ' (em andamento)'}` : '',
@@ -89,7 +92,7 @@
         ${nw(esc(p.nome_curto || '—'))}${nw(esc(p.pedido_cliente || '—'))}
         ${nw(`${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}`)}
         ${nw(p.peso == null ? '—' : `${num(p.peso, 1)} kg`)}${nw(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}
-        ${nw(`${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}%</small>` : ''}`)}${nw(dh(p.data_inicial))}${nw(esc(p.expedicao || '—'))}
+        ${nw(`${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}%</small>` : ''}${buscarWms(p)}`)}${nw(dh(p.data_inicial))}${nw(esc(p.expedicao || '—'))}
         ${nw(esc(p.usuario || '—'))}${nw(dh(p.etiquetas_em))}${nw(p.qtd_etiquetas == null ? '—' : num(p.qtd_etiquetas))}${nw(dh(p.sep_inicio))}${nw(dh(p.sep_fim))}
         ${nw(p.tem_wms ? (p.cancelado_wms ? '<span class="oc-sit cancelado">S</span>' : 'N') : '—')}
         ${nw(p.id && p.nf ? `<a href="#" data-pd-nota="${p.id}">${esc(p.nf)}</a>` : esc(p.nf || '—'))}${nw(dia(p.emissao_nf))}</tr>`).join('')
@@ -124,6 +127,16 @@
       ${tabelaPedidos(d)}`;
     ligar(st, desenharPedidos);
     ajustarRolagem();
+    cont.querySelectorAll('[data-pd-wmsbuscar]').forEach((a) => a.addEventListener('click', async (e) => {
+      e.preventDefault(); a.textContent = 'buscando...';
+      try {
+        const r2 = await apiFetch('/api/wms/consultar-carga', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ carga: a.dataset.pdWmsbuscar }) });
+        const j = await r2.json().catch(() => ({}));
+        if (!r2.ok) throw new Error(j.erro || 'Erro ao buscar no WMS.');
+        if (!j.achou) { a.replaceWith(Object.assign(document.createElement('small'), { textContent: ' não está no WMS', title: j.msg })); return; }
+        await desenharPedidos();
+      } catch (err) { a.textContent = '🔎 buscar'; erro(err); }
+    }));
     cont.querySelectorAll('[data-pd-visao]').forEach((b) => b.addEventListener('click', () => { visao = b.dataset.pdVisao; try { localStorage.setItem('nexofretePedidosVisao', visao); } catch (e) { /* sem armazenamento */ } desenharPedidos().catch(erro); }));
     ['pdDe', 'pdAte'].forEach((id) => $(id).addEventListener('change', () => { st.de = $('pdDe').value; st.ate = $('pdAte').value; desenharPedidos().catch(erro); }));
     $('pdExcel').addEventListener('click', () => {
@@ -144,7 +157,26 @@
         + (w.ultima_consulta_em ? ` · última: ${dh(w.ultima_consulta_em)} ${w.ultima_consulta_ok ? '<span style="color:var(--verde);">✓</span>' : `<span style="color:var(--vermelho);">✗ ${esc(w.ultima_consulta_msg || '')}</span>`}` : '') + '</span>'
         + (podeImportar() ? (w.ativo
           ? '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px; border-color:var(--vermelho); color:var(--vermelho);" title="Para na hora a consulta automática e o Atualizar do WMS">Pausar integração</button>'
-          : '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px;" title="Volta a consultar o WMS no intervalo configurado">Retomar integração</button>') : '');
+          : '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px;" title="Volta a consultar o WMS no intervalo configurado">Retomar integração</button>') : '')
+        + (podeImportar() && w.ativo && !w.busca?.rodando ? '<button class="btn btn-secundario" id="pdWmsTodos" style="width:auto; padding:4px 10px; font-size:12px;" title="Procura no WMS, um por vez, todos os pedidos dos últimos 60 dias que estão sem dados ou não finalizados">🔎 Buscar todos sem dados</button>' : '')
+        + (w.busca?.rodando ? `<span id="pdWmsProg" style="color:var(--azul);">⏳ Buscando pedidos no WMS: ${num(w.busca.feitas)} de ${num(w.busca.total)} (${num(w.busca.achadas)} achados)</span>` : '');
+      // Busca completa em andamento: acompanha e redesenha a lista quando terminar.
+      // Só o texto do andamento é atualizado (a lista não pisca nem perde a rolagem); no fim, a lista é redesenhada.
+      const acompanhar = () => { clearTimeout(window.__pdWmsBusca); window.__pdWmsBusca = setTimeout(async () => {
+        const prog = document.getElementById('pdWmsProg'); if (!prog) return;
+        const x = await apiFetch('/api/wms/situacao').then((y) => y.json()).catch(() => null);
+        if (x?.busca?.rodando) { prog.textContent = `⏳ Buscando pedidos no WMS: ${num(x.busca.feitas)} de ${num(x.busca.total)} (${num(x.busca.achadas)} achados)`; acompanhar(); } else desenharPedidos().catch(() => null);
+      }, 5000); };
+      if (w.busca?.rodando) acompanhar();
+      $('pdWmsTodos')?.addEventListener('click', async () => {
+        if (!await confirmar('O Nexofrete vai procurar no WMS, um por vez (1 segundo entre cada um), todos os pedidos dos últimos 60 dias que estão sem dados ou não finalizados. Pode levar alguns minutos; o andamento aparece aqui e Pausar integração interrompe.', { titulo: 'Buscar todos os pedidos sem dados?', textoOk: 'Buscar' })) return;
+        try {
+          const r2 = await apiFetch('/api/wms/buscar-todos', { method: 'POST' });
+          const j = await r2.json().catch(() => ({}));
+          if (!r2.ok) throw new Error(j.erro || 'Erro ao iniciar a busca.');
+          await desenharPedidos();
+        } catch (err) { erro(err); }
+      });
       const agora = $('pdWmsAgora');
       if (agora && !w.ativo) { agora.disabled = true; agora.title = 'A integração com o WMS está pausada'; }
       $('pdWmsPausar')?.addEventListener('click', async () => {

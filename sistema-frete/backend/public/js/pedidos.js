@@ -254,6 +254,8 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primario" id="wmsSalvar" style="width:auto;">Salvar</button>
         <button class="btn btn-secundario" id="wmsTestar" style="width:auto;">🔌 Salvar e testar conexão</button>
         <button class="btn btn-secundario" id="wmsTestarTela" style="width:auto;" title="Faz o login no WMS e abre a tela Expedição Mercadorias">🔐 Testar login e tela de expedição</button></div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; font-size:13px;">Testar a OS da expedição nº
+        <input id="wmsOsExp" placeholder="83383" style="width:110px;"><button class="btn btn-secundario" id="wmsTestarOs" style="width:auto;" title="Abre a OS da expedição no WMS e mostra quem imprimiu as etiquetas e quando">🏷 Testar OS (quem imprimiu)</button></div>
       <div id="wmsRes" style="margin-top:12px;"></div>`;
     const salvar = () => pedir('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('wmsUrl').value, usuario: $('wmsUsuario').value, senha: $('wmsSenha').value, url_expedicao: $('wmsTela').value,
       ativo: $('wmsAtivo').checked, intervalo_min: $('wmsIntervalo').value, hora_inicio: $('wmsHoraIni').value, hora_fim: $('wmsHoraFim').value, dias: $('wmsDias').value, por_carga_max: $('wmsPorCarga').value }) });
@@ -272,6 +274,15 @@
     };
     $('wmsTestar').addEventListener('click', testarCom('/testar', 'O servidor alcançou o WMS.', 'O servidor não conseguiu abrir a página do WMS.'));
     $('wmsTestarTela').addEventListener('click', testarCom('/testar-tela', 'Login feito e tela de expedição aberta.', 'Não consegui abrir a tela de expedição.'));
+    $('wmsTestarOs').addEventListener('click', async () => {
+      const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Abrindo a OS no WMS...</p>';
+      try {
+        await salvar(); $('wmsSenha').value = '';
+        const t = await pedir('/testar-os', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expedicao: $('wmsOsExp').value }) });
+        res.innerHTML = `<p style="font-size:13px;">${t.ok ? `<span style="color:var(--verde);">✓ Quem imprimiu: <b>${esc(t.os.usuario)}</b> em ${esc(dh(t.os.impresso_em))}</span>` : '<span style="color:var(--vermelho);">✗ Não achei quem imprimiu na OS.</span>'} Copie e envie o diagnóstico se algo estiver errado.</p>
+          <textarea readonly style="width:100%; height:180px; font-family:monospace; font-size:11.5px;">${esc(t.texto)}</textarea>`;
+      } catch (e) { res.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${esc(e.message)}</p>`; }
+    });
     $('wmsConsultar').addEventListener('click', async () => {
       const res = $('wmsRes'); res.innerHTML = '<p style="font-size:13px;">Consultando o WMS a partir do servidor...</p>';
       try {

@@ -73,3 +73,21 @@ test('situação pelo status do WMS', () => {
   assert.strictEqual(situacaoPedido({ tem_nota: false, status_wms: 'PARCIALMENTE FINALIZADO' }), 'Separado');
   assert.strictEqual(situacaoPedido({ tem_nota: true, status_wms: 'FINALIZADO' }), 'Faturado');
 });
+
+test('OS da expedição: quem imprimiu as etiquetas e quando', () => {
+  const { lerOs, descreverOs } = require('../src/wms');
+  assert.deepStrictEqual(lerOs('<table><tr><td>Impressão:</td><td>JOAO PEDRO PEREIRA</td><td>21/11/2026 10:30:00</td></tr></table>'),
+    { usuario: 'JOAO PEDRO PEREIRA', impresso_em: '2026-11-21 10:30:00', como: 'rótulo de impressão' });
+  assert.strictEqual(lerOs('<table><tr><th>Usuário</th><th>Data</th></tr><tr><td>MARIA SILVA</td><td>20/11/2026 08:15</td></tr></table>').usuario, 'MARIA SILVA');
+  assert.strictEqual(lerOs('<p>sem impressão registrada</p>'), null);
+  const d = descreverOs('<title>OS</title><div>Cliente: X</div><table><tr><th>Produto</th><th>Qtd</th></tr><tr><td>A</td><td>1</td></tr></table>');
+  assert.deepStrictEqual(d.tabelas[0].titulos, ['Produto', 'Qtd']);
+  assert.ok(d.rotulos.includes('Cliente'));
+});
+
+test('Resumo da busca por carga: etiquetas válidas', () => {
+  const { lerResumo } = require('../src/wms');
+  const r = lerResumo('<table><tr><td>Expedições</td><td>Qtd. Etq. Válidas</td><td>Qtd. Etq. Reentrega</td><td>Qtd. Pedidos</td></tr><tr><td><input value="1"></td><td><input value="16"></td><td><input value="0"></td><td><input value="1"></td></tr></table>');
+  assert.strictEqual(r.etq_validas, 16);
+  assert.strictEqual(r.pedidos, 1);
+});

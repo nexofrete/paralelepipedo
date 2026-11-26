@@ -947,6 +947,8 @@ CREATE TABLE IF NOT EXISTS wms_cargas_consultadas (
     achado        BOOLEAN NOT NULL DEFAULT FALSE
 );
 ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS por_carga_max INTEGER NOT NULL DEFAULT 40;
+-- OS da expedição (quem imprimiu as etiquetas e quando): quando foi olhada por último.
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS os_consultada_em TIMESTAMP;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

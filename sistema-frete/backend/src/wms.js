@@ -299,7 +299,81 @@ function lerGrid(html) {
       placa: v(r, C.placa), itinerario: v(r, C.itin), motorista: v(r, C.mot), data_inicial: dataHora(v(r, C.ini)), expedicao_fim: dataHora(v(r, C.fim)),
       imprimir: imp === 'SIM' ? true : imp === 'NAO' || imp === 'NÃO' ? false : null, conferencia_pct: numeroBr(v(r, C.conf)), status: v(r, C.st) });
   }
-  return { linhas, total };
+  return { linhas, total, resumo: lerResumo(h) };
+}
+
+// Quadro "Resumo" da tela (Expedições, Qtd. Etq. Válidas, Qtd. Etq. Reentrega, Qtd. Pedidos, Qtd. Produtos, Qtd. Volumes):
+// os valores ficam em campos (input) ou no texto da linha de baixo. Na busca por uma carga, é o resumo daquele pedido.
+function lerResumo(html) {
+  const t = [...String(html || '').matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)].find((m) => /Qtd\.?\s*Etq/i.test(m[1]));
+  if (!t) return null;
+  const trs = [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((m) => [...m[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => c[1]));
+  const iCab = trs.findIndex((r) => r.some((c) => /Qtd\.?\s*Etq/i.test(tirarTags(c))));
+  if (iCab < 0 || !trs[iCab + 1]) return null;
+  const valor = (c) => { const v = attr((c.match(/<input\b[^>]*>/i) || [''])[0], 'value'); return (v ?? tirarTags(c)).trim(); };
+  const out = {};
+  trs[iCab].forEach((c, i) => { const k = tirarTags(c).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]+/g, ' ').trim(); out[k] = valor(trs[iCab + 1][i] || ''); });
+  const n = (k) => { const v = require('./pedidosWms').numeroBr(out[k]); return v == null ? null : v; };
+  return { expedicoes: n('expedicoes'), etq_validas: n('qtd etq validas'), etq_reentrega: n('qtd etq reentrega'), pedidos: n('qtd pedidos'), produtos: n('qtd produtos'), volumes: n('qtd volumes') };
+}
+
+// OS da expedição (/expedicao/os/index/id/<nº da expedição>): quem imprimiu as etiquetas e quando ("NOME" e, ao lado, a data).
+// Tenta, nesta ordem: um rótulo de impressão ("Impresso por", "Usuário impressão"...) seguido do nome e da data; uma tabela com
+// colunas de usuário e de data; e, por fim, o primeiro "NOME dd/mm/aaaa hh:mm" perto da palavra etiqueta/impressão.
+const DATA_HORA = String.raw`(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)`;
+const NOME = String.raw`([A-ZÀ-Ý][A-Za-zÀ-ÿ.'\- ]{2,60}?)`;
+function lerOs(html) {
+  const { dataHora } = require('./pedidosWms');
+  const h = String(html || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ');
+  const texto = h.replace(/<\/(td|th|div|p|li|tr|label|span)>/gi, ' | ').replace(/<br\s*\/?>/gi, ' | ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ');
+  const limpo = (n) => String(n || '').replace(/[|:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let m = texto.match(new RegExp(String.raw`(?:impress[aã]o|imprimiu|impresso\s+por|usu[aá]rio\s+(?:da\s+)?impress[aã]o|usu[aá]rio\s+etiqueta)[^|\d]{0,30}[|:\s]+${NOME}\s*[|\-–]?\s*${DATA_HORA}`, 'i'));
+  if (m) return { usuario: limpo(m[1]), impresso_em: dataHora(m[2]), como: 'rótulo de impressão' };
+  for (const t of h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const trs = [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => tirarTags(c[1])));
+    const iCab = trs.findIndex((r) => r.some((c) => /usu[aá]rio|impress/i.test(c)) && r.some((c) => /data/i.test(c)));
+    if (iCab < 0) continue;
+    const iU = trs[iCab].findIndex((c) => /usu[aá]rio|impress/i.test(c)); const iD = trs[iCab].findIndex((c) => /data/i.test(c));
+    const linha = trs.slice(iCab + 1).find((r) => r[iU] && dataHora(r[iD]));
+    if (linha) return { usuario: limpo(linha[iU]), impresso_em: dataHora(linha[iD]), como: 'tabela usuário/data' };
+  }
+  m = texto.match(new RegExp(String.raw`(?:etiqueta|impress)[\s\S]{0,200}?\|\s*${NOME}\s*\|?\s*${DATA_HORA}`, 'i'));
+  if (m) return { usuario: limpo(m[1]), impresso_em: dataHora(m[2]), como: 'nome e data perto de "etiqueta"' };
+  return null;
+}
+// Estrutura da OS sem os dados (para o diagnóstico): rótulos ("Algo:") e títulos das tabelas.
+function descreverOs(html) {
+  const h = String(html || '');
+  const corpo = h.replace(/<head[\s\S]*?<\/head>|<title[\s\S]*?<\/title>|<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ');
+  const rotulos = [...new Set(tirarTags(corpo.replace(/<\/(td|th|div|p|label|span|li|b|strong|h[1-6])>/gi, ' | ')).split('|')
+    .flatMap((seg) => [...seg.matchAll(/([A-Za-zÀ-ÿ.\/][A-Za-zÀ-ÿ.\/ ]{1,39}):/g)].map((m) => m[1].trim())))].slice(0, 60);
+  const tabelas = [...h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)].map((t) => {
+    const trs = [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+    const th = trs.find((l) => /<th\b/i.test(l[1])) || trs[0];
+    return { titulos: th ? [...th[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((x) => tirarTags(x[1])).filter(Boolean) : [], linhas: Math.max(0, trs.length - 1) };
+  }).filter((t) => t.titulos.length);
+  return { titulo: tirarTags((h.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]), rotulos, tabelas };
+}
+const urlOs = (c, exp) => new URL(`/expedicao/os/index/id/${encodeURIComponent(String(exp).replace(/\D/g, ''))}`, c.url).toString();
+
+// Abre a OS e grava quem imprimiu e quando em todos os pedidos daquela expedição.
+async function completarOs(sessao, c, expedicao) {
+  if (!expedicao) return null;
+  const r = await sessao.pedir(urlOs(c, expedicao), { timeout: 30000 });
+  if (temSenha(r.corpo)) return { sessao_caiu: true };
+  const os = lerOs(r.corpo);
+  await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em), os_consultada_em = NOW()
+    WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null]);
+  return os;
+}
+// Expedições ainda sem quem imprimiu (a OS é olhada de novo a cada 2 horas até aparecer).
+async function expedicoesSemOs(limite) {
+  if (limite <= 0) return [];
+  const { rows } = await pool.query(`SELECT expedicao_numero FROM pedidos_wms
+     WHERE expedicao_numero IS NOT NULL AND usuario IS NULL AND COALESCE(status, '') !~* '^CANCELAD'
+       AND (os_consultada_em IS NULL OR os_consultada_em < NOW() - INTERVAL '2 hours')
+     GROUP BY expedicao_numero ORDER BY MAX(atualizado_em) DESC LIMIT $1`, [limite]);
+  return rows.map((x) => x.expedicao_numero);
 }
 
 // Linhas do grid → pedidos_wms (uma por carga = pedido). "SEM TRANSPORTADORA 25-11-2026" na Placa não é placa.
@@ -360,9 +434,18 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 async function buscarCarga(sessao, c, carga) {
   const r = await sessao.pedir(urlBusca(c, null, null, carga), { timeout: 30000 });
   if (temSenha(r.corpo)) return { sessao_caiu: true, achou: false, pedidos: 0 };
-  const ps = paraPedidos(lerGrid(r.corpo).linhas);
+  const g = lerGrid(r.corpo);
+  const ps = paraPedidos(g.linhas);
+  // Uma expedição só com este pedido: as etiquetas válidas do Resumo são as dele.
+  if (g.linhas.length === 1 && g.linhas[0].cargas.length === 1 && g.resumo?.etq_validas != null) ps.forEach((x) => { x.qtd_etiquetas = Math.round(g.resumo.etq_validas); });
   if (ps.length) await require('./pedidosWms').gravar(ps, 'wms');
   const achou = ps.some((x) => x.numero_pedido === String(carga));
+  // Quem imprimiu as etiquetas e quando: na OS da expedição (se ainda não tem).
+  const exp = ps.find((x) => x.numero_pedido === String(carga))?.expedicao_numero;
+  if (exp) {
+    const { rows: [w] } = await pool.query('SELECT usuario FROM pedidos_wms WHERE numero_pedido = $1', [String(carga)]);
+    if (!w?.usuario) await completarOs(sessao, c, exp).catch(() => null);
+  }
   await pool.query(`INSERT INTO wms_cargas_consultadas (numero_pedido, consultado_em, achado) VALUES ($1, NOW(), $2)
     ON CONFLICT (numero_pedido) DO UPDATE SET consultado_em = NOW(), achado = $2`, [String(carga), achou]);
   return { achou, pedidos: ps.length, linha: ps.find((x) => x.numero_pedido === String(carga)) || null };
@@ -398,9 +481,18 @@ async function consultar({ origem = 'manual' } = {}) {
       if (r.sessao_caiu) break;
       porCarga.consultadas += 1; if (r.achou) porCarga.achadas += 1; porCarga.pedidos += r.pedidos;
     }
+    // OS das expedições ainda sem quem imprimiu (mesmo limite da busca por carga).
+    let oss = 0;
+    for (const exp of await expedicoesSemOs(Math.min(Math.max(Number(c.por_carga_max ?? 40), 0), 200))) {
+      await esperar(700);
+      const o = await completarOs(sessao, c, exp).catch(() => null);
+      if (o?.sessao_caiu) break;
+      if (o?.usuario) oss += 1;
+    }
+    if (oss) porCarga.os = oss;
     const total = pedidos.length + porCarga.pedidos;
     const msg = `${g.linhas.length} expedição(ões) de ${dataBr(de)} a ${dataBr(hoje)}${incompleto ? ` (o WMS diz ${g.total}; vieram ${g.linhas.length})` : ''}`
-      + `${porCarga.consultadas ? `; ${porCarga.consultadas} pedido(s) consultados pela carga, ${porCarga.achadas} achado(s) no WMS` : ''}; ${total} pedido(s) atualizados`
+      + `${porCarga.consultadas ? `; ${porCarga.consultadas} pedido(s) consultados pela carga, ${porCarga.achadas} achado(s) no WMS` : ''}${porCarga.os ? `; ${porCarga.os} OS com quem imprimiu` : ''}; ${total} pedido(s) atualizados`
       + ` (${origem}, ${Math.round((Date.now() - inicio) / 100) / 10} s)`;
     await registrar(true, msg, total);
     return { ok: true, expedicoes: g.linhas.length, pedidos: total, gravados, total_wms: g.total, incompleto, por_carga: porCarga, msg };
@@ -492,6 +584,23 @@ async function pausar(ativo) {
   return situacao();
 }
 
+// Teste da OS de uma expedição: o que foi lido (usuário e data) e a estrutura da página, sem os outros dados.
+async function testarOs(expedicao) {
+  const n = String(expedicao || '').replace(/\D/g, '');
+  if (!n) throw falha('Informe o número da expedição (ex.: 83383).');
+  const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
+  if (!c) throw falha('Cadastre a ligação com o WMS.');
+  const { sessao } = await entrar(c);
+  const r = await sessao.pedir(urlOs(c, n), { timeout: 30000 });
+  if (temSenha(r.corpo)) throw falha('O WMS voltou para o login ao abrir a OS.', 502);
+  const os = lerOs(r.corpo); const d = descreverOs(r.corpo);
+  const texto = [`DIAGNOSTICO DA OS ${n} (${r.url}, HTTP ${r.status})`, '',
+    os ? `Lido: usuário "${os.usuario}" · impressão ${os.impresso_em || '(sem data)'} (achado por: ${os.como})` : 'NÃO consegui achar quem imprimiu e a data.',
+    `Título: ${d.titulo || '-'}`, `Rótulos: ${d.rotulos.join(' | ') || '-'}`,
+    ...d.tabelas.map((t, i) => `Tabela ${i + 1}: ${t.linhas} linha(s); colunas: ${t.titulos.join(' | ')}`)].join('\n');
+  return { ok: !!os, os, texto };
+}
+
 async function testar() {
   const c = await config();
   if (!c.url) throw falha('Cadastre o endereço do WMS primeiro.');
@@ -500,4 +609,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { lerResumo, lerOs, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

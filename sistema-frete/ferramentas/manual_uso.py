@@ -638,6 +638,9 @@ def parte_uso(g):
         'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização, Cancelado Wms, Nota '
         'Fiscal e Data de Emissão), com o número do pedido fixo à esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '
         'caber na tela (etiquetas e separação na mesma coluna, placa e motorista embaixo do status).',
+        '<b>Buscador no topo</b> (o mesmo modelo da Visão geral): filtra a aba aberta enquanto você digita; com texto, procura no último ano '
+        '(sem texto, nos 30 dias ou no período escolhido). Acha o número do pedido, o Mercus, a NF, o cliente, o nome curto, o CNPJ (com ou '
+        'sem pontuação), a cidade, a transportadora, a placa, o motorista, o status e o usuário do WMS. Esc limpa.',
         'Clique na NF-e para abrir a nota. Os botões do alto filtram pela situação; a busca acha pedido, pedido do cliente, cliente, nome '
         'curto, CNPJ, NF, cidade, transportadora, status do WMS ou usuário. O <b>Excel</b> leva todos os pedidos com as colunas da planilha de '
         'pedidos, mais a situação, o destino, a transportadora e o CT-e.',

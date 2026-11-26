@@ -64,7 +64,8 @@ async function dadosWms(pedidosLista) {
 
 async function pedidos(req, q = {}) {
   const hoje = hojeSP();
-  const de = dataOk(q.de) || (() => { const d = new Date(`${hoje}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 30); return d.toISOString().slice(0, 10); })();
+  // Sem data escolhida: os últimos 30 dias; buscando por texto, o último ano.
+  const de = dataOk(q.de) || (() => { const d = new Date(`${hoje}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - (String(q.busca || '').trim() ? 365 : 30)); return d.toISOString().slice(0, 10); })();
   const ate = dataOk(q.ate) || hoje;
   const { rows } = await consultaCliente(req, `SELECT f.id, f.numero_pedido AS pedido, f.pedido_mercus AS pedido_cliente, to_char(COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date), 'YYYY-MM-DD') AS data_pedido,
       f.cliente, f.cliente_documento AS cnpj, f.cliente_nome_curto AS nome_curto, f.cubagem_m3::float AS cubagem, f.expedicao,
@@ -104,7 +105,8 @@ async function pedidos(req, q = {}) {
   }
   const busca = String(q.busca || '').trim().toUpperCase();
   const todos = lista.map((r) => ({ ...r, situacao: situacaoPedido(r), dias: dias(r.data_pedido, hoje), destino: [r.cidade, r.uf].filter(Boolean).join('/') }))
-    .filter((r) => !busca || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.placa, r.motorista, r.exp_wms].some((x) => String(x || '').toUpperCase().includes(busca)))
+    // CNPJ digitado com pontuação também acha (compara só os números).
+    .filter((r) => !busca || (busca.replace(/\D/g, '').length >= 8 && String(r.cnpj || '').includes(busca.replace(/\D/g, ''))) || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.placa, r.motorista, r.exp_wms].some((x) => String(x || '').toUpperCase().includes(busca)))
     .sort((a, b) => String(b.data_pedido || '').localeCompare(String(a.data_pedido || '')));
   const contagem = Object.fromEntries(SITUACOES_PEDIDO.map((s) => [s, todos.filter((r) => r.situacao === s).length]));
   const filtro = String(q.situacao || '');

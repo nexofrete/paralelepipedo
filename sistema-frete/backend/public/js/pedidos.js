@@ -23,12 +23,20 @@
 
   document.querySelectorAll('[data-pd-aba]').forEach((a) => a.addEventListener('click', () => { aba = a.dataset.pdAba; document.querySelectorAll('[data-pd-aba]').forEach((x) => x.classList.toggle('ativo', x === a)); carregar().catch(erro); }));
   nav.addEventListener('click', () => carregar().catch(erro));
+  // Buscador do topo (mesmo modelo da Visão geral): filtra a aba aberta enquanto digita; Esc limpa.
+  const buscaTopo = $('pdBuscaTopo');
+  if (buscaTopo) {
+    let t = null;
+    const aplicar = () => { clearTimeout(t); t = setTimeout(() => { estado[aba].busca = buscaTopo.value.trim(); carregar().catch(erro); }, 350); };
+    buscaTopo.addEventListener('input', aplicar);
+    buscaTopo.addEventListener('keydown', (e) => { if (e.key === 'Escape' && buscaTopo.value) { buscaTopo.value = ''; aplicar(); } if (e.key === 'Enter') { clearTimeout(t); estado[aba].busca = buscaTopo.value.trim(); carregar().catch(erro); } });
+    document.querySelectorAll('[data-pd-aba]').forEach((a) => a.addEventListener('click', () => { buscaTopo.value = estado[a.dataset.pdAba]?.busca || ''; }));
+  }
   const carregar = () => (aba === 'prenotas' ? desenharPrenotas() : desenharPedidos());
   const chips = (d, st, recarregar) => `<div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="btn btn-secundario" style="width:auto;${!st.situacao ? ' outline:2px solid var(--azul);' : ''}" data-pd-sit="">Todos</button>
     ${d.situacoes.filter((s) => d.contagem[s] || s === st.situacao).map((s) => `<button class="btn btn-secundario" style="width:auto;${s === st.situacao ? ' outline:2px solid var(--azul);' : ''}" data-pd-sit="${esc(s)}">${esc(s)} <b>${d.contagem[s]}</b></button>`).join('')}</div>`;
   const ligar = (st, recarregar) => {
     cont.querySelectorAll('[data-pd-sit]').forEach((b) => b.addEventListener('click', () => { st.situacao = b.dataset.pdSit; recarregar().catch(erro); }));
-    let t = null; $('pdBusca')?.addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { st.busca = e.target.value; recarregar().catch(erro); }, 400); });
     cont.querySelectorAll('[data-pd-nota]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); window.abrirNotaDetalhe?.(Number(a.dataset.pdNota)); }));
   };
 
@@ -105,7 +113,6 @@
       ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS ainda estão vazios: ligue a consulta automática em "Ligação com o WMS" ou importe a planilha do WMS.</p>`}
       <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span>
         <label style="font-size:13px;">De <input type="date" id="pdDe" value="${esc(d.de)}"></label><label style="font-size:13px;">até <input type="date" id="pdAte" value="${esc(d.ate)}"></label>
-        <input id="pdBusca" placeholder="Pedido, cliente, NF, usuário" value="${esc(st.busca)}" style="max-width:220px;">
         ${podeImportar() ? '<button class="btn btn-secundario" id="pdWmsAgora" style="width:auto;" title="Consulta o WMS agora (no máximo 1 vez a cada 2 minutos)">⟳ Atualizar do WMS</button>' : ''}
         ${podeImportar() ? '<button class="btn btn-secundario" id="pdWms" style="width:auto;" title="Planilha exportada do WMS com Número Pedido, Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização e Cancelado Wms">⬆ Planilha do WMS</button><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
         <span style="display:inline-flex; border:1px solid var(--borda); border-radius:8px; overflow:hidden;" title="Planilha: cada campo numa coluna, como a planilha de pedidos. Resumida: campos agrupados, cabe na tela.">
@@ -253,7 +260,7 @@
         <div class="${r.paradas ? 'ex-alerta' : ''}">Paradas sem faturar<b>${num(r.paradas)}</b><span>há mais de ${d.dias_parada} dias</span></div>
         <div>Faturadas com diferença<b>${num(r.com_diferenca)}</b><span>últimos 60 dias</span></div>
         <div>Do pedido à nota (média)<b>${r.dias_ate_faturar == null ? '—' : `${num(r.dias_ate_faturar, 1)} d`}</b><span>&nbsp;</span></div></div>
-      <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span><input id="pdBusca" placeholder="Pedido, cliente, NF, cidade" value="${esc(st.busca)}" style="max-width:240px;"></div>
+      <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}</div>
       <div class="painel" style="padding:0; overflow-x:auto; margin-top:10px;"><table class="tabela"><thead><tr><th>Pedido</th><th>Data do pedido</th><th>Recebida em</th><th>Cliente</th><th>Destino</th><th>Valor</th><th>Vol. / peso</th><th>Transportadora</th><th>NF-e</th><th>Dias</th><th>Situação</th></tr></thead><tbody>
       ${d.prenotas.length ? d.prenotas.slice(0, 1000).map((p) => `<tr><td><b>${esc(p.pedido || '—')}</b>${p.pedido_cliente ? `<br><small style="color:var(--texto-fraco);">cliente: ${esc(p.pedido_cliente)}</small>` : ''}</td><td>${dia(p.data_pedido)}</td><td>${dia(p.recebida_em)}</td>
         <td>${esc(p.cliente)}</td><td>${esc(p.destino)}</td><td>${moeda(p.valor)}${p.faturada && p.valor_nf != null && p.valor != null && Math.abs(p.valor_nf - p.valor) > 0.01 ? `<br><small>NF: ${moeda(p.valor_nf)}</small>` : ''}</td><td>${num(p.volumes)} vol.<br><small>${num(p.peso, 1)} kg</small></td>

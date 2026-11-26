@@ -525,7 +525,8 @@ async function buscarApontamentos(sessao, c, { expedicao = null, de = null, ate 
   const pg = await sessao.pedir(base, { timeout: 30000 });
   if (temSenha(pg.corpo)) return { sessao_caiu: true };
   const f = formularioBusca(pg.corpo);
-  if (!f) throw falha('Não achei o formulário de busca na tela de apontamento de separação (ou ele tem botões que alteram dados). Nada foi enviado.', 502);
+  if (!f) throw Object.assign(falha('Não achei o formulário de busca na tela de apontamento de separação (ou ele tem botões que alteram dados). Nada foi enviado.', 502),
+    { diagnostico: diagnosticoTela(pg.corpo, pg.url) });
   const enviar = async (dIni, dFim) => {
     const dados = {};
     for (const x of f.campos) {
@@ -548,6 +549,35 @@ async function buscarApontamentos(sessao, c, { expedicao = null, de = null, ate 
   if (temSenha(r.corpo)) return { sessao_caiu: true };
   return { linhas: linhas || [], tabela: linhas != null, form: f, url: r.url };
 }
+// Diagnóstico de uma tela sem os dados: formulários (campos e botões, sem valores), botões e links fora dos formulários
+// (texto, onclick, href) e os trechos de script que fazem buscas (url, ajax, $.post...), para achar como a tela busca.
+function diagnosticoTela(html, url) {
+  const h = String(html || '');
+  const t = descreverTela(h);
+  const l = [`TELA: ${url}`, `Título: ${t.titulo || '-'}`, `Formulários: ${t.formularios.length}`];
+  t.formularios.forEach((f, i) => {
+    l.push(`Formulário ${i + 1}: ${f.method} ${f.action || '(mesma página)'}${f.id ? ` id=${f.id}` : ''}${f.nome ? ` name=${f.nome}` : ''}`);
+    f.campos.forEach((c) => l.push(`   - ${c.tipo}${c.nome ? ` nome=${c.nome}` : ''}${c.id ? ` id=${c.id}` : ''}${c.rotulo ? ` rótulo="${c.rotulo.slice(-40)}"` : ''}${c.valor_botao ? ` botão="${c.valor_botao}"` : ''}`));
+  });
+  const semForm = h.replace(/<form\b[\s\S]*?<\/form>/gi, ' ');
+  const botoes = [...semForm.matchAll(/<(button|a)\b([^>]*)>([\s\S]{0,300}?)<\/\1>/gi), ...semForm.matchAll(/<(input)\b([^>]*)>()/gi)].sort((x, y) => x.index - y.index)
+    .map((m) => ({ tag: m[1].toLowerCase(), texto: tirarTags(m[3]) || attr(m[2], 'value') || '', onclick: attr(m[2], 'onclick'), href: attr(m[2], 'href'), id: attr(m[2], 'id'), nome: attr(m[2], 'name'), tipo: attr(m[2], 'type') }))
+    .filter((b) => (b.tag !== 'a' || b.onclick || /btn|botao|button/i.test(b.id || '') || /buscar|pesquis|iniciar|finaliz|adicion|limpar|voltar/i.test(b.texto)) && (b.tag !== 'input' || /button|submit|image/i.test(b.tipo || '')))
+    .slice(0, 30);
+  if (botoes.length) { l.push('Botões e links fora de formulário:'); botoes.forEach((b) => l.push(`   - ${b.tag}${b.id ? ` id=${b.id}` : ''}${b.nome ? ` nome=${b.nome}` : ''} "${b.texto.slice(0, 40)}"${b.onclick ? ` onclick=${b.onclick.slice(0, 120)}` : ''}${b.href && !/^#?$/.test(b.href) ? ` href=${b.href.slice(0, 120)}` : ''}`)); }
+  const campos = [...semForm.matchAll(/<(input|select)\b([^>]*)>/gi)].map((m) => ({ nome: attr(m[2], 'name'), id: attr(m[2], 'id'), tipo: attr(m[2], 'type') || m[1] }))
+    .filter((c) => (c.nome || c.id) && !/hidden|button|submit/i.test(c.tipo)).slice(0, 30);
+  if (campos.length) l.push(`Campos fora de formulário: ${campos.map((c) => `${c.nome || ''}${c.id ? `#${c.id}` : ''}`).join(' | ')}`);
+  const trechos = [...h.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1])
+    .flatMap((js) => [...js.matchAll(/[^;{}\n]{0,80}(?:url\s*[:=]|\$\.(?:post|get|ajax)|\.load\(|location\.href|window\.location|action\s*=)[^;{}\n]{0,160}/gi)].map((x) => x[0].replace(/\s+/g, ' ').trim()))
+    .slice(0, 15);
+  if (trechos.length) { l.push('Scripts que buscam ou mudam de página:'); trechos.forEach((x) => l.push(`   ${x}`)); }
+  const scripts = [...h.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]).filter((x) => !/jquery|bootstrap/i.test(x)).slice(0, 10);
+  if (scripts.length) l.push(`Arquivos de script: ${scripts.join(' | ')}`);
+  t.tabelas.forEach((x, i) => l.push(`Tabela ${i + 1}: ${x.linhas} linha(s); colunas: ${x.titulos.join(' | ')}`));
+  return l.join('\n');
+}
+
 // Grava o separador da expedição em todos os pedidos dela (a tela de apontamento vale mais que a OS).
 async function gravarSeparacao(exp, sep) {
   if (!sep) return 0;
@@ -829,7 +859,12 @@ async function testarSeparacao(expedicao) {
   const { rows: [c] } = await pool.query('SELECT * FROM wms_config WHERE id = 1');
   if (!c) throw falha('Cadastre a ligação com o WMS.');
   const { sessao } = await entrar(c);
-  const ap = await buscarApontamentos(sessao, c, { expedicao: n });
+  let ap;
+  try { ap = await buscarApontamentos(sessao, c, { expedicao: n }); } catch (e) {
+    // Tela diferente do esperado: devolve o diagnóstico dela (sem dados) para ajustar a leitura.
+    if (e.diagnostico) return { ok: false, separacao: null, texto: `${e.message}\n\n${e.diagnostico}` };
+    throw e;
+  }
   if (ap.sessao_caiu) throw falha('O WMS voltou para o login na tela de apontamento.', 502);
   const sep = separacaoDaExpedicao(ap.linhas, n);
   const f = ap.form;
@@ -849,4 +884,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { diagnosticoTela, lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

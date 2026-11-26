@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "WMS: quando a tela de apontamento de separação não tem o formulário de busca esperado, o Testar separador mostra um diagnóstico da tela (formulários, botões e comandos de busca, sem dados) para ajustar a leitura."},
         {"area": "Pedidos", "texto": "WMS: o Separador, a Data Início e a Data Finalização da separação vêm da tela Definir Equipe de Separação (apontamento de separação) do WMS, só pela busca e sem guardar o CPF. Botão Testar separador na janela Ligação com o WMS."},
         {"area": "Correção", "texto": "WMS: o Separador não é mais preenchido com o conferente (linhas de conferência e de etiqueta de separação do histórico da OS); os separadores gravados assim foram apagados e são relidos. O Testar OS mostra os andamentos do histórico."},
         {"area": "Pedidos", "texto": "Tela Pedidos: novo campo Separador (quem separou), com Data Início e Data Finalização da separação (data e hora), lidos da OS da expedição no WMS."},

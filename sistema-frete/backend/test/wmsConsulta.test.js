@@ -124,3 +124,15 @@ test('OS: separador (quem separou) com início e fim da separação', () => {
   assert.strictEqual(b.separador, null);
   assert.deepStrictEqual(b.atividades, ['CONFERENCIA']);
 });
+
+test('OS: linha do histórico da conferência não vira separador', () => {
+  const { lerSeparacao, andamentosOs } = require('../src/wms');
+  const hist = (linhas) => `<table><tr><th>Data</th><th>Usuário</th><th>Mapa</th><th>Etiqueta</th><th>Andamento</th></tr>${linhas.map(([d, u, a]) => `<tr><td>${d}</td><td>${u}</td><td></td><td></td><td>${a}</td></tr>`).join('')}</table>`;
+  const conf = hist([['19/11/2026 18:44:30', 'ADRIANO SILVA', 'Conferência da Separação Finalizada'], ['18/11/2026 18:28:01', 'ROBSON ALVES', 'Etiquetas Impressas'], ['19/11/2026 18:00:00', 'ADRIANO SILVA', 'Etiqueta de Separação conferida']]);
+  assert.strictEqual(lerSeparacao(conf).separador, null);
+  assert.deepStrictEqual(andamentosOs(conf).map(([a]) => a), ['Conferência da Separação Finalizada', 'Etiquetas Impressas', 'Etiqueta de Separação conferida']);
+  const sep = lerSeparacao(hist([['18/11/2026 16:00:00', 'ANA', 'Separação Finalizada'], ['18/11/2026 15:00:00', 'ANA', 'Separação Iniciada']]));
+  assert.strictEqual(sep.separador, 'ANA');
+  assert.strictEqual(sep.sep_inicio, '2026-11-18 15:00:00');
+  assert.strictEqual(sep.sep_fim, '2026-11-18 16:00:00');
+});

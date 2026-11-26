@@ -957,6 +957,9 @@ UPDATE pedidos_wms SET usuario = NULL, etiquetas_impressas_em = NULL, os_consult
 -- Separador (quem separou) com o início e o fim da separação, lidos da OS (versão 3): as OS lidas antes voltam a ser lidas.
 ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS separador VARCHAR(200);
 UPDATE pedidos_wms SET os_consultada_em = NULL WHERE os_leitura = 2;
+-- Versão 4: o separador da versão 3 podia vir de uma linha do histórico que é da conferência (o conferente). Limpa o
+-- separador e as datas da separação lidas da OS e relê.
+UPDATE pedidos_wms SET separador = NULL, separacao_inicio = NULL, separacao_fim = NULL, os_consultada_em = NULL WHERE os_leitura = 3;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

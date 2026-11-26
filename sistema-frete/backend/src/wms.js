@@ -393,7 +393,10 @@ function lerSeparacao(html) {
     if (iCab < 0) continue;
     const cab = trs[iCab];
     const iU = cab.findIndex((c) => /usu[aá]rio/i.test(c)); const iD = cab.findIndex((c) => /^data$/i.test(c)); const iA = cab.findIndex((c) => /^andamento$/i.test(c));
-    const sep = trs.slice(iCab + 1).filter((x) => /separa/i.test(x[iA] || '') && dataHora(x[iD]));
+    // Só andamento que é claramente da separação ("Separação iniciada", "Fim da separação"...). "Etiqueta de separação",
+    // "conferência da separação" e afins são de outra pessoa (o conferente), não do separador.
+    const ehSeparacao = (a) => /separa[cç][aã]o/i.test(a) && /inici|in[ií]cio|come[cç]|finaliz|conclu|termin|\bfim\b/i.test(a) && !/confer|etiqueta|impress/i.test(a);
+    const sep = trs.slice(iCab + 1).filter((x) => ehSeparacao(x[iA] || '') && dataHora(x[iD]));
     if (!sep.length) continue;
     const inicios = sep.filter((x) => !/finaliz|conclu|termin|\bfim\b/i.test(x[iA]));
     const fins = sep.filter((x) => /finaliz|conclu|termin|\bfim\b/i.test(x[iA]));
@@ -401,6 +404,18 @@ function lerSeparacao(html) {
     if (r) return { ...r, atividades: [...atividades] };
   }
   return { separador: null, sep_inicio: null, sep_fim: null, como_sep: null, atividades: [...atividades] };
+}
+// Os andamentos do histórico da OS e quantas vezes aparecem (só os nomes dos eventos, para o diagnóstico).
+function andamentosOs(html) {
+  const cont = new Map();
+  for (const t of String(html || '').matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const trs = [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => tirarTags(c[1])));
+    const iCab = trs.findIndex((r) => r.some((c) => /^andamento$/i.test(c)));
+    if (iCab < 0) continue;
+    const iA = trs[iCab].findIndex((c) => /^andamento$/i.test(c));
+    trs.slice(iCab + 1).forEach((x) => { const a = String(x[iA] || '').trim(); if (a) cont.set(a, (cont.get(a) || 0) + 1); });
+  }
+  return [...cont];
 }
 // A OS inteira: quem imprimiu as etiquetas (lerImpressao) e a separação (lerSeparacao). null sem nenhum dos dois.
 function lerOs(html) {
@@ -433,7 +448,7 @@ async function completarOs(sessao, c, expedicao) {
   const os = lerOs(r.corpo);
   await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em),
       separador = COALESCE($4, separador), separacao_inicio = COALESCE($5::timestamp, separacao_inicio), separacao_fim = COALESCE($6::timestamp, separacao_fim),
-      os_consultada_em = NOW(), os_leitura = 3
+      os_consultada_em = NOW(), os_leitura = 4
     WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null, os?.separador || null, os?.sep_inicio || null, os?.sep_fim || null]);
   return os;
 }
@@ -671,6 +686,7 @@ async function testarOs(expedicao) {
     os?.usuario ? `Impressão das etiquetas: "${os.usuario}" em ${os.impresso_em || '(sem data)'} (achado por: ${os.como})` : 'Impressão das etiquetas: NÃO achei quem imprimiu.',
     os?.separador || os?.sep_inicio ? `Separação: separador "${os.separador || '?'}", início ${os.sep_inicio || '-'}, fim ${os.sep_fim || '-'} (achado por: ${os.como_sep})` : 'Separação: NÃO achei.',
     `Atividades na tabela de atividades: ${(os?.atividades || lerSeparacao(r.corpo).atividades).join(' | ') || '-'}`,
+    `Andamentos no histórico: ${andamentosOs(r.corpo).map(([a, n]) => `${a} (${n})`).join(' | ') || '-'}`,
     `Título: ${d.titulo || '-'}`, `Rótulos: ${d.rotulos.join(' | ') || '-'}`,
     ...d.tabelas.map((t, i) => `Tabela ${i + 1}: ${t.linhas} linha(s); colunas: ${t.titulos.join(' | ')}`)].join('\n');
   return { ok: !!os, os, texto };
@@ -684,4 +700,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

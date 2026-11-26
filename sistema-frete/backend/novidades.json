@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Correção", "texto": "WMS: o Separador não é mais preenchido com o conferente (linhas de conferência e de etiqueta de separação do histórico da OS); os separadores gravados assim foram apagados e são relidos. O Testar OS mostra os andamentos do histórico."},
         {"area": "Pedidos", "texto": "Tela Pedidos: novo campo Separador (quem separou), com Data Início e Data Finalização da separação (data e hora), lidos da OS da expedição no WMS."},
         {"area": "Correção", "texto": "WMS: Usuário e Data/Imp. Etq passam a vir da linha \"Etiquetas Impressas\" do histórico da OS (antes podia vir outra linha do histórico, como a finalização). Os pedidos já lidos são lidos de novo sozinhos."},
         {"area": "Pedidos", "texto": "WMS: Usuário e Data/Imp. Etq agora vêm da OS da expedição (quem imprimiu as etiquetas e quando), e a Qtd. Etiquetas do Resumo da tela de expedição. Botão Testar OS na janela Ligação com o WMS."},

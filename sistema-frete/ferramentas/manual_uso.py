@@ -623,8 +623,9 @@ def parte_uso(g):
         '(Data, Usuário, Mapa, Etiqueta, Andamento), a linha com o andamento <b>Etiquetas Impressas</b> (com reimpressão, a primeira); sem '
         'essa linha, as etiquetas ainda não foram impressas e o campo fica vazio. Vale para todos os pedidos daquela expedição. '
         '<b>Separador, Data Início e Data Finalização</b> (quem separou e o início e o fim da separação, com data e hora) também vêm da OS: da '
-        'tabela de atividades (Responsável, Atividade, Início, Fim), nas linhas de atividade de separação; sem essa tabela, das linhas de '
-        'separação do histórico. Com mais de um separador, aparecem todos os nomes, o início mais cedo e o fim mais tarde. A OS é aberta depois da busca do pedido e, na consulta de cada '
+        'tabela de atividades (Responsável, Atividade, Início, Fim), nas linhas de atividade de separação; sem essa tabela, das linhas do '
+        'histórico que são claramente de separação iniciada ou finalizada (linhas de conferência e de etiqueta de separação são do '
+        'conferente e não contam). Se a OS não registrar a separação, o Separador fica vazio. O Testar OS lista os andamentos do histórico. Com mais de um separador, aparecem todos os nomes, o início mais cedo e o fim mais tarde. A OS é aberta depois da busca do pedido e, na consulta de cada '
         'rodada, para as expedições ainda sem quem imprimiu (de novo a cada 2 horas, até aparecer; mesmo limite por rodada). A <b>Qtd. '
         'Etiquetas</b> vem do Resumo da tela de expedição (Qtd. Etq. Válidas) quando a expedição é só daquele pedido. Na janela Ligação com o '
         'WMS, <b>Testar OS (quem imprimiu)</b> abre a OS de uma expedição e mostra o que foi lido.',

@@ -619,8 +619,9 @@ def parte_uso(g):
         'estão sem dados do WMS ou não estão finalizados, até o máximo por rodada (campo <b>Por carga (máx.)</b>, padrão 40; 0 desliga). Quem '
         'foi procurado há pouco fica para a próxima rodada (2 horas se o WMS tinha a carga, 12 horas se não tinha), e pedido FINALIZADO ou '
         'CANCELADO não é mais procurado. A mensagem da consulta diz quantos foram procurados e achados.',
-        '<b>Usuário e Data/Imp. Etq</b> vêm da <b>OS da expedição</b> no WMS (/expedicao/os/index/id/nº da expedição): quem imprimiu as '
-        'etiquetas e quando, gravados em todos os pedidos daquela expedição. A OS é aberta depois da busca do pedido e, na consulta de cada '
+        '<b>Usuário e Data/Imp. Etq</b> vêm da <b>OS da expedição</b> no WMS (/expedicao/os/index/id/nº da expedição): no histórico da OS '
+        '(Data, Usuário, Mapa, Etiqueta, Andamento), a linha com o andamento <b>Etiquetas Impressas</b> (com reimpressão, a primeira); sem '
+        'essa linha, as etiquetas ainda não foram impressas e o campo fica vazio. Vale para todos os pedidos daquela expedição. A OS é aberta depois da busca do pedido e, na consulta de cada '
         'rodada, para as expedições ainda sem quem imprimiu (de novo a cada 2 horas, até aparecer; mesmo limite por rodada). A <b>Qtd. '
         'Etiquetas</b> vem do Resumo da tela de expedição (Qtd. Etq. Válidas) quando a expedição é só daquele pedido. Na janela Ligação com o '
         'WMS, <b>Testar OS (quem imprimiu)</b> abre a OS de uma expedição e mostra o que foi lido.',

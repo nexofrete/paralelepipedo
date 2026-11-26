@@ -949,6 +949,11 @@ CREATE TABLE IF NOT EXISTS wms_cargas_consultadas (
 ALTER TABLE wms_config ADD COLUMN IF NOT EXISTS por_carga_max INTEGER NOT NULL DEFAULT 40;
 -- OS da expedição (quem imprimiu as etiquetas e quando): quando foi olhada por último.
 ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS os_consultada_em TIMESTAMP;
+-- Leitura da OS pela linha "Etiquetas Impressas" do histórico (versão 2). As lidas antes (que podiam pegar outra linha
+-- do histórico, outra pessoa) voltam a ser lidas: só as que vieram da OS, não as da planilha do WMS.
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS os_leitura INTEGER;
+UPDATE pedidos_wms SET usuario = NULL, etiquetas_impressas_em = NULL, os_consultada_em = NULL
+ WHERE os_consultada_em IS NOT NULL AND os_leitura IS NULL;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

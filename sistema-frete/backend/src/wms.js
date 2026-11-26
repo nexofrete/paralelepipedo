@@ -327,12 +327,30 @@ function lerOs(html) {
   const h = String(html || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ');
   const texto = h.replace(/<\/(td|th|div|p|li|tr|label|span)>/gi, ' | ').replace(/<br\s*\/?>/gi, ' | ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ');
   const limpo = (n) => String(n || '').replace(/[|:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Histórico da OS (Imperium: tabela Data | Usuário | Mapa | Etiqueta | Andamento): a linha "Etiquetas Impressas".
+  // Com reimpressão, vale a primeira impressão (a data mais antiga).
+  const tabelas = [...h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)].map((t) => [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+    .map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => tirarTags(c[1]))));
+  let temHistorico = false;
+  for (const trs of tabelas) {
+    const iCab = trs.findIndex((r) => r.some((c) => /^andamento$/i.test(c)) && r.some((c) => /usu[aá]rio/i.test(c)) && r.some((c) => /^data$/i.test(c)));
+    if (iCab < 0) continue;
+    temHistorico = true;
+    const cab = trs[iCab];
+    const iU = cab.findIndex((c) => /usu[aá]rio/i.test(c)); const iD = cab.findIndex((c) => /^data$/i.test(c)); const iA = cab.findIndex((c) => /^andamento$/i.test(c));
+    const impressoes = trs.slice(iCab + 1).filter((x) => /etiquetas?\s+impress/i.test(x[iA] || '') && dataHora(x[iD]))
+      .map((x) => ({ usuario: limpo(x[iU]), impresso_em: dataHora(x[iD]) })).sort((a, b) => a.impresso_em.localeCompare(b.impresso_em));
+    if (impressoes.length) return { ...impressoes[0], como: `histórico: "Etiquetas Impressas"${impressoes.length > 1 ? ` (1ª de ${impressoes.length} impressões)` : ''}` };
+  }
+  // Tem o histórico, mas ainda sem "Etiquetas Impressas": as etiquetas não foram impressas (não procura em outro lugar).
+  if (temHistorico) return null;
   let m = texto.match(new RegExp(String.raw`(?:impress[aã]o|imprimiu|impresso\s+por|usu[aá]rio\s+(?:da\s+)?impress[aã]o|usu[aá]rio\s+etiqueta)[^|\d]{0,30}[|:\s]+${NOME}\s*[|\-–]?\s*${DATA_HORA}`, 'i'));
   if (m) return { usuario: limpo(m[1]), impresso_em: dataHora(m[2]), como: 'rótulo de impressão' };
   for (const t of h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
     const trs = [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => tirarTags(c[1])));
     const iCab = trs.findIndex((r) => r.some((c) => /usu[aá]rio|impress/i.test(c)) && r.some((c) => /data/i.test(c)));
-    if (iCab < 0) continue;
+    // Histórico de andamento sem "Etiquetas Impressas": não chuta outra linha (seria outro evento, outra pessoa).
+    if (iCab < 0 || trs[iCab].some((c) => /^andamento$/i.test(c))) continue;
     const iU = trs[iCab].findIndex((c) => /usu[aá]rio|impress/i.test(c)); const iD = trs[iCab].findIndex((c) => /data/i.test(c));
     const linha = trs.slice(iCab + 1).find((r) => r[iU] && dataHora(r[iD]));
     if (linha) return { usuario: limpo(linha[iU]), impresso_em: dataHora(linha[iD]), como: 'tabela usuário/data' };
@@ -362,7 +380,7 @@ async function completarOs(sessao, c, expedicao) {
   const r = await sessao.pedir(urlOs(c, expedicao), { timeout: 30000 });
   if (temSenha(r.corpo)) return { sessao_caiu: true };
   const os = lerOs(r.corpo);
-  await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em), os_consultada_em = NOW()
+  await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em), os_consultada_em = NOW(), os_leitura = 2
     WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null]);
   return os;
 }

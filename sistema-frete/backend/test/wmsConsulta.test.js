@@ -91,3 +91,19 @@ test('Resumo da busca por carga: etiquetas válidas', () => {
   assert.strictEqual(r.etq_validas, 16);
   assert.strictEqual(r.pedidos, 1);
 });
+
+test('OS do Imperium: no histórico, a linha "Etiquetas Impressas" (a primeira, se houver reimpressão)', () => {
+  const { lerOs } = require('../src/wms');
+  const html = `<table><tr><th>OS</th><th>Responsavel</th><th>Atividade</th><th>Inicio</th><th>Fim</th></tr><tr><td>1</td><td>FULANO</td><td>SEPARACAO</td><td>18/11/2026 17:00</td><td>18/11/2026 18:00</td></tr></table>
+    <table><tr><th>Data</th><th>Usuário</th><th>Mapa</th><th>Etiqueta</th><th>Andamento</th></tr>
+    <tr><td>21/11/2026 14:28:04</td><td>UELLIGTON HENRIQUE</td><td></td><td></td><td>Expedição Finalizada</td></tr>
+    <tr><td>19/11/2026 09:00:00</td><td>MARIA</td><td></td><td></td><td>Etiquetas Impressas</td></tr>
+    <tr><td>18/11/2026 18:28:01</td><td>ROBSON ALVES</td><td></td><td></td><td>Etiquetas Impressas</td></tr>
+    <tr><td>18/11/2026 17:10:00</td><td>JOSE</td><td></td><td></td><td>Conferência iniciada</td></tr></table>`;
+  const o = lerOs(html);
+  assert.strictEqual(o.usuario, 'ROBSON ALVES');
+  assert.strictEqual(o.impresso_em, '2026-11-18 18:28:01');
+  assert.match(o.como, /Etiquetas Impressas.*1ª de 2/);
+  // Histórico sem impressão: não pega outra linha.
+  assert.strictEqual(lerOs('<table><tr><th>Data</th><th>Usuário</th><th>Andamento</th></tr><tr><td>21/11/2026 14:28:04</td><td>UELLIGTON</td><td>Expedição Finalizada</td></tr></table>'), null);
+});

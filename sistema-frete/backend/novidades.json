@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "Topo da tela Pedidos mais limpo: uma barra só (situações, período, visão, Atualizar do WMS e Excel), as demais ações no menu ⋯ Mais e uma linha discreta com o filtro do ERP e a situação do WMS."},
         {"area": "Pedidos", "texto": "Visão Planilha da tela Pedidos no modelo da lista do ERP: uma linha por pedido, zebrada, mais compacta, textos longos com reticências e a linha clicada destacada."},
         {"area": "Pedidos", "texto": "Tela Pedidos mostra só os pedidos liberados pelo comercial: status A e tipo P do ERP (ESTATUS_PEDIDO e TIPO_PEDIDO da Timeline), com ⚙ para mudar os status e tipos ou desligar o filtro. As buscas no WMS seguem o mesmo filtro."},
         {"area": "Pedidos", "texto": "Campo Observações em cada pedido (ex.: \"pedido agendando\"), editável pelo lápis, com atalhos para as anotações mais comuns; aparece nas duas visões, entra no buscador e no Excel."},

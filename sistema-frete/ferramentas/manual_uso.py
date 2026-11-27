@@ -589,9 +589,13 @@ def parte_uso(g):
     s += h2('Pedidos (405)')
     s += lista([
         'Cada pedido do período (data do pedido, padrão últimos 30 dias): os que já viraram nota e os que ainda estão só na planilha.',
+        '<b>Topo da tela</b>: os cartões com os totais; uma barra com as situações (Todos, Aguardando nota...) à esquerda e, à direita, o '
+        'período, Planilha/Resumida, <b>Atualizar do WMS</b>, <b>Excel</b> e o menu <b>⋯ Mais</b> (Liberação comercial em PDF, importar planilha do '
+        'WMS, buscar todos sem dados, pausar/retomar a integração, filtro de status do ERP e Ligação com o WMS); embaixo, uma linha '
+        'discreta com o filtro do ERP em uso e a situação do WMS (ligado ou pausado, última consulta e o andamento das buscas).',
         '<b>Quais pedidos aparecem</b>: só os com o <b>status A</b> e o <b>tipo P</b> do ERP (colunas ESTATUS_PEDIDO e TIPO_PEDIDO da '
         'Timeline), os liberados pelo comercial, que a tela acompanha até a separação. A linha "Mostrando só os pedidos do ERP com..." '
-        'mostra o filtro; <b>⚙ mudar</b> (quem edita registros) troca os status e tipos (vários separados por vírgula; tipo vazio aceita '
+        'mostra o filtro; <b>⋯ Mais › Filtro de status do ERP</b> (quem edita registros) troca os status e tipos (vários separados por vírgula; tipo vazio aceita '
         'qualquer) ou desliga o filtro. O status vale o da planilha mais nova: pedido que muda de A para outro sai da tela. A planilha '
         'continua sendo importada inteira (ela completa as notas para o frete); o filtro só muda esta tela, e as buscas no WMS seguem o '
         'mesmo filtro.',
@@ -602,13 +606,13 @@ def parte_uso(g):
         'Da planilha do ERP (Timeline de pedidos) vêm o pedido, o CNPJ, o cliente, o nome curto (NM_CURTO), o Pedido Mercus, a liberação '
         '(DT_PEDIDO_LIBERADO), o peso, a cubagem, a expedição (EXPEDICAO), a nota e a emissão.',
         '<b>Do WMS</b> vêm o status, a data inicial, o usuário, a data e a quantidade de etiquetas, o início e o fim da separação e o '
-        'cancelamento. Enquanto não houver ligação direta com o WMS, use o botão <b>Planilha do WMS</b> (quem edita registros): uma planilha '
+        'cancelamento. Enquanto não houver ligação direta com o WMS, use <b>⋯ Mais › Importar planilha do WMS</b> (quem edita registros): uma planilha '
         'exportada do WMS com a coluna "Número Pedido" e as colunas "Status/WMS", "Data Inicial", "Usuário", "Data/Imp. Etq", '
         '"Qtd. Etiquetas", "Data Início", "Data Finalização" e "Cancelado Wms" (as outras colunas são ignoradas; "Liberação" e "Expedição", '
         'se vierem preenchidas, valem mais que as do ERP). Célula vazia não apaga o que já estava.',
         'Se a maioria dos valores de uma coluna não for do tipo dela (por exemplo, datas em "Qtd. Etiquetas"), a planilha é <b>recusada '
         'sem gravar nada</b>: é sinal de colunas deslocadas. Valores estranhos isolados ficam vazios e são avisados.',
-        '<b>Ligação com o WMS</b> (só o administrador): cadastro do endereço, do usuário e da senha do WMS, para o Nexofrete consultar o '
+        '<b>⋯ Mais › Ligação com o WMS</b> (só o administrador): cadastro do endereço, do usuário e da senha do WMS, para o Nexofrete consultar o '
         'WMS sozinho, só lendo. Use um usuário só de consulta criado para o Nexofrete. A senha fica criptografada e não aparece de novo. '
         '<b>Salvar e testar conexão</b> abre o WMS a partir do servidor (o WMS fica na rede da empresa) e mostra um <b>diagnóstico</b> da '
         'tela de login: nomes dos campos, tecnologia e caminhos de API, sem senha nem dados. Copie e envie para quem monta a integração. '
@@ -645,10 +649,10 @@ def parte_uso(g):
         'WMS, <b>Testar OS (quem imprimiu)</b> abre a OS de uma expedição e mostra o que foi lido.',
         '<b>🔎 buscar</b> (na coluna Status/WMS de cada pedido ainda sem dados do WMS): procura só aquele pedido no WMS, na hora. Se o WMS '
         'não tiver a carga, aparece "não está no WMS".',
-        '<b>Buscar todos sem dados</b> (ao lado de Pausar integração): procura no WMS, um por vez (1 segundo entre cada um), todos os '
+        '<b>⋯ Mais › Buscar todos sem dados no WMS</b>: procura no WMS, um por vez (1 segundo entre cada um), todos os '
         'pedidos dos últimos 60 dias sem dados ou não finalizados, em segundo plano. A linha do WMS mostra o andamento ("Buscando pedidos no '
         'WMS: 120 de 900") e a lista é atualizada no fim. Pausar integração interrompe; uma segunda busca ao mesmo tempo não é aceita.',
-        '<b>Pausar integração</b>: na tela Pedidos, ao lado da linha do WMS (quem edita registros). Depois de confirmar, o Nexofrete para na '
+        '<b>⋯ Mais › Pausar integração com o WMS</b> (quem edita registros). Depois de confirmar, o Nexofrete para na '
         'hora de consultar o WMS: nem a consulta automática nem o botão Atualizar do WMS falam com ele, e a linha mostra "integração pausada". '
         '<b>Retomar integração</b> volta a consultar no intervalo configurado. Cada pausa e retomada fica na auditoria. O teste da janela '
         'Ligação com o WMS continua funcionando com a integração pausada.',
@@ -677,7 +681,7 @@ def parte_uso(g):
         'pedido); Apagar tira a observação. Quem pode editar: quem edita registros. Passar o mouse mostra quem escreveu e quando; o '
         'buscador acha pelo texto da observação; vai também para o Excel. Na visão Planilha fica logo depois da Situação.',
         '<b>Liberação comercial</b>: a data e a hora em que o comercial de fato liberou o pedido. Vem do e-mail de liberação impresso em '
-        'PDF (botão <b>Liberação comercial (PDF)</b>, quem edita registros; dá para mandar vários PDFs de uma vez): a data do cabeçalho do '
+        'PDF (<b>⋯ Mais › Liberação comercial (PDF)</b>, quem edita registros; dá para mandar vários PDFs de uma vez): a data do cabeçalho do '
         'e-mail ("Data ...") vale para todos os pedidos listados nele ("Nr. Pedido: ..."). Se o pedido aparecer em mais de um e-mail, fica '
         'a primeira liberação. O lápis ao lado da data edita à mão: a data digitada fica marcada como (manual) e não é trocada pelos '
         'e-mails importados depois; Apagar faz o pedido voltar a esperar o e-mail. A coluna aparece na visão Planilha (depois de '

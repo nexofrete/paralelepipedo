@@ -33,8 +33,8 @@
     document.querySelectorAll('[data-pd-aba]').forEach((a) => a.addEventListener('click', () => { buscaTopo.value = estado[a.dataset.pdAba]?.busca || ''; }));
   }
   const carregar = () => (aba === 'prenotas' ? desenharPrenotas() : desenharPedidos());
-  const chips = (d, st, recarregar) => `<div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="btn btn-secundario" style="width:auto;${!st.situacao ? ' outline:2px solid var(--azul);' : ''}" data-pd-sit="">Todos</button>
-    ${d.situacoes.filter((s) => d.contagem[s] || s === st.situacao).map((s) => `<button class="btn btn-secundario" style="width:auto;${s === st.situacao ? ' outline:2px solid var(--azul);' : ''}" data-pd-sit="${esc(s)}">${esc(s)} <b>${d.contagem[s]}</b></button>`).join('')}</div>`;
+  const chips = (d, st) => `<div class="pd-chips"><button class="pd-chip${!st.situacao ? ' ativo' : ''}" data-pd-sit="">Todos</button>
+    ${d.situacoes.filter((s) => d.contagem[s] || s === st.situacao).map((s) => `<button class="pd-chip${s === st.situacao ? ' ativo' : ''}" data-pd-sit="${esc(s)}">${esc(s)} <b>${d.contagem[s]}</b></button>`).join('')}</div>`;
   const ligar = (st, recarregar) => {
     cont.querySelectorAll('[data-pd-sit]').forEach((b) => b.addEventListener('click', () => { st.situacao = b.dataset.pdSit; recarregar().catch(erro); }));
     cont.querySelectorAll('[data-pd-nota]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); window.abrirNotaDetalhe?.(Number(a.dataset.pdNota)); }));
@@ -191,32 +191,47 @@
     const d = await api(`/?${new URLSearchParams({ situacao: st.situacao, busca: st.busca, de: st.de, ate: st.ate })}`);
     const r = d.resumo;
     ultimaLista = d.pedidos;
-    cont.innerHTML = `<div class="nf-resumo">
+    const pode = podeImportar(); const admin = usuario?.perfil === 'admin';
+    const filtroTxt = d.filtro_erp?.filtrar
+      ? `Status ERP <b>${esc(d.filtro_erp.estatus.join(', '))}</b>${d.filtro_erp.tipos.length ? ` · tipo <b>${esc(d.filtro_erp.tipos.join(', '))}</b>` : ''}`
+      : 'Todos os pedidos do ERP';
+    cont.innerHTML = `<div class="nf-resumo pd-cartoes">
         <div>Pedidos no período<b>${num(r.pedidos)}</b><span>${num(r.peso, 1)} kg${r.etiquetas ? ` · ${num(r.etiquetas)} etiquetas` : ''}</span></div>
         <div>Aguardando nota<b>${num(r.aguardando_nota)}</b><span>${r.aguardando_mais_dias ? `${r.aguardando_mais_dias} há mais de 3 dias` : 'ainda não separados'}</span></div>
         <div>Em separação / conferência<b>${num(r.em_separacao)}</b><span>no WMS</span></div>
         <div>Separados<b>${num(r.separados)}</b><span>esperando a nota</span></div>
         <div>Faturados<b>${num(d.contagem.Faturado + d.contagem['Em embarque'] + d.contagem['Coleta pedida'])}</b><span>ainda não saíram</span></div>
         <div>Em trânsito / entregues<b>${num(d.contagem['Coletado / em trânsito'] + d.contagem.Entregue)}</b><span>${num(d.contagem.Entregue)} entregues</span></div></div>
-      <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:8px;">${d.filtro_erp?.filtrar
-        ? `🔎 Mostrando só os pedidos do ERP com <b>status ${esc(d.filtro_erp.estatus.join(', '))}</b>${d.filtro_erp.tipos.length ? ` e <b>tipo ${esc(d.filtro_erp.tipos.join(', '))}</b>` : ''} (ESTATUS_PEDIDO / TIPO_PEDIDO da Timeline)`
-        : '🔎 Mostrando todos os pedidos da planilha do ERP (sem filtro de status)'}${podeImportar() ? ' <a href="#" id="pdFiltroErp">⚙ mudar</a>' : ''}</div>
-      <div id="pdWmsSit" style="font-size:12.5px; color:var(--texto-fraco); margin-top:8px;"></div>
-      ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS ainda estão vazios: ligue a consulta automática em "Ligação com o WMS" ou importe a planilha do WMS.</p>`}
-      <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span>
-        <label style="font-size:13px;">De <input type="date" id="pdDe" value="${esc(d.de)}"></label><label style="font-size:13px;">até <input type="date" id="pdAte" value="${esc(d.ate)}"></label>
-        ${podeImportar() ? '<button class="btn btn-secundario" id="pdWmsAgora" style="width:auto;" title="Procura no WMS só os pedidos da lista (período, situação e busca da tela)">⟳ Atualizar do WMS</button>' : ''}
-        ${podeImportar() ? '<button class="btn btn-secundario" id="pdLibPdf" style="width:auto;" title="E-mails de liberação do comercial impressos em PDF (um ou vários): a data do e-mail vira a liberação comercial dos pedidos listados nele">📧 Liberação comercial (PDF)</button><input type="file" id="pdLibArq" accept=".pdf,application/pdf" multiple class="oculto">' : ''}
-        ${podeImportar() ? '<button class="btn btn-secundario" id="pdWms" style="width:auto;" title="Planilha exportada do WMS com Número Pedido, Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização e Cancelado Wms">⬆ Planilha do WMS</button><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
-        <span style="display:inline-flex; border:1px solid var(--borda); border-radius:8px; overflow:hidden;" title="Planilha: cada campo numa coluna, como a planilha de pedidos. Resumida: campos agrupados, cabe na tela.">
-          <button class="btn btn-secundario" data-pd-visao="planilha" style="width:auto; border:0; border-radius:0;${visao === 'planilha' ? ' background:var(--azul); color:#fff;' : ''}">▦ Planilha</button>
-          <button class="btn btn-secundario" data-pd-visao="resumida" style="width:auto; border:0; border-radius:0;${visao === 'resumida' ? ' background:var(--azul); color:#fff;' : ''}">☰ Resumida</button></span>
-        <button class="btn btn-secundario" id="pdExcel" style="width:auto;">⬇ Excel</button>
-        ${usuario?.perfil === 'admin' ? '<button class="btn btn-secundario" id="pdWmsCfg" style="width:auto;" title="Endereço, usuário e senha do WMS e o teste da conexão">⚙ Ligação com o WMS</button>' : ''}</div>
+      <div class="pd-barra">
+        ${chips(d, st)}
+        <div class="pd-acoes">
+          <span class="pd-periodo" title="Período (data do pedido)"><input type="date" id="pdDe" value="${esc(d.de)}"><span>até</span><input type="date" id="pdAte" value="${esc(d.ate)}"></span>
+          <span class="pd-visao" title="Planilha: cada campo numa coluna. Resumida: campos agrupados.">
+            <button class="${visao === 'planilha' ? 'ativo' : ''}" data-pd-visao="planilha">▦ Planilha</button><button class="${visao === 'resumida' ? 'ativo' : ''}" data-pd-visao="resumida">☰ Resumida</button></span>
+          ${pode ? '<button class="btn btn-secundario pd-btn" id="pdWmsAgora" title="Procura no WMS só os pedidos da lista (período, situação e busca da tela)">⟳ Atualizar do WMS</button>' : ''}
+          <button class="btn btn-secundario pd-btn" id="pdExcel" title="Todos os pedidos da lista, com todas as colunas">⬇ Excel</button>
+          ${pode || admin ? `<div class="pd-mais"><button class="btn btn-secundario pd-btn" id="pdMaisBtn" title="Mais ações">⋯ Mais</button>
+            <div class="pd-menu oculto" id="pdMenu">
+              ${pode ? '<button id="pdLibPdf" title="E-mails de liberação do comercial impressos em PDF: a data do e-mail vira a liberação comercial dos pedidos listados nele">📧 Liberação comercial (PDF)</button>' : ''}
+              ${pode ? '<button id="pdWms" title="Planilha exportada do WMS (Número Pedido, Status/WMS, Data Inicial...)">⬆ Importar planilha do WMS</button>' : ''}
+              ${pode ? '<button id="pdWmsTodos" class="oculto" title="Procura no WMS, um por vez, todos os pedidos dos últimos 60 dias sem dados ou não finalizados">🔎 Buscar todos sem dados no WMS</button>' : ''}
+              ${pode ? '<button id="pdWmsPausar" class="oculto"></button>' : ''}
+              <hr>
+              ${pode ? '<button id="pdFiltroErp" title="Quais status e tipos do ERP aparecem nesta tela">🔎 Filtro de status do ERP</button>' : ''}
+              ${admin ? '<button id="pdWmsCfg" title="Endereço, usuário e senha do WMS, consulta automática e testes">⚙ Ligação com o WMS</button>' : ''}
+            </div></div>` : ''}
+          ${pode ? '<input type="file" id="pdLibArq" accept=".pdf,application/pdf" multiple class="oculto"><input type="file" id="pdWmsArq" accept=".xlsx,.xls,.csv" class="oculto">' : ''}
+        </div>
+      </div>
+      <div class="pd-info"><span>${filtroTxt}</span><span id="pdWmsSit"></span></div>
       <div id="pdWmsRes" style="font-size:12.5px; margin-top:6px;"></div>
       ${tabelaPedidos(d)}`;
     ligar(st, desenharPedidos);
     ajustarRolagem();
+    const menu = $('pdMenu');
+    $('pdMaisBtn')?.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('oculto'); });
+    menu?.addEventListener('click', () => menu.classList.add('oculto'));
+    if (!window.__pdMenuFora) { window.__pdMenuFora = true; document.addEventListener('click', (e) => { if (!e.target.closest('.pd-mais')) $('pdMenu')?.classList.add('oculto'); }); }
     // Clique na linha: fica destacada (como na lista do ERP), para não se perder ao rolar para o lado.
     cont.querySelectorAll('table.pd-compacta tbody tr').forEach((tr) => tr.addEventListener('click', (e) => {
       if (e.target.closest('a, button, input')) return;
@@ -248,15 +263,15 @@
     $('pdFiltroErp')?.addEventListener('click', (e) => { e.preventDefault(); filtroErp(d.filtro_erp || {}).catch(erro); });
     // Situação da consulta ao WMS e o "Atualizar do WMS".
     apiFetch('/api/wms/situacao').then((x) => x.json()).then((w) => {
-      const el = $('pdWmsSit'); if (!el || !w?.configurado) return;
-      el.style.cssText = 'font-size:12.5px; margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--texto-fraco);';
-      el.innerHTML = `<span>WMS: ${w.ativo ? `<span style="color:var(--verde);">● integração ligada</span> (consulta a cada ${w.intervalo_min} min, das ${w.hora_inicio}h às ${w.hora_fim}h)` : '<span style="color:var(--vermelho);">● integração pausada</span> (o Nexofrete não consulta o WMS)'}`
-        + (w.ultima_consulta_em ? ` · última: ${dh(w.ultima_consulta_em)} ${w.ultima_consulta_ok ? '<span style="color:var(--verde);">✓</span>' : `<span style="color:var(--vermelho);">✗ ${esc(w.ultima_consulta_msg || '')}</span>`}` : '') + '</span>'
-        + (podeImportar() ? (w.ativo
-          ? '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px; border-color:var(--vermelho); color:var(--vermelho);" title="Para na hora a consulta automática e o Atualizar do WMS">Pausar integração</button>'
-          : '<button class="btn btn-secundario" id="pdWmsPausar" style="width:auto; padding:4px 10px; font-size:12px;" title="Volta a consultar o WMS no intervalo configurado">Retomar integração</button>') : '')
-        + (podeImportar() && w.ativo && !w.busca?.rodando ? '<button class="btn btn-secundario" id="pdWmsTodos" style="width:auto; padding:4px 10px; font-size:12px;" title="Procura no WMS, um por vez, todos os pedidos dos últimos 60 dias que estão sem dados ou não finalizados">🔎 Buscar todos sem dados</button>' : '')
-        + (w.busca?.rodando ? `<span id="pdWmsProg" style="color:var(--azul);">⏳ Buscando pedidos no WMS: ${num(w.busca.feitas)} de ${num(w.busca.total)} (${num(w.busca.achadas)} achados)</span>` : '');
+      const el = $('pdWmsSit'); if (!el) return;
+      if (!w?.configurado) { el.innerHTML = `WMS: não configurado${usuario?.perfil === 'admin' ? ' (⋯ Mais › Ligação com o WMS)' : ''}`; return; }
+      el.innerHTML = `WMS: ${w.ativo ? '<span style="color:var(--verde);">● ligado</span>' : '<span style="color:var(--vermelho);">● pausado</span>'}`
+        + (w.ultima_consulta_em ? ` · última consulta ${dh(w.ultima_consulta_em)} ${w.ultima_consulta_ok ? '<span style="color:var(--verde);">✓</span>' : `<span style="color:var(--vermelho);" title="${esc(w.ultima_consulta_msg || '')}">✗ falhou</span>`}` : '')
+        + (w.busca?.rodando ? ` · <span id="pdWmsProg" style="color:var(--azul);">⏳ Buscando pedidos no WMS: ${num(w.busca.feitas)} de ${num(w.busca.total)} (${num(w.busca.achadas)} achados)</span>` : '');
+      el.title = w.ativo ? `Consulta automática a cada ${w.intervalo_min} min, das ${w.hora_inicio}h às ${w.hora_fim}h` : 'O Nexofrete não consulta o WMS enquanto estiver pausado';
+      const bp = $('pdWmsPausar');
+      if (bp) { bp.classList.remove('oculto'); bp.textContent = w.ativo ? 'Pausar integração com o WMS' : '▶ Retomar integração com o WMS'; bp.classList.toggle('perigo', !!w.ativo); }
+      if (w.ativo && !w.busca?.rodando) $('pdWmsTodos')?.classList.remove('oculto');
       // Busca completa em andamento: acompanha e redesenha a lista quando terminar.
       // Só o texto do andamento é atualizado (a lista não pisca nem perde a rolagem); no fim, a lista é redesenhada.
       const acompanhar = () => { clearTimeout(window.__pdWmsBusca); window.__pdWmsBusca = setTimeout(async () => {

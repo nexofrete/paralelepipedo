@@ -994,6 +994,12 @@ UPDATE pedidos_wms SET separador = NULL, separacao_inicio = NULL, separacao_fim 
 -- Separador gravado com "true"/"false" junto (campos ativo/lider da busca de separação): tira.
 UPDATE pedidos_wms SET separador = NULLIF(BTRIM(REGEXP_REPLACE(separador, '(,\s*)?\m(true|false)\M', '', 'gi'), ' ,'), '')
  WHERE separador ~* '\m(true|false)\M';
+-- Conferência (OS da expedição: atividade "CONF. EXPEDIÇÃO" e o "Conferencia finalizada" do histórico). Versão 5 da leitura
+-- da OS: as já lidas são lidas de novo para trazer o conferente.
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS conferente VARCHAR(200);
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS conferencia_inicio TIMESTAMP;
+ALTER TABLE pedidos_wms ADD COLUMN IF NOT EXISTS conferencia_fim TIMESTAMP;
+UPDATE pedidos_wms SET os_consultada_em = NULL WHERE os_leitura = 4;
 
 -- Transportadora que levou a nota (v1.72.0): quando a mesma nota tem CT-e de
 -- transportadoras diferentes, alguém define qual delas levou de fato. Fica

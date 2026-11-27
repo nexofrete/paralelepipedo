@@ -406,6 +406,51 @@ function lerSeparacao(html) {
   }
   return { separador: null, sep_inicio: null, sep_fim: null, como_sep: null, atividades: [...atividades] };
 }
+// Conferência na OS: quem conferiu (Conferente) e o início e o fim, com data e hora.
+//  1) tabela de atividades (OS | Responsavel | Atividade | ... | Inicio | Fim): as linhas de atividade de conferência
+//     ("CONF. EXPEDIÇÃO", "Conferência..."), nomes juntos, início mais cedo e fim mais tarde;
+//  2) o fim que faltar vem do histórico: a linha "Conferencia finalizada..." mais recente (e o início, da "Conferencia iniciada").
+function lerConferencia(html) {
+  const { dataHora } = require('./pedidosWms');
+  const h = String(html || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ');
+  const tabelas = [...h.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)].map((t) => [...t[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+    .map((x) => [...x[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => tirarTags(c[1]))));
+  const limpo = (n) => String(n || '').replace(/\s+/g, ' ').trim();
+  const ehConf = (a) => /\bconf(\.|er[eê]ncia|erencia)/i.test(a || '');
+  const nomes = []; const inis = []; const fins = []; let como = null;
+  for (const trs of tabelas) {
+    const iCab = trs.findIndex((r) => r.some((c) => /^respons[aá]vel$/i.test(c)) && r.some((c) => /^atividade$/i.test(c)));
+    if (iCab < 0) continue;
+    const cab = trs[iCab];
+    const iR = cab.findIndex((c) => /^respons[aá]vel$/i.test(c)); const iA = cab.findIndex((c) => /^atividade$/i.test(c));
+    const iI = cab.findIndex((c) => /^in[ií]cio$/i.test(c)); const iF = cab.findIndex((c) => /^fim$/i.test(c));
+    for (const x of trs.slice(iCab + 1).filter((l) => l.length >= cab.length - 1 && ehConf(l[iA]))) {
+      if (limpo(x[iR])) nomes.push(limpo(x[iR]));
+      if (dataHora(x[iI])) inis.push(dataHora(x[iI]));
+      if (dataHora(x[iF])) fins.push(dataHora(x[iF]));
+      como = 'tabela de atividades (conferência)';
+    }
+  }
+  // Histórico: "Conferencia finalizada com sucesso via coletor" (fim) e "Conferencia iniciada" (início).
+  const hist = { ini: [], fim: [], nomes: [] };
+  for (const trs of tabelas) {
+    const iCab = trs.findIndex((r) => r.some((c) => /^andamento$/i.test(c)) && r.some((c) => /usu[aá]rio/i.test(c)) && r.some((c) => /^data$/i.test(c)));
+    if (iCab < 0) continue;
+    const cab = trs[iCab];
+    const iU = cab.findIndex((c) => /usu[aá]rio/i.test(c)); const iD = cab.findIndex((c) => /^data$/i.test(c)); const iA = cab.findIndex((c) => /^andamento$/i.test(c));
+    for (const x of trs.slice(iCab + 1)) {
+      const a = x[iA] || ''; const d = dataHora(x[iD]);
+      if (!d || !/confer[eê]ncia/i.test(a) || /separa[cç][aã]o/i.test(a) && !/expedi/i.test(a)) continue;
+      if (/finaliz|conclu|termin|\bfim\b/i.test(a)) { hist.fim.push(d); if (limpo(x[iU])) hist.nomes.push(limpo(x[iU])); } else if (/inici|in[ií]cio|come[cç]/i.test(a)) { hist.ini.push(d); if (limpo(x[iU])) hist.nomes.push(limpo(x[iU])); }
+    }
+  }
+  if (!fins.length && hist.fim.length) { fins.push(...hist.fim); como = como ? `${como} + fim pelo histórico` : 'histórico (conferência)'; }
+  if (!inis.length && hist.ini.length) inis.push(...hist.ini);
+  if (!nomes.length) nomes.push(...hist.nomes);
+  const conferente = [...new Set(nomes)].join(', ') || null;
+  const ini = inis.sort()[0] || null; const fim = fins.sort().pop() || null;
+  return { conferente, conf_inicio: ini, conf_fim: fim && (!ini || fim >= ini) ? fim : null, como_conf: conferente || ini || fim ? como : null };
+}
 // Os andamentos do histórico da OS e quantas vezes aparecem (só os nomes dos eventos, para o diagnóstico).
 function andamentosOs(html) {
   const cont = new Map();
@@ -422,8 +467,9 @@ function andamentosOs(html) {
 function lerOs(html) {
   const imp = lerImpressao(html);
   const sep = lerSeparacao(html);
-  if (!imp && !sep.separador && !sep.sep_inicio) return null;
-  return { usuario: imp?.usuario || null, impresso_em: imp?.impresso_em || null, como: imp?.como || null, ...sep };
+  const conf = lerConferencia(html);
+  if (!imp && !sep.separador && !sep.sep_inicio && !conf.conferente && !conf.conf_inicio) return null;
+  return { usuario: imp?.usuario || null, impresso_em: imp?.impresso_em || null, como: imp?.como || null, ...sep, ...conf };
 }
 
 // Estrutura da OS sem os dados (para o diagnóstico): rótulos ("Algo:") e títulos das tabelas.
@@ -673,8 +719,10 @@ async function completarOs(sessao, c, expedicao) {
   const os = lerOs(r.corpo);
   await pool.query(`UPDATE pedidos_wms SET usuario = COALESCE($2, usuario), etiquetas_impressas_em = COALESCE($3::timestamp, etiquetas_impressas_em),
       separador = COALESCE($4, separador), separacao_inicio = COALESCE($5::timestamp, separacao_inicio), separacao_fim = COALESCE($6::timestamp, separacao_fim),
-      os_consultada_em = NOW(), os_leitura = 4
-    WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null, os?.separador || null, os?.sep_inicio || null, os?.sep_fim || null]);
+      conferente = COALESCE($7, conferente), conferencia_inicio = COALESCE($8::timestamp, conferencia_inicio), conferencia_fim = COALESCE($9::timestamp, conferencia_fim),
+      os_consultada_em = NOW(), os_leitura = 5
+    WHERE expedicao_numero = $1`, [String(expedicao), os?.usuario || null, os?.impresso_em || null, os?.separador || null, os?.sep_inicio || null, os?.sep_fim || null,
+    os?.conferente || null, os?.conf_inicio || null, os?.conf_fim || null]);
   // Separador pela tela de apontamento de separação (vale mais que o que a OS tiver).
   try {
     const ap = await buscarApontamentos(sessao, c, { expedicao });
@@ -688,7 +736,7 @@ async function expedicoesSemOs(limite) {
   if (limite <= 0) return [];
   const { rows } = await pool.query(`SELECT expedicao_numero FROM pedidos_wms
      WHERE expedicao_numero IS NOT NULL AND COALESCE(status, '') !~* '^CANCELAD'
-       AND (os_consultada_em IS NULL OR (os_consultada_em < NOW() - INTERVAL '2 hours' AND (usuario IS NULL OR separacao_fim IS NULL)
+       AND (os_consultada_em IS NULL OR (os_consultada_em < NOW() - INTERVAL '2 hours' AND (usuario IS NULL OR separacao_fim IS NULL OR conferencia_fim IS NULL)
             AND (COALESCE(status, '') !~* '^FINALIZADO' OR os_consultada_em < expedicao_fim)))
      GROUP BY expedicao_numero ORDER BY MAX(atualizado_em) DESC LIMIT $1`, [limite]);
   return rows.map((x) => x.expedicao_numero);
@@ -767,8 +815,8 @@ async function buscarCarga(sessao, c, carga) {
   // Quem imprimiu as etiquetas e quando: na OS da expedição (se ainda não tem).
   const exp = ps.find((x) => x.numero_pedido === String(carga))?.expedicao_numero;
   if (exp) {
-    const { rows: [w] } = await pool.query('SELECT usuario, separacao_fim FROM pedidos_wms WHERE numero_pedido = $1', [String(carga)]);
-    if (!w?.usuario || !w?.separacao_fim) await completarOs(sessao, c, exp).catch(() => null);
+    const { rows: [w] } = await pool.query('SELECT usuario, separacao_fim, conferencia_fim FROM pedidos_wms WHERE numero_pedido = $1', [String(carga)]);
+    if (!w?.usuario || !w?.separacao_fim || !w?.conferencia_fim) await completarOs(sessao, c, exp).catch(() => null);
   }
   await pool.query(`INSERT INTO wms_cargas_consultadas (numero_pedido, consultado_em, achado) VALUES ($1, NOW(), $2)
     ON CONFLICT (numero_pedido) DO UPDATE SET consultado_em = NOW(), achado = $2`, [String(carga), achou]);
@@ -934,6 +982,7 @@ async function testarOs(expedicao) {
   const texto = [`DIAGNOSTICO DA OS ${n} (${r.url}, HTTP ${r.status})`, '',
     os?.usuario ? `Impressão das etiquetas: "${os.usuario}" em ${os.impresso_em || '(sem data)'} (achado por: ${os.como})` : 'Impressão das etiquetas: NÃO achei quem imprimiu.',
     os?.separador || os?.sep_inicio ? `Separação: separador "${os.separador || '?'}", início ${os.sep_inicio || '-'}, fim ${os.sep_fim || '-'} (achado por: ${os.como_sep})` : 'Separação: NÃO achei.',
+    os?.conferente || os?.conf_inicio ? `Conferência: conferente "${os.conferente || '?'}", início ${os.conf_inicio || '-'}, fim ${os.conf_fim || '- (não finalizada)'} (achado por: ${os.como_conf})` : 'Conferência: NÃO achei.',
     `Atividades na tabela de atividades: ${(os?.atividades || lerSeparacao(r.corpo).atividades).join(' | ') || '-'}`,
     `Andamentos no histórico: ${andamentosOs(r.corpo).map(([a, n]) => `${a} (${n})`).join(' | ') || '-'}`,
     `Título: ${d.titulo || '-'}`, `Rótulos: ${d.rotulos.join(' | ') || '-'}`,
@@ -971,4 +1020,4 @@ async function testar() {
   return r;
 }
 
-module.exports = { lerSeparacoesJson, diagnosticoTela, lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };
+module.exports = { lerSeparacoesJson, diagnosticoTela, lerApontamentos, separacaoDaExpedicao, formularioBusca, testarSeparacao, andamentosOs, lerResumo, lerOs, lerImpressao, lerSeparacao, lerConferencia, descreverOs, testarOs, consultarCarga, buscarTodos, pausar, lerGrid, paraPedidos, urlBusca, consultar, situacao, talvezConsultar, agendar, avisoDoLogin, config, salvarConfig, diagnosticar, testar, testarTela, entrar, Sessao, descreverTela, textoTela, lerHtml, caminhosApi, montarTexto, urlValida };

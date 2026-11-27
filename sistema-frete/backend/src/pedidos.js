@@ -23,7 +23,9 @@ function situacaoPedido(r) {
   if (!r.tem_nota) {
     // Status do WMS (Imperium): INTEGRADO → EM SEPARACAO → (1ª/2ª) CONFERENCIA → CONFERIDO → FINALIZADO.
     const st = String(r.status_wms || '').toUpperCase();
-    if (r.sep_fim || /CONFERIDO|FINALIZ/.test(st)) return 'Separado';
+    // Conferência da OS começada e ainda não finalizada (com o status do WMS ainda não CONFERIDO).
+    if (r.conf_inicio && !r.conf_fim && !/CONFERIDO|FINALIZ/.test(st)) return 'Em conferência';
+    if (r.sep_fim || r.conf_fim || /CONFERIDO|FINALIZ/.test(st)) return 'Separado';
     if (/CONFERENCIA|CONFERÊNCIA/.test(st)) return 'Em conferência';
     if (r.sep_inicio || /SEPARA/.test(st)) return 'Em separação';
     // Já está no WMS (INTEGRADO), mas a separação ainda não começou.
@@ -57,7 +59,8 @@ async function dadosWms(pedidosLista) {
   if (!ids.length) return new Map();
   const { rows } = await pool.query(`SELECT numero_pedido, status, usuario, qtd_etiquetas, cancelado, expedicao,
       to_char(data_inicial, 'YYYY-MM-DD HH24:MI') AS data_inicial, to_char(etiquetas_impressas_em, 'YYYY-MM-DD HH24:MI') AS etiquetas_impressas_em,
-      to_char(separacao_inicio, 'YYYY-MM-DD HH24:MI') AS separacao_inicio, to_char(separacao_fim, 'YYYY-MM-DD HH24:MI') AS separacao_fim,
+      to_char(separacao_inicio, 'YYYY-MM-DD HH24:MI') AS separacao_inicio, to_char(separacao_fim, 'YYYY-MM-DD HH24:MI') AS separacao_fim, conferente,
+      to_char(conferencia_inicio, 'YYYY-MM-DD HH24:MI') AS conferencia_inicio, to_char(conferencia_fim, 'YYYY-MM-DD HH24:MI') AS conferencia_fim,
       to_char(liberacao, 'YYYY-MM-DD HH24:MI') AS liberacao, expedicao_numero, tipo_pedido, placa, motorista, itinerario, conferencia_pct::float AS conferencia_pct, imprimir, separador,
       to_char(expedicao_fim, 'YYYY-MM-DD HH24:MI') AS expedicao_fim, origem, to_char(atualizado_em, 'YYYY-MM-DD HH24:MI') AS wms_atualizado_em
     FROM pedidos_wms WHERE numero_pedido = ANY($1::text[])`, [ids]).catch(() => ({ rows: [] }));
@@ -141,17 +144,19 @@ async function pedidos(req, q = {}) {
       qtd_etiquetas: w.qtd_etiquetas ?? null, sep_inicio: w.separacao_inicio || null, sep_fim: w.separacao_fim || null, cancelado_wms: w.cancelado === true,
       liberado_em: w.liberacao || r.liberado_em || null, expedicao: w.expedicao || r.expedicao || null, tem_wms: !!w.numero_pedido,
       separador: w.separador || null, exp_wms: w.expedicao_numero || null,
+      conferente: w.conferente || null, conf_inicio: w.conferencia_inicio || null, conf_fim: w.conferencia_fim || null,
       obs: obs.get(String(r.pedido))?.texto || null, obs_por: obs.get(String(r.pedido))?.usuario_nome || null, obs_em: obs.get(String(r.pedido))?.atualizado_em || null,
       lib_comercial: libs.get(String(r.pedido))?.liberado_em || null, lib_comercial_origem: libs.get(String(r.pedido))?.origem || null,
       lib_comercial_de: libs.get(String(r.pedido))?.email_de || libs.get(String(r.pedido))?.usuario_nome || null, tipo_pedido: w.tipo_pedido || null, placa: w.placa || null, motorista: w.motorista || null, itinerario: w.itinerario || null,
       conferencia_pct: w.conferencia_pct ?? null, imprimir: w.imprimir ?? null, exp_fim: w.expedicao_fim || null, wms_origem: w.origem || null, wms_atualizado_em: w.wms_atualizado_em || null,
     });
+    r.conf_minutos = r.conf_inicio && r.conf_fim ? Math.round((Date.parse(r.conf_fim.replace(' ', 'T')) - Date.parse(r.conf_inicio.replace(' ', 'T'))) / 60000) : null;
     r.sep_minutos = r.sep_inicio && r.sep_fim ? Math.round((Date.parse(r.sep_fim.replace(' ', 'T')) - Date.parse(r.sep_inicio.replace(' ', 'T'))) / 60000) : null;
   }
   const busca = String(q.busca || '').trim().toUpperCase();
   const todos = lista.map((r) => ({ ...r, situacao: situacaoPedido(r), dias: dias(r.data_pedido, hoje), destino: [r.cidade, r.uf].filter(Boolean).join('/') }))
     // CNPJ digitado com pontuação também acha (compara só os números).
-    .filter((r) => !busca || (busca.replace(/\D/g, '').length >= 8 && String(r.cnpj || '').includes(busca.replace(/\D/g, ''))) || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.placa, r.motorista, r.exp_wms, r.obs].some((x) => String(x || '').toUpperCase().includes(busca)))
+    .filter((r) => !busca || (busca.replace(/\D/g, '').length >= 8 && String(r.cnpj || '').includes(busca.replace(/\D/g, ''))) || [r.pedido, r.pedido_cliente, r.cliente, r.nome_curto, r.cnpj, r.nf, r.cidade, r.transportadora, r.status_wms, r.usuario, r.separador, r.conferente, r.placa, r.motorista, r.exp_wms, r.obs].some((x) => String(x || '').toUpperCase().includes(busca)))
     .sort((a, b) => String(b.data_pedido || '').localeCompare(String(a.data_pedido || '')));
   const contagem = Object.fromEntries(SITUACOES_PEDIDO.map((s) => [s, todos.filter((r) => r.situacao === s).length]));
   const filtro = String(q.situacao || '');

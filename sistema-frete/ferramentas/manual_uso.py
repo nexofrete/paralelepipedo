@@ -647,6 +647,13 @@ def parte_uso(g):
         'rodada, para as expedições ainda sem quem imprimiu (de novo a cada 2 horas, até aparecer; mesmo limite por rodada). A <b>Qtd. '
         'Etiquetas</b> vem do Resumo da tela de expedição (Qtd. Etq. Válidas) quando a expedição é só daquele pedido. Na janela Ligação com o '
         'WMS, <b>Testar OS (quem imprimiu)</b> abre a OS de uma expedição e mostra o que foi lido.',
+        '<b>Conferente, Início Conferência e Fim Conferência</b> (quem conferiu e o início e o fim da conferência, com data e hora) vêm da '
+        'mesma OS da expedição: o Conferente e o início, da tabela Ordens de Serviço (linha de atividade de conferência, como "CONF. '
+        'EXPEDIÇÃO"); o fim, da coluna Fim dessa linha ou, quando ela está vazia, da linha "Conferencia finalizada..." do Andamento da '
+        'expedição. Com mais de um conferente aparecem todos os nomes. Conferência começada e não finalizada deixa o pedido Em conferência; '
+        'finalizada, Separado. A OS é relida a cada 2 horas enquanto faltar o fim da conferência; as OS já lidas são lidas de novo sozinhas '
+        'para trazer o conferente. Entram na visão Planilha (depois de Data Finalização), na Resumida (embaixo da separação), no buscador e no Excel; '
+        'o Testar OS mostra a conferência lida.',
         '<b>🔎 buscar</b> (na coluna Status/WMS de cada pedido ainda sem dados do WMS): procura só aquele pedido no WMS, na hora. Se o WMS '
         'não tiver a carga, aparece "não está no WMS".',
         '<b>⋯ Mais › Buscar todos sem dados no WMS</b>: procura no WMS, um por vez (1 segundo entre cada um), todos os '
@@ -670,7 +677,7 @@ def parte_uso(g):
         'à vista, sem precisar ir até o fim da lista.',
         'Duas visões (botões <b>Planilha</b> e <b>Resumida</b>; o sistema lembra a escolhida): <b>Planilha</b> mostra cada campo na sua coluna, '
         'na ordem da planilha de pedidos (Número Pedido, Situação, Observações, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação, Liberação comercial, Peso, Cubagem, '
-        'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Data Início, Data Finalização, Cancelado Wms, Nota '
+        'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Data Início, Data Finalização, Conferente, Início Conferência, Fim Conferência, Cancelado Wms, Nota '
         'Fiscal e Data de Emissão), no modelo da lista do ERP: uma linha por pedido, linhas zebradas, textos longos cortados com '
         'reticências (o texto inteiro aparece ao passar o mouse) e a linha clicada destacada em azul, com o número do pedido fixo à '
         'esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '

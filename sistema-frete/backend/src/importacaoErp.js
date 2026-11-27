@@ -101,6 +101,9 @@ function mapearPlanilha(buffer) {
       itens_sem_medida: paraNumero(linha.ITENS_SEM_MEDIDA),
       observacoes: paraTexto(linha.OBSERVACAO_PEDIDO),
       _estatus_pedido: paraTexto(linha.ESTATUS_PEDIDO),
+      // Status e tipo do pedido no ERP (A, T, C... / P...): a tela Pedidos mostra só os escolhidos (pedidos_config).
+      estatus_pedido: paraTexto(linha.ESTATUS_PEDIDO),
+      tipo_pedido: paraTexto(linha.TIPO_PEDIDO),
       _nf_cancelada: paraTexto(linha.NF_CANCELADA),
       _nr_nf: paraTexto(linha.NR_NF),
       _nr_nota: paraTexto(linha.NR_NOTA),
@@ -225,6 +228,8 @@ async function importarLinhas(linhasMapeadas, usuarioId) {
         if (linha.itens_sem_medida != null) {
           await pool.query('UPDATE fretes SET itens_sem_medida = $1 WHERE id = $2', [Math.round(linha.itens_sem_medida), freteId]);
         }
+        // Status e tipo do pedido no ERP: valem os da planilha mais nova (o pedido muda de status).
+        if (linha.estatus_pedido || linha.tipo_pedido) await pool.query('UPDATE fretes SET erp_estatus_pedido = COALESCE($1, erp_estatus_pedido), erp_tipo_pedido = COALESCE($2, erp_tipo_pedido) WHERE id = $3', [linha.estatus_pedido || null, linha.tipo_pedido || null, freteId]);
         // Tipo de expedição: vale o da planilha mais nova (o pedido pode ser antecipado depois).
         if (linha.expedicao) await pool.query('UPDATE fretes SET expedicao = $1 WHERE id = $2 AND expedicao IS DISTINCT FROM $1', [linha.expedicao, freteId]);
         await aplicarMapa(freteId, linha);
@@ -281,6 +286,7 @@ async function aplicarPendenteDaNota(freteId) {
       `UPDATE fretes SET ${sets.join(', ')}, numero_pedido = COALESCE(numero_pedido, $${valores.length - 1}), atualizado_em = NOW()
         WHERE id = $${valores.length}`, valores);
     await pool.query('UPDATE fretes SET pre_nota = $1::jsonb WHERE id = $2', [preNotaDa(linha, rows[0].recebido_em), freteId]);
+    await pool.query('UPDATE fretes SET erp_estatus_pedido = COALESCE($1, erp_estatus_pedido), erp_tipo_pedido = COALESCE($2, erp_tipo_pedido) WHERE id = $3', [linha.estatus_pedido || linha._estatus_pedido || null, linha.tipo_pedido || null, freteId]);
     await aplicarMapa(freteId, linha);
     await aplicarRegrasCancelamento(freteId, linha);
     await pool.query('DELETE FROM erp_pendentes WHERE numero_pedido = $1', [rows[0].numero_pedido]);

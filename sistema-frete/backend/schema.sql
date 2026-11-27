@@ -910,6 +910,18 @@ CREATE TABLE IF NOT EXISTS pedidos_wms (
     origem                 VARCHAR(20) NOT NULL DEFAULT 'planilha',
     atualizado_em          TIMESTAMP NOT NULL DEFAULT NOW()
 );
+-- Status e tipo do pedido no ERP (ESTATUS_PEDIDO e TIPO_PEDIDO da Timeline) e o filtro da tela Pedidos por eles.
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS erp_estatus_pedido VARCHAR(10);
+ALTER TABLE fretes ADD COLUMN IF NOT EXISTS erp_tipo_pedido VARCHAR(10);
+CREATE TABLE IF NOT EXISTS pedidos_config (
+    id            INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    filtrar       BOOLEAN NOT NULL DEFAULT TRUE,
+    estatus       TEXT[] NOT NULL DEFAULT ARRAY['A'],
+    tipos         TEXT[] NOT NULL DEFAULT ARRAY['P'],
+    atualizado_em TIMESTAMP,
+    usuario_nome  VARCHAR(150)
+);
+INSERT INTO pedidos_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 -- Observações dos pedidos (tela Pedidos): anotação livre da equipe ("pedido agendando"...), também de pedido ainda sem nota.
 CREATE TABLE IF NOT EXISTS pedidos_observacoes (
     numero_pedido  VARCHAR(50) PRIMARY KEY,

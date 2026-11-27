@@ -589,6 +589,12 @@ def parte_uso(g):
     s += h2('Pedidos (405)')
     s += lista([
         'Cada pedido do período (data do pedido, padrão últimos 30 dias): os que já viraram nota e os que ainda estão só na planilha.',
+        '<b>Quais pedidos aparecem</b>: só os com o <b>status A</b> e o <b>tipo P</b> do ERP (colunas ESTATUS_PEDIDO e TIPO_PEDIDO da '
+        'Timeline), os liberados pelo comercial, que a tela acompanha até a separação. A linha "Mostrando só os pedidos do ERP com..." '
+        'mostra o filtro; <b>⚙ mudar</b> (quem edita registros) troca os status e tipos (vários separados por vírgula; tipo vazio aceita '
+        'qualquer) ou desliga o filtro. O status vale o da planilha mais nova: pedido que muda de A para outro sai da tela. A planilha '
+        'continua sendo importada inteira (ela completa as notas para o frete); o filtro só muda esta tela, e as buscas no WMS seguem o '
+        'mesmo filtro.',
         'Colunas, na ordem da planilha de pedidos: <b>Pedido</b> (e o Pedido Mercus), <b>Situação</b>, <b>Cliente</b> (com o nome curto e o '
         'CNPJ), <b>Liberação</b> (data e hora) e <b>Expedição</b> (EXPEDICAO, ANTECIPADO...), <b>Peso e cubagem</b>, <b>Status WMS</b> (com a '
         'data inicial e o usuário), <b>Etiquetas</b> (quantidade e quando foram impressas), <b>Separação</b> (início, fim e quanto tempo levou) '

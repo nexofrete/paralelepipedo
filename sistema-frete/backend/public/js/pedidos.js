@@ -106,6 +106,34 @@
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
   }
 
+  // Janela do filtro da tela pelo status/tipo do pedido no ERP.
+  async function filtroErp(cfg) {
+    let m = $('modalPdFiltro');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'modal-overlay'; m.id = 'modalPdFiltro';
+      m.innerHTML = '<div class="painel modal-card" style="width:100%; max-width:480px; padding:22px 24px;" id="pdFiltroCard"></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-pf-fechar]')) m.classList.add('oculto'); });
+    }
+    m.classList.remove('oculto');
+    $('pdFiltroCard').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h3 style="margin:0;">Quais pedidos a tela mostra</h3><span style="cursor:pointer; font-size:18px;" data-pf-fechar>✕</span></div>
+      <p style="font-size:12.5px; color:var(--texto-fraco); margin-top:0;">Pelos campos ESTATUS_PEDIDO e TIPO_PEDIDO da planilha Timeline de pedidos. A planilha continua sendo importada inteira (ela completa as notas); isto só muda o que aparece nesta tela.</p>
+      <label style="font-size:13px; display:flex; gap:6px; align-items:center;"><input type="checkbox" id="pfFiltrar" ${cfg.filtrar !== false ? 'checked' : ''} style="width:auto;"> Mostrar só os pedidos com estes valores</label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; font-size:13px;">
+        <label>Status (ESTATUS_PEDIDO)<input id="pfEstatus" value="${esc((cfg.estatus || ['A']).join(', '))}" placeholder="A" style="display:block; width:100%; margin-top:3px;"></label>
+        <label>Tipo (TIPO_PEDIDO)<input id="pfTipos" value="${esc((cfg.tipos || ['P']).join(', '))}" placeholder="P (vazio = todos)" style="display:block; width:100%; margin-top:3px;"></label></div>
+      <p style="font-size:12px; color:var(--texto-fraco);">Mais de um: separe por vírgula (ex.: A, T). Tipo vazio aceita qualquer tipo.${cfg.usuario_nome ? ` Última mudança: ${esc(cfg.usuario_nome)}${cfg.atualizado_em ? ` em ${esc(dh(cfg.atualizado_em))}` : ''}.` : ''}</p>
+      <div style="display:flex; gap:8px; justify-content:flex-end;"><button class="btn btn-primario" id="pfSalvar" style="width:auto;">Salvar</button></div>`;
+    $('pfSalvar').addEventListener('click', async () => {
+      try {
+        const r2 = await apiFetch('/api/pedidos/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filtrar: $('pfFiltrar').checked, estatus: $('pfEstatus').value, tipos: $('pfTipos').value }) });
+        const j = await r2.json().catch(() => ({}));
+        if (!r2.ok) throw new Error(j.erro || 'Erro ao salvar.');
+        m.classList.add('oculto'); await desenharPedidos();
+      } catch (err) { erro(err); }
+    });
+  }
+
   // Janela da observação do pedido (com atalhos para as mais usadas).
   const OBS_PRONTAS = ['Pedido agendando', 'Entrega agendada', 'Aguardando pagamento', 'Aguardando o cliente', 'Cliente vai retirar', 'Pedido bloqueado', 'Faturar junto com outro pedido'];
   async function editarObs(pedido, valor) {
@@ -170,6 +198,9 @@
         <div>Separados<b>${num(r.separados)}</b><span>esperando a nota</span></div>
         <div>Faturados<b>${num(d.contagem.Faturado + d.contagem['Em embarque'] + d.contagem['Coleta pedida'])}</b><span>ainda não saíram</span></div>
         <div>Em trânsito / entregues<b>${num(d.contagem['Coletado / em trânsito'] + d.contagem.Entregue)}</b><span>${num(d.contagem.Entregue)} entregues</span></div></div>
+      <div style="font-size:12.5px; color:var(--texto-fraco); margin-top:8px;">${d.filtro_erp?.filtrar
+        ? `🔎 Mostrando só os pedidos do ERP com <b>status ${esc(d.filtro_erp.estatus.join(', '))}</b>${d.filtro_erp.tipos.length ? ` e <b>tipo ${esc(d.filtro_erp.tipos.join(', '))}</b>` : ''} (ESTATUS_PEDIDO / TIPO_PEDIDO da Timeline)`
+        : '🔎 Mostrando todos os pedidos da planilha do ERP (sem filtro de status)'}${podeImportar() ? ' <a href="#" id="pdFiltroErp">⚙ mudar</a>' : ''}</div>
       <div id="pdWmsSit" style="font-size:12.5px; color:var(--texto-fraco); margin-top:8px;"></div>
       ${r.com_wms ? '' : `<p class="cte-aviso" style="margin-top:10px;">Os campos do WMS ainda estão vazios: ligue a consulta automática em "Ligação com o WMS" ou importe a planilha do WMS.</p>`}
       <div class="pa-topo" style="margin-top:12px;">${chips(d, st)}<span style="flex:1;"></span>
@@ -208,6 +239,7 @@
         p.exp_wms || '', p.tipo_pedido || '', p.placa || '', p.motorista || '', p.itinerario || '', dh(p.exp_fim).replace('—', ''), p.conferencia_pct, p.imprimir == null ? '' : (p.imprimir ? 'SIM' : 'NÃO')])}]).catch(erro);
     });
     $('pdWmsCfg')?.addEventListener('click', () => abrirWms().catch(erro));
+    $('pdFiltroErp')?.addEventListener('click', (e) => { e.preventDefault(); filtroErp(d.filtro_erp || {}).catch(erro); });
     // Situação da consulta ao WMS e o "Atualizar do WMS".
     apiFetch('/api/wms/situacao').then((x) => x.json()).then((w) => {
       const el = $('pdWmsSit'); if (!el || !w?.configurado) return;

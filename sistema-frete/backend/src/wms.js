@@ -728,13 +728,19 @@ function urlBusca(c, de, ate, carga = null) {
 // há pouco fica de fora (2 h se achou, 12 h se o WMS não tinha a carga), e os mais novos vêm primeiro.
 async function cargasParaConsultar(jaVieram, limite) {
   if (limite <= 0) return [];
-  const { rows } = await pool.query(`WITH ped AS (
-      SELECT numero_pedido AS p, MAX(COALESCE(data_pedido, data_emissao_nf, criado_em::date)) AS d FROM fretes
+  // Só os pedidos que a tela Pedidos mostra (filtro pelo status/tipo do ERP em pedidos_config).
+  const { rows } = await pool.query(`WITH cfg AS (SELECT COALESCE((SELECT filtrar FROM pedidos_config WHERE id = 1), FALSE) AS filtrar,
+        COALESCE((SELECT estatus FROM pedidos_config WHERE id = 1), ARRAY[]::text[]) AS estatus, COALESCE((SELECT tipos FROM pedidos_config WHERE id = 1), ARRAY[]::text[]) AS tipos),
+    ped AS (
+      SELECT numero_pedido AS p, MAX(COALESCE(data_pedido, data_emissao_nf, criado_em::date)) AS d FROM fretes, cfg
        WHERE frete_principal_id IS NULL AND numero_pedido ~ '^[0-9]+$' AND data_entrega IS NULL
          AND COALESCE(status, 'Pendente') NOT IN ('Cancelado', 'Arquivado') AND COALESCE(data_pedido, data_emissao_nf, criado_em::date) >= CURRENT_DATE - 60
+         AND (NOT cfg.filtrar OR (UPPER(erp_estatus_pedido) = ANY(cfg.estatus) AND (cardinality(cfg.tipos) = 0 OR UPPER(erp_tipo_pedido) = ANY(cfg.tipos))))
        GROUP BY numero_pedido
       UNION ALL
-      SELECT numero_pedido, recebido_em::date FROM erp_pendentes WHERE numero_pedido ~ '^[0-9]+$' AND recebido_em >= NOW() - INTERVAL '60 days')
+      SELECT numero_pedido, recebido_em::date FROM erp_pendentes, cfg WHERE numero_pedido ~ '^[0-9]+$' AND recebido_em >= NOW() - INTERVAL '60 days'
+         AND (NOT cfg.filtrar OR (UPPER(COALESCE(dados->>'estatus_pedido', dados->>'_estatus_pedido')) = ANY(cfg.estatus)
+              AND (cardinality(cfg.tipos) = 0 OR UPPER(dados->>'tipo_pedido') = ANY(cfg.tipos)))))
     SELECT ped.p FROM ped
       LEFT JOIN pedidos_wms w ON w.numero_pedido = ped.p
       LEFT JOIN wms_cargas_consultadas k ON k.numero_pedido = ped.p

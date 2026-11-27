@@ -64,3 +64,15 @@ test('situação do pedido com o WMS', () => {
   assert.strictEqual(situacaoPedido({ tem_nota: true, sep_fim: 'y' }), 'Faturado');
   assert.strictEqual(situacaoPedido({ tem_nota: false, cancelado_wms: true }), 'Cancelado');
 });
+
+test('filtro da tela Pedidos pelo status/tipo do ERP', () => {
+  const { passaFiltro } = require('../src/pedidos');
+  const cfg = { filtrar: true, estatus: ['A'], tipos: ['P'] };
+  assert.strictEqual(passaFiltro(cfg, 'A', 'P'), true);
+  assert.strictEqual(passaFiltro(cfg, 'a', 'p'), true);
+  assert.strictEqual(passaFiltro(cfg, 'T', 'P'), false);
+  assert.strictEqual(passaFiltro(cfg, 'A', 'B'), false);
+  assert.strictEqual(passaFiltro(cfg, null, null), false, 'sem status não aparece com o filtro ligado');
+  assert.strictEqual(passaFiltro({ ...cfg, tipos: [] }, 'A', 'X'), true, 'tipo vazio aceita qualquer');
+  assert.strictEqual(passaFiltro({ ...cfg, filtrar: false }, null, null), true);
+});

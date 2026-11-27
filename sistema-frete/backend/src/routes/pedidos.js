@@ -11,6 +11,12 @@ const rota = (fn) => async (req, res) => {
 };
 router.get('/', autenticar, rota((req) => p.pedidos(req, req.query)));
 router.get('/pre-notas', autenticar, rota((req) => p.prenotas(req, req.query)));
+// Filtro da tela Pedidos pelo status/tipo do pedido no ERP (quem edita registros muda).
+router.put('/config', autenticar, permitir('pode_editar_registros'), rota(async (req) => {
+  const r = await p.salvarConfig(req.body, req.usuario);
+  registrar({ usuarioId: req.usuario.id, usuarioNome: req.usuario.nome, acao: 'config_pedidos', detalhes: r.filtrar ? `Tela Pedidos: só status ${r.estatus.join(', ')}${r.tipos.length ? ` e tipo ${r.tipos.join(', ')}` : ''}` : 'Tela Pedidos: todos os pedidos (sem filtro de status)' });
+  return r;
+}));
 // POST /api/pedidos/wms  (planilha exportada do WMS: "Número Pedido", "Status/WMS", "Data Início"...)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 60 * 1024 * 1024 } });
 // Liberação comercial: e-mails de liberação em PDF (um ou vários) e a data digitada à mão em um pedido.

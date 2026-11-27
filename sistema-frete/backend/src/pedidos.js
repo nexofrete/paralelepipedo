@@ -81,11 +81,28 @@ async function salvarObservacao(numero, texto, usuario) {
   return { numero_pedido: n, texto: t };
 }
 
+// Filtro da tela Pedidos pelo status e tipo do pedido no ERP (padrão: status A, tipo P = liberados pelo comercial).
+// Só os pedidos com esses valores aparecem; sem o status (planilha antiga ou de outro ERP), só com o filtro desligado.
+const letras = (v) => [...new Set((Array.isArray(v) ? v : String(v || '').split(/[\s,;]+/)).map((x) => String(x).trim().toUpperCase()).filter((x) => /^[A-Z0-9]{1,10}$/.test(x)))];
+async function config() {
+  const { rows: [c] } = await pool.query('SELECT filtrar, estatus, tipos, usuario_nome, to_char(atualizado_em, \'YYYY-MM-DD HH24:MI\') AS atualizado_em FROM pedidos_config WHERE id = 1').catch(() => ({ rows: [] }));
+  return c || { filtrar: true, estatus: ['A'], tipos: ['P'] };
+}
+async function salvarConfig(b = {}, usuario) {
+  const estatus = letras(b.estatus); const tipos = letras(b.tipos);
+  if (b.filtrar !== false && !estatus.length) throw Object.assign(new Error('Informe pelo menos um status (ex.: A).'), { status: 400 });
+  await pool.query(`INSERT INTO pedidos_config (id, filtrar, estatus, tipos, atualizado_em, usuario_nome) VALUES (1, $1, $2, $3, NOW(), $4)
+    ON CONFLICT (id) DO UPDATE SET filtrar = $1, estatus = $2, tipos = $3, atualizado_em = NOW(), usuario_nome = $4`, [b.filtrar !== false, estatus.length ? estatus : ['A'], tipos, usuario?.nome || null]);
+  return config();
+}
+const passaFiltro = (cfg, estatus, tipo) => !cfg.filtrar || (!!estatus && cfg.estatus.includes(String(estatus).toUpperCase()) && (!cfg.tipos.length || (!!tipo && cfg.tipos.includes(String(tipo).toUpperCase()))));
+
 async function pedidos(req, q = {}) {
   const hoje = hojeSP();
   // Sem data escolhida: os últimos 30 dias; buscando por texto, o último ano.
   const de = dataOk(q.de) || (() => { const d = new Date(`${hoje}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - (String(q.busca || '').trim() ? 365 : 30)); return d.toISOString().slice(0, 10); })();
   const ate = dataOk(q.ate) || hoje;
+  const cfg = await config();
   const { rows } = await consultaCliente(req, `SELECT f.id, f.numero_pedido AS pedido, f.pedido_mercus AS pedido_cliente, to_char(COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date), 'YYYY-MM-DD') AS data_pedido,
       f.cliente, f.cliente_documento AS cnpj, f.cliente_nome_curto AS nome_curto, f.cubagem_m3::float AS cubagem, f.expedicao,
       to_char(f.pedido_liberado_em, 'YYYY-MM-DD HH24:MI') AS liberado_em, f.cidade, f.uf, f.qtd_volumes AS volumes, COALESCE(f.peso_bruto, f.peso_kg)::float AS peso, f.valor_faturado::float AS valor,
@@ -96,13 +113,15 @@ async function pedidos(req, q = {}) {
       (SELECT o.id FROM ordens_coleta o WHERE f.id = ANY(o.frete_ids) AND o.status IN ('rascunho', 'enviada', 'aceita') ORDER BY o.id DESC LIMIT 1) AS ordem_id
     FROM fretes f WHERE f.frete_principal_id IS NULL AND NULLIF(TRIM(f.numero_pedido), '') IS NOT NULL AND f.nf_entrada IS NOT TRUE
       AND COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date) BETWEEN $1::date AND $2::date
-    ORDER BY COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date) DESC, f.numero_pedido DESC LIMIT 5000`, [de, ate]).catch(() => ({ rows: [] }));
+      AND (NOT $3::boolean OR (UPPER(f.erp_estatus_pedido) = ANY($4::text[]) AND (cardinality($5::text[]) = 0 OR UPPER(f.erp_tipo_pedido) = ANY($5::text[]))))
+    ORDER BY COALESCE(f.data_pedido, f.data_emissao_nf, f.criado_em::date) DESC, f.numero_pedido DESC LIMIT 5000`, [de, ate, cfg.filtrar, cfg.estatus, cfg.tipos]).catch(() => ({ rows: [] }));
   const lista = rows.map((r) => ({ ...r, origem: 'nota' }));
   const pend = await pendentes(req);
   for (const p of pend) {
     const d = p.dados || {};
     const data = d.data_pedido || (p.recebido_em ? new Date(p.recebido_em).toISOString().slice(0, 10) : null);
     if (data && (data < de || data > ate)) continue;
+    if (!passaFiltro(cfg, d.estatus_pedido || d._estatus_pedido, d.tipo_pedido)) continue;
     lista.push({ id: null, pedido: p.numero_pedido, pedido_cliente: d.pedido_mercus || null, data_pedido: data, cliente: d.cliente || null, cidade: d.cidade || null, uf: d.uf || null,
       cnpj: d.cliente_documento || null, nome_curto: d.cliente_nome_curto || null, cubagem: numero(d.cubagem_m3), expedicao: d.expedicao || null,
       liberado_em: d.pedido_liberado_em ? String(d.pedido_liberado_em).slice(0, 16) : null,
@@ -136,7 +155,7 @@ async function pedidos(req, q = {}) {
   const filtro = String(q.situacao || '');
   const ativos = todos.filter((r) => r.situacao !== 'Cancelado');
   return {
-    de, ate, situacoes: SITUACOES_PEDIDO, contagem, pedidos: filtro ? todos.filter((r) => r.situacao === filtro) : todos,
+    de, ate, filtro_erp: cfg, situacoes: SITUACOES_PEDIDO, contagem, pedidos: filtro ? todos.filter((r) => r.situacao === filtro) : todos,
     resumo: { pedidos: ativos.length, valor: Math.round(ativos.reduce((t, r) => t + (r.valor || 0), 0) * 100) / 100, peso: Math.round(ativos.reduce((t, r) => t + (r.peso || 0), 0) * 10) / 10,
       aguardando_nota: contagem['Aguardando nota'], aguardando_mais_dias: todos.filter((r) => r.situacao === 'Aguardando nota' && r.dias > DIAS_PARADA).length,
       em_separacao: contagem['Em separação'] + contagem['Em conferência'], separados: contagem.Separado, com_wms: todos.filter((r) => r.tem_wms).length,
@@ -185,4 +204,4 @@ async function prenotas(req, q = {}) {
   };
 }
 
-module.exports = { salvarObservacao, situacaoPedido, situacaoPrenota, pedidos, prenotas, SITUACOES_PEDIDO, DIAS_PARADA };
+module.exports = { config, salvarConfig, passaFiltro, salvarObservacao, situacaoPedido, situacaoPrenota, pedidos, prenotas, SITUACOES_PEDIDO, DIAS_PARADA };

@@ -2356,3 +2356,9 @@ html.menu-recolhido .barra-lateral:not(:hover) .rodape-menu #btnSair { margin-le
 .pd-info #pdWmsSit:empty::before { content: none; }
 /* Pedidos: situação Integrado (já está no WMS, separação ainda não começou). */
 .oc-sit.integrado { background: rgba(139, 92, 246, .14); color: #7c3aed; }
+
+/* Pedidos: filtro "Sem liberação comercial" (chip e título da coluna). */
+.pd-chip-lib { border-style: dashed; }
+.pd-chip-lib.ativo { background: #d97706; border-color: #d97706; border-style: solid; color: #fff; }
+.pd-th-filtro { cursor: pointer; user-select: none; }
+.pd-th-filtro:hover, .pd-th-filtro.ativo { color: #d97706; }

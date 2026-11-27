@@ -693,6 +693,11 @@ def parte_uso(g):
         'a primeira liberação. O lápis ao lado da data edita à mão: a data digitada fica marcada como (manual) e não é trocada pelos '
         'e-mails importados depois; Apagar faz o pedido voltar a esperar o e-mail. A coluna aparece na visão Planilha (depois de '
         'Liberação), na Resumida (embaixo da liberação) e no Excel.',
+        '<b>Sem liberação comercial</b>: o botão laranja tracejado, ao lado das situações, mostra só os pedidos (não cancelados) com a '
+        'Liberação comercial vazia, isto é, que não vieram em nenhum e-mail de liberação nem tiveram a data digitada: são os que precisam '
+        'ser vistos com o comercial. O número no botão conta os da situação escolhida; dá para juntar com uma situação (ex.: Integrado e '
+        'sem liberação). Clicar no título da coluna Liberação comercial (visão Planilha) também liga e desliga o filtro; o Excel e o '
+        'Atualizar do WMS seguem a lista filtrada.',
         '<b>Buscador no topo</b> (o mesmo modelo da Visão geral): filtra a aba aberta enquanto você digita; com texto, procura no último ano '
         '(sem texto, nos 30 dias ou no período escolhido). Acha o número do pedido, o Mercus, a NF, o cliente, o nome curto, o CNPJ (com ou '
         'sem pontuação), a cidade, a transportadora, a placa, o motorista, o status e o usuário do WMS. Esc limpa.',

@@ -161,8 +161,11 @@ async function pedidos(req, q = {}) {
   const contagem = Object.fromEntries(SITUACOES_PEDIDO.map((s) => [s, todos.filter((r) => r.situacao === s).length]));
   const filtro = String(q.situacao || '');
   const ativos = todos.filter((r) => r.situacao !== 'Cancelado');
+  const daSituacao = filtro ? todos.filter((r) => r.situacao === filtro) : todos;
+  // Sem liberação comercial: pedidos (não cancelados) sem a data do e-mail do comercial nem a digitada à mão.
+  const semLib = daSituacao.filter((r) => !r.lib_comercial && r.situacao !== 'Cancelado');
   return {
-    de, ate, filtro_erp: cfg, situacoes: SITUACOES_PEDIDO, contagem, pedidos: filtro ? todos.filter((r) => r.situacao === filtro) : todos,
+    de, ate, filtro_erp: cfg, situacoes: SITUACOES_PEDIDO, contagem, sem_lib_comercial: semLib.length, pedidos: q.sem_lib === '1' ? semLib : daSituacao,
     resumo: { pedidos: ativos.length, valor: Math.round(ativos.reduce((t, r) => t + (r.valor || 0), 0) * 100) / 100, peso: Math.round(ativos.reduce((t, r) => t + (r.peso || 0), 0) * 10) / 10,
       aguardando_nota: contagem['Aguardando nota'], aguardando_mais_dias: todos.filter((r) => r.situacao === 'Aguardando nota' && r.dias > DIAS_PARADA).length,
       integrados: contagem.Integrado, integrados_mais_dias: todos.filter((r) => r.situacao === 'Integrado' && r.dias > DIAS_PARADA).length,

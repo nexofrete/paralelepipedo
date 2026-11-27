@@ -19,7 +19,7 @@
   const COR = { 'Aguardando nota': 'pendente', Integrado: 'integrado', 'Em separação': 'ocorrencia', 'Em conferência': 'ocorrencia', Separado: 'em_transito', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
     'A faturar': 'pendente', 'Parada sem faturar': 'ocorrencia', 'NF sem XML': 'ocorrencia', 'Faturada, confere': 'entregue', 'Faturada, mudou': 'cancelado', 'Cancelada no ERP': 'cancelado' };
   const sit = (s) => `<span class="oc-sit ${COR[s] || ''}">${esc(s)}</span>`;
-  let aba = 'pedidos'; const estado = { pedidos: { situacao: '', busca: '', de: '', ate: '' }, prenotas: { situacao: '', busca: '' } };
+  let aba = 'pedidos'; const estado = { pedidos: { situacao: '', busca: '', de: '', ate: '', semLib: false }, prenotas: { situacao: '', busca: '' } };
 
   document.querySelectorAll('[data-pd-aba]').forEach((a) => a.addEventListener('click', () => { aba = a.dataset.pdAba; document.querySelectorAll('[data-pd-aba]').forEach((x) => x.classList.toggle('ativo', x === a)); carregar().catch(erro); }));
   nav.addEventListener('click', () => carregar().catch(erro));
@@ -34,9 +34,12 @@
   }
   const carregar = () => (aba === 'prenotas' ? desenharPrenotas() : desenharPedidos());
   const chips = (d, st) => `<div class="pd-chips"><button class="pd-chip${!st.situacao ? ' ativo' : ''}" data-pd-sit="">Todos</button>
-    ${d.situacoes.filter((s) => d.contagem[s] || s === st.situacao).map((s) => `<button class="pd-chip${s === st.situacao ? ' ativo' : ''}" data-pd-sit="${esc(s)}">${esc(s)} <b>${d.contagem[s]}</b></button>`).join('')}</div>`;
+    ${d.situacoes.filter((s) => d.contagem[s] || s === st.situacao).map((s) => `<button class="pd-chip${s === st.situacao ? ' ativo' : ''}" data-pd-sit="${esc(s)}">${esc(s)} <b>${d.contagem[s]}</b></button>`).join('')}
+    ${d.sem_lib_comercial != null ? `<button class="pd-chip pd-chip-lib${st.semLib ? ' ativo' : ''}" data-pd-semlib title="Pedidos sem a data de liberação comercial (o e-mail do comercial não trouxe o pedido). Junta com a situação escolhida; clique de novo para tirar.">${st.semLib ? '✕ ' : ''}Sem liberação comercial <b>${d.sem_lib_comercial}</b></button>` : ''}</div>`;
   const ligar = (st, recarregar) => {
     cont.querySelectorAll('[data-pd-sit]').forEach((b) => b.addEventListener('click', () => { st.situacao = b.dataset.pdSit; recarregar().catch(erro); }));
+    // Filtro "Sem liberação comercial" (o chip e o título da coluna ligam e desligam).
+    cont.querySelectorAll('[data-pd-semlib]').forEach((b) => b.addEventListener('click', () => { st.semLib = !st.semLib; recarregar().catch(erro); }));
     cont.querySelectorAll('[data-pd-nota]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); window.abrirNotaDetalhe?.(Number(a.dataset.pdNota)); }));
   };
 
@@ -90,7 +93,7 @@
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
     const sim = (b) => (b == null ? '—' : b ? 'S' : 'N');
     return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela pd-compacta"><thead><tr>
-        <th class="pd-fixa">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th>Liberação comercial</th><th>Peso</th><th>Cubagem</th>
+        <th class="pd-fixa">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th class="pd-th-filtro${estado.pedidos.semLib ? ' ativo' : ''}" data-pd-semlib title="Clique para ver só os pedidos sem liberação comercial (de novo para ver todos)">Liberação comercial ${estado.pedidos.semLib ? '✕' : '▾'}</th><th>Peso</th><th>Cubagem</th>
         <th>Status/WMS</th><th>Data Inicial</th><th>Expedição</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Separador</th><th>Data Início</th><th>Data Finalização</th><th>Conferente</th><th>Início Conferência</th><th>Fim Conferência</th>
         <th>Cancelado Wms</th><th>Nota Fiscal</th><th>Data de Emissão</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
@@ -189,7 +192,7 @@
 
   async function desenharPedidos() {
     const st = estado.pedidos;
-    const d = await api(`/?${new URLSearchParams({ situacao: st.situacao, busca: st.busca, de: st.de, ate: st.ate })}`);
+    const d = await api(`/?${new URLSearchParams({ situacao: st.situacao, busca: st.busca, de: st.de, ate: st.ate, sem_lib: st.semLib ? '1' : '' })}`);
     const r = d.resumo;
     ultimaLista = d.pedidos;
     const pode = podeImportar(); const admin = usuario?.perfil === 'admin';

@@ -608,7 +608,7 @@ def parte_uso(g):
         '<b>Do WMS</b> vêm o status, a data inicial, o usuário, a data e a quantidade de etiquetas, o início e o fim da separação e o '
         'cancelamento. Enquanto não houver ligação direta com o WMS, use <b>⋯ Mais › Importar planilha do WMS</b> (quem edita registros): uma planilha '
         'exportada do WMS com a coluna "Número Pedido" e as colunas "Status/WMS", "Data Inicial", "Usuário", "Data/Imp. Etq", '
-        '"Qtd. Etiquetas", "Data Início", "Data Finalização" e "Cancelado Wms" (as outras colunas são ignoradas; "Liberação" e "Expedição", '
+        '"Qtd. Etiquetas", "Data Início", "Data Finalização" e "Cancelado Wms" (também com os nomes da tela: "Situação Wms", "Data Inicial Wms", "Início da Separação", "Final da Separação", "Liberação Erp"; as outras colunas são ignoradas; "Liberação" e "Expedição", '
         'se vierem preenchidas, valem mais que as do ERP). Célula vazia não apaga o que já estava.',
         'Se a maioria dos valores de uma coluna não for do tipo dela (por exemplo, datas em "Qtd. Etiquetas"), a planilha é <b>recusada '
         'sem gravar nada</b>: é sinal de colunas deslocadas. Valores estranhos isolados ficam vazios e são avisados.',
@@ -632,7 +632,7 @@ def parte_uso(g):
         '<b>Usuário e Data/Imp. Etq</b> vêm da <b>OS da expedição</b> no WMS (/expedicao/os/index/id/nº da expedição): no histórico da OS '
         '(Data, Usuário, Mapa, Etiqueta, Andamento), a linha com o andamento <b>Etiquetas Impressas</b> (com reimpressão, a primeira); sem '
         'essa linha, as etiquetas ainda não foram impressas e o campo fica vazio. Vale para todos os pedidos daquela expedição. '
-        '<b>Separador, Data Início e Data Finalização</b> (quem separou e o início e o fim da separação, com data e hora) vêm da tela '
+        '<b>Separador, Início da Separação e Final da Separação</b> (quem separou e o início e o fim da separação, com data e hora) vêm da tela '
         '<b>Expedição &gt; Separação &gt; Definir Equipe de Separação</b> do WMS (apontamento de separação, tabela Planos de Separação): a '
         'Equipe (o nome, sem o CPF), a Data Início e a Data Finalização do plano que tem a expedição. Com mais de um plano ou separador, '
         'todos os nomes, o início mais cedo e o fim só quando todos os planos terminaram. O Nexofrete usa só a busca dessa tela: no '
@@ -652,9 +652,9 @@ def parte_uso(g):
         'EXPEDIÇÃO"); o fim, da coluna Fim dessa linha ou, quando ela está vazia, da linha "Conferencia finalizada..." do Andamento da '
         'expedição. Com mais de um conferente aparecem todos os nomes. Conferência começada e não finalizada deixa o pedido Em conferência; '
         'finalizada, Separado. A OS é relida a cada 2 horas enquanto faltar o fim da conferência; as OS já lidas são lidas de novo sozinhas '
-        'para trazer o conferente. Entram na visão Planilha (depois de Data Finalização), na Resumida (embaixo da separação), no buscador e no Excel; '
+        'para trazer o conferente. Entram na visão Planilha (depois de Final da Separação), na Resumida (embaixo da separação), no buscador e no Excel; '
         'o Testar OS mostra a conferência lida.',
-        '<b>🔎 buscar</b> (na coluna Status/WMS de cada pedido ainda sem dados do WMS): procura só aquele pedido no WMS, na hora. Se o WMS '
+        '<b>🔎 buscar</b> (na coluna Situação Wms de cada pedido ainda sem dados do WMS): procura só aquele pedido no WMS, na hora. Se o WMS '
         'não tiver a carga, aparece "não está no WMS".',
         '<b>⋯ Mais › Buscar todos sem dados no WMS</b>: procura no WMS, um por vez (1 segundo entre cada um), todos os '
         'pedidos dos últimos 60 dias sem dados ou não finalizados, em segundo plano. A linha do WMS mostra o andamento ("Buscando pedidos no '
@@ -676,8 +676,8 @@ def parte_uso(g):
         'A tabela rola dentro da tela, com o cabeçalho fixo: as barras de rolagem (inclusive a de lado, em telas menores) ficam sempre '
         'à vista, sem precisar ir até o fim da lista.',
         'Duas visões (botões <b>Planilha</b> e <b>Resumida</b>; o sistema lembra a escolhida): <b>Planilha</b> mostra cada campo na sua coluna, '
-        'na ordem da planilha de pedidos (Número Pedido, Situação, Observações, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação, Liberação comercial, Peso, Cubagem, '
-        'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Data Início, Data Finalização, Conferente, Início Conferência, Fim Conferência, Cancelado Wms, Nota '
+        'na ordem da planilha de pedidos (Número Pedido, Situação, Observações, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação Erp, Liberação comercial, Peso, Cubagem, '
+        'Situação Wms, Data Inicial Wms, Expedição Wms, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Início da Separação, Final da Separação, Conferente, Início Conferência, Fim Conferência, Cancelado Wms, Nota '
         'Fiscal e Data de Emissão), no modelo da lista do ERP: uma linha por pedido, linhas zebradas, textos longos cortados com '
         'reticências (o texto inteiro aparece ao passar o mouse) e a linha clicada destacada em azul, com o número do pedido fixo à '
         'esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '

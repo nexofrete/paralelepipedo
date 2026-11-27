@@ -73,7 +73,7 @@
     ? ` <a href="#" data-pd-wmsbuscar="${esc(p.pedido)}" style="font-size:11.5px; white-space:nowrap;" title="Procura este pedido no WMS agora">🔎 buscar</a>` : '');
   function tabelaPedidos(d) {
     if (visao === 'resumida') return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela" style="font-size:12.5px; width:100%;"><thead><tr>
-        <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação / expedição</th><th>Peso / cub.</th><th>Status WMS</th><th>Etiquetas / separação</th><th>NF-e</th></tr></thead><tbody>
+        <th>Pedido</th><th>Situação</th><th>Cliente</th><th>Liberação Erp / expedição</th><th>Peso / cub.</th><th>Situação Wms</th><th>Etiquetas / separação</th><th>NF-e</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
         <td><b>${esc(p.pedido)}</b>${p.pedido_cliente ? fraco(`Mercus ${esc(p.pedido_cliente)}`) : ''}</td>
         <td style="white-space:nowrap;">${sit(p.situacao)}${p.obs || podeImportar() ? `<br><small style="white-space:normal; display:inline-block; max-width:200px;">📝 ${obsCel(p)}</small>` : ''}${p.embarque_id ? fraco(`embarque ${p.embarque_id}`) : ''}${p.ordem_id ? fraco(`ordem ${p.ordem_id}`) : ''}${p.data_entrega ? fraco(dia(p.data_entrega)) : ''}</td>
@@ -93,8 +93,8 @@
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
     const sim = (b) => (b == null ? '—' : b ? 'S' : 'N');
     return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela pd-compacta"><thead><tr>
-        <th class="pd-fixa">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th class="pd-th-filtro${estado.pedidos.semLib ? ' ativo' : ''}" data-pd-semlib title="Clique para ver só os pedidos sem liberação comercial (de novo para ver todos)">Liberação comercial ${estado.pedidos.semLib ? '✕' : '▾'}</th><th>Peso</th><th>Cubagem</th>
-        <th>Status/WMS</th><th>Data Inicial</th><th>Expedição</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Separador</th><th>Data Início</th><th>Data Finalização</th><th>Conferente</th><th>Início Conferência</th><th>Fim Conferência</th>
+        <th class="pd-fixa">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação Erp</th><th class="pd-th-filtro${estado.pedidos.semLib ? ' ativo' : ''}" data-pd-semlib title="Clique para ver só os pedidos sem liberação comercial (de novo para ver todos)">Liberação comercial ${estado.pedidos.semLib ? '✕' : '▾'}</th><th>Peso</th><th>Cubagem</th>
+        <th>Situação Wms</th><th>Data Inicial Wms</th><th>Expedição Wms</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Separador</th><th>Início da Separação</th><th>Final da Separação</th><th>Conferente</th><th>Início Conferência</th><th>Fim Conferência</th>
         <th>Cancelado Wms</th><th>Nota Fiscal</th><th>Data de Emissão</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
         <td class="pd-fixa"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}<td title="${esc(p.obs || '')}"><div class="pd-flex" style="max-width:220px;">${obsCel(p)}</div></td>${nw(esc(cnpjF(p.cnpj) || '—'))}
@@ -218,7 +218,7 @@
           ${pode || admin ? `<div class="pd-mais"><button class="btn btn-secundario pd-btn" id="pdMaisBtn" title="Mais ações">⋯ Mais</button>
             <div class="pd-menu oculto" id="pdMenu">
               ${pode ? '<button id="pdLibPdf" title="E-mails de liberação do comercial impressos em PDF: a data do e-mail vira a liberação comercial dos pedidos listados nele">📧 Liberação comercial (PDF)</button>' : ''}
-              ${pode ? '<button id="pdWms" title="Planilha exportada do WMS (Número Pedido, Status/WMS, Data Inicial...)">⬆ Importar planilha do WMS</button>' : ''}
+              ${pode ? '<button id="pdWms" title="Planilha exportada do WMS (Número Pedido, Situação Wms ou Status/WMS, Data Inicial...)">⬆ Importar planilha do WMS</button>' : ''}
               ${pode ? '<button id="pdWmsTodos" class="oculto" title="Procura no WMS, um por vez, todos os pedidos dos últimos 60 dias sem dados ou não finalizados">🔎 Buscar todos sem dados no WMS</button>' : ''}
               ${pode ? '<button id="pdWmsPausar" class="oculto"></button>' : ''}
               <hr>
@@ -256,9 +256,9 @@
     cont.querySelectorAll('[data-pd-visao]').forEach((b) => b.addEventListener('click', () => { visao = b.dataset.pdVisao; try { localStorage.setItem('nexofretePedidosVisao', visao); } catch (e) { /* sem armazenamento */ } desenharPedidos().catch(erro); }));
     ['pdDe', 'pdAte'].forEach((id) => $(id).addEventListener('change', () => { st.de = $('pdDe').value; st.ate = $('pdAte').value; desenharPedidos().catch(erro); }));
     $('pdExcel').addEventListener('click', () => {
-      window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação', 'Liberação comercial', 'Peso (kg)', 'Cubagem (m³)',
-        'Status/WMS', 'Data Inicial', 'Expedição', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Separador', 'Data Início', 'Data Finalização', 'Conferente', 'Início Conferência', 'Fim Conferência', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
-        'Situação', 'Observações', 'Destino', 'Transportadora', 'CT-e', 'Expedição WMS', 'Tipo Pedido', 'Placa', 'Motorista', 'Itinerário', 'Data Final (WMS)', '% Conferência', 'Imprimir'],
+      window.exportarExcel?.(`pedidos-${d.de}-a-${d.ate}`, [{ nome: 'Pedidos', colunas: ['Número Pedido', 'CNPJ', 'Cliente', 'Nome Curto', 'Pedido Mercus', 'Liberação Erp', 'Liberação comercial', 'Peso (kg)', 'Cubagem (m³)',
+        'Situação Wms', 'Data Inicial Wms', 'Expedição Wms', 'Usuário', 'Data/Imp. Etq', 'Qtd. Etiquetas', 'Separador', 'Início da Separação', 'Final da Separação', 'Conferente', 'Início Conferência', 'Fim Conferência', 'Cancelado Wms', 'Nota Fiscal', 'Data de Emissão',
+        'Situação', 'Observações', 'Destino', 'Transportadora', 'CT-e', 'Nº Expedição WMS', 'Tipo Pedido', 'Placa', 'Motorista', 'Itinerário', 'Data Final (WMS)', '% Conferência', 'Imprimir'],
       linhas: ultimaLista.map((p) => [p.pedido, cnpjF(p.cnpj), p.cliente || '', p.nome_curto || '', p.pedido_cliente || '', dh(p.liberado_em || p.data_pedido).replace('—', ''), dh(p.lib_comercial).replace('—', ''), p.peso, p.cubagem,
         p.status_wms || '', dh(p.data_inicial).replace('—', ''), p.expedicao || '', p.usuario || '', dh(p.etiquetas_em).replace('—', ''), p.qtd_etiquetas, p.separador || '', dh(p.sep_inicio).replace('—', ''),
         dh(p.sep_fim).replace('—', ''), p.conferente || '', dh(p.conf_inicio).replace('—', ''), dh(p.conf_fim).replace('—', ''), p.cancelado_wms ? 'S' : (p.tem_wms ? 'N' : ''), p.nf || '', p.emissao_nf ? dia(p.emissao_nf) : '', p.situacao, p.obs || '', p.destino || '', p.transportadora || '', p.numero_cte || '',
@@ -349,8 +349,8 @@
         const r2 = await apiFetch('/api/pedidos/wms', { method: 'POST', body: fd });
         const j = await r2.json().catch(() => ({}));
         if (!r2.ok) throw new Error(j.erro || 'Erro ao importar a planilha do WMS.');
-        const NOMES = { status: 'Status/WMS', data_inicial: 'Data Inicial', usuario: 'Usuário', etiquetas_impressas_em: 'Data/Imp. Etq', qtd_etiquetas: 'Qtd. Etiquetas', separacao_inicio: 'Data Início',
-          separacao_fim: 'Data Finalização', cancelado: 'Cancelado Wms', liberacao: 'Liberação', expedicao: 'Expedição' };
+        const NOMES = { status: 'Situação Wms', data_inicial: 'Data Inicial Wms', usuario: 'Usuário', etiquetas_impressas_em: 'Data/Imp. Etq', qtd_etiquetas: 'Qtd. Etiquetas', separacao_inicio: 'Início da Separação',
+          separacao_fim: 'Final da Separação', cancelado: 'Cancelado Wms', liberacao: 'Liberação Erp', expedicao: 'Expedição Wms' };
         const inv = Object.entries(j.invalidos || {}).map(([c, n]) => `${NOMES[c] || c}: ${num(n)}`);
         await desenharPedidos();
         $('pdWmsRes').innerHTML = `<span style="color:var(--verde);">✓</span> ${num(j.pedidos)} pedido(s) do WMS gravados (${num(j.total)} linhas). Colunas lidas: ${(j.colunas || []).map((c) => esc(c.coluna)).join(', ')}.`

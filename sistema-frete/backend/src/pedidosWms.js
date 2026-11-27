@@ -39,18 +39,18 @@ const COLUNAS = [
   // No WMS (Imperium) a Carga é o número do pedido do ERP.
   ['numero_pedido', ['numero pedido', 'nr pedido', 'pedido', 'n pedido', 'num pedido', 'cargas', 'carga', 'cod carga externo'], pedido],
   ['status', ['status wms', 'status', 'situacao wms'], texto],
-  ['data_inicial', ['data inicial'], dataHora],
+  ['data_inicial', ['data inicial', 'data inicial wms'], dataHora],
   ['usuario', ['usuario'], texto],
   ['separador', ['separador', 'responsavel separacao', 'quem separou'], texto],
   ['etiquetas_impressas_em', ['data imp etq', 'data impressao etiqueta', 'impressao etiquetas', 'data etiqueta'], dataHora],
   ['qtd_etiquetas', ['qtd etiquetas', 'quantidade etiquetas', 'qtde etiquetas'], inteiro],
-  ['separacao_inicio', ['data inicio', 'inicio separacao'], dataHora],
-  ['separacao_fim', ['data finalizacao', 'fim separacao', 'data fim'], dataHora],
+  ['separacao_inicio', ['data inicio', 'inicio separacao', 'inicio da separacao'], dataHora],
+  ['separacao_fim', ['data finalizacao', 'fim separacao', 'data fim', 'final da separacao', 'fim da separacao'], dataHora],
   ['cancelado', ['cancelado wms', 'cancelado'], simNao],
-  ['liberacao', ['liberacao haila leticia', 'liberacao'], dataHora],
-  ['expedicao', ['expedicao'], texto],
+  ['liberacao', ['liberacao haila leticia', 'liberacao', 'liberacao erp'], dataHora],
+  ['expedicao', ['expedicao', 'expedicao wms'], texto],
   // Tela Expedição Mercadorias do WMS (consulta automática ou o Exportar dela).
-  ['expedicao_numero', ['numero da expedicao', 'numero expedicao', 'expedicao wms'], texto],
+  ['expedicao_numero', ['numero da expedicao', 'numero expedicao', 'n expedicao wms', 'no expedicao wms', 'n expedicao'], texto],
   ['tipo_pedido', ['tipo pedido'], texto],
   ['placa', ['placa'], texto],
   ['motorista', ['motorista'], texto],
@@ -73,7 +73,7 @@ function lerPlanilha(buffer) {
   const colPedido = mapa.find((m) => m.campo === 'numero_pedido')?.col;
   if (['cargas', 'carga'].includes(semAcento(colPedido))) mapa.forEach((m) => { if (m.campo === 'expedicao') { m.campo = 'expedicao_numero'; m.conv = texto; } });
   if (!mapa.some((m) => m.campo === 'numero_pedido')) throw Object.assign(new Error('Não achei a coluna "Número Pedido".'), { status: 400 });
-  if (mapa.length < 2) throw Object.assign(new Error('A planilha não tem nenhuma coluna do WMS (Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Data Início, Data Finalização, Cancelado Wms).'), { status: 400 });
+  if (mapa.length < 2) throw Object.assign(new Error('A planilha não tem nenhuma coluna do WMS (Situação Wms ou Status/WMS, Data Inicial, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Início/Final da Separação ou Data Início/Finalização, Cancelado Wms).'), { status: 400 });
   const invalidos = {}; const preenchidos = {};
   const porPedido = new Map();
   for (const l of linhas) {

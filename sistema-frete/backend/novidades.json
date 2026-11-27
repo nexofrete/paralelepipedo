@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "Colunas da tela Pedidos e do Excel renomeadas: Status/WMS virou Situação Wms, Liberação virou Liberação Erp, Data Inicial virou Data Inicial Wms, Expedição virou Expedição Wms, Data Início virou Início da Separação e Data Finalização virou Final da Separação. A importação da planilha do WMS aceita os nomes novos e os antigos."},
         {"area": "Pedidos", "texto": "Filtro Sem liberação comercial na tela Pedidos (botão ao lado das situações ou clique no título da coluna): mostra os pedidos que não vieram em nenhum e-mail de liberação do comercial, para conferir com o comercial. Junta com a situação escolhida."},
         {"area": "Pedidos", "texto": "Tela Pedidos: novos campos Conferente, Início Conferência e Fim Conferência (data e hora), lidos da OS da expedição no WMS (atividade de conferência das Ordens de Serviço e o \"Conferencia finalizada\" do andamento). Conferência começada e não finalizada deixa o pedido Em conferência."},
         {"area": "Pedidos", "texto": "Nova situação Integrado na tela Pedidos e nos relatórios: o pedido já está no WMS (status INTEGRADO) e a separação ainda não começou, com cartão e filtro próprios. O relatório 109 passou a se chamar Liberados e integrados aguardando separação e separa os integrados dos que não chegaram ao WMS."},

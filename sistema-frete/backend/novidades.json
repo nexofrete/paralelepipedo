@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "Visão Planilha da tela Pedidos no modelo da lista do ERP: uma linha por pedido, zebrada, mais compacta, textos longos com reticências e a linha clicada destacada."},
         {"area": "Pedidos", "texto": "Tela Pedidos mostra só os pedidos liberados pelo comercial: status A e tipo P do ERP (ESTATUS_PEDIDO e TIPO_PEDIDO da Timeline), com ⚙ para mudar os status e tipos ou desligar o filtro. As buscas no WMS seguem o mesmo filtro."},
         {"area": "Pedidos", "texto": "Campo Observações em cada pedido (ex.: \"pedido agendando\"), editável pelo lápis, com atalhos para as anotações mais comuns; aparece nas duas visões, entra no buscador e no Excel."},
         {"area": "Pedidos", "texto": "Campo Liberação comercial na tela Pedidos: lido do e-mail de liberação do comercial impresso em PDF (a data do e-mail vale para os pedidos listados nele) e editável à mão em cada pedido (a data manual não é trocada pelos e-mails seguintes)."},

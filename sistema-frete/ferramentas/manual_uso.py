@@ -667,7 +667,9 @@ def parte_uso(g):
         'Duas visões (botões <b>Planilha</b> e <b>Resumida</b>; o sistema lembra a escolhida): <b>Planilha</b> mostra cada campo na sua coluna, '
         'na ordem da planilha de pedidos (Número Pedido, Situação, Observações, CNPJ, Cliente, Nome Curto, Pedido Mercus, Liberação, Liberação comercial, Peso, Cubagem, '
         'Status/WMS, Data Inicial, Expedição, Usuário, Data/Imp. Etq, Qtd. Etiquetas, Separador, Data Início, Data Finalização, Cancelado Wms, Nota '
-        'Fiscal e Data de Emissão), com o número do pedido fixo à esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '
+        'Fiscal e Data de Emissão), no modelo da lista do ERP: uma linha por pedido, linhas zebradas, textos longos cortados com '
+        'reticências (o texto inteiro aparece ao passar o mouse) e a linha clicada destacada em azul, com o número do pedido fixo à '
+        'esquerda ao rolar para o lado; <b>Resumida</b> agrupa os campos para '
         'caber na tela (etiquetas e separação na mesma coluna, placa e motorista embaixo do status).',
         '<b>Observações</b>: anotação livre de cada pedido (ex.: "pedido agendando", "cliente vai retirar"), até 500 caracteres, também em '
         'pedido que ainda não tem nota. O lápis abre a janela de edição, com atalhos para as anotações mais comuns (Pedido agendando, '

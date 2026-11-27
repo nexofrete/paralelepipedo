@@ -2306,3 +2306,22 @@ html.menu-recolhido .barra-lateral:not(:hover) .rodape-menu #btnSair { margin-le
   color: var(--texto-fraco); background: color-mix(in srgb, var(--texto) 6%, transparent); }
 .nf-resumo > div { border-radius: 12px; padding: 8px 14px; min-width: 116px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); font-size: 11.5px; }
 .nf-resumo > div b { font-size: 18px; letter-spacing: -.2px; margin-top: 1px; }
+
+/* Pedidos (405), visão Planilha: lista compacta como a do ERP — uma linha por pedido, zebrada, espaçamento menor,
+   textos longos cortados com reticências (o texto inteiro aparece ao passar o mouse) e a linha clicada destacada. */
+.pd-compacta { font-size: 12.5px; border-collapse: separate; border-spacing: 0; }
+.pd-compacta th { padding: 7px 10px; font-size: 11.5px; white-space: nowrap; }
+.pd-compacta td { padding: 5px 10px; white-space: nowrap; vertical-align: middle; border-bottom: 1px solid var(--borda); line-height: 1.3; }
+/* Fundos opacos (cor por cima do fundo do cartão), para a coluna fixa do pedido não deixar ver o que rola por baixo. */
+.pd-compacta tbody td { background: var(--bg-card); }
+.pd-compacta tbody tr:nth-child(even) td { background: linear-gradient(rgba(120, 130, 150, .07), rgba(120, 130, 150, .07)), var(--bg-card); }
+.pd-compacta tbody tr:hover td { background: linear-gradient(rgba(59, 130, 246, .08), rgba(59, 130, 246, .08)), var(--bg-card); }
+.pd-compacta tbody tr.pd-selecionada td { background: linear-gradient(rgba(59, 130, 246, .24), rgba(59, 130, 246, .24)), var(--bg-card); }
+.pd-compacta .pd-corta { overflow: hidden; text-overflow: ellipsis; }
+.pd-compacta .pd-fixa { position: sticky; left: 0; z-index: 1; box-shadow: inset -1px 0 0 var(--borda); }
+.pd-compacta thead .pd-fixa { z-index: 3; background: var(--bg-card); }
+.pd-compacta .oc-sit { padding: 1px 7px; font-size: 11px; }
+.pd-compacta small { font-size: 10.5px; }
+.pd-compacta .pd-flex { display: flex; align-items: center; gap: 4px; }
+.pd-compacta .pd-flex > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pd-compacta .pd-flex > a { flex: 0 0 auto; }

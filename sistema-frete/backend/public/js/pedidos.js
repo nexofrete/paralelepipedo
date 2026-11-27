@@ -88,13 +88,13 @@
         : '<tr><td colspan="8" style="text-align:center; padding:22px; color:var(--texto-fraco);">Nenhum pedido no período. Os pedidos entram pela planilha do ERP (Timeline de pedidos).</td></tr>'}
       </tbody></table></div>${d.pedidos.length > 1000 ? '<p style="font-size:12px; padding:6px 10px; margin:0;">Mostrando os 1.000 mais recentes (o Excel leva todos).</p>' : ''}</div>`;
     const sim = (b) => (b == null ? '—' : b ? 'S' : 'N');
-    return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela" style="font-size:12.5px;"><thead><tr>
-        <th style="position:sticky; left:0; z-index:3; background:var(--bg-card); box-shadow:inset -1px -1px 0 var(--borda);">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th>Liberação comercial</th><th>Peso</th><th>Cubagem</th>
+    return `<div class="painel nf-rolagem-painel" style="margin-top:10px;"><div class="nf-rolagem" style="max-height:calc(100vh - 240px);"><table class="tabela pd-compacta"><thead><tr>
+        <th class="pd-fixa">Número Pedido</th><th>Situação</th><th>Observações</th><th>CNPJ</th><th>Cliente</th><th>Nome Curto</th><th>Pedido Mercus</th><th>Liberação</th><th>Liberação comercial</th><th>Peso</th><th>Cubagem</th>
         <th>Status/WMS</th><th>Data Inicial</th><th>Expedição</th><th>Usuário</th><th>Data/Imp. Etq</th><th>Qtd. Etiquetas</th><th>Separador</th><th>Data Início</th><th>Data Finalização</th>
         <th>Cancelado Wms</th><th>Nota Fiscal</th><th>Data de Emissão</th></tr></thead><tbody>
       ${d.pedidos.length ? d.pedidos.slice(0, 1000).map((p) => `<tr>
-        <td style="white-space:nowrap; position:sticky; left:0; z-index:1; background:var(--bg-card); box-shadow:inset -1px 0 0 var(--borda);"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}<td style="min-width:140px; max-width:240px; white-space:normal;">${obsCel(p)}</td>${nw(esc(cnpjF(p.cnpj) || '—'))}
-        <td style="min-width:200px; max-width:260px; white-space:normal;">${esc(p.cliente || '—')}</td>
+        <td class="pd-fixa"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}<td title="${esc(p.obs || '')}"><div class="pd-flex" style="max-width:220px;">${obsCel(p)}</div></td>${nw(esc(cnpjF(p.cnpj) || '—'))}
+        <td class="pd-corta" style="max-width:240px;" title="${esc(p.cliente || '')}">${esc(p.cliente || '—')}</td>
         ${nw(esc(p.nome_curto || '—'))}${nw(esc(p.pedido_cliente || '—'))}
         ${nw(`${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}`)}${nw(libCom(p))}
         ${nw(p.peso == null ? '—' : `${num(p.peso, 1)} kg`)}${nw(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}
@@ -217,6 +217,12 @@
       ${tabelaPedidos(d)}`;
     ligar(st, desenharPedidos);
     ajustarRolagem();
+    // Clique na linha: fica destacada (como na lista do ERP), para não se perder ao rolar para o lado.
+    cont.querySelectorAll('table.pd-compacta tbody tr').forEach((tr) => tr.addEventListener('click', (e) => {
+      if (e.target.closest('a, button, input')) return;
+      cont.querySelectorAll('table.pd-compacta tr.pd-selecionada').forEach((x) => x.classList.remove('pd-selecionada'));
+      tr.classList.add('pd-selecionada');
+    }));
     cont.querySelectorAll('[data-pd-wmsbuscar]').forEach((a) => a.addEventListener('click', async (e) => {
       e.preventDefault(); a.textContent = 'buscando...';
       try {

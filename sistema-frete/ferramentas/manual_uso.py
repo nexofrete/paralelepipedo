@@ -693,6 +693,24 @@ def parte_uso(g):
         'curto, CNPJ, NF, cidade, transportadora, status do WMS ou usuário. O <b>Excel</b> leva todos os pedidos com as colunas da planilha de '
         'pedidos, mais a situação, o destino, a transportadora e o CT-e.',
     ])
+    s += h2('Relatórios de pedidos (407)')
+    s.append(P('Menu <b>Finanças › Faturamento › Relatórios</b> (ou Ctrl+K 407). Usam a mesma lista da tela Pedidos (o mesmo filtro de status/tipo '
+        'do ERP, o WMS, a liberação comercial e as observações) e têm, como os outros relatórios, totalizador, gráfico, <b>Excel</b>, <b>PDF</b> '
+        '(abre a página pronta; escolha "Salvar como PDF") e <b>Imprimir</b>, para mandar às equipes. Filtros: cliente (nome ou CNPJ), separador '
+        'ou usuário do WMS, número do pedido (um ou vários) e, em Mais filtros, transportadora. Os quatro primeiros mostram a situação de '
+        'agora (pedidos dos últimos 120 dias) e trazem a coluna <b>O que fazer</b>.'))
+    s += tabela(['Nº', 'Relatório', 'Para quem / decisão'], [
+        ['107', 'Separados e ainda sem nota fiscal: separação finalizada no WMS e sem NF-e, há quanto tempo (até 4 h, 4 a 24 h, 1 a 3 dias, mais de 3 dias), quem separou, etiquetas, NF já informada pelo ERP', 'Faturamento: o que faturar primeiro. NF no ERP sem XML aqui = conferir a importação da nota'],
+        ['108', 'Em separação sem separador apontado: em separação ou conferência no WMS sem o nome do separador', 'Líder do armazém: apontar o separador (sem ele não há responsável nem produtividade). Se o dado do WMS for antigo, Atualizar do WMS antes'],
+        ['109', 'Liberados aguardando separação (fila): liberados pelo comercial e ainda não iniciados, pelo tempo de espera, e os que não chegaram ao WMS', 'Armazém: priorizar a fila; pedido que não chegou ao WMS = conferir a integração do ERP com o WMS'],
+        ['112', 'Pedidos parados além do limite: aguardando separação mais de 24 h, em separação ou conferência mais de 4 h, separado sem nota mais de 8 h (Só problemas desmarcado mostra todos)', 'Reunião diária: o gargalo do dia, etapa por etapa'],
+        ['110', 'Tempo de cada etapa: liberação comercial &gt; início da separação &gt; fim &gt; etiquetas &gt; NF, com as médias e a etapa mais demorada de cada pedido', 'Gestão: onde está o gargalo (liberação até separar = falta de gente ou de prioridade; separação longa = processo; separado até NF = faturamento)'],
+        ['111', 'Produtividade por separador: pedidos, finalizados, etiquetas, peso, tempo médio por pedido, pedidos por dia e kg por hora (clique para ver os pedidos)', 'Gestão: dimensionar a equipe, treinar e reconhecer'],
+        ['116', 'Entrada x saída por dia: liberados, separados e faturados por dia e o saldo acumulado', 'Gestão: se entra mais do que sai, falta capacidade (hora extra, turno, mais separadores)'],
+        ['113', 'Resumo por situação: pedidos, % , peso, valor, etiquetas, idade média e o mais antigo de cada situação (clique para ver os pedidos)', 'Panorama para a diretoria'],
+        ['114', 'Pedidos com observação (agendamento, aguardando o cliente...), quem escreveu e em que situação estão', 'Comercial e atendimento'],
+        ['115', 'Etiquetas impressas por usuário (OS da expedição): pedidos, etiquetas, peso e etiquetas por dia', 'Expedição'],
+    ])
     s += h2('Pré-notas fiscais (406)')
     s += lista([
         'A pré-nota é a linha da planilha do ERP: o pedido antes da NF-e. A aba lista as que esperam faturamento e as já faturadas dos '

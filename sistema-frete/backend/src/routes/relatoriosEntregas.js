@@ -25,4 +25,6 @@ function montar(telas, pode) {
 
 module.exports = montar(TELAS, permitirAlguma('pode_ver_relatorios'));
 module.exports.financeiro = montar(['financeiro'], permitirAlguma('pode_ver_financeiro'));
+// Relatórios de pedidos (407): quem abre a tela Pedidos (aberta a todos os usuários do embarcador, como ela).
+module.exports.pedidos = montar(['pedidos'], (req, res, next) => next());
 module.exports.operacao = montar(['operacao'], permitirAlguma('pode_emitir_cte', 'pode_ver_relatorios', 'pode_ver_financeiro'));

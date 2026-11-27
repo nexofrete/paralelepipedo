@@ -239,7 +239,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
   const filtros = () => {
     const q = new URLSearchParams({ de: $(P + 'De').value, ate: $(P + 'Ate').value });
     campos.forEach((f) => { const v = valorFiltro(f); if (v) q.set(f.p, v); });
-    if (atual === 46 && $(P + 'Prob').checked) q.set('so_problemas', '1');
+    if ([46, 112].includes(atual) && $(P + 'Prob').checked) q.set('so_problemas', '1');
     if (detalhe) q.set('detalhe', detalhe.valor);
     return q;
   };
@@ -252,7 +252,7 @@ function telaRelatorios({ pagina, conteudo, P, tela, primeiro, chaveLs, periodoP
     if (sec && sec.dataset.rel !== String(atual)) { sec.dataset.rel = String(atual); document.dispatchEvent(new Event('tela-mudou')); }
     $(P + 'Titulo').textContent = `${atual} · ${info.titulo || ''}`; $(P + 'Desc').textContent = info.desc || '';
     $(P + 'PerCaixa').classList.toggle('re-sem-periodo', !!info.semPeriodo);
-    $(P + 'ProbCaixa').classList.toggle('oculto', atual !== 46);
+    $(P + 'ProbCaixa').classList.toggle('oculto', ![46, 112].includes(atual));
     cont.querySelectorAll('.re-item').forEach((x) => x.classList.toggle('ativo', Number(x.dataset.re) === atual));
     $(P + 'Trab').classList.toggle('oculto', !info.trabalho || !window.Navegar?.acessivel(info.trabalho.destino));
     if (info.trabalho) $(P + 'Trab').textContent = `↗ ${info.trabalho.rotulo}`;
@@ -442,6 +442,15 @@ telaRelatorios({ pagina: 'relatorios-financeiros', conteudo: 'fiConteudo', P: 'f
   api: '/api/relatorios-financeiros', pode: () => usuario?.perfil === 'admin' || !!usuario?.pode_ver_financeiro });
 telaRelatorios({ pagina: 'relatorios-auditoria', conteudo: 'auConteudo', P: 'au', tela: 'auditoria', primeiro: 11, chaveLs: 'nexofreteRelAuditoria', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'relatorios-operacionais', conteudo: 'oqConteudo', P: 'oq', tela: 'operacional', primeiro: 99, chaveLs: 'nexofreteRelOperacional', periodoPadrao: '30d' });
+// Relatórios de pedidos (407): a mesma lista da tela Pedidos (aberta a todos, como ela).
+const FILTROS_PEDIDOS = [
+  { id: 'Cli', p: 'cliente', rot: 'Cliente (nome ou CNPJ)', ph: 'Todos' },
+  { id: 'Sep', p: 'separador', rot: 'Separador ou usuário do WMS', ph: 'Todos' },
+  { id: 'Ped', p: 'pedido', rot: 'Nº do pedido', ph: 'Um ou vários' },
+  { id: 'Transp', p: 'transportadora', rot: 'Transportadora', ph: 'Todas', mais: true },
+];
+telaRelatorios({ pagina: 'relatorios-pedidos', conteudo: 'rpdConteudo', P: 'rpd', tela: 'pedidos', primeiro: 107, chaveLs: 'nexofreteRelPedidos', periodoPadrao: '30d',
+  api: '/api/relatorios-pedidos', campos: FILTROS_PEDIDOS, pode: () => true });
 telaRelatorios({ pagina: 'relatorios-planejamento', conteudo: 'pjConteudo', P: 'pj', tela: 'planejamento', primeiro: 81, chaveLs: 'nexofreteRelPlanejamento', periodoPadrao: '3m' });
 telaRelatorios({ pagina: 'relatorios-nfe-cte', conteudo: 'ncConteudo', P: 'nc', tela: 'nfecte', primeiro: 25, chaveLs: 'nexofreteRelNfeCte', periodoPadrao: '30d' });
 telaRelatorios({ pagina: 'desempenho-transportadoras', conteudo: 'dtConteudo', P: 'dt', tela: 'desempenho', primeiro: 61, chaveLs: 'nexofreteRelDesempenho', periodoPadrao: '3m' });

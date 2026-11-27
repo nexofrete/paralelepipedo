@@ -179,6 +179,13 @@
         <div class="nav-tsub" data-ir="faturamento" data-aba="afaturar" data-modulo="transportadora">➕ A faturar (CT-e sem fatura)</div>
         <div class="nav-tsub" data-ir="faturamento" data-aba="extras" data-modulo="transportadora">➕ Serviços extras</div>
         <div class="nav-subtit">Relatórios</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-rel="107" data-modulo="embarcador">Separados e ainda sem nota fiscal</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-rel="108" data-modulo="embarcador">Em separação sem separador</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-rel="109" data-modulo="embarcador">Liberados aguardando separação</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-rel="112" data-modulo="embarcador">Pedidos parados além do limite</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-rel="110" data-modulo="embarcador">Tempo de cada etapa do pedido</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-rel="111" data-modulo="embarcador">Produtividade por separador</div>
+        <div class="nav-tsub" data-ir="relatorios-pedidos" data-modulo="embarcador">📊 Todos os relatórios de pedidos</div>
         <div class="nav-tsub" data-ir="painel-transporte" data-aba="resultado" data-modulo="transportadora">💹 Margem por CT-e e cliente</div>
       </div>
       <div class="nav-grupo oculto" data-grupo="fiscal" data-modulo="transportadora">🧮 Fiscal e contábil <span class="nav-seta">▸</span></div>
@@ -268,6 +275,7 @@
       <div class="nav-item nav-no-grupo oculto" data-pagina="patio" id="navPatio" data-modulo="embarcador">🚧 Pátio e portaria</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="cargas" id="navCargas" data-modulo="embarcador">🚛 Cargas</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="pedidos" id="navPedidos" data-modulo="embarcador">📋 Pedidos</div>
+      <div class="nav-item nav-no-grupo oculto" data-pagina="relatorios-pedidos" id="navRelPedidos" data-modulo="embarcador">📊 Relatórios de pedidos</div>
       <div class="nav-item nav-no-grupo oculto" data-pagina="ferias" id="navFerias">🏖 Férias</div>
       <div class="nav-item nav-no-grupo" data-pagina="relatorios-entregas" id="navRelEntregas">📦 Relatórios de entregas</div>
       <div class="nav-item nav-no-grupo" data-pagina="desempenho-transportadoras" id="navDesempTransp">🏆 Desempenho das transportadoras</div>
@@ -566,6 +574,16 @@
           </div>
         </div>
         <div id="pjConteudo"></div>
+      </section>
+
+      <section id="pagina-relatorios-pedidos" class="oculto">
+        <div class="cabecalho-pagina">
+          <div>
+            <h2>Relatórios de pedidos</h2>
+            <p>Da liberação comercial à nota fiscal: o que está parado em cada etapa (para as equipes) e os tempos e a produtividade (para decisão). Em Excel, PDF ou impressão.</p>
+          </div>
+        </div>
+        <div id="rpdConteudo"></div>
       </section>
 
       <section id="pagina-relatorios-operacionais" class="oculto">

@@ -277,6 +277,8 @@ Object.assign(RELATORIOS, require('./relatoriosOperacao')());
 Object.assign(RELATORIOS, require('./relatoriosPlanejamento')(ajudas));
 // 87 a 99: controle operacional dos fretes contratados (tela 332).
 Object.assign(RELATORIOS, require('./relatoriosOperacional')(ajudas));
+// 107 a 116: pedidos, da liberação comercial à nota (tela 407; rota /api/relatorios-pedidos).
+Object.assign(RELATORIOS, require('./relatoriosPedidos')());
 
 // Relatório que repetia outro vira atalho para ele; e cada relatório que tem uma tela de trabalho (com as ações: aprovar,
 // glosar, religar, aceitar, buscar na SSW, pagar) ganha o botão para abri-la.

@@ -15,5 +15,5 @@ test('relatórios de pedidos 107 a 116 na tela 407', () => {
   assert.deepStrictEqual(nums, [107, 108, 109, 110, 111, 112, 113, 114, 115, 116]);
   assert.ok(RELATORIOS[107].semPeriodo && RELATORIOS[108].semPeriodo && RELATORIOS[109].semPeriodo);
   assert.ok(RELATORIOS[111].detalhe && RELATORIOS[113].detalhe);
-  assert.deepStrictEqual(Object.keys(LIMITE), ['Aguardando nota', 'Em separação', 'Em conferência', 'Separado']);
+  assert.deepStrictEqual(Object.keys(LIMITE), ['Aguardando nota', 'Integrado', 'Em separação', 'Em conferência', 'Separado']);
 });

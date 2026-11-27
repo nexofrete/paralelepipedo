@@ -11,7 +11,7 @@ const hojeSP = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 1
 
 const T = 'pedidos';
 // Limites de cada etapa (horas) para dizer que o pedido está parado.
-const LIMITE = { 'Aguardando nota': 24, 'Em separação': 4, 'Em conferência': 4, Separado: 8 };
+const LIMITE = { 'Aguardando nota': 24, Integrado: 24, 'Em separação': 4, 'Em conferência': 4, Separado: 8 };
 
 // "Agora" no horário de Brasília, no mesmo formato que a tela Pedidos usa ("AAAA-MM-DD HH:MM").
 const agoraSP = () => new Date().toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 16);
@@ -85,16 +85,18 @@ module.exports = function criar() {
   // 109 ---------------------------------------------------------------------------------------------------------------
   async function filaSeparacao(req, q) {
     const agora = agoraSP();
-    const linhas = (await recentes(req, q)).filter((p) => p.situacao === 'Aguardando nota' && !p.sep_inicio && !p.etiquetas_em).map((p) => {
+    const linhas = (await recentes(req, q)).filter((p) => ['Aguardando nota', 'Integrado'].includes(p.situacao) && !p.sep_inicio && !p.etiquetas_em).map((p) => {
       const lib = liberado(p); const h = horas(lib, agora);
-      return { ...base(p), lib_comercial: p.lib_comercial, liberado_em: p.liberado_em, horas: h, situacao: faixa(h), no_wms: p.tem_wms ? (p.status_wms || 'Sim') : 'Não chegou ao WMS',
+      return { ...base(p), lib_comercial: p.lib_comercial, liberado_em: p.liberado_em, data_inicial: p.data_inicial, horas: h, faixa: faixa(h),
+        situacao: p.situacao === 'Integrado' ? 'Integrado no WMS' : p.tem_wms ? `No WMS (${p.status_wms || 'sem status'})` : 'Não chegou ao WMS',
         decisao: !p.tem_wms ? 'Conferir se o pedido foi integrado no WMS' : h != null && h > 24 ? 'Priorizar a separação (liberado há mais de 1 dia)' : 'Na fila' };
     }).sort((a, b) => (b.horas ?? -1) - (a.horas ?? -1));
     return {
-      colunas: [...COL_BASE, ['situacao', 'Aguardando há'], ['horas', 'Horas desde a liberação', 'dec'], ['lib_comercial', 'Liberação comercial', 'datahora'], ['liberado_em', 'Liberação (ERP)', 'datahora'],
-        ['no_wms', 'No WMS'], ['decisao', 'O que fazer'], ...COL_FIM],
+      colunas: [...COL_BASE, ['situacao', 'No WMS'], ['faixa', 'Aguardando há'], ['horas', 'Horas desde a liberação', 'dec'], ['lib_comercial', 'Liberação comercial', 'datahora'], ['liberado_em', 'Liberação (ERP)', 'datahora'],
+        ['data_inicial', 'Integrado no WMS em', 'datahora'], ['decisao', 'O que fazer'], ...COL_FIM],
       linhas,
-      resumo: [['Na fila', linhas.length], ['Há mais de 24 h', linhas.filter((l) => (l.horas || 0) > 24).length], ['Não chegaram ao WMS', linhas.filter((l) => l.no_wms === 'Não chegou ao WMS').length],
+      resumo: [['Na fila', linhas.length], ['Integrados no WMS', linhas.filter((l) => l.situacao === 'Integrado no WMS').length], ['Não chegaram ao WMS', linhas.filter((l) => l.situacao === 'Não chegou ao WMS').length],
+        ['Há mais de 24 h', linhas.filter((l) => (l.horas || 0) > 24).length],
         ['Peso na fila (kg)', soma(linhas, 'peso'), 'dec'], ['Valor na fila', soma(linhas, 'valor'), 'moeda']],
     };
   }
@@ -156,9 +158,9 @@ module.exports = function criar() {
   }
 
   // 112 ---------------------------------------------------------------------------------------------------------------
-  const inicioDaEtapa = (p) => (p.situacao === 'Aguardando nota' ? liberado(p) : p.situacao === 'Separado' ? (p.sep_fim || p.exp_fim || p.etiquetas_em)
+  const inicioDaEtapa = (p) => (p.situacao === 'Aguardando nota' ? liberado(p) : p.situacao === 'Integrado' ? (liberado(p) || p.data_inicial) : p.situacao === 'Separado' ? (p.sep_fim || p.exp_fim || p.etiquetas_em)
     : (p.sep_inicio || p.data_inicial || p.etiquetas_em));
-  const O_QUE = { 'Aguardando nota': 'Priorizar a separação', 'Em separação': 'Ver com o líder da separação o que trava', 'Em conferência': 'Liberar a conferência', Separado: 'Cobrar o faturamento' };
+  const O_QUE = { 'Aguardando nota': 'Conferir se chegou ao WMS e priorizar', Integrado: 'Priorizar a separação', 'Em separação': 'Ver com o líder da separação o que trava', 'Em conferência': 'Liberar a conferência', Separado: 'Cobrar o faturamento' };
   async function parados(req, q) {
     const agora = agoraSP();
     const linhas = (await recentes(req, q)).filter((p) => LIMITE[p.situacao] != null).map((p) => {
@@ -171,7 +173,7 @@ module.exports = function criar() {
       colunas: [...COL_BASE, ['etapa', 'Etapa'], ['situacao', 'Situação'], ['desde', 'Na etapa desde', 'datahora'], ['horas', 'Horas na etapa', 'dec'], ['limite', 'Limite (h)', 'num'],
         ['excesso', 'Horas além do limite', 'dec'], ['separador', 'Separador'], ['decisao', 'O que fazer'], ...COL_FIM],
       linhas,
-      resumo: [['Acima do limite', linhas.filter((l) => l.situacao === 'Acima do limite').length], ['Aguardando separação (24 h)', por('Aguardando nota')], ['Em separação (4 h)', por('Em separação')],
+      resumo: [['Acima do limite', linhas.filter((l) => l.situacao === 'Acima do limite').length], ['Fora do WMS (24 h)', por('Aguardando nota')], ['Integrados sem separar (24 h)', por('Integrado')], ['Em separação (4 h)', por('Em separação')],
         ['Em conferência (4 h)', por('Em conferência')], ['Separado sem nota (8 h)', por('Separado')]],
     };
   }
@@ -185,7 +187,7 @@ module.exports = function criar() {
       return { grupo: s, pedidos: x.length, pct: ls.length ? x.length / ls.length : null, peso: soma(x, 'peso'), valor: soma(x, 'valor'), etiquetas: soma(x, 'qtd_etiquetas'),
         mais_antigo: x.length ? Math.max(...x.map((p) => p.dias || 0)) : null, idade_media: media(x.map((p) => p.dias)) };
     }).filter((l) => l.pedidos);
-    const abertos = ls.filter((p) => ['Aguardando nota', 'Em separação', 'Em conferência', 'Separado'].includes(p.situacao));
+    const abertos = ls.filter((p) => ['Aguardando nota', 'Integrado', 'Em separação', 'Em conferência', 'Separado'].includes(p.situacao));
     return {
       colunas: [['grupo', 'Situação'], ['pedidos', 'Pedidos', 'num'], ['pct', '% dos pedidos', 'pct'], ['peso', 'Peso (kg)', 'dec'], ['valor', 'Valor', 'moeda'], ['etiquetas', 'Etiquetas', 'num'],
         ['idade_media', 'Idade média (dias)', 'dec'], ['mais_antigo', 'Mais antigo (dias)', 'num']],
@@ -208,7 +210,7 @@ module.exports = function criar() {
       colunas: [...COL_BASE, ['situacao', 'Situação'], ['obs', 'Observação'], ['obs_por', 'Escrita por'], ['obs_em', 'Em', 'datahora'], ['data_pedido', 'Data do pedido', 'data'], ['nf', 'NF'],
         ['peso', 'Peso (kg)', 'dec'], ['valor', 'Valor', 'moeda']],
       linhas,
-      resumo: [['Com observação', linhas.length], ['Ainda sem nota', linhas.filter((l) => ['Aguardando nota', 'Em separação', 'Em conferência', 'Separado'].includes(l.situacao)).length],
+      resumo: [['Com observação', linhas.length], ['Ainda sem nota', linhas.filter((l) => ['Aguardando nota', 'Integrado', 'Em separação', 'Em conferência', 'Separado'].includes(l.situacao)).length],
         ['Agendamento', linhas.filter((l) => /AGEND/i.test(l.obs)).length]],
     };
   }
@@ -266,10 +268,10 @@ module.exports = function criar() {
       desc: 'Pedidos com a separação finalizada no WMS e sem NF-e, do mais antigo para o mais novo: quanto tempo estão parados, quem separou e o que fazer. Para o faturamento.' },
     108: { titulo: 'Em separação sem separador apontado', grupo: G1, tela: T, semPeriodo: true, rodar: semSeparador,
       desc: 'Pedidos em separação ou conferência no WMS sem o nome do separador no apontamento de separação. Para o líder do armazém apontar (sem isso não há produtividade nem responsável).' },
-    109: { titulo: 'Liberados aguardando separação (fila)', grupo: G1, tela: T, semPeriodo: true, rodar: filaSeparacao,
-      desc: 'Pedidos liberados pelo comercial que ainda não começaram a ser separados, por tempo de espera, e os que nem chegaram ao WMS. Para priorizar a fila do armazém.' },
+    109: { titulo: 'Liberados e integrados aguardando separação (fila)', grupo: G1, tela: T, semPeriodo: true, rodar: filaSeparacao,
+      desc: 'Pedidos liberados pelo comercial que ainda não começaram a ser separados: os já integrados no WMS (status INTEGRADO) e os que nem chegaram ao WMS, por tempo de espera. Para priorizar a fila do armazém.' },
     112: { titulo: 'Pedidos parados além do limite', grupo: G1, tela: T, semPeriodo: true, rodar: parados,
-      desc: 'Cada pedido em aberto pela etapa em que está e há quanto tempo: aguardando separação acima de 24 h, em separação ou conferência acima de 4 h, separado sem nota acima de 8 h.' },
+      desc: 'Cada pedido em aberto pela etapa em que está e há quanto tempo: aguardando ou integrado no WMS sem separar acima de 24 h, em separação ou conferência acima de 4 h, separado sem nota acima de 8 h.' },
     110: { titulo: 'Tempo de cada etapa (ciclo do pedido)', grupo: G2, tela: T, rodar: ciclo,
       desc: 'Da liberação comercial à nota fiscal: horas até começar a separar, tempo de separação, até imprimir as etiquetas e dias até a NF; as médias mostram onde está o gargalo.' },
     111: { titulo: 'Produtividade por separador', grupo: G2, tela: T, rodar: produtividade, detalhe: produtividadeDetalhe,

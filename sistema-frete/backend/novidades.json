@@ -5,6 +5,7 @@
       "versao": "1.74.0",
       "titulo": "Pátio e portaria",
       "itens": [
+        {"area": "Pedidos", "texto": "Nova situação Integrado na tela Pedidos e nos relatórios: o pedido já está no WMS (status INTEGRADO) e a separação ainda não começou, com cartão e filtro próprios. O relatório 109 passou a se chamar Liberados e integrados aguardando separação e separa os integrados dos que não chegaram ao WMS."},
         {"area": "Pedidos", "texto": "Relatórios de pedidos (Faturamento › Relatórios, Ctrl+K 407), em Excel, PDF e impressão: para as equipes, separados e ainda sem nota fiscal, em separação sem separador, liberados aguardando separação e pedidos parados além do limite (com a coluna O que fazer); para decisão, tempo de cada etapa do pedido, produtividade por separador e entrada × saída por dia; e resumo por situação, pedidos com observação e etiquetas por usuário."},
         {"area": "Pedidos", "texto": "Topo da tela Pedidos mais limpo: uma barra só (situações, período, visão, Atualizar do WMS e Excel), as demais ações no menu ⋯ Mais e uma linha discreta com o filtro do ERP e a situação do WMS."},
         {"area": "Pedidos", "texto": "Visão Planilha da tela Pedidos no modelo da lista do ERP: uma linha por pedido, zebrada, mais compacta, textos longos com reticências e a linha clicada destacada."},

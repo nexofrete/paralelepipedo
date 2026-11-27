@@ -16,7 +16,7 @@
   const dia = (v) => (v ? new Date(`${String(v).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—');
   const erro = (e) => mostrarAlerta(e.message, { tipo: 'erro' });
   const api = async (c) => { const r = await apiFetch(`/api/pedidos${c}`); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.erro || 'Erro ao carregar.'); return j; };
-  const COR = { 'Aguardando nota': 'pendente', 'Em separação': 'ocorrencia', 'Em conferência': 'ocorrencia', Separado: 'em_transito', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
+  const COR = { 'Aguardando nota': 'pendente', Integrado: 'integrado', 'Em separação': 'ocorrencia', 'Em conferência': 'ocorrencia', Separado: 'em_transito', Faturado: 'em_transito', 'Em embarque': 'em_transito', 'Coleta pedida': 'em_transito', 'Coletado / em trânsito': 'em_transito', Entregue: 'entregue', Cancelado: 'cancelado',
     'A faturar': 'pendente', 'Parada sem faturar': 'ocorrencia', 'NF sem XML': 'ocorrencia', 'Faturada, confere': 'entregue', 'Faturada, mudou': 'cancelado', 'Cancelada no ERP': 'cancelado' };
   const sit = (s) => `<span class="oc-sit ${COR[s] || ''}">${esc(s)}</span>`;
   let aba = 'pedidos'; const estado = { pedidos: { situacao: '', busca: '', de: '', ate: '' }, prenotas: { situacao: '', busca: '' } };
@@ -75,7 +75,7 @@
         <td><b>${esc(p.pedido)}</b>${p.pedido_cliente ? fraco(`Mercus ${esc(p.pedido_cliente)}`) : ''}</td>
         <td style="white-space:nowrap;">${sit(p.situacao)}${p.obs || podeImportar() ? `<br><small style="white-space:normal; display:inline-block; max-width:200px;">📝 ${obsCel(p)}</small>` : ''}${p.embarque_id ? fraco(`embarque ${p.embarque_id}`) : ''}${p.ordem_id ? fraco(`ordem ${p.ordem_id}`) : ''}${p.data_entrega ? fraco(dia(p.data_entrega)) : ''}</td>
         <td style="max-width:220px; min-width:200px; white-space:normal;">${esc(p.cliente || '—')}${fraco([p.nome_curto, cnpjF(p.cnpj)].filter(Boolean).map(esc).join(' · ') || '&nbsp;')}</td>
-        <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}${p.lib_comercial || podeImportar() ? fraco(`comercial: ${libCom(p)}`) : ''}</td>
+        <td style="white-space:nowrap;">${dh(p.liberado_em || p.data_pedido)}${['Aguardando nota', 'Integrado'].includes(p.situacao) && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}${fraco(esc(p.expedicao || '—'))}${p.lib_comercial || podeImportar() ? fraco(`comercial: ${libCom(p)}`) : ''}</td>
         <td style="white-space:nowrap;">${num(p.peso, 1)} kg${fraco(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}</td>
         <td>${esc(p.status_wms || '—')}${buscarWms(p)}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}% conf.</small>` : ''}${p.data_inicial || p.usuario || p.exp_wms ? fraco([p.exp_wms ? `exp. ${esc(p.exp_wms)}` : '', p.data_inicial ? `desde ${dh(p.data_inicial)}` : '', p.usuario ? `👤 ${esc(p.usuario)}` : ''].filter(Boolean).join(' · ')) : ''}${p.placa || p.motorista ? fraco(`🚚 ${[p.placa, p.motorista].filter(Boolean).map(esc).join(' · ')}`) : ''}${p.cancelado_wms ? '<br><span class="oc-sit cancelado">cancelado no WMS</span>' : ''}</td>
         <td style="white-space:nowrap;">${[
@@ -96,7 +96,7 @@
         <td class="pd-fixa"><b>${esc(p.pedido)}</b></td>${nw(sit(p.situacao))}<td title="${esc(p.obs || '')}"><div class="pd-flex" style="max-width:220px;">${obsCel(p)}</div></td>${nw(esc(cnpjF(p.cnpj) || '—'))}
         <td class="pd-corta" style="max-width:240px;" title="${esc(p.cliente || '')}">${esc(p.cliente || '—')}</td>
         ${nw(esc(p.nome_curto || '—'))}${nw(esc(p.pedido_cliente || '—'))}
-        ${nw(`${dh(p.liberado_em || p.data_pedido)}${p.situacao === 'Aguardando nota' && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}`)}${nw(libCom(p))}
+        ${nw(`${dh(p.liberado_em || p.data_pedido)}${['Aguardando nota', 'Integrado'].includes(p.situacao) && p.dias > 3 ? ` <small class="pa-alerta">${p.dias} d</small>` : ''}`)}${nw(libCom(p))}
         ${nw(p.peso == null ? '—' : `${num(p.peso, 1)} kg`)}${nw(p.cubagem == null ? '—' : `${num(p.cubagem, 3)} m³`)}
         ${nw(`${esc(p.status_wms || '—')}${p.conferencia_pct != null ? ` <small>${num(p.conferencia_pct, 0)}%</small>` : ''}${buscarWms(p)}`)}${nw(dh(p.data_inicial))}${nw(esc(p.expedicao || '—'))}
         ${nw(esc(p.usuario || '—'))}${nw(dh(p.etiquetas_em))}${nw(p.qtd_etiquetas == null ? '—' : num(p.qtd_etiquetas))}${nw(esc(p.separador || '—'))}${nw(dh(p.sep_inicio))}${nw(dh(p.sep_fim))}
@@ -197,7 +197,8 @@
       : 'Todos os pedidos do ERP';
     cont.innerHTML = `<div class="nf-resumo pd-cartoes">
         <div>Pedidos no período<b>${num(r.pedidos)}</b><span>${num(r.peso, 1)} kg${r.etiquetas ? ` · ${num(r.etiquetas)} etiquetas` : ''}</span></div>
-        <div>Aguardando nota<b>${num(r.aguardando_nota)}</b><span>${r.aguardando_mais_dias ? `${r.aguardando_mais_dias} há mais de 3 dias` : 'ainda não separados'}</span></div>
+        <div>Aguardando nota<b>${num(r.aguardando_nota)}</b><span>${r.aguardando_mais_dias ? `${r.aguardando_mais_dias} há mais de 3 dias` : 'ainda não estão no WMS'}</span></div>
+        <div>Integrados<b>${num(r.integrados)}</b><span>${r.integrados_mais_dias ? `${r.integrados_mais_dias} há mais de 3 dias` : 'no WMS, a separar'}</span></div>
         <div>Em separação / conferência<b>${num(r.em_separacao)}</b><span>no WMS</span></div>
         <div>Separados<b>${num(r.separados)}</b><span>esperando a nota</span></div>
         <div>Faturados<b>${num(d.contagem.Faturado + d.contagem['Em embarque'] + d.contagem['Coleta pedida'])}</b><span>ainda não saíram</span></div>

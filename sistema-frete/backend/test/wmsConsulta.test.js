@@ -66,7 +66,7 @@ test('Exportar da tela do WMS também entra pela planilha (Cargas = pedido)', ()
 });
 
 test('situação pelo status do WMS', () => {
-  assert.strictEqual(situacaoPedido({ tem_nota: false, status_wms: 'INTEGRADO' }), 'Aguardando nota');
+  assert.strictEqual(situacaoPedido({ tem_nota: false, status_wms: 'INTEGRADO' }), 'Integrado');
   assert.strictEqual(situacaoPedido({ tem_nota: false, status_wms: 'EM SEPARACAO' }), 'Em separação');
   assert.strictEqual(situacaoPedido({ tem_nota: false, status_wms: 'PRIMEIRA CONFERENCIA' }), 'Em conferência');
   assert.strictEqual(situacaoPedido({ tem_nota: false, status_wms: 'CONFERIDO' }), 'Separado');

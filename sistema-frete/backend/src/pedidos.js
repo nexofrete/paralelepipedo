@@ -15,7 +15,7 @@ const dataOk = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) :
 const dias = (de, ate = hojeSP()) => (de ? Math.round((Date.parse(`${String(ate).slice(0, 10)}T12:00:00Z`) - Date.parse(`${String(de).slice(0, 10)}T12:00:00Z`)) / 86400000) : null);
 const numero = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 const semZeros = (v) => (v == null ? null : String(v).replace(/^0+(?=\d)/, ''));
-const SITUACOES_PEDIDO = ['Aguardando nota', 'Em separação', 'Em conferência', 'Separado', 'Faturado', 'Em embarque', 'Coleta pedida', 'Coletado / em trânsito', 'Entregue', 'Cancelado'];
+const SITUACOES_PEDIDO = ['Aguardando nota', 'Integrado', 'Em separação', 'Em conferência', 'Separado', 'Faturado', 'Em embarque', 'Coleta pedida', 'Coletado / em trânsito', 'Entregue', 'Cancelado'];
 
 // Situação do pedido (sem banco).
 function situacaoPedido(r) {
@@ -26,6 +26,8 @@ function situacaoPedido(r) {
     if (r.sep_fim || /CONFERIDO|FINALIZ/.test(st)) return 'Separado';
     if (/CONFERENCIA|CONFERÊNCIA/.test(st)) return 'Em conferência';
     if (r.sep_inicio || /SEPARA/.test(st)) return 'Em separação';
+    // Já está no WMS (INTEGRADO), mas a separação ainda não começou.
+    if (/INTEGRAD/.test(st)) return 'Integrado';
     return 'Aguardando nota';
   }
   if (r.data_entrega) return 'Entregue';
@@ -158,6 +160,7 @@ async function pedidos(req, q = {}) {
     de, ate, filtro_erp: cfg, situacoes: SITUACOES_PEDIDO, contagem, pedidos: filtro ? todos.filter((r) => r.situacao === filtro) : todos,
     resumo: { pedidos: ativos.length, valor: Math.round(ativos.reduce((t, r) => t + (r.valor || 0), 0) * 100) / 100, peso: Math.round(ativos.reduce((t, r) => t + (r.peso || 0), 0) * 10) / 10,
       aguardando_nota: contagem['Aguardando nota'], aguardando_mais_dias: todos.filter((r) => r.situacao === 'Aguardando nota' && r.dias > DIAS_PARADA).length,
+      integrados: contagem.Integrado, integrados_mais_dias: todos.filter((r) => r.situacao === 'Integrado' && r.dias > DIAS_PARADA).length,
       em_separacao: contagem['Em separação'] + contagem['Em conferência'], separados: contagem.Separado, com_wms: todos.filter((r) => r.tem_wms).length,
       etiquetas: todos.reduce((t, r) => t + (r.qtd_etiquetas || 0), 0) },
   };
